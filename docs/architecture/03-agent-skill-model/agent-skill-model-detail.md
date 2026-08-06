@@ -9,7 +9,7 @@
 
 Requirement、WorkItem、Route、Gate、人工 Assignment 与 Decision 的业务语义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有。人员资格由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 的 KVM/Kata、Materialization、Secret 注入、Lease 物理实现和容量 BOM 由未来的[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)拥有；本文只约束其通过 Port 提供的逻辑契约。
 
-Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human Gate Decision。Prompt、UI 开关和 Model 输出都不是授权事实。首版 Superpowers 随 Runtime 镜像发布，不建设独立 Skill Registry，不接入 `grill-me`；Workflow 不保存 Provider 专有参数或具体 Model 名称。
+Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human Gate Decision。Prompt、UI 开关和 Model 输出都不是授权事实。Runtime 以随镜像发布的版本化 Superpowers Runtime Bundle 与 Loaded Skill Contract 执行；Workflow 不保存 Provider 专有参数或具体 Model 名称。
 
 ## 2. 概念与 Definition
 
@@ -40,19 +40,9 @@ Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human G
 
 ## 3. Superpowers Runtime Bundle
 
-Superpowers 是 Runtime Bundle 的首版内容。Route 到 Skill 的典型组合为：
+Superpowers Runtime Bundle 随 Runtime 镜像交付。Workflow 解析 Route 并将所需 Bundle 与 Loaded Skill 写入 Execution Binding；Route→Skill 定义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有。
 
-```text
-feat: brainstorming → writing-plans → test-driven-development
-      → verification-before-completion → requesting-code-review
-
-fix:  systematic-debugging → test-driven-development
-      → verification-before-completion → requesting-code-review
-
-refactor / chore: 当前 Route 规定的技术流程、测试、验证和代码评审
-```
-
-Runtime 镜像必须记录镜像 digest、Bundle hash、可加载 Skill 名单、构建来源、签名与扫描结果。BINDING 阶段缺少所需 Skill、Bundle 或可验证 digest 时失败，不能以相近名称替代。一个 Attempt 内不得热更新 Bundle；未来 Bundle 只能经 `RuntimeBundlePort` 接入，并复用 Binding、权限与审计契约。
+Runtime 镜像必须记录镜像 digest、Bundle hash、可加载 Skill 名单、构建来源、签名与扫描结果。BINDING 阶段校验所需 Skill、Bundle 与 digest，并在校验失败时终止本次绑定。一个 Attempt 内保持同一 Bundle；Bundle 通过 `RuntimeBundlePort` 接入，并复用 Binding、权限与审计契约。
 
 ## 4. Model Catalog、Capability 与 Route
 

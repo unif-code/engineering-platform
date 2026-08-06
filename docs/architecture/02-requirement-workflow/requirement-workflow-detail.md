@@ -81,7 +81,7 @@ repositoryState = WAITING_REPOSITORY
 | `refactor` | Route Snapshot 指定的技术基线与验证 | 实际启用部分确认 |
 | `chore` | Route Snapshot 指定的技术基线与验证 | 实际启用部分确认 |
 
-`feat` 的常用顺序是 `brainstorming → writing-plans → test-driven-development → verification-before-completion → requesting-code-review`。Workflow 固定 Route、阶段输入输出、Artifact、Gate 与恢复；Skill 的内部方法由[Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有。首版使用 Superpowers Runtime Bundle，不接入 `grill-me`，也不重建同类方法。
+`feat` 的当前 SDD 顺序是 `brainstorming → writing-plans → test-driven-development → verification-before-completion → requesting-code-review`。Workflow 固定 Route、阶段输入输出、Artifact、Gate 与恢复；Skill 的内部方法由[Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有，执行时使用版本化 Superpowers Runtime Bundle。
 
 每条 Route 将可审计结论固化为结构化、可版本绑定 Artifact：
 
@@ -209,7 +209,7 @@ ACTIVE | ARCHIVED | DELETED
 
 恢复适用于有恢复资格的 `ARCHIVED` 与 `DELETED` 记录，恢复可见性和原业务状态的继续入口，不复活已终态 Attempt 或 Child。继续时基于原状态、最新 Commit、Artifact、Checkpoint 和当前资格/Assignment 创建新 Attempt 或动作，并重新校验授权、仓库 Binding、Gate 与 Policy。
 
-删除是逻辑删除，进入独立 Deleted 视图；首阶段不进行物理清除，也不建立无行为的 Legal Hold 占位。删除、读取 Deleted、恢复分别需 Capability + Scope，`requirement.deleted.read` 与 `requirement.deleted.restore` 不因创建人身份自动获得。归档、删除和恢复只改变元数据与可见性，不删除或改写 Decision、Artifact、Commit、Attempt 或 Audit。
+删除将记录置为 `DELETED` 并进入独立 Deleted 视图。删除、读取 Deleted、恢复分别需 Capability + Scope，`requirement.deleted.read` 与 `requirement.deleted.restore` 不因创建人身份自动获得。归档、删除和恢复保留 Decision、Artifact、Commit、Attempt 与 Audit，并只改变业务元数据与可见性。
 
 ## 10. 并发、外部事实与审计
 
