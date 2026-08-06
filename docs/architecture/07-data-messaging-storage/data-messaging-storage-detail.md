@@ -9,7 +9,7 @@
 
 领域状态仍由对应领域 owner 拥有，应用调用、Port/Adapter 和 Outbox 使用边界由 [平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。本文不定义密钥、加密、Secret 或审计内容保护机制，统一链接 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；不定义 Cluster、Node、SKU、总容量、组件精确版本或环境容量，统一链接 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
-PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger 和可重建投影的权威关系事实源。Valkey、NATS、Temporal、对象存储、普通日志与指标均不能替代它。每个 Platform Environment 都有独立的组件、数据、Backup、Bucket、证书和恢复链；DEV 与 PROD 只共享同源 Contract，不共享运行时状态。
+PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger 和可重建投影的权威关系事实源。Valkey、NATS、Temporal、对象存储、普通日志与指标均不能替代它。每个 Platform Environment 都有独立的组件、数据、Backup、Bucket 与恢复链；DEV 与 PROD 只共享同源 Contract，不共享运行时状态。
 
 ## 2. PostgreSQL 与连接边界
 
@@ -21,13 +21,13 @@ CloudNativePG 通过 Barman Cloud Plugin、WAL Archive 与 S3-compatible `postgr
 
 ## 3. Valkey
 
-每环境 Valkey 使用一个 Primary、两个 Replica 与三个 Sentinel（quorum=2），经 TLS/mTLS、ACL、Sentinel-aware Client 访问；禁止业务固定 Primary 地址或厂商私有配置。使用 `noeviction`、AOF everysec 与周期 RDB，以避免在内存回收时无提示丢弃关键热状态。
+每环境 Valkey 使用一个 Primary、两个 Replica 与三个 Sentinel（quorum=2），并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)；业务仅使用 Sentinel-aware Client，禁止固定 Primary 地址或厂商私有配置。使用 `noeviction`、AOF everysec 与周期 RDB，以避免在内存回收时无提示丢弃关键热状态。
 
 Valkey 仅保存可重建的 Session 热数据、撤销索引、缓存、限流、幂等键和短期锁。Session、安全和领域的权威事实始终保留在 PostgreSQL。缓存不可用、版本未知或安全写操作无法回源时，必须回查 PostgreSQL 或 Fail Closed；不得因 Valkey 故障放行陈旧授权、绕过撤销或将缓存内容升级为事实源。PVC 可用于快速恢复，但其丢失后的正确恢复方式是从权威事实重建。
 
 ## 4. NATS JetStream、Outbox 与 Inbox
 
-NATS JetStream 每环境使用三个节点、File Storage、三副本；所有客户端与 Route 使用 TLS。每个 Deployable Unit 使用独立服务身份，按 Publish/Subscribe Subject Allowlist 最小授权；平台和系统账号隔离，Sandbox 不获得 NATS 网络或凭据。
+NATS JetStream 每环境使用三个节点、File Storage、三副本，并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)。每个 Deployable Unit 按 Publish/Subscribe Subject Allowlist 获得最小访问；平台和系统账号隔离，Sandbox 不获得 NATS 访问。
 
 事件为 CloudEvents Structured JSON，命令为平台 `CommandEnvelope`；Subject 为：
 
@@ -43,7 +43,7 @@ NATS 的权威恢复是应用一致性 Account Backup，而不是多个 PVC/CSI 
 
 ## 5. Temporal Persistence
 
-Temporal Server 的 Default Store 与 Visibility Store 使用同环境 CloudNativePG 中隔离的 `temporal` 与 `temporal_visibility` 数据库。Temporal 仅使用 ClusterIP，服务间通信使用 mTLS；SDK Client 除证书外使用受控 Machine Identity，普通浏览器和 Sandbox 不持有 Temporal Credential。
+Temporal Server 的 Default Store 与 Visibility Store 使用同环境 CloudNativePG 中隔离的 `temporal` 与 `temporal_visibility` 数据库。Temporal 仅使用 ClusterIP，并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)；普通浏览器和 Sandbox 不具有 Temporal 访问资格。
 
 Runtime Role 只做 DML，Schema 由短生命周期 DDL Job 管理。History 只保存 Workflow 的非敏感控制元数据，禁止写入源码、Prompt、Secret 或完整附件。Worker Build ID 与不可变应用镜像/Workflow Code 绑定；活动 Workflow 的版本演进通过显式兼容策略完成，不在发布期间静默替换。Temporal 的 Durable History 只解释编排推进，领域状态仍以 PostgreSQL owner 为准。
 
@@ -58,7 +58,7 @@ requirement-attachments  agent-artifacts  audit-worm  postgres-backup
 nats-backup              openbao-recovery observability-logs observability-traces
 ```
 
-每个 Class 使用独立 Credential、Policy、Versioning、Retention、Encryption、Quota 与 Capacity Ledger。Prefix 不能替代 Bucket 级隔离；同一 Class 中的物理 Bucket 必须划分互斥配额，Class Usage 汇总当前/非当前 Version、Object Lock、Delete Marker、Multipart、GC 延迟和元数据估算。安全凭据、Object 加密与 `openbao-recovery` 的恢复材料约束只见 [08](../08-security-audit-governance/security-audit-governance-detail.md)。
+每个 Class 使用独立 Policy、Versioning、Retention、Quota 与 Capacity Ledger，并服从 [08 的权威 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。Prefix 不能替代 Bucket 级隔离；同一 Class 中的物理 Bucket 必须划分互斥配额，Class Usage 汇总当前/非当前 Version、Object Lock、Delete Marker、Multipart、GC 延迟和元数据估算。
 
 Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体。附件或 Agent Artifact 的归档、逻辑删除、Requirement 恢复状态变化都不释放对象容量；仅在其领域 owner 明确的引用、状态和保留条件满足后才可能改变存储引用。上传和下载仅能由应用授权签发短期、精确版本的 Presigned Request。文件检查由应用 `FileSecurityPort` 处理；只有合格 Verdict 的对象可进入可用业务状态，具体业务状态由其领域 owner 决定。
 
@@ -81,7 +81,7 @@ Backup 是组件自己的应用一致性恢复链：CloudNativePG 使用 Base Ba
 | NATS 不可用或满容量 | Outbox 保留待发，受控告警/背压；不丢失已提交领域事实 |
 | Consumer/外部 Effect 结果不确定 | 标记 `UNKNOWN/RECONCILIATION`，由 Reconciler 查询收敛 |
 | Temporal 不可用 | 暂停长任务推进，恢复后依据 Durable History 与领域事实继续；不改写业务状态 |
-| RGW/对象加密路径不可用 | 对象读写 Fail Closed；不得回退明文或未版本化写入 |
+| RGW 或其必需 Security Contract 不可用 | 对象读写 Fail Closed；不得产生未受保护或未版本化对象 |
 | Backup Headroom/锁定对象不足 | 形成容量与 RPO 风险，阻止不安全备份，不删除受保护副本 |
 | Retention Reconciler 失败 | 对象继续占用并告警，禁止乐观释放空间 |
 
