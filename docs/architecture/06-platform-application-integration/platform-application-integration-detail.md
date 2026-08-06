@@ -9,9 +9,11 @@
 
 本文消费领域 owner 的稳定 ID、受保护命令与有效配置快照，不重新定义 Identity、授权、Requirement、Agent、Sandbox 或 GitLab 的状态机。PostgreSQL、Valkey、NATS、Temporal 与 Object Storage 的运行和恢复事实由 [数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有。安全密钥、加密、Secret 与 Audit 保留规则只见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；Cluster、Node、组件版本和总容量只见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
+DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max 前端模板。本文规定的 Python Control Plane、数据服务、独立 Deployable、Operations Adapter 与基础设施属于已批准的目标架构，不声明这些运行实例已经部署。未来 PROD 只从相同代码、Contract、GitOps 模板与 PCS 独立实例化，始终使用独立入口、Session、组件和状态。
+
 ## 2. Umi Web 与 Session Bootstrap
 
-用户端和平台管理后台是同一 Umi Max、React、TypeScript 应用的两个路由空间，使用同一 Design Token、Layout、API Client 与当前环境 Session；`/admin` 是路由前缀，不是第二个工程。建议目录边界为：
+批准的应用边界由同一 Umi Max、React、TypeScript 应用承载用户端和平台管理后台两个路由空间，共用 Design Token、Layout、API Client 与当前环境 Session；`/admin` 是路由前缀，不是第二个工程。目录边界为：
 
 ```text
 src/
@@ -40,7 +42,7 @@ Secure + HttpOnly + SameSite Cookie
 
 ## 3. Python Control Plane 与模块边界
 
-Control Plane 使用 Python 3.12、FastAPI、Pydantic 2、SQLAlchemy 2 与 Alembic；依赖及 PostgreSQL Driver 版本由锁文件固定。它是一个 Python 项目和一个业务部署单元的**模块化单体**，不是预先拆分的微服务。
+目标 Control Plane 使用 Python 3.12、FastAPI、Pydantic 2、SQLAlchemy 2 与 Alembic；依赖及 PostgreSQL Driver 版本由锁文件固定。它是一个 Python 项目和一个业务部署单元的**模块化单体**，不是预先拆分的微服务。
 
 ```text
 backend/control_plane/app/
@@ -58,7 +60,7 @@ backend/control_plane/app/
 
 ## 4. Deployable 与 Port/Adapter
 
-Control Plane 之外的独立 Deployable 按信任、高风险或独立扩缩容边界划分：
+目标架构中 Control Plane 之外的独立 Deployable 按信任、高风险或独立扩缩容边界划分：
 
 | Deployable | 责任 | 禁止拥有的事实 |
 | --- | --- | --- |
@@ -123,6 +125,10 @@ Ingest 依次验证传输策略、环境与 Binding Generation、Schema、Signin
 
 External Watchdog 是 Cluster 外独立告警链，必须在 Kubernetes、Control Plane、PostgreSQL 和 Collector 均不可用时仍能通知失联；Collector 只能投影其结果。Feed 超过 `Valid Until`、签名无效或 Collector 不可用时状态为 `STALE/PARTIAL/UNKNOWN`，不保留旧绿色状态。
 
+Collector、Feed 与 imported Projection 只改变运维可见性。它们不可用时，不得阻塞已经运行的 Requirement、数据库事务、Agent Attempt 或控制循环，除非该动作依据自身 Contract 确实同步依赖对应外部服务。`STALE/PARTIAL/UNKNOWN` 只表示导入状态不可证明，不等同于目标依赖已经失败；真实依赖失败始终按该依赖自己的同步调用、健康与失败 Contract 处理。
+
+外部来源没有机器可读 API 或受控探针时，其集成状态必须为 `NOT_INTEGRATED`。运维可以提供有界有效期的签名 Operations Declaration；Projection 必须显示声明来源、Coverage 与到期时间，过期后回到 `UNKNOWN`，不能把人工声明当作持续机器观测或真实依赖健康证明。
+
 ## 8. Operations Read Model、Console 与安全公告
 
 Operations Read Model 是当前环境的可重建只读投影，统一查询组件 Baseline、有效配置、Health、容量、性能、Backup/Restore、依赖、Alert、Gap、Drift 与趋势。它消费受限 Observability/Operations Adapter，不替代业务事实、Audit、IaC Desired State 或专业查询产品。页面层级固定为：
@@ -133,14 +139,20 @@ Operations Read Model 是当前环境的可重建只读投影，统一查询组�
 
 管理后台按 Capability + Scope 展示当前环境的 Kubernetes、PostgreSQL、Valkey、NATS、Temporal、Object Storage、Agent/Sandbox、Model、GitLab 与外部 Provider 状态。`GITOPS_CONFIG`、PCS、Replica、Node、Ceph fullness 等基础设施值仅展示 Desired/Effective/Drift，不能从后台写入。任何投影 Lag、查询失败或 Coverage 不完整都必须显式显示，不得把部分结果伪装为健康。
 
-`ConsoleAccessPort` 在每次跳转前校验当前 Session、Capability 和 Scope，生成受控的新标签页入口；Grafana、Hubble、Temporal、OpenBao 与外部 Provider Console 均不使用 iframe。平台不向浏览器暴露 Data Source、Kubernetes、Cloud 或 Console Admin Credential。
+`ConsoleAccessPort` 只接受预注册且允许列表内的 `consoleId/linkId`，服务端依据当前 Environment 解析目标；客户端、External Envelope 和用户均不能提交任意目标 URL。未注册 Link、Environment 不匹配、目标 Scheme/Host/Path 不符合注册值或可能形成 Open Redirect 的请求一律拒绝。Grafana、Hubble、Temporal、OpenBao 与外部 Provider Console 均在受控新标签页打开，不使用 iframe。
 
-安全公告采用 API 拉取而非任意网页抓取。Source Adapter 仅访问批准的 CISA KEV、NVD API 2.0 与 OSV API，并各自隔离 Endpoint、timeout、限流与凭据引用。Technology Inventory 是平台级版本化配置；采集按配置的时区/周期执行，增量结果以 CVE 优先、来源 Advisory 与规范化指纹辅助去重，筛选匹配 Inventory 的 CISA KEV 与 High/Critical 漏洞。部分来源失败时公告必须标识 Coverage；全部失败时保留上一期、不发布空公告并告警。公告、游标、来源摘要/Hash、去重、筛选、重试、生成与发布均可查询且可审计；可见性只由公告读取 Capability + Scope 判定。
+每次打开前都校验当前 Session、Capability、Scope 与目标 Link Policy。平台没有 SSO 时，目标系统继续执行自己的认证；Console Access 不得降低、跳过或替代目标认证，也不得向浏览器暴露 Data Source、Kubernetes、Cloud 或 Console Admin Credential。Audit 至少记录 actor、Environment、目标 console/link、授权结果与打开动作，不记录短期访问材料、目标 Session 或目标页面内容。
+
+首版安全公告由 Frontend 轮询 Backend API，不使用 WebSocket 或实时推送。Source Adapter 只访问批准的 CISA KEV、NVD API 2.0 与 OSV API 这三类官方机器可读来源，不抓取 HTML，也不接受任意 URL；各来源隔离 Endpoint、timeout、限流与凭据引用。
+
+默认每周日 `02:00 Asia/Shanghai` 增量采集，每周一 `07:00 Asia/Shanghai` 自动发布。单个失败来源最多有界重试 3 次。调度、时区、来源允许列表、Endpoint、筛选条件、timeout、限流与重试值全部是注册的版本化配置，不硬编码在 Frontend、业务代码或任务脚本中。Technology Inventory 同样是平台级版本化配置；结果以 CVE 优先、来源 Advisory 与规范化指纹辅助去重，筛选匹配 Inventory 的 CISA KEV 与 High/Critical 漏洞。
+
+部分来源失败时公告必须标识成功、失败与缺失的 Coverage；全部来源失败时保留上一期、不发布空公告并告警。公告、游标、来源摘要/Hash、去重、筛选、重试、生成与发布均可查询且可审计；可见性只由公告读取 Capability + Scope 判定。
 
 ## 9. 不变量
 
 1. DEV 与 PROD 同源但完全独立实例化，绝不共享 Web、gateway、Session、Control Plane、数据库、凭据或运行时状态。
-2. 当前 Control Plane 始终是模块化单体；独立 Deployable 与未来可提取模块均不得被描述为已存在的领域微服务。
+2. 目标 Control Plane 的交付边界始终是模块化单体；独立 Deployable 与未来可提取模块均不得被描述为已存在的领域微服务。
 3. 领域模块只依赖公开 Contract；Adapter 可替换，领域语义与私有数据边界不可被 Adapter 绕过。
 4. Policy 发布权限、有效版本与快照可追溯；前端、脚本或旧缓存不能自行决定有效配置。
 5. 外部状态的唯一导入形式是已验证、可去重、受时效约束的只读 Envelope，平台不接受 IaC、Shell、Provider Mutation 或任意 Callback。

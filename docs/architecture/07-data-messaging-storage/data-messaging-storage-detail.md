@@ -9,6 +9,8 @@
 
 领域状态仍由对应领域 owner 拥有，应用调用、Port/Adapter 和 Outbox 使用边界由 [平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。本文不定义密钥、加密、Secret 或审计内容保护机制，统一链接 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；不定义 Cluster、Node、SKU、总容量、组件精确版本或环境容量，统一链接 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
+DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max 前端模板。本文规定的 CloudNativePG、Valkey、NATS、Temporal、Rook-Ceph RGW 与 Backup/Retention 组件是已批准的目标架构，不声明对应运行实例已经部署。未来 PROD 从相同 Contract、GitOps 模板与 PCS 独立实例化，不共享 DEV 的数据、消息、对象或恢复状态。
+
 PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger 和可重建投影的权威关系事实源。Valkey、NATS、Temporal、对象存储、普通日志与指标均不能替代它。每个 Platform Environment 都有独立的组件、数据、Backup、Bucket 与恢复链；DEV 与 PROD 只共享同源 Contract，不共享运行时状态。
 
 ## 2. PostgreSQL 与连接边界
@@ -18,6 +20,8 @@ PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger �
 业务流量经两个 PgBouncer Transaction Pooling Pod 进入数据库；所有连接池有界。只有 Alembic、DDL Job、DBA 或受控 Break-glass 可直连 rw service。模块拥有独立 Schema、迁移目录和数据访问账号，任何模块不得直接读写其他模块内部表。
 
 CloudNativePG 通过 Barman Cloud Plugin、WAL Archive 与 S3-compatible `postgres-backup` Class 实现应用一致性 Backup/PITR。每个备份必须绑定环境、时间、版本、校验结果与恢复链；持续 WAL Archive 与 Base Backup 均需要可用 Headroom。恢复只能从经验证的 Base Backup + WAL 链进行，不能把任意 PVC/CSI Snapshot 声明为一致性数据库恢复源。恢复成功后需先验证数据与服务，再重新开放应用流量。
+
+PostgreSQL 默认 `archive_timeout=5min`，每日执行 Physical Base Backup，使用 LZ4；DEV Recovery Window 为 7 天，PROD 为 30 天。PROD Cluster DR Candidate 在 `PGDATA <= 50 GiB` 时为 `RPO <= 5min`、`RTO <= 60min`。DEV 每月、PROD 每季度执行完整 Restore Drill，并以实测结果验证恢复链。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。
 
 ## 3. Valkey
 
@@ -41,11 +45,15 @@ platform.{command|event|dlq}.{domain}.{message}.v{major}
 
 NATS 的权威恢复是应用一致性 Account Backup，而不是多个 PVC/CSI Snapshot。备份 Manifest 必须记录 Stream、消息/Consumer 配置与位置、Sequence 范围、Checksum、版本及对应 PostgreSQL Outbox Watermark。恢复先重建空集群并验证 Stream、Sequence、Consumer、Schema 与抽样 Payload，再从 Watermark 以安全重叠窗补发 Outbox，保留原 Envelope ID，由 Inbox/Effect Ledger 去重。
 
+NATS 默认每日 `04:00 Asia/Shanghai` 执行应用一致性 Account Backup；前次任务未完成、完整性检查失败、空间不足或 Stream 配置正在变化时不得启动重叠任务。Backup Retention 为 DEV 3 天、PROD 7 天，已发布 Outbox 至少保留 30 天。DEV 每月、PROD 每季度执行完整 Restore Drill。Cluster DR 目标为 `RPO <= 5min`、`RTO <= 60min`；每日 Backup 周期不是消息 RPO，消息恢复还依赖 Outbox Watermark、安全重叠补发与幂等消费。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。
+
 ## 5. Temporal Persistence
 
 Temporal Server 的 Default Store 与 Visibility Store 使用同环境 CloudNativePG 中隔离的 `temporal` 与 `temporal_visibility` 数据库。Temporal 仅使用 ClusterIP，并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)；普通浏览器和 Sandbox 不具有 Temporal 访问资格。
 
 Runtime Role 只做 DML，Schema 由短生命周期 DDL Job 管理。History 只保存 Workflow 的非敏感控制元数据，禁止写入源码、Prompt、Secret 或完整附件。Worker Build ID 与不可变应用镜像/Workflow Code 绑定；活动 Workflow 的版本演进通过显式兼容策略完成，不在发布期间静默替换。Temporal 的 Durable History 只解释编排推进，领域状态仍以 PostgreSQL owner 为准。
+
+Temporal Persistence 恢复顺序固定为：先 Fence Temporal 写入入口与全部 SDK Worker；再对 Default/Visibility Store 执行 PostgreSQL PITR；随后以相同 Server、Schema、Shard 与 Namespace 配置启动 Temporal，验证 Visibility 查询和 Worker Build ID 映射；最后依据 PostgreSQL 领域事实、Outbox、Inbox 与 Effect Ledger 对账外部效果，确认无重复或遗漏后才重新开放 Worker。Persistence Database 的 RTO 不等于端到端 Workflow RTO；端到端恢复必须包含 Workflow/Visibility/Build ID/外部效果验证，并通过完整 Restore Drill 形成实测结果。
 
 ## 6. Object Storage、Bucket Class 与 Artifact
 
@@ -62,9 +70,13 @@ nats-backup              openbao-recovery observability-logs observability-trace
 
 Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体。附件或 Agent Artifact 的归档、逻辑删除、Requirement 恢复状态变化都不释放对象容量；仅在其领域 owner 明确的引用、状态和保留条件满足后才可能改变存储引用。上传和下载仅能由应用授权签发短期、精确版本的 Presigned Request。文件检查由应用 `FileSecurityPort` 处理；只有合格 Verdict 的对象可进入可用业务状态，具体业务状态由其领域 owner 决定。
 
+Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 和 Environment Bucket-Class Capacity Ledger；任何一侧失败都不形成可用预占。物理 RGW native quota 只作为最后后备保护，不能替代双账本准入。达到产品额度返回 `ARTIFACT_QUOTA`；达到 Bucket Class 或 Raw Capacity 边界返回 `STORAGE_CAPACITY` 并创建 Operations Incident。提高产品配额不能突破 Environment Capacity、08 Security Contract 或 File Security Scanner Envelope。
+
 ## 7. Backup、Retention 与 Reconciler
 
 Backup 是组件自己的应用一致性恢复链：CloudNativePG 使用 Base Backup + WAL，NATS 使用 Account Backup + Outbox 对账，Temporal 随其 PostgreSQL Persistence 恢复。对象 Backup Job 在上传前必须预检并原子预占目标 Bucket Class 的 working set 与 Version/Lock 放大；空间不足时形成 Backup/RPO Degraded Incident，不得上传半份“成功 Backup”、缩短恢复窗口或借用 Audit Emergency Margin。
+
+当前恢复边界是单站点 Cluster HA 与 Cluster DR，不提供 Zone、Region、Account 或 Site DR 保证。DEV 不是 PROD Standby；每个环境独立执行 Backup、Restore 与 Drill。
 
 `Object Retention Reconciler` 只清理 `audit-worm`、`postgres-backup`、`nats-backup` 和 `openbao-recovery` 中超过各自权威保留期的精确 Object Version。删除前必须同时证明：Object Lock/Retention 到期、无 Legal Hold/调查/恢复/业务引用，且 Backup 类别仍有满足 Recovery Window 和恢复链的更新有效副本。每次判定、拒绝、删除、失败和 GC 验证均追加 Audit。Reconciler 使用专用最小权限身份，不具备 Retention Bypass、跨 Bucket 或通配 Prefix 删除能力。
 

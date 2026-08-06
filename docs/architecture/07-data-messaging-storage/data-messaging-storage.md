@@ -7,9 +7,11 @@
 
 本视图定义 PostgreSQL、Valkey、NATS、Temporal 与 Ceph/Object Storage 的事实源、数据流、一致性和恢复关系。它不定义领域对象的状态机，也不定义应用调用边界；前者由 01–05 领域文档拥有，后者由 [平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md) 拥有。
 
+DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max 前端模板。下述数据服务和恢复关系是已批准的目标架构，不表示 CloudNativePG、Valkey、NATS、Temporal 或 Rook-Ceph 运行实例已经存在；未来 PROD 使用同一 Contract 与模板独立实例化。
+
 安全密钥、加密和 Secret 机制只见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)。Cluster、Node、组件版本、存储容量与环境参数只见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
-## 事实源地图
+## 目标事实源地图
 
 | 组件 | 拥有的事实 | 不可替代为 |
 | --- | --- | --- |
@@ -43,7 +45,7 @@ PostgreSQL 是平台业务事实源。Valkey 不可用时，安全/一致性操�
 - Temporal 使用同环境 CloudNativePG 的独立持久化数据库；Workflow Code 与 Worker Build ID 维持版本兼容。
 - Rook-Ceph RGW 提供 S3-compatible Bucket Class。PostgreSQL、Valkey、NATS、Temporal 等实时数据卷统一使用 `stateful-rwo-lowlatency`，不使用 Ceph RBD/CephFS。
 
-DEV 与 PROD 使用同源 Contract、同类复制与恢复语义，但每个环境独立部署、备份和恢复，绝不共享数据、Bucket、Credential 或运行状态。
+DEV 与未来 PROD 使用同源 Contract、同类复制与恢复语义，但每个环境独立部署、备份和恢复，绝不共享数据、Bucket 或运行状态。当前恢复边界仅为单站点 Cluster HA 与 Cluster DR，不提供 Site DR 保证。
 
 ## 不变量
 

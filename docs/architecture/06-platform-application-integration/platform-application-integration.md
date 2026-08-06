@@ -5,11 +5,15 @@
 
 ## 目标与边界
 
-本视图定义平台应用的组件边界、集成 Contract 与运行时关系。当前后端是一个 Python 项目中的**模块化单体**；模块保有自己的领域模型、Application Service、数据和迁移，并以公开 Port/DTO/事件协作。它可在未来提取为独立服务，但当前不把可提取模块描述为既有微服务。
+本视图定义平台应用的组件边界、集成 Contract 与运行时关系。DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max 前端模板；Python Control Plane、数据服务、独立 Deployable 与基础设施是已批准的目标架构，不表示对应运行实例已经存在。未来 PROD 从同一组代码、Contract 与模板独立实例化，不共享 DEV 的运行组件或状态。
+
+目标 Control Plane 交付为一个 Python 项目中的**模块化单体**；模块保有自己的领域模型、Application Service、数据和迁移，并以公开 Port/DTO/事件协作。模块可在未来提取为独立服务，但可提取性不表示当前已有领域微服务。
 
 本文不拥有 Identity、Requirement、Agent、Sandbox 或 GitLab 的领域状态；它们分别由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[02](../02-requirement-workflow/requirement-workflow-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md) 与 [05](../05-source-control-delivery/source-control-delivery-detail.md) 定义。数据事实与持久化由 [07](../07-data-messaging-storage/data-messaging-storage-detail.md) 定义。
 
 ## 组件地图
+
+以下是批准的目标组件地图：
 
 ```text
 Browser
@@ -43,7 +47,7 @@ GitLab Connector、File Security Worker、Operations Adapter
 
 每个领域模块拥有自己的 Typed Configuration Schema、Policy 与解析器；Configuration Catalog 仅聚合已注册配置。`PLATFORM_POLICY` 的发布、回滚、权限和 Effective Snapshot 由本视图的 Configuration Contract 统一约束，具体领域取值仍由其 owner 定义。发布权限与 Super Admin 边界由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md) 拥有。
 
-平台管理后台只展示当前环境。它消费 Operations Read Model 展示健康、容量、告警、Drift 与 Runbook，并通过授权的新标签页打开专业 Console；它不成为基础设施写控制面。密钥、加密与安全审计机制见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；Cluster、Node 与容量基线见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
+平台管理后台只展示当前环境。它消费 Operations Read Model 展示健康、容量、告警、Drift 与 Runbook，并通过预注册、允许列表内且逐次授权的新标签页入口打开专业 Console；它不接受任意目标 URL，也不成为基础设施写控制面。密钥、加密与安全审计机制见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；Cluster、Node 与容量基线见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
 ## 不变量
 
@@ -52,3 +56,4 @@ GitLab Connector、File Security Worker、Operations Adapter
 3. 模块不得导入其他模块的 ORM Model、Repository 或内部实体；跨模块只经公开 Facade、DTO 或事件协作。
 4. 领域事务、Audit 与待发布消息原子写入；消息传输至少一次，业务效果由 Inbox/Effect Ledger 幂等化。
 5. External Provider Contract 只导入可验证的只读状态，平台不以 Dashboard 或投影反写 IaC、Provider Desired State 或恢复事实。
+6. 外部状态 Feed 只影响可见性；其 `STALE/UNKNOWN` 不等于真实依赖故障，也不阻塞没有同步依赖该 Feed 的既有业务运行。
