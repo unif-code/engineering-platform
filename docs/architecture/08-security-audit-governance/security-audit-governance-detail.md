@@ -74,7 +74,7 @@ Root 或 Intermediate 轮换使用双 Root/双链重叠：先发布新旧 Root B
 
 ## 5. Data-Service Transport / Service Identity / Access Contract
 
-本 Contract 是 PostgreSQL/PgBouncer、Valkey、NATS 与 Temporal 的传输、工作负载身份和最小访问唯一安全事实源；07 只拥有拓扑、数据语义和恢复。所有数据服务只使用 ClusterIP 与双向 default-deny NetworkPolicy，并按当前 Environment、Deployable Unit、用途和协议端口精确放行。证书、Database Role、ACL User、NKey、Machine JWT、Secret 路径与运维身份不跨环境或用途复用；身份、证书、授权或吊销状态不可证明时连接 Fail Closed，禁止回退明文、匿名、default user 或共享高权限凭据。
+本 Contract 是 PostgreSQL/PgBouncer、Valkey、NATS 与 Temporal 的传输、工作负载身份和最小访问唯一安全事实源；07 只拥有拓扑、数据语义和恢复。数据服务的客户端与北向入口只使用普通 ClusterIP；同组件 StatefulSet 的 Route、Internode 或 Peer Discovery 可以使用 `clusterIP: None` 的 Headless Service 与稳定 Pod DNS，但只能开放成员端口，并同时受 mTLS、成员身份校验和双向 default-deny NetworkPolicy 限制。所有数据服务都禁止 NodePort、LoadBalancer 或公网暴露，并按当前 Environment、Deployable Unit、用途和协议端口精确放行。证书、Database Role、ACL User、NKey、Machine JWT、Secret 路径与运维身份不跨环境或用途复用；身份、证书、授权或吊销状态不可证明时连接 Fail Closed，禁止回退明文、匿名、default user 或共享高权限凭据。
 
 ### 5.1 PostgreSQL 与 PgBouncer
 

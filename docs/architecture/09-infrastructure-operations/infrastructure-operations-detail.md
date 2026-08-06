@@ -90,7 +90,7 @@ Sandbox 默认不得访问数据库、NATS、OpenBao、Kubernetes API、Cloud me
 
 ## 7. Storage Physical Baseline
 
-实时 Stateful Workload 只使用 `stateful-rwo-lowlatency`：RWO、`WaitForFirstConsumer`、`Retain`、online expansion、exclusive block，并禁止 Ceph fallback。该 StorageClass 承载 PostgreSQL、Valkey、NATS、OpenBao、Scanner Signature 和可观测性所需实时卷；Temporal Server/Worker 本身无独立数据 PVC，其 Durable Persistence 位于 PostgreSQL。数据语义、单组件 Resource/PVC Envelope、Retention 和组件恢复由[07](../07-data-messaging-storage/data-messaging-storage-detail.md)定义。
+实时 Stateful Workload 只使用 `stateful-rwo-lowlatency`：RWO、`WaitForFirstConsumer`、`Retain`、online expansion、exclusive block，并禁止 Ceph fallback。该 StorageClass 承载 PostgreSQL、Valkey、NATS、OpenBao、Scanner Signature 和可观测性所需实时卷；Temporal Server/Worker 本身无独立数据 PVC，其 Durable Persistence 位于 PostgreSQL。PostgreSQL、Valkey、NATS 与 Temporal 的数据语义、单组件 Resource/PVC Envelope、Retention 和恢复由[07](../07-data-messaging-storage/data-messaging-storage-detail.md)定义；OpenBao 与 Scanner 的单组件 Envelope 由[08](../08-security-audit-governance/security-audit-governance-detail.md)定义，Observability 的单组件 Envelope 由本节定义。
 
 PCS 中锁定的 Rook/Ceph 组合提供 RGW Object Storage。DEV 使用 3 个 OSD、未来 PROD 使用 4 个 OSD；每个 OSD 使用 1 TiB enterprise PLP SSD。Ceph 固定 `size=3`、`min_size=2`、`failureDomain=host`，并配置 3 MON、2 MGR、2 RGW。容量在 50% 使用率触发扩容评估，`nearfull/backfillfull/full` 阈值为 70/75/80。
 
