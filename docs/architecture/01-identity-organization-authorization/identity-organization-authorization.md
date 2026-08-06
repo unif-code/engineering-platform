@@ -25,7 +25,7 @@
 
 Workspace 是团队协作与业务资源边界。每个 Workspace 有一个 Owner；Owner、受邀 Leader 及其直属有效普通员工形成动态的正式成员投影。临时或跨组织访问通过有时间边界的协作关系授予，不改写正式成员集合。
 
-成员资格只解决“是否进入资源边界”，不单独赋予创建、确认、验收、审核或合并等动作权限。这些动作的规则由[Requirement 与 SDD Workflow](../02-requirement-sdd-workflow/requirement-sdd-workflow.md)和[Source Control 与交付](../05-source-control-delivery/source-control-delivery.md)拥有。
+成员资格只解决“是否进入资源边界”，不单独赋予创建、确认、验收、审核或合并等动作权限。这些动作的规则由[Requirement Workflow](../02-requirement-workflow/requirement-workflow.md)和[Source Control 与交付](../05-source-control-delivery/source-control-delivery.md)拥有。
 
 ## Capability、Scope 与 Assignment
 
@@ -53,5 +53,6 @@ Super Admin 是受保护的平台级身份，而不是拥有全部业务权限�
 
 - [身份、组织与授权详细说明](./identity-organization-authorization-detail.md)：本主题的规范事实源。
 - [平台总览](../00-platform-overview/platform-overview.md)：平台边界与依赖方向。
-- [Requirement 与 SDD Workflow](../02-requirement-sdd-workflow/requirement-sdd-workflow.md)：责任、人工 Gate 与业务状态。
-- [安全、审计与可观测性](../06-security-audit-observability/security-audit-observability.md)：安全事件、Audit 和专业控制台。
+- [Requirement Workflow](../02-requirement-workflow/requirement-workflow.md)：责任、人工 Gate 与业务状态。
+- [安全、审计与治理](../08-security-audit-governance/security-audit-governance.md)：安全事件与 Audit。
+- [基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)：专业控制台访问边界。

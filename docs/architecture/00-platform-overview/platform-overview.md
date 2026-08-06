@@ -19,7 +19,7 @@
 - 将人、Agent、代码变更、交付证据和 Audit 关联为可解释的业务事实；
 - 让环境隔离、受控执行和可替换集成共同约束平台演进。
 
-身份、组织、Workspace 与授权的边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization.md)定义；安全、审计和专业运维控制台由后续安全与治理主题定义。
+身份、组织、Workspace 与授权的边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization.md)定义；[安全、审计与治理](../08-security-audit-governance/security-audit-governance.md)和[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)分别拥有安全审计与专业运维控制台规则。
 
 ## 端到端业务主链路
 
@@ -33,7 +33,7 @@
 → 全程留下可关联的 Audit
 ```
 
-此链路中的 Requirement 状态、Route、Gate 和交付规则由[Requirement 与 SDD Workflow](../02-requirement-sdd-workflow/requirement-sdd-workflow.md)拥有；GitLab、MR 与交付集成规则由[Source Control 与交付](../05-source-control-delivery/source-control-delivery.md)拥有。
+此链路中的 Requirement 状态、Route、Gate 和交付规则由[Requirement Workflow](../02-requirement-workflow/requirement-workflow.md)拥有；GitLab、MR 与交付集成规则由[Source Control 与交付](../05-source-control-delivery/source-control-delivery.md)拥有。
 
 ## 模块地图
 
@@ -62,9 +62,11 @@
 
 - [平台总览详细说明](./platform-overview-detail.md)：系统上下文、环境和全局依赖方向。
 - [身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization.md)：人员与访问控制入口。
-- [Requirement 与 SDD Workflow](../02-requirement-sdd-workflow/requirement-sdd-workflow.md)：业务交付流程与人工 Gate。
+- [Requirement Workflow](../02-requirement-workflow/requirement-workflow.md)：业务交付流程与人工 Gate。
 - [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model.md)：Agent 责任和执行能力。
-- [远程 Sandbox](../04-remote-sandbox/remote-sandbox.md)：受控执行环境。
+- [Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime.md)：受控执行环境。
 - [Source Control 与交付](../05-source-control-delivery/source-control-delivery.md)：代码、MR 与交付集成。
-- [安全、审计与可观测性](../06-security-audit-observability/security-audit-observability.md)：治理与运行证据。
-- [平台技术架构](../07-platform-technical-architecture/platform-technical-architecture.md)：部署、基础设施和兼容性 Contract。
+- [平台应用与集成](../06-platform-application-integration/platform-application-integration.md)：应用入口与集成边界。
+- [数据、消息与存储](../07-data-messaging-storage/data-messaging-storage.md)：领域事实与数据支撑边界。
+- [安全、审计与治理](../08-security-audit-governance/security-audit-governance.md)：安全边界与治理证据。
+- [基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)：部署、运维与兼容性 Contract。
