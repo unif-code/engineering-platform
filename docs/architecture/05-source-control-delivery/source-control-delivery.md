@@ -7,13 +7,13 @@
 
 本领域通过稳定 `SourceControlPort` 管理 GitLab Project、Requirement/WorkItem 的仓库绑定、任务分支、Integration MR、Formal MR、人工 Review 与 Merge。它复用 GitLab Project，不复制第二套代码项目、分支、MR 或 GitLab 权限体系。
 
-Requirement、WorkItem、Gate、Decision、Integration Baseline 与业务状态由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有；Attempt 和 Execution Binding 由 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有；Sandbox 仅消费固定 Branch Binding 以执行代码，见 [Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)。
+Requirement、WorkItem、Gate、Decision、Acceptance 与业务状态由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有；本领域拥有冻结的 Git/MR/Artifact Integration Baseline 证据与其 ID/Hash。Attempt 和 Execution Binding 由 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有；Sandbox 仅消费固定 Branch Binding 以执行代码，见 [Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)。
 
 ## 绑定与任务分支
 
-创建 Requirement 时必须选择一个初始 GitLab Project，第一个 WorkItem 继承它；后续 WorkItem 可等待其人类负责人从 Workspace 已授权仓库中选择 Repository。未绑定 Repository 的 WorkItem 不能建分支、执行或创建 MR。
+本领域接收 Workflow owner 的 Repository Binding 请求，并返回 `BindingReady` 或含原因的 `BindingBlocked`。创建 Requirement 的初始仓库选择、后续 WorkItem 的责任和业务限制由 Workflow owner 决定；未获得 `BindingReady` 的请求不会创建 Branch 或 MR。
 
-一旦任务分支成功创建，`repositoryId + baseCommitSha + branchName` 即成为不可变的 Repository Branch Binding。任务分支从对应仓库的 `main` 固定 Commit 创建，Agent 只可写已绑定的当前任务分支；选择错误时以替代 WorkItem 表达，不篡改历史 Binding。
+一旦任务分支成功创建，`repositoryId + baseCommitSha + branchName` 即成为不可变的 Repository Branch Binding。任务分支从对应仓库的 `main` 固定 Commit 创建，Agent 只可写已绑定的当前任务分支；Binding 选择错误时，本领域保留原外部事实并返回结构化处置结果，由 Workflow owner 决定业务补救。
 
 ## 交付主流程
 

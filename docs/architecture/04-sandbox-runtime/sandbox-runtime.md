@@ -26,9 +26,9 @@ Requirement Sandbox Environment
 
 每个 Platform Environment 在独立 Kubernetes Cluster 中运行专用 `sandbox-worker` Pool。Sandbox 使用社区 Kata Containers 的 `runtime-rs` 和 QEMU/KVM；一个 Pod 对应一个独立 Guest，Kata 启动失败绝不降级为普通容器 Runtime。
 
-Execution Binding 固定 Resource Profile、Runtime、Network、Secret、Repository Branch 与权限。Sandbox Controller 在取得带 Fencing Token 的原子 Capacity Lease 后才物化环境；它准备固定 Checkout、短期 Secret 与网络策略，健康检查通过后供 Attempt 运行。等待、取消、失败和终态均先固化事实、Fence 副作用并吊销凭据，随后释放 Lease、销毁 Materialization；恢复使用原 Binding 重新排队。
+Execution Binding 固定 Resource Profile、Runtime、Network、Secret、Repository Branch 与权限。Sandbox Controller 接收 Agent owner 发出的已授权物化请求，原子申请带 Fencing Token 的 Capacity Lease，并返回 `MaterializationReady`、结构化 `MaterializationBlocked` 或 `MaterializationFailed`；它不决定 Attempt 如何排队或转换。收到挂起、Child Handoff、结束或取消的物理清理命令时，Controller 固化事实、Fence 副作用、吊销凭据、释放 Lease 并销毁 Materialization。
 
-Agent 与 Build 共享同一 Capacity Ledger：标准执行占一个 Unit，Image Build 占两个 Unit；Build 是 Parent Attempt 的独立 Child Execution，Parent 在 `WAITING_CHILD` 时不保留运行资源。具体 Node、环境容量与基础设施配置由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
+Agent 与 Build 共享同一 Capacity Ledger；Resource Profile 与 Capacity Unit 的具体 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。具体 Node、环境容量与基础设施配置由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
 
 ## 网络、Secret、Preview 与镜像构建
 

@@ -51,15 +51,15 @@ destroyMaterialization
 reconcileLease
 ```
 
-在 Agent owner 允许的 `QUEUED → PROVISIONING` 边界，Controller 依次执行：原子取得 Lease、校验 Binding/Runtime/Network/Secret、创建 Kata Materialization、Checkout 固定分支与 Commit、注入短期凭据、应用 Tool Policy、健康检查。仅准备完成后，Attempt 才能进入 `RUNNING`。
+Controller 接收 Agent owner 已授权的 `ProvisionMaterialization` 请求后，依次原子取得 Lease、校验 Binding/Runtime/Network/Secret、创建 Kata Materialization、Checkout 固定分支与 Commit、注入短期凭据、应用 Tool Policy 并健康检查。准备成功返回 `MaterializationReady`；不可满足的输入或基础设施问题返回带原因和诊断引用的 `MaterializationBlocked` 或 `MaterializationFailed`。Attempt 的排队、重试和状态转换不属于本领域。
 
-进入 `WAITING_INPUT`、`WAITING_CHILD`、`FINALIZING`、`CANCELING` 或任一终态前，必须先持久化 Commit、Checkpoint、日志与 Artifact，Fence 仍可能产生副作用的实例，吊销 Secret，再释放 Lease 与销毁 Materialization。恢复同一 Attempt 保留原 Execution Binding 与 Checkpoint，重新进入队列并重新取得 Lease；终态不复活，业务重试由 Agent/Workflow owner 创建新 Attempt。
+收到 Agent owner 的 `CheckpointAndRelease`、`HandoffToChild`、`FinalizeExecution` 或 `CancelExecution` 命令时，Controller 必须先持久化 Commit、Checkpoint、日志与 Artifact，Fence 仍可能产生副作用的实例，吊销 Secret，再释放 Lease 与销毁 Materialization，并回报可审计的清理结果。恢复是否使用原 Binding、何时重试或是否创建新 Attempt 只由 Agent/Workflow owner 决定。
 
 Controller 使用 Execution ID、Generation、Fencing Token、唯一约束与 Reconciliation 防止重复启动。只有旧 Materialization、凭据与副作用已经停止或被 Fence 后才可回收 Lease；禁止以 Pod 数量推断容量。
 
 ## 4. Resource Profile、容量与 N+1
 
-Resource Profile 是不可变的 `GITOPS_CONFIG`，运行或等待中的 Binding 始终使用原 Profile。变更 Request/Limit、Unit Weight 或 Runtime Binding 必须创建新的 Profile ID、Digest 与 Capacity Profile Candidate；首版不向用户提供 Small/Large 自选规格。
+Resource Profile 是不可变的 `GITOPS_CONFIG`，已形成的 Binding 始终使用原 Profile。变更 Request/Limit、Unit Weight 或 Runtime Binding 必须创建新的 Profile ID、Digest 与 Capacity Profile Candidate；首版不向用户提供 Small/Large 自选规格。
 
 | Profile | CPU Request / Limit | Memory Request / Limit | Ephemeral Request / Limit | Unit |
 | --- | --- | --- | --- | ---: |
@@ -68,11 +68,11 @@ Resource Profile 是不可变的 `GITOPS_CONFIG`，运行或等待中的 Binding
 
 资源向量覆盖同一 Materialization 内 Agent/Builder、Init、Tool、Sidecar、Writable Layer、`emptyDir` 与受计量日志；Kata Pod Overhead、DaemonSet、OS/Kubernetes Reserved、镜像缓存和基础设施余量必须另行纳入 Capacity Profile，不得从执行预算偷扣。Capacity Unit 不是 Pod 数、CPU 时间、计费单位或用户配额。
 
-Agent Attempt 与 Image Build 共享同一个 Fencing Domain 和 Capacity Ledger。一次请求必须原子取得完整 Unit；产品并发限制、剩余 Unit、完整资源向量、Node Placement、Kata Gate、Runtime Disk 与安全余量任一不足时，执行保持 `QUEUED`，不抢占、不超卖、不临时扩大配额。
+Agent Attempt 与 Image Build 共享同一个 Fencing Domain 和 Capacity Ledger。一次请求必须原子取得完整 Unit；产品并发限制、剩余 Unit、完整资源向量、Node Placement、Kata Gate、Runtime Disk 与安全余量任一不足时，Controller 拒绝 Lease 并返回 `CAPACITY_UNAVAILABLE` 及结构化维度。它不排队、不抢占、不超卖，也不临时扩大配额；排队和后续动作由 Agent owner 决定。
 
 专用 Pool 必须满足 N+1：任一个 `sandbox-worker` 或其 Host 失效后，剩余故障域仍能承载该 Platform Environment 获准的全部 Unit 组合。Node 数、每环境 Ceiling、磁盘容量、Provider Mapping 和总容量只由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)定义；本领域仅消费其有效 Capacity Profile。
 
-每个 Node 的 Runtime/Ephemeral 磁盘只存可再生 Checkout、缓存、中间文件、Writable Layer 与有界临时日志，不提供备份或跨 Node 恢复承诺。CPU 达到 Limit 时 Throttle；Memory 无 Swap，OOM 形成 `RESOURCE_EXHAUSTED/MEMORY`；Ephemeral Limit、DiskPressure、Eviction、Inode 或写满风险形成 `RESOURCE_EXHAUSTED/EPHEMERAL_STORAGE`。新 Lease 的磁盘投影不安全时必须排队，Node 丢失只能从 Git、Checkpoint 和 Artifact 重建。
+每个 Node 的 Runtime/Ephemeral 磁盘只存可再生 Checkout、缓存、中间文件、Writable Layer 与有界临时日志，不提供备份或跨 Node 恢复承诺。CPU 达到 Limit 时 Throttle；Memory 无 Swap，OOM 形成 `RESOURCE_EXHAUSTED/MEMORY`；Ephemeral Limit、DiskPressure、Eviction、Inode 或写满风险形成 `RESOURCE_EXHAUSTED/EPHEMERAL_STORAGE`。新 Lease 的磁盘投影不安全时返回 `CAPACITY_UNAVAILABLE`，Node 丢失只能从 Git、Checkpoint 和 Artifact 重建。
 
 ## 5. Repository、网络与 Secret
 
@@ -82,7 +82,7 @@ Sandbox 使用 NetworkPolicy 默认拒绝东西向和公网 Egress，只按 Bind
 
 Deployment 原生 Model Search Capability 与批准的 Search Connector 是独立受控路径，均不代表 Sandbox 获得任意 DNS、IP、HTTP Proxy 或公网出口。依赖源故障仅可使用已验证缓存或有界重试，不能关闭 NetworkPolicy 或扩大 Egress。
 
-OpenBao 保存 Secret 与 Lease 事实；Agent Injector 将当前执行的短期 Secret 写入 Pod `tmpfs` 内存文件。Secret Lease 必须绑定 Platform Environment、Attempt/Build、Repository/Branch、Tool、Scope 与有效期。禁止写入 Deployment YAML、Environment Variable、镜像、代码、Commit、Prompt、日志、Trace、Artifact、Cache 或持久磁盘；等待、Finalizing、Cancel、Failure、Timeout、归档或删除即刻吊销。
+OpenBao 保存 Secret 与 Lease 事实；Agent Injector 将当前执行的短期 Secret 写入 Pod `tmpfs` 内存文件。Secret Lease 必须绑定 Platform Environment、Attempt/Build、Repository/Branch、Tool、Scope 与有效期。禁止写入 Deployment YAML、Environment Variable、镜像、代码、Commit、Prompt、日志、Trace、Artifact、Cache 或持久磁盘；收到释放、结束、取消、归档或删除的清理命令即刻吊销。
 
 ## 6. Preview 与 Image Build
 
@@ -90,15 +90,15 @@ Preview 是受保护的稳定访问引用，而不是 Pod 地址。浏览器应�
 
 Image Build 不是普通 Agent Container 内的 Privileged 操作。Parent 通过稳定 Idempotency Key 创建独立 Child Build Execution，且必须先固化 Checkpoint、日志和 Artifact，销毁自己的 Materialization、吊销 Secret 并释放 Agent Lease。只有能够证明 Parent Lease 已释放时，Child 才能取得自己的 Build Lease。
 
-Child 使用独立 Kata Materialization、Rootless BuildKit、Binding、Credential、Workspace 和 Fencing Token；完成、失败、取消或超时时，先固化 Image Digest、SBOM、Provenance、扫描结果、日志与结构化结果，再释放资源。Parent 在 `WAITING_CHILD` 不持有 Unit、不共享本地目录或凭据；同一 Parent 同时最多一个非终态 Child，故障恢复前必须 Fence 旧 Builder。
+Child 使用独立 Kata Materialization、Rootless BuildKit、Binding、Credential、Workspace 和 Fencing Token；收到其结束或取消清理命令时，先固化 Image Digest、SBOM、Provenance、扫描结果、日志与结构化结果，再释放资源。Child Handoff 成功后 Parent 不持有 Unit、不共享本地目录或凭据；同一 Parent 同时最多一个活动 Child，故障恢复前必须 Fence 旧 Builder。Parent/Child 的状态与后续调度由 Agent owner 定义。
 
 ## 7. 失败、清理与外部边界
 
 | 场景 | Sandbox 处理 |
 | --- | --- |
-| KVM/Kata/PCS Gate 失败 | Node 不可调度；执行排队或结构化失败，绝不降级 Runtime |
+| KVM/Kata/PCS Gate 失败 | Node 不可调度；返回结构化物化失败，绝不降级 Runtime |
 | Provision 失败 | Fence 未完成实例、吊销 Secret、保留诊断并有界重试 |
-| Capacity、Placement 或磁盘不足 | 保持 `QUEUED` 并记录可处置阻塞原因 |
+| Capacity、Placement 或磁盘不足 | 拒绝 Lease，返回 `CAPACITY_UNAVAILABLE` 与可处置阻塞原因 |
 | Egress/依赖/Connector 被拒绝或不可用 | 使用允许的缓存/重试，绝不扩大权限或网络 |
 | Node 或 Materialization 丢失 | Fence 旧执行，从权威 Git、Checkpoint、Artifact 重建或结构化失败 |
 | 清理失败 | 先断网、吊销凭据、标记隔离，由 Janitor/Reconciler 幂等清理 |
