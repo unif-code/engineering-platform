@@ -47,6 +47,9 @@ lerna-debug.log*
 # AI 工具本地配置
 .claude/settings.local.json
 
+# 本地 Git Worktree
+/.worktrees/
+
 # 操作系统
 .DS_Store
 .DS_Store?
