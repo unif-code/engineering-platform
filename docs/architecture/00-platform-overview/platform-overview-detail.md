@@ -33,7 +33,7 @@
 | Model Provider | 受控的模型推理能力 | Provider 能力通过 Model Gateway 解析，不直接定义人员权限。 |
 | Sandbox Runtime | 隔离的 Agent 或构建执行能力 | 执行实例是运行资源，不是 Requirement 或人员责任事实。 |
 | 对象存储与 Secret 服务 | Artifact、证据和短期凭据支撑 | 存储与凭据访问由其所属安全和技术 Contract 约束。 |
-| Jenkins | 人工构建和测试 | 首版保持独立，不作为平台调用对象、状态来源或 Gate。 |
+| Jenkins | 人工构建和测试 | 当前架构基线保持独立，不作为平台调用对象、状态来源或 Gate。 |
 | 运维与基础设施系统 | 健康、只读状态和受控运维能力 | 平台不提供其通用管理接口，也不持有 Cloud Admin 身份。 |
 
 ## 4. 逻辑分层

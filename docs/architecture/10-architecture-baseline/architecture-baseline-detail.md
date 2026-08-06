@@ -50,7 +50,7 @@ UI → public API → domain/application → Port → Adapter → external
 | 04 | Sandbox 物化、隔离、lease、容量准入、网络、Preview 与清理。 | [04 detail](../04-sandbox-runtime/sandbox-runtime-detail.md) |
 | 05 | GitLab Binding、分支交付、`IntegrationBaselineEvidence`、Formal MR 与外部事实收敛。 | [05 detail](../05-source-control-delivery/source-control-delivery-detail.md) |
 | 06 | Web/Control Plane、Port/Adapter、配置、一致性、Operations Read Model、Console 与公告。 | [06 detail](../06-platform-application-integration/platform-application-integration-detail.md) |
-| 07 | PostgreSQL、Valkey、NATS、Temporal、Object Storage、Artifact、Retention 与组件数据恢复。 | [07 detail](../07-data-messaging-storage/data-messaging-storage-detail.md) |
+| 07 | PostgreSQL、Valkey、NATS、Temporal、Object Storage、Artifact 对象/配额账本、Retention 与组件数据恢复。 | [07 detail](../07-data-messaging-storage/data-messaging-storage-detail.md) |
 | 08 | Secret、PKI、加密、供应链、Audit、Break-glass 与信任恢复。 | [08 detail](../08-security-audit-governance/security-audit-governance-detail.md) |
 | 09 | Environment Binding、PCS、Kubernetes、Node、网络、可观测性、Cluster DR、容量与 TCO。 | [09 detail](../09-infrastructure-operations/infrastructure-operations-detail.md) |
 | 10 | 跨模块不变量、引用关系、质量场景与演进 Gate。 | 本文 |
@@ -63,7 +63,7 @@ UI → public API → domain/application → Port → Adapter → external
 | 并发写入或外部调用结果未知。 | 权威事务保持一致；外部副作用通过幂等和 Reconciliation 收敛，不以投影猜测成功。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) |
 | Attempt 或承载它的 Node 发生恢复。 | 执行恢复保持不可变 Binding、fenced lease 和容量边界，并从可验证检查点继续或安全结束；物理 Node 或 Cluster 恢复由环境 Contract 验证后再承载工作负载。 | [03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md)、[09](../09-infrastructure-operations/infrastructure-operations-detail.md) |
 | Collector 或 External Status Feed 不可用。 | 诊断和可见性降级；独立的 Requirement、事务、Agent 与控制循环继续按其 owner Contract 工作。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) |
-| Artifact 并发上传或安全扫描结果未知。 | exact Object Version 与双 Ledger reservation 仍一致；不满足安全条件的对象不能成为可用证据。 | [07](../07-data-messaging-storage/data-messaging-storage-detail.md)、[08](../08-security-audit-governance/security-audit-governance-detail.md) |
+| Artifact 并发上传或安全扫描结果未知。 | Artifact 生命周期、exact Object Version、双 Ledger reservation 与安全判定保持各自 owner 一致；不满足安全条件的对象不能成为可用证据。 | [02](../02-requirement-workflow/requirement-workflow-detail.md)、[07](../07-data-messaging-storage/data-messaging-storage-detail.md)、[08](../08-security-audit-governance/security-audit-governance-detail.md) |
 | 组件数据或 Cluster 需要恢复。 | 组件恢复、信任恢复和环境恢复按各自 owner 的验证链执行；数据恢复完成不等同于端到端 Workflow 可恢复。 | [07](../07-data-messaging-storage/data-messaging-storage-detail.md)、[08](../08-security-audit-governance/security-audit-governance-detail.md)、[09](../09-infrastructure-operations/infrastructure-operations-detail.md) |
 | Sandbox 的 N+1 余量不满足。 | 新执行不能绕过 Capacity Profile 或隔离要求进入运行；保留明确的准入和诊断证据。 | [04](../04-sandbox-runtime/sandbox-runtime-detail.md)、[09](../09-infrastructure-operations/infrastructure-operations-detail.md) |
 | 使用 Break-glass 或恢复权限。 | 只允许具备资格的受控操作，并形成独立、追加式、可验证 Audit；信任或证据缺失时拒绝开放受保护服务。 | [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[08](../08-security-audit-governance/security-audit-governance-detail.md) |
@@ -77,3 +77,17 @@ UI → public API → domain/application → Port → Adapter → external
 | Security | Trust、Secret、加密、Audit、供应链和恢复信任链可验证且 Fail Closed。 | [08](../08-security-audit-governance/security-audit-governance-detail.md) |
 | Execution | Requirement 的责任链、不可变 Execution Binding、Sandbox 准入与受控恢复保持一致。 | [02](../02-requirement-workflow/requirement-workflow-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md) |
 | Integration and configuration | Port/Adapter、typed/versioned configuration、Outbox/Inbox 与外部证据可独立验证和回放。 | [05](../05-source-control-delivery/source-control-delivery-detail.md)、[06](../06-platform-application-integration/platform-application-integration-detail.md) |
+
+以下演进路径彼此独立，每一项只替换其 owner 的 Port/Adapter、数据或部署边界，并分别通过兼容、迁移、回退、恢复和 Observability Gate；不能借一次演进重写无关领域模块：
+
+| 当前边界 | 独立目标 | 主要 owner |
+| --- | --- | --- |
+| Python Control Plane 模块化单体 | 按模块提取独立微服务 | [06](../06-platform-application-integration/platform-application-integration-detail.md) |
+| PostgreSQL | 云托管 PostgreSQL 或模块独立数据库 | [07](../07-data-messaging-storage/data-messaging-storage-detail.md) |
+| Valkey HA | Valkey Cluster 或云 Redis-compatible | [07](../07-data-messaging-storage/data-messaging-storage-detail.md) |
+| NATS JetStream | 扩展集群或其他 Event Bus Adapter | [07](../07-data-messaging-storage/data-messaging-storage-detail.md) |
+| OpenBao | 托管 Secret Manager | [08](../08-security-audit-governance/security-audit-governance-detail.md) |
+| S3-compatible Object Storage | 其他自建或云托管实现 | [07](../07-data-messaging-storage/data-messaging-storage-detail.md) |
+| 精简 Observability | 分布式 Observability | [09](../09-infrastructure-operations/infrastructure-operations-detail.md) |
+| Sandbox Node Pool | 独立 Sandbox Cluster | [04](../04-sandbox-runtime/sandbox-runtime-detail.md)、[09](../09-infrastructure-operations/infrastructure-operations-detail.md) |
+| Cluster DR | Site DR | [09](../09-infrastructure-operations/infrastructure-operations-detail.md) |

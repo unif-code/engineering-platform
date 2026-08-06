@@ -125,7 +125,10 @@
     #map-status { min-height: 1.5em; margin-top: 12px; color: var(--muted); font-size: .92rem; }
 
     .graph { position: relative; min-width: 900px; min-height: 500px; }
-    .edge-layer { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    .edge-layer { position: absolute; inset: 0; pointer-events: none; }
+    .business-graph .edge-layer { width: 900px; height: 550px; }
+    .logical-graph .edge-layer { width: 1000px; height: 720px; }
+    .deployment-graph .edge-layer { width: 900px; height: 970px; }
     .edge-layer line, .edge-layer path[data-from] { stroke: var(--line); stroke-width: 2; fill: none; }
     .business-graph .edge-layer line, .business-graph .edge-layer path[data-from] { marker-end: url(#arrow); }
     .logical-graph .edge-layer line, .logical-graph .edge-layer path[data-from] { marker-end: url(#arrow-logical); }
@@ -149,7 +152,7 @@
       box-shadow: 0 4px 10px rgb(25 39 64 / 8%);
       transition: transform .16s ease, opacity .16s ease, border-color .16s ease, box-shadow .16s ease;
     }
-    .node strong, .node small { display: block; }
+    .node strong, .node small { display: block; overflow-wrap: anywhere; }
     .node strong { line-height: 1.25; }
     .node small { margin-top: 4px; font-size: .78rem; line-height: 1.3; }
     .node em { display: block; margin-top: 5px; font-size: .73rem; font-style: normal; }
@@ -162,17 +165,18 @@
     .edge-layer .is-downstream { stroke: var(--warning); stroke-width: 3; }
     .auxiliary-layer[hidden] { display: none; }
 
-    .business-graph { min-height: 430px; }
+    .business-graph { min-height: 550px; }
     .business-graph .node { top: 82px; }
     .business-graph .n1 { left: 8px; }
     .business-graph .n2 { left: 180px; }
     .business-graph .n3 { left: 352px; }
     .business-graph .n4 { left: 524px; }
     .business-graph .n5 { left: 696px; }
-    .business-graph .n6 { top: 226px; left: 696px; width: 180px; height: 120px; border-style: dashed; }
+    .business-graph .n6 { top: 370px; left: 696px; width: 180px; height: 120px; border-style: dashed; }
     .business-graph .n7 { top: 226px; left: 524px; }
     .business-graph .n8 { top: 226px; left: 352px; }
     .business-graph .n9 { top: 226px; left: 180px; }
+    .business-graph .n10 { top: 226px; left: 696px; }
 
     .logical-graph { min-width: 1000px; min-height: 720px; }
     .logical-graph .node { width: 165px; }
@@ -197,7 +201,7 @@
     .module-list > span { display: inline; }
     .module-list > span:not(:last-child)::after { content: " · "; }
 
-    .deployment-graph { min-height: 820px; }
+    .deployment-graph { min-height: 970px; }
     .environment { position: absolute; top: 30px; width: 420px; height: 680px; border: 2px solid var(--accent); border-radius: 16px; background: color-mix(in srgb, var(--accent-soft) 42%, transparent); }
     .environment h3 { margin: 14px 18px; font-size: 1rem; }
     .environment .boundary { position: absolute; border: 1px dashed var(--line); border-radius: 12px; padding: 8px; color: var(--muted); font-size: .8rem; }
@@ -218,8 +222,16 @@
     .prod .account, .prod .vpc, .prod .cluster, .prod .gateway-node { left: 120px; }
     .cluster .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
     .cluster .role { padding: 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); font-size: .72rem; }
-    .deployment-note { position: absolute; top: 720px; left: 170px; width: 560px; padding: 8px; border: 1px dashed var(--line); border-radius: 9px; background: var(--surface); color: var(--muted); font-size: .78rem; text-align: center; }
-    .deployment-graph .jenkins-note { position: absolute; right: 6px; top: 775px; width: 300px; color: var(--muted); font-size: .78rem; text-align: center; }
+    .external-boundary { position: absolute; top: 720px; width: 420px; height: 125px; border: 1px dashed var(--warning); border-radius: 14px; padding: 8px 12px; color: var(--muted); font-size: .76rem; }
+    .external-boundary.dev { left: 15px; }
+    .external-boundary.prod { left: 465px; }
+    .deployment-graph .external-system { top: 755px; width: 170px; min-height: 70px; }
+    .deployment-graph .dev-gitlab { left: 35px; }
+    .deployment-graph .dev-model-provider { left: 240px; }
+    .deployment-graph .prod-gitlab { left: 485px; }
+    .deployment-graph .prod-model-provider { left: 690px; }
+    .deployment-note { position: absolute; top: 865px; left: 170px; width: 560px; padding: 8px; border: 1px dashed var(--line); border-radius: 9px; background: var(--surface); color: var(--muted); font-size: .78rem; text-align: center; }
+    .deployment-graph .jenkins-note { position: absolute; right: 6px; top: 925px; width: 300px; color: var(--muted); font-size: .78rem; text-align: center; }
 
     #document-index { margin-top: 30px; padding: 20px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
     #document-index ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 7px 18px; padding-left: 20px; }
@@ -241,12 +253,12 @@
       body { background: #fff; color: #000; font-size: 10pt; }
       header .toolbar, #view-switcher, #map-status { display: none; }
       .shell { width: 100%; }
-      [role="tabpanel"] { display: block; break-after: page; page-break-after: always; }
+      [role="tabpanel"] { display: block; break-after: page; break-inside: avoid-page; page-break-after: always; page-break-inside: avoid; }
       [role="tabpanel"]:last-of-type { break-after: auto; page-break-after: auto; }
       .layout { grid-template-columns: 1fr; }
       #architecture-map, .architecture-map { overflow: visible; min-height: 0; box-shadow: none; }
       #detail-panel, .detail-panel { display: none; }
-      .graph { transform-origin: top left; transform: scale(.83); margin-bottom: -85px; }
+      .graph { transform: none; zoom: .72; }
       .node { color: #000; background: #fff; border-color: #333; box-shadow: none; }
       .edge-layer line, .edge-layer path { stroke: #333; }
       .auxiliary-layer[hidden] { display: block; }
@@ -284,16 +296,17 @@
       <div class="layout">
         <section id="architecture-map" aria-label="业务架构图">
           <div class="graph business-graph">
-            <svg class="edge-layer" viewBox="0 0 900 430" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker><marker id="arrow-manual" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path class="manual-arrow-head" d="M0,0 L8,3.5 L0,7z"></path></marker></defs>
-              <line data-from="business-requirement" data-to="business-route" x1="158" y1="124" x2="180" y2="124"></line><line data-from="business-route" data-to="business-gate" x1="330" y1="124" x2="352" y2="124"></line><line data-from="business-gate" data-to="business-attempt" x1="502" y1="124" x2="524" y2="124"></line><line data-from="business-attempt" data-to="business-integration" x1="674" y1="124" x2="696" y2="124"></line><path data-from="business-integration" data-to="business-acceptance" d="M735,166 L735,200 L600,200 L600,226"></path><line data-from="business-acceptance" data-to="business-formal" x1="524" y1="268" x2="502" y2="268"></line><line data-from="business-formal" data-to="business-main" x1="352" y1="268" x2="330" y2="268"></line><text class="auxiliary-layer" x="718" y="214">独立平台外人工工具</text><circle class="manual-start auxiliary-layer" cx="770" cy="392" r="5"></circle><path class="manual-action auxiliary-layer" d="M770,384 L770,346"></path><text class="auxiliary-layer" x="731" y="414">用户手工</text>
+            <svg class="edge-layer" viewBox="0 0 900 550" aria-hidden="true"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker><marker id="arrow-manual" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path class="manual-arrow-head" d="M0,0 L8,3.5 L0,7z"></path></marker></defs>
+              <line data-from="business-requirement" data-to="business-route" x1="158" y1="124" x2="180" y2="124"></line><line data-from="business-route" data-to="business-gate" x1="330" y1="124" x2="352" y2="124"></line><line data-from="business-gate" data-to="business-attempt" x1="502" y1="124" x2="524" y2="124"></line><line data-from="business-attempt" data-to="business-integration" x1="674" y1="124" x2="696" y2="124"></line><line data-from="business-integration" data-to="business-selection" x1="771" y1="166" x2="771" y2="226"></line><line data-from="business-selection" data-to="business-acceptance" x1="696" y1="268" x2="674" y2="268"></line><line data-from="business-acceptance" data-to="business-formal" x1="524" y1="268" x2="502" y2="268"></line><line data-from="business-formal" data-to="business-main" x1="352" y1="268" x2="330" y2="268"></line><circle class="manual-start auxiliary-layer" cx="770" cy="536" r="5"></circle><path class="manual-action auxiliary-layer" d="M770,528 L770,490"></path><text class="auxiliary-layer" x="731" y="548">用户手工</text>
             </svg>
             <button class="node n1" type="button" data-node-id="business-requirement" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Requirement，打开详情" aria-controls="detail-panel"><strong>Requirement</strong><small>交付责任聚合</small></button>
             <button class="node n2" type="button" data-node-id="business-route" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Route 与 SDD，打开详情" aria-controls="detail-panel"><strong>Route / SDD</strong><small>固定方法与证据</small></button>
             <button class="node n3" type="button" data-node-id="business-gate" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Human Gate，打开详情" aria-controls="detail-panel"><strong>Human Gate</strong><small>资格与 Assignment</small></button>
             <button class="node n4" type="button" data-node-id="business-attempt" data-doc-href="../03-agent-skill-model/agent-skill-model-detail.md" aria-label="WorkItem 与 Attempt，打开详情" aria-controls="detail-panel"><strong>WorkItem / Attempt</strong><small>受控实现执行</small></button>
-            <button class="node n5" type="button" data-node-id="business-integration" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="Integration Baseline 与 Integration MR，打开详情" aria-controls="detail-panel"><strong>Integration Baseline /<br>Integration MR</strong><small>冻结交付证据</small></button>
+            <button class="node n5" type="button" data-node-id="business-integration" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="IntegrationBaselineEvidence 与 Integration MR，打开详情" aria-controls="detail-panel"><strong>Integration Baseline<br>Evidence / MR</strong><small>生成不可变交付证据</small></button>
+            <button class="node n10" type="button" data-node-id="business-selection" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="RequirementIntegrationBaselineSelection，打开详情" aria-controls="detail-panel"><strong>Requirement Integration<br>Baseline Selection</strong><small>Requirement 选择并冻结</small></button>
             <button class="node n6 auxiliary-layer" type="button" data-node-id="business-jenkins" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="平台外 Jenkins 人工验证，打开详情" aria-controls="detail-panel"><strong>平台外 Jenkins</strong><small>用户手工使用，非 Gate</small><em>不调用、不读状态、无 Webhook</em></button>
-            <button class="node n7" type="button" data-node-id="business-acceptance" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Acceptance，打开详情" aria-controls="detail-panel"><strong>Acceptance</strong><small>绑定 Integration Baseline</small><em>用户可提交外部验证证据</em></button>
+            <button class="node n7" type="button" data-node-id="business-acceptance" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Acceptance，打开详情" aria-controls="detail-panel"><strong>Acceptance</strong><small>绑定当前 Selection</small><em>用户可提交外部验证证据</em></button>
             <button class="node n8" type="button" data-node-id="business-formal" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="Formal MR，打开详情" aria-controls="detail-panel"><strong>Formal MR</strong><small>精确 head SHA 审核</small></button>
             <button class="node n9" type="button" data-node-id="business-main" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="protected main，打开详情" aria-controls="detail-panel"><strong>protected main</strong><small>仅 Formal MR 合并</small><em>禁止 direct push</em></button>
           </div>
@@ -308,7 +321,7 @@
       <div class="layout">
         <section class="architecture-map" aria-label="逻辑架构图">
           <div class="graph logical-graph">
-            <svg class="edge-layer" viewBox="0 0 1000 720" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow-logical" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
+            <svg class="edge-layer" viewBox="0 0 1000 720" aria-hidden="true"><defs><marker id="arrow-logical" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
               <line data-from="logical-users" data-to="logical-gateway" x1="183" y1="122" x2="220" y2="122"></line><line data-from="logical-gateway" data-to="logical-web" x1="385" y1="104" x2="420" y2="104"></line><line data-from="logical-gateway" data-to="logical-control" x1="385" y1="140" x2="420" y2="210"></line><line data-from="logical-control" data-to="logical-orchestrator" x1="680" y1="205" x2="800" y2="120"></line><line data-from="logical-control" data-to="logical-model" x1="680" y1="220" x2="800" y2="230"></line><line data-from="logical-control" data-to="logical-sandbox" x1="680" y1="245" x2="800" y2="345"></line><line data-from="logical-control" data-to="logical-gitlab" class="manual" x1="680" y1="270" x2="800" y2="460"></line><line data-from="logical-control" data-to="logical-file" class="manual" x1="680" y1="300" x2="800" y2="575"></line><line data-from="logical-control" data-to="logical-readmodel" class="manual" x1="550" y1="340" x2="500" y2="390"></line><line data-from="logical-control" data-to="logical-postgres" x1="420" y1="290" x2="385" y2="430"></line><line data-from="logical-control" data-to="logical-valkey" x1="420" y1="300" x2="183" y2="430"></line><line data-from="logical-control" data-to="logical-nats" x1="420" y1="320" x2="183" y2="545"></line><line data-from="logical-orchestrator" data-to="logical-temporal" x1="800" y1="120" x2="385" y2="545"></line><line data-from="logical-file" data-to="logical-rgw" x1="800" y1="575" x2="585" y2="575"></line><line data-from="logical-control" data-to="logical-bao" x1="620" y1="340" x2="700" y2="545"></line><line data-from="logical-readmodel" data-to="logical-observability" class="manual" x1="585" y1="470" x2="800" y2="655"></line>
             </svg>
             <button class="node actors" type="button" data-node-id="logical-users" data-doc-href="../00-platform-overview/platform-overview-detail.md" aria-label="Browser users，打开详情" aria-controls="logical-detail-panel"><strong>Browser users</strong><small>用户与管理入口</small></button>
@@ -340,9 +353,10 @@
       <div class="layout">
         <section class="architecture-map" aria-label="部署架构图">
           <div class="graph deployment-graph">
-            <svg class="edge-layer" viewBox="0 0 900 820" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow-deployment" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
+            <svg class="edge-layer" viewBox="0 0 900 970" aria-hidden="true"><defs><marker id="arrow-deployment" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
               <line data-from="deploy-dev-account" data-to="deploy-dev-vpc" x1="220" y1="169" x2="220" y2="185"></line><line data-from="deploy-dev-vpc" data-to="deploy-dev-cluster" x1="220" y1="269" x2="220" y2="285"></line><line data-from="deploy-dev-cluster" data-to="deploy-dev-gateway" x1="220" y1="435" x2="220" y2="455"></line><line data-from="deploy-dev-cluster" data-to="deploy-dev-collector" class="manual" x1="175" y1="435" x2="70" y2="590"></line><line data-from="deploy-dev-cluster" data-to="deploy-dev-backup" class="manual" x1="195" y1="435" x2="171" y2="590"></line><line data-from="deploy-dev-cluster" data-to="deploy-dev-watchdog" class="manual" x1="245" y1="435" x2="272" y2="590"></line><line data-from="deploy-dev-gateway" data-to="deploy-dev-bindings" x1="280" y1="539" x2="373" y2="590"></line>
               <line data-from="deploy-prod-account" data-to="deploy-prod-vpc" x1="670" y1="169" x2="670" y2="185"></line><line data-from="deploy-prod-vpc" data-to="deploy-prod-cluster" x1="670" y1="269" x2="670" y2="285"></line><line data-from="deploy-prod-cluster" data-to="deploy-prod-gateway" x1="670" y1="435" x2="670" y2="455"></line><line data-from="deploy-prod-cluster" data-to="deploy-prod-collector" class="manual" x1="625" y1="435" x2="520" y2="590"></line><line data-from="deploy-prod-cluster" data-to="deploy-prod-backup" class="manual" x1="645" y1="435" x2="621" y2="590"></line><line data-from="deploy-prod-cluster" data-to="deploy-prod-watchdog" class="manual" x1="695" y1="435" x2="722" y2="590"></line><line data-from="deploy-prod-gateway" data-to="deploy-prod-bindings" x1="730" y1="539" x2="823" y2="590"></line>
+              <line data-from="deploy-dev-bindings" data-to="deploy-dev-gitlab" x1="373" y1="672" x2="120" y2="755"></line><line data-from="deploy-dev-bindings" data-to="deploy-dev-model-provider" x1="373" y1="672" x2="325" y2="755"></line><line data-from="deploy-prod-bindings" data-to="deploy-prod-gitlab" x1="823" y1="672" x2="570" y2="755"></line><line data-from="deploy-prod-bindings" data-to="deploy-prod-model-provider" x1="823" y1="672" x2="775" y2="755"></line>
             </svg>
             <div class="deployment-note auxiliary-layer">同源代码 / Contract / GitOps 模板 / PCS 是发布输入，不是 DEV 与 PROD 的运行时连接。</div>
             <div class="environment dev"><h3>当前 DEV Platform Environment</h3><div class="boundary" style="left:52px;top:240px;width:316px;height:285px;">Kubernetes Cluster</div>
@@ -353,7 +367,7 @@
               <button class="node env-ops" type="button" data-node-id="deploy-dev-collector" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV Operations Collector，打开详情" aria-controls="deployment-detail-panel"><strong>Operations Collector</strong><small>DEV Cluster 外</small></button>
               <button class="node env-backup" type="button" data-node-id="deploy-dev-backup" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV Backup Recovery Repository，打开详情" aria-controls="deployment-detail-panel"><strong>Backup / Recovery</strong><small>DEV Cluster 外</small></button>
               <button class="node env-watchdog" type="button" data-node-id="deploy-dev-watchdog" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV External Watchdog，打开详情" aria-controls="deployment-detail-panel"><strong>External Watchdog</strong><small>DEV Cluster 外</small></button>
-              <button class="node env-bindings" type="button" data-node-id="deploy-dev-bindings" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="DEV GitLab 与 Model Provider 绑定，打开详情" aria-controls="deployment-detail-panel"><strong>External Binding</strong><small>DEV GitLab / Model</small></button>
+              <button class="node env-bindings" type="button" data-node-id="deploy-dev-bindings" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="DEV 外部系统绑定，打开详情" aria-controls="deployment-detail-panel"><strong>Environment Binding</strong><small>DEV 独立身份与策略</small></button>
             </div>
             <div class="environment prod"><h3>未来独立 PROD Platform Environment</h3><div class="boundary" style="left:52px;top:240px;width:316px;height:285px;">Kubernetes Cluster</div>
               <button class="node account" type="button" data-node-id="deploy-prod-account" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD Resource Account，打开详情" aria-controls="deployment-detail-panel"><strong>Resource Account</strong><small>PROD 独立账号</small></button>
@@ -363,8 +377,14 @@
               <button class="node env-ops" type="button" data-node-id="deploy-prod-collector" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD Operations Collector，打开详情" aria-controls="deployment-detail-panel"><strong>Operations Collector</strong><small>PROD Cluster 外</small></button>
               <button class="node env-backup" type="button" data-node-id="deploy-prod-backup" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD Backup Recovery Repository，打开详情" aria-controls="deployment-detail-panel"><strong>Backup / Recovery</strong><small>PROD Cluster 外</small></button>
               <button class="node env-watchdog" type="button" data-node-id="deploy-prod-watchdog" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD External Watchdog，打开详情" aria-controls="deployment-detail-panel"><strong>External Watchdog</strong><small>PROD Cluster 外</small></button>
-              <button class="node env-bindings" type="button" data-node-id="deploy-prod-bindings" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="PROD GitLab 与 Model Provider 绑定，打开详情" aria-controls="deployment-detail-panel"><strong>External Binding</strong><small>PROD GitLab / Model</small></button>
+              <button class="node env-bindings" type="button" data-node-id="deploy-prod-bindings" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="PROD 外部系统绑定，打开详情" aria-controls="deployment-detail-panel"><strong>Environment Binding</strong><small>PROD 独立身份与策略</small></button>
             </div>
+            <div class="external-boundary dev">DEV Business Edge / 外部系统信任边界</div>
+            <div class="external-boundary prod">PROD Business Edge / 外部系统信任边界</div>
+            <button class="node external-system dev-gitlab" type="button" data-node-id="deploy-dev-gitlab" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="DEV GitLab 外部系统，打开详情" aria-controls="deployment-detail-panel"><strong>GitLab</strong><small>DEV Project / Credential</small></button>
+            <button class="node external-system dev-model-provider" type="button" data-node-id="deploy-dev-model-provider" data-doc-href="../03-agent-skill-model/agent-skill-model-detail.md" aria-label="DEV Model Provider 外部系统，打开详情" aria-controls="deployment-detail-panel"><strong>Model Provider</strong><small>DEV Deployment Binding</small></button>
+            <button class="node external-system prod-gitlab" type="button" data-node-id="deploy-prod-gitlab" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="PROD GitLab 外部系统，打开详情" aria-controls="deployment-detail-panel"><strong>GitLab</strong><small>PROD Project / Credential</small></button>
+            <button class="node external-system prod-model-provider" type="button" data-node-id="deploy-prod-model-provider" data-doc-href="../03-agent-skill-model/agent-skill-model-detail.md" aria-label="PROD Model Provider 外部系统，打开详情" aria-controls="deployment-detail-panel"><strong>Model Provider</strong><small>PROD Deployment Binding</small></button>
             <p class="jenkins-note auxiliary-layer">Jenkins 独立于平台环境；用户手工验证，平台不调用、不读状态、无 Webhook。</p>
           </div>
         </section>
@@ -400,10 +420,11 @@
         'business-requirement': ['Requirement', '交付责任与验收的业务聚合。', '业务对象、生命周期和 Gate 由 Requirement Workflow 拥有。', '下游：Route / SDD。'],
         'business-route': ['Route / SDD', '将交付方法、证据和确认输入固定为可追溯基线。', 'Route 不替代人员资格或 Agent 运行 Contract。', '上游：Requirement；下游：Human Gate。'],
         'business-gate': ['Human Gate', '由具有当前资格的人员形成业务决定。', 'Agent、自动检查和系统账号只提供证据，不能代签。', '上游：Route / SDD；下游：WorkItem / Attempt。'],
-        'business-attempt': ['WorkItem / Attempt', '把责任交付拆分为受控的人或 Agent 执行。', 'Requirement 业务状态与 Attempt 运行状态相互独立。', '上游：Human Gate；下游：Integration MR。'],
-        'business-integration': ['Integration Baseline / Integration MR', '在任务分支与集成流程中固化可验收的交付证据。', '业务验收与 Git/MR 的规范分别见 Requirement Workflow 和 Source Control Contract。', '上游：WorkItem / Attempt；平台责任链下游：Acceptance。用户可另行手工进入 Jenkins。'],
+        'business-attempt': ['WorkItem / Attempt', '把责任交付拆分为受控的人或 Agent 执行。', 'Requirement 业务状态与 Attempt 运行状态相互独立。', '上游：Human Gate；下游：IntegrationBaselineEvidence / Integration MR。'],
+        'business-integration': ['IntegrationBaselineEvidence / Integration MR', '针对 Requirement 交付快照生成不可变证据并记录 Git 集成事实。', 'Evidence 结构和 Git/MR 事实由 Source Control Delivery 拥有；它不决定 Requirement 当前选择。', '上游：WorkItem / Attempt；下游：RequirementIntegrationBaselineSelection。用户可另行手工进入 Jenkins。'],
+        'business-selection': ['RequirementIntegrationBaselineSelection', 'Requirement 通过 CAS 与必需 WorkItem 覆盖校验选择并冻结 Evidence。', '选择、失效和 Acceptance 版本绑定只由 Requirement Workflow 拥有。', '上游：IntegrationBaselineEvidence；下游：Acceptance。'],
         'business-jenkins': ['平台外 Jenkins', '用户在独立外部系统手工运行验证，并可在平台内提交外部验证证据。', '平台不调用、不读取状态、无 Webhook；Jenkins 状态或结果不直接驱动 Acceptance，也不是平台 Gate。', '这是平台外人工动作，不处于平台状态推进链中。'],
-        'business-acceptance': ['Acceptance', '针对冻结 Integration Baseline 作出最终验收决定；用户提交的外部验证证据可作为输入。', '验收版本绑定与失效语义由 Requirement Workflow 拥有，Jenkins 结果不会直接触发验收。', '上游：Integration Baseline / Integration MR；下游：Formal MR。'],
+        'business-acceptance': ['Acceptance', '针对当前 RequirementIntegrationBaselineSelection 作出最终验收决定；用户提交的外部验证证据可作为输入。', '验收版本绑定与失效语义由 Requirement Workflow 拥有，Jenkins 结果不会直接触发验收。', '上游：RequirementIntegrationBaselineSelection；下游：Formal MR。'],
         'business-formal': ['Formal MR', '以精确 head SHA 接受人工代码 Review 并请求正式合并。', 'Formal Review Assignment 与保护规则由 Source Control 与交付拥有。', '上游：Acceptance；下游：protected main。'],
         'business-main': ['protected main', '正式交付经 Formal MR 合并到受保护主分支。', '直接 push 不属于允许的交付路径。', '上游：Formal MR。'],
         'logical-users': ['Browser users', '人员通过浏览器使用用户工作台和管理入口。', 'Browser 不直连数据服务、Kubernetes、OpenBao、Model 或 RGW 管理面。', '下游：platform-gateway。'],
@@ -434,11 +455,15 @@
         'deploy-dev-collector': ['DEV Operations Collector', 'DEV 的 Cluster 外独立状态采集实例。', '它只提供可见性，Collector 不可用不能阻断独立业务控制循环。', '上游：DEV Kubernetes Cluster。'],
         'deploy-dev-backup': ['DEV Backup / Recovery Repository', 'DEV 的 Cluster 外独立恢复仓库。', '恢复责任、演练和环境边界由基础设施与安全 Contract 共同约束。', '上游：DEV Kubernetes Cluster。'],
         'deploy-dev-watchdog': ['DEV External Watchdog', 'DEV 的独立外部告警观察点。', '它不持有 Cluster Admin Credential，也不替代平台运行事实。', '上游：DEV Kubernetes Cluster。'],
-        'deploy-dev-bindings': ['DEV External Binding', 'DEV 通过 Adapter 绑定 GitLab 与 Model Provider。', '外部 Provider 不获得平台领域写权限。', '上游：DEV platform-gateway。'],
+        'deploy-dev-bindings': ['DEV Environment Binding', 'DEV 使用独立 Adapter Identity、Credential 与 Policy 绑定外部系统。', '外部 Provider 不获得平台领域写权限，也不与 PROD 共享连接上下文。', '上游：DEV platform-gateway；下游：DEV GitLab、DEV Model Provider。'],
+        'deploy-dev-gitlab': ['DEV GitLab', 'DEV 绑定的外部 Source Control 系统。', 'GitLab 位于 DEV Platform Environment 之外；Project、Credential 与 Webhook Binding 按环境隔离。', '上游：DEV Environment Binding。'],
+        'deploy-dev-model-provider': ['DEV Model Provider', 'DEV 绑定的外部模型服务。', 'Provider 位于 DEV Platform Environment 之外；Deployment、Credential 与能力策略按环境隔离。', '上游：DEV Environment Binding。'],
         'deploy-prod-collector': ['PROD Operations Collector', '未来 PROD 的 Cluster 外独立状态采集实例。', '它只提供可见性，Collector 不可用不能阻断独立业务控制循环。', '上游：PROD Kubernetes Cluster。'],
         'deploy-prod-backup': ['PROD Backup / Recovery Repository', '未来 PROD 的 Cluster 外独立恢复仓库。', '恢复责任、演练和环境边界由基础设施与安全 Contract 共同约束。', '上游：PROD Kubernetes Cluster。'],
         'deploy-prod-watchdog': ['PROD External Watchdog', '未来 PROD 的独立外部告警观察点。', '它不持有 Cluster Admin Credential，也不替代平台运行事实。', '上游：PROD Kubernetes Cluster。'],
-        'deploy-prod-bindings': ['PROD External Binding', '未来 PROD 通过 Adapter 绑定 GitLab 与 Model Provider。', '外部 Provider 不获得平台领域写权限。', '上游：PROD platform-gateway。']
+        'deploy-prod-bindings': ['PROD Environment Binding', '未来 PROD 使用独立 Adapter Identity、Credential 与 Policy 绑定外部系统。', '外部 Provider 不获得平台领域写权限，也不与 DEV 共享连接上下文。', '上游：PROD platform-gateway；下游：PROD GitLab、PROD Model Provider。'],
+        'deploy-prod-gitlab': ['PROD GitLab', '未来 PROD 绑定的外部 Source Control 系统。', 'GitLab 位于 PROD Platform Environment 之外；Project、Credential 与 Webhook Binding 按环境隔离。', '上游：PROD Environment Binding。'],
+        'deploy-prod-model-provider': ['PROD Model Provider', '未来 PROD 绑定的外部模型服务。', 'Provider 位于 PROD Platform Environment 之外；Deployment、Credential 与能力策略按环境隔离。', '上游：PROD Environment Binding。']
       };
       const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
       const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));

@@ -51,7 +51,7 @@ Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human G
 
 ## 3. Superpowers Runtime Bundle
 
-首版 `Superpowers Runtime Bundle` 是 Skill 的唯一权威可加载来源，并随 Runtime 镜像交付。Workflow 解析 Route 并将所需 Bundle 与 Loaded Skill 写入 Execution Binding；Route→Skill 定义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有。
+当前架构基线的 `Superpowers Runtime Bundle` 是 Skill 的唯一权威可加载来源，并随 Runtime 镜像交付。Workflow 解析 Route 并将所需 Bundle 与 Loaded Skill 写入 Execution Binding；Route→Skill 定义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有。
 
 Runtime 镜像必须记录镜像 digest、Bundle hash、Bundle Manifest、可加载 Skill 名单、构建来源、签名与扫描结果。BINDING 阶段只接受 Bundle Manifest 与 Agent Definition 共同允许的 Skill；缺少 Route 所需 Skill、Manifest/Definition 不一致或出现其他动态来源时 Fail Closed。一个 Attempt 内保持同一 Bundle；Bundle 通过 `RuntimeBundlePort` 接入，并复用 Binding、权限与审计契约。
 
@@ -59,7 +59,7 @@ Runtime 镜像必须记录镜像 digest、Bundle hash、Bundle Manifest、可加
 
 ### 4.1 Deployment Catalog
 
-首版 Provider 接入阿里云百炼 `compatible-mode`。DEV 的首个 Catalog Candidate 登记 `qwen3.8-max`、`deepseek-v4-flash`、`deepseek-v4-pro` 与 `kimi-3` 作为可替换的环境 `ModelDeployment` alias/Seed，不是 Workflow 代码常量。
+当前架构基线的 Provider 接入阿里云百炼 `compatible-mode`。DEV 的首个 Catalog Candidate 登记 `qwen3.8-max`、`deepseek-v4-flash`、`deepseek-v4-pro` 与 `kimi-3` 作为可替换的环境 `ModelDeployment` alias/Seed，不是 Workflow 代码常量。
 
 Deployment 激活前，Model Adapter 必须验证实际 Provider Model ID、chat/coding/search/thinking 能力、Context 限制、Quota、价格、数据处理等级、健康状态与参数 Schema。Deployment 至少记录 Provider/Adapter、Model ID、Endpoint/Region、配置版本、输入输出和流式/取消能力、Capability 限制、限流/成本/数据等级与验证证据。不可用 Deployment 仅退出对应 Route 或 Allowlist，不改变 Agent 或 Requirement 状态机。
 
@@ -154,7 +154,7 @@ RUNNING → WAITING_CHILD → QUEUED
 
 ### 7.2 WAITING_CHILD
 
-首发 Child Type 是 Image Build。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
+当前已启用的 Child Type 是 Image Build。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
 
 Child Build Execution 使用独立状态机，不能复用 Parent Attempt 状态；状态集合固定为：
 

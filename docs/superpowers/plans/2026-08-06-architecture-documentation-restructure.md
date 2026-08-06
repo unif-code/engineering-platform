@@ -367,7 +367,7 @@ Expected: FAIL。
 
 - [x] **Step 3: 编写三个 SVG/HTML 视图**
 
-业务视图的平台责任链包含 Requirement→Route/SDD→Human Gate→WorkItem/Attempt→IntegrationBaselineEvidence/RequirementIntegrationBaselineSelection→Integration MR→验收→Formal MR→main；Jenkins 只通过“用户→平台外 Jenkins”的独立人工动作线呈现，不与平台责任链相连，也不表达为 Gate。
+业务视图的平台责任链包含 Requirement→Route/SDD→Human Gate→WorkItem/Attempt→IntegrationBaselineEvidence/Integration MR→RequirementIntegrationBaselineSelection→验收→Formal MR→main；Evidence/MR 节点链接 05 owner，Selection 节点链接 02 owner。Jenkins 只通过“用户→平台外 Jenkins”的独立人工动作线呈现，不与平台责任链相连，也不表达为 Gate。
 
 逻辑视图包含参与者、Edge/Gateway、Umi Web、Python Control Plane模块、Temporal/Orchestrator、Model Gateway、Sandbox Controller、Adapter、PostgreSQL/Valkey/NATS/OpenBao/Ceph和Observability。
 

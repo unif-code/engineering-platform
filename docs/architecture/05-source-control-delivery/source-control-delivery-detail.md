@@ -72,9 +72,11 @@ Jenkins 是独立外部平台，用户手工触发、查看和处置构建/测�
 
 ## 5. IntegrationBaselineEvidence 与 Formal MR
 
-平台为每个 WorkItem 保存 Route 所要求的 Commit Checkpoint。`IntegrationBaselineEvidence` 由当前必需 WorkItem 的 Repository、任务分支 Commit、Integration MR/结果、Artifact Hash、Attempt 引用与验证证据组成，生成稳定的 `integrationBaselineId/hash`，不能引用持续移动的分支 HEAD。Evidence 是不可变证据版本；02 owner 决定 Requirement 何时选定并冻结对它的引用。
+平台为每个 WorkItem 保存 Route 所要求的 Commit Checkpoint。02 owner 先提供不可变的 `RequirementDeliverySnapshot`，至少包含 `requirementId`、生成时 `requirementVersion`、`requiredWorkItemSetVersion/hash` 以及按稳定 WorkItem ID 排序的全部必需 WorkItem 集合。05 owner 只能针对该快照采集证据，不得自行推断哪些 WorkItem 是必需项。
 
-任何相关 Git/MR 证据的 `headSha`、Artifact 或 Contract 变化，都必须产生新的 `IntegrationBaselineEvidence` 或 `IntegrationBaselineEvidenceChanged` 事件，旧 Evidence 保留为历史事实。本文只发布该变化与当前证据结果；02 owner 决定当前 `RequirementIntegrationBaselineSelection`、Acceptance Decision 对 `integrationBaselineId/hash` 的绑定与失效以及任何 Requirement/WorkItem 业务动作。
+`IntegrationBaselineEvidence` 至少保存 `integrationBaselineId/hash`、`requirementId`、生成时 `requirementVersion`、`requiredWorkItemSetVersion/hash`、生成时间，以及每个必需 WorkItem 的 Repository、任务分支 Commit、Integration MR/结果、Artifact Hash、Attempt 引用与验证证据。Evidence 的 WorkItem 集合必须与输入快照一一对应、无缺失、无重复，且不能引用持续移动的分支 HEAD；快照、逐项证据和规范化序列共同进入 Evidence Hash。Evidence 是不可变证据版本；02 owner 决定 Requirement 何时选定并冻结对它的引用。
+
+任何相关 Git/MR 证据的 `headSha`、Artifact、Contract 或必需 WorkItem 集合变化，都必须产生新的 `IntegrationBaselineEvidence` 或 `IntegrationBaselineEvidenceChanged` 事件，旧 Evidence 保留为历史事实。生成过程中发现 Requirement/必需集合版本已变化时，本次生成以 `REQUIREMENT_SNAPSHOT_CONFLICT` 失败并重新获取快照，不能发布部分覆盖或混合版本的 Evidence。本文只发布该变化与当前证据结果；02 owner 决定当前 `RequirementIntegrationBaselineSelection`、Acceptance Decision 对 `integrationBaselineId/hash` 的绑定与失效以及任何 Requirement/WorkItem 业务动作。
 
 创建 Formal MR 使用稳定 Idempotency：
 

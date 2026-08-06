@@ -5,7 +5,7 @@
 
 ## 1. 目的与边界
 
-本文是平台本地身份、组织、Workspace Membership、授权、Super Admin、配置授权、恢复与 Audit 语义的唯一规范事实源。
+本文是平台本地身份、组织、Workspace Membership、授权、Super Admin、配置授权与 Identity 恢复语义的唯一规范事实源。本文只拥有 Identity/Organization/Authorization 领域的 Audit Trigger 与业务摘要；通用 Audit Envelope、可靠提交、脱敏、WORM、Retention 和恢复 Contract 由 [08](../08-security-audit-governance/security-audit-governance-detail.md)唯一拥有。
 
 本文不定义 Requirement 状态、WorkItem 流程、人工 Gate 规则、外部交付语义或基础设施认证细节；这些事实由各自主题拥有。本文也不将岗位、外部系统角色或前端显示状态作为授权事实。
 
@@ -13,7 +13,7 @@
 
 ### 2.1 账号与状态
 
-账号与人员一一对应。登录账号是恰好 8 位数字的员工编号，允许以 `0` 开头并按字符串保存；员工编号在单个 Platform Environment 内唯一，环境之间不共享账号主键或凭据。账号由具备相应 Identity Capability 和 Scope 的人员创建；首版不提供自助注册，也不接入 SSO 或 HR。
+账号与人员一一对应。登录账号是恰好 8 位数字的员工编号，允许以 `0` 开头并按字符串保存；员工编号在单个 Platform Environment 内唯一，环境之间不共享账号主键或凭据。账号由具备相应 Identity Capability 和 Scope 的人员创建；当前架构基线不提供自助注册，也不接入 SSO 或 HR。
 
 账号的可访问状态语义如下：
 
@@ -48,9 +48,17 @@
 
 新密码设置成功后，服务端以该次成功设置时间更新 `passwordSetAt`，并按当时的 Effective Policy 重新起算密码年龄。
 
-TOTP Enrollment 只能在受限初始化或受控重置流程中显示二维码和一次性 Secret；确认后不能查询明文。首版不提供恢复码。丢失 TOTP 时由具备相应 Identity Capability 和 Scope 的人员完成身份核验后独立重置；该操作撤销既有 Session，要求重新 Enrollment，并写入安全 Audit。
+TOTP Enrollment 只能在受限初始化或受控重置流程中显示二维码和一次性 Secret；确认后不能查询明文。当前架构基线不提供恢复码。丢失 TOTP 时由具备相应 Identity Capability 和 Scope 的人员完成身份核验后独立重置；该操作撤销既有 Session，要求重新 Enrollment，并写入安全 Audit。
 
-### 2.4 Session
+### 2.4 Passkey/WebAuthn 演进边界
+
+当前认证路径只有“员工编号 + 正式密码 + 强制 TOTP”，不创建未使用的 Passkey 数据表、API、UI、字段或空 Adapter。Identity 模块使用由现有密码和 TOTP 流程实际调用、且与认证器实现无关的 `AuthenticatorPort`；未来通过新增 Authenticator Adapter 接入 Passkey，不改变 Session、Authorization、Capability 或业务 Workflow 语义。
+
+Passkey 作为未来抗钓鱼替代登录路径时，一次满足策略的 Passkey 登录可同时替代该次密码和 TOTP。WebAuthn 必须使用 `userVerification=required`，服务端验证 UV Flag、Challenge、Origin、RP ID、Credential 与 Replay 条件，不能信任客户端自报结果。平台只保存 Public-key Credential、Signature Counter 与验证所需元数据；Private Key 与 Biometrics 始终留在用户设备。
+
+注册新 Passkey 必须在正式密码与 TOTP 初始化完成后再次验证当前密码和 TOTP。遗失认证器只能通过专用 Identity Override Capability、有效 Scope、人工身份核验、Session 撤销与安全 Audit 获得短期受限恢复资格；实际注册仍由用户设备完成，管理员与平台不得接触 Private Key 或把流程实现为隐式恢复码。TOTP 在迁移期继续作为回退路径，绑定 Passkey 不自动停用 TOTP，也不代表全部登录路径都具备抗钓鱼能力；是否允许停用只能由未来独立认证 Policy 决定。Session 与 Audit 必须记录实际认证方式和认证强度。
+
+### 2.5 Session
 
 平台使用服务端可撤销 Session。连续 60 分钟没有用户操作后 Session 失效；只有受认证 API 活动或受控心跳可以更新活动时间，后台 Agent 执行不能刷新人员 Session。
 
@@ -167,11 +175,11 @@ Super Admin 不自动获得 Requirement、Workspace、MR、Agent 或其他业务
 
 恢复只签发一次性受限资格；目标账号必须重新完成正式密码和 TOTP 初始化后，才可恢复正常 Super Admin 管理能力。每次恢复都必须留下独立的安全 Audit。
 
-## 7. Audit 语义
+## 7. Identity Audit Trigger 与业务摘要
 
-以下行为必须进入追加式 Audit：账号创建与状态变化、临时密码签发或消费、密码与 TOTP 重置、Session 撤销、组织关系变更、Workspace Owner 与 Leader 变化、成员投影和协作关系变化、Grant 与 Assignment 变化、Super Admin 生命周期、配置授权命令与带外恢复。
+以下行为必须通过 08 的可靠 Audit Contract 追加记录：账号创建与状态变化、临时密码签发或消费、密码与 TOTP 重置、Session 撤销、组织关系变更、Workspace Owner 与 Leader 变化、成员投影和协作关系变化、Grant 与 Assignment 变化、Super Admin 生命周期、配置授权命令与带外恢复。
 
-每条 Audit 至少关联操作者或 Workload Identity、时间、Environment、Scope、目标对象、动作、结果、原因、前后摘要、授权或版本信息与 Correlation ID。Audit 不能保存明文密码、临时密码、TOTP Code、TOTP Secret、Session Cookie、Token 或其他可直接使用的认证材料。
+本领域提交给 Audit Port 的业务摘要至少包含目标 Identity/Organization/Workspace/Grant/Assignment 稳定标识、动作、结果、原因、前后版本及授权版本；Actor、Environment、Correlation、通用 Envelope、敏感字段脱敏和可靠落盘均由 08 owner 统一补充与验证。领域摘要不能包含明文密码、临时密码、TOTP Code、TOTP Secret、Session Cookie、Token 或其他可直接使用的认证材料。
 
 人员变动与授权影响可以通过只读视图关联组织变化、Workspace Membership、Grant、Assignment、授权版本和同步结果；实际修改必须在其所属的受权入口执行。
 

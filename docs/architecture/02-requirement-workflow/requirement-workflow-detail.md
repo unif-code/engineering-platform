@@ -41,7 +41,13 @@ WorkItem 是单一仓库中的可分配交付，分别记录 `createdBy`、`huma
 
 ### 2.2 版本绑定
 
-Route、Gate、Attempt 与 Artifact 在形成时保存 Effective Policy 与解析快照。Decision 必须绑定 subject、准确版本/hash、Current Assignment 与决策时资格快照；Acceptance Decision 还绑定当前 `RequirementIntegrationBaselineSelection`。该选择对象至少保存 Requirement、选定的 `integrationBaselineId/hash`、选择时间、选择时 Requirement Version 与当前状态；Artifact version、Commit、交付 head SHA、Route Bundle 或被确认输入变化时，旧结论失效而历史保留。
+Route、Gate、Attempt 与 Artifact 在形成时保存 Effective Policy 与解析快照。Decision 必须绑定 subject、准确版本/hash、Current Assignment 与决策时资格快照；Acceptance Decision 还绑定当前 `RequirementIntegrationBaselineSelection`。
+
+Requirement Aggregate 为必需 WorkItem 集合维护单调递增的 `requiredWorkItemSetVersion` 与规范化 `requiredWorkItemSetHash`；增加、移除、替换必需 WorkItem，或改变其是否计入最终交付时必须更新二者。提供给 05 owner 的 `RequirementDeliverySnapshot` 至少保存 `requirementId`、当前 `requirementVersion`、`requiredWorkItemSetVersion/hash` 与全部必需 WorkItem 稳定 ID，并作为 Evidence 生成输入。
+
+创建 `RequirementIntegrationBaselineSelection` 是 Requirement Aggregate 的受保护 CAS 命令。命令必须携带 `expectedRequirementVersion`，并在同一事务中验证：Evidence 的 `requirementId` 与当前 Requirement 相同；Evidence 的 `requiredWorkItemSetVersion/hash` 与当前集合一致；Evidence 对当前全部必需 WorkItem 一一覆盖且无额外替代项；每项 Commit、Artifact 与验证引用仍是当前可接受版本。成功后 Selection 保存 `integrationBaselineId/hash`、Evidence 的 Requirement/集合版本、选择时间、选择前后 Requirement Version 与当前状态，并原子提升 Requirement Version、写入 Outbox/Audit。CAS、集合或逐项覆盖任一不匹配均返回明确 Conflict，调用方重新读取 Requirement、重新生成 Evidence 或重新选择；禁止 Last-write-wins、部分覆盖或静默重试旧 Evidence。
+
+Artifact Version、Commit、交付 head SHA、Route Bundle、必需 WorkItem 集合或其他被确认输入变化时，当前 Selection 与旧 Acceptance 失效而历史保留。仅与交付快照无关的展示变化不能伪造集合变化；是否影响 Selection 必须由 Requirement 领域命令显式判定。
 
 完成的 Decision、Attempt、Artifact 与 Audit 始终保存原 actor，不因组织、授权或 Assignment 后续变化而重写。外部交付的准确 Commit、分支与 MR 事实由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)提供，本领域只保存稳定引用。
 
@@ -181,21 +187,25 @@ Artifact 是不可变版本元数据与对象或外部引用，统一表示用�
 
 所有仍实际保留的 Object Version 均计入相应额度，包括待验证、待扫描、隔离、归档、逻辑删除及待对账对象。上传先同时原子预占 Product Quota 与环境 Bucket-Class Capacity 两类 Ledger，任一失败不得签发请求。超过 Agent Artifact 限额时，Attempt 安全停止为 `FAILED`，记录 `failureCode=RESOURCE_EXHAUSTED` 与 `failureDimension=ARTIFACT_QUOTA`，不截断证据。
 
-Artifact Version 的可用性为：
+Artifact Version 的完整性验证主路径为：
 
 ```text
-PENDING_UPLOAD → PENDING_VERIFICATION → PENDING_SCAN → AVAILABLE
+PENDING_UPLOAD → PENDING_VERIFICATION
+  ├── 需要扫描 → PENDING_SCAN → AVAILABLE
+  └── 受信内部纯文本且 Policy 允许跳过扫描 → AVAILABLE
 
 异常：UPLOAD_FAILED | QUARANTINED | SCAN_FAILED
 ```
 
-后端在上传/下载时实时校验当前授权及 Artifact 关系，按准确 Object Version 校验大小、MIME 与 SHA-256。只有 `AVAILABLE` Artifact 能下载或进入 Workflow Gate。Presigned Request 默认 `5min`、只对应单一 Object Version，不持久化也不写入日志。文件类型、扫描、Object Lock、技术垃圾清理和存储/安全实现分别由[Data/Messaging/Storage](../07-data-messaging-storage/data-messaging-storage-detail.md)与[Security/Audit/Governance](../08-security-audit-governance/security-audit-governance-detail.md)拥有；本领域依赖其状态而不复制实现。
+后端在上传/下载时实时校验当前授权及 Artifact 关系，按准确 Object Version 校验大小、MIME 与 SHA-256。是否进入 `PENDING_SCAN` 只能由服务端依据版本化 Artifact Source/Media Policy 决定：用户上传、外部 Connector 内容和含外部二进制的 Agent Artifact 必须扫描；只有平台内部受信流程生成、类型受约束的纯文本 Spec、Plan、日志可由命中的 Policy 跳过，Frontend、调用者和 Agent 不能自行声明可信。跳过扫描不是 `CLEAN` Verdict，Artifact 必须保存 Source/Media Category、Policy Version 与完整性证据。
+
+扫描投递按 Artifact Version、SHA-256 与 Scan Policy Version 幂等。Engine 不可用、Signature 过期、Timeout 或解析失败时保持不可用并按可配置的有界退避重试；超过上限进入 `SCAN_FAILED`、告警，Engine 恢复后只能通过受控命令重新入队。`MALICIOUS/SUSPICIOUS` 进入 `QUARANTINED`，不能人工放行或绕过，只能在 Signature/Policy 更新后重新扫描得到 `CLEAN`，或由用户重新上传。只有 `AVAILABLE` Artifact 能下载或进入 Workflow Gate。Presigned Request 默认 `5min`、只对应单一 Object Version，不持久化也不写入日志。文件类型、扫描、Object Lock、技术垃圾清理和存储/安全实现分别由[Data/Messaging/Storage](../07-data-messaging-storage/data-messaging-storage-detail.md)与[Security/Audit/Governance](../08-security-audit-governance/security-audit-governance-detail.md)拥有；本领域依赖其状态而不复制实现。
 
 ## 8. 集成、外部验证与验收
 
 WorkItem 交付按 Source Control 的任务分支、`dev` 集成、外部人工验证、选定 Evidence、验收与 Formal MR 顺序进行。Jenkins 是独立平台：用户手动运行和查看，平台不调用、不读取其状态，也不将其当作自动 Gate；用户可提交带提交人、时间、目标 Commit、引用和说明的外部验证证据。
 
-所有必需 WorkItem 完成集成、测试和外部人工验证后，05 owner 根据每项仓库、任务分支 Commit、集成结果、Artifact hash 与验证证据生成不可变 `IntegrationBaselineEvidence`，不能绑定持续移动的分支 HEAD。Requirement 随后创建并冻结指向该 `integrationBaselineId/hash` 的 `RequirementIntegrationBaselineSelection`。任一必需项的 Commit、Artifact 或测试证据变化都会形成新的 Evidence；02 owner 将旧 Selection 标记为不再当前并使旧验收失效，随后选择新 Evidence 并再次验收。
+所有必需 WorkItem 完成集成、测试和外部人工验证后，02 owner 先冻结当前 `RequirementDeliverySnapshot`，05 owner 再根据该快照生成不可变 `IntegrationBaselineEvidence`，不能绑定持续移动的分支 HEAD。Requirement 通过上述 CAS 与覆盖校验创建并冻结指向该 `integrationBaselineId/hash` 的 `RequirementIntegrationBaselineSelection`。任一必需项的 Commit、Artifact、测试证据或必需集合变化都会形成新的 Evidence；02 owner 将旧 Selection 标记为不再当前并使旧验收失效，随后基于当前快照选择新 Evidence 并再次验收。
 
 验收通过且仍对当前 `RequirementIntegrationBaselineSelection` 有效后，才允许创建各 WorkItem 的 Formal MR。Requirement 进入 `COMPLETED` 的条件同时是：验收有效、所有必需 WorkItem 的 Formal MR 已合并 `main`、没有仍应计入的未完成 WorkItem。GitLab 分支、MR、Webhook、分支保护与 reconciliation 细节由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
 

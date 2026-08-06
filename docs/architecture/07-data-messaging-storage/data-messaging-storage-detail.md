@@ -120,13 +120,19 @@ nats-backup              openbao-recovery observability-logs observability-trace
 
 每个 Class 使用独立 Policy、Versioning、Retention、Quota 与 Capacity Ledger，并服从 [08 的权威 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。Prefix 不能替代 Bucket 级隔离；同一 Class 中的物理 Bucket 必须划分互斥配额，Class Usage 汇总当前/非当前 Version、Object Lock、Delete Marker、Multipart、GC 延迟和元数据估算。
 
+Environment Bucket-Class Capacity Ledger 是 Class 准入的权威运行账本。每个 Class 的版本化参数至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes`、各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区、基于对象分布证据生成的 `rgwMaxObjects` 以及 Desired/Effective Revision；同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`。精确数值和 Ceph Raw Envelope 由 [09 Capacity Profile](../09-infrastructure-operations/infrastructure-operations-detail.md)唯一拥有。
+
+Class Usage 使用保守的 logical stored bytes 口径，聚合全部物理 Bucket/Cluster 实例的 Current Version、Noncurrent Version、受 Lock/Retention 保护对象、Delete Marker/Index、已上传和已预占 Multipart、尚未完成 GC 的对象与标准化 Metadata/Overhead 估算。Ledger、RGW Stats、Cluster Raw 平均值和最满 OSD 分别保留自身单位与阈值；任一 Gate 更危险时取更严格结果，禁止挑选更宽松口径或直接混算 logical/raw bytes。
+
+每次写入或 Backup 预占依次验证 Product Quota（适用时）、Class Operating/Admission、物理 RGW Size/Object Guard、Cluster Raw 与最满 OSD Gate。Class 的 30 天预测按“当前全部占用 + p95/p99 预期写入 + Locked/Multipart 上界 - 已由权威 Reconciler 证明可安全释放的对象”计算；未验证 Backup、只有 Delete Marker 的 Version、失败 Reconcile 和未完成 GC 不得计作可回收。任一 Gate 失败统一返回容量维度 `STORAGE_CAPACITY`，保留失败 Gate、Class、Effective Revision 与 Reservation ID，并触发 Operations Incident；不能把它混同为产品维度 `ARTIFACT_QUOTA`。
+
 Bucket Class 的对象保护矩阵固定为：
 
 | Bucket Class | Versioning / Object Lock | 保留与清理语义 |
 | --- | --- | --- |
-| `requirement-attachments` | 启用 Versioning；普通对象默认不加 Lock | 由 Requirement/Artifact 引用、逻辑删除和产品 Retention 决定清理资格 |
-| `agent-artifacts` | 启用 Versioning；绑定 Decision、Acceptance、Merge 或 Release 的精确版本使用 `GOVERNANCE` Lock | 锁定期和业务引用同时满足后才可进入清理判定 |
-| `audit-worm` | 启用 Versioning；365 天 `COMPLIANCE` Lock | 只按 Audit Retention、Legal Hold 与 08 Security Floor 清理 |
+| `requirement-attachments` | 启用 Versioning；普通对象默认不加 Lock | 当前不进行已接受业务数据的物理清理；只允许未完成 Multipart 与无业务引用 `ORPHANED` 精确 Version 的技术垃圾清理 |
+| `agent-artifacts` | 启用 Versioning；绑定 Decision、Acceptance、Merge 或 Release 的精确版本使用 `GOVERNANCE` Lock | 当前不进行已接受业务数据的物理清理；只允许未完成 Multipart 与无业务引用 `ORPHANED` 精确 Version 的技术垃圾清理 |
+| `audit-worm` | 启用 Versioning；365 天 `COMPLIANCE` Lock | 08 唯一定义 Retention、Legal Hold/调查冻结与策略级删除资格；本模块只执行已获资格的精确 Version 操作 |
 | `postgres-backup` | 启用 Versioning；近期 Backup Object 默认 7 天 `GOVERNANCE` Lock | 还须满足 DEV 7 天、PROD 30 天 Recovery Window 与完整 Base Backup + WAL 恢复链 |
 | `nats-backup` | 启用 Versioning；`GOVERNANCE` Lock 覆盖 DEV 3 天、PROD 7 天有效 Backup Retention | 仍须保留可恢复 Account Backup、Manifest 与 Outbox 对账链 |
 | `openbao-recovery` | 启用 Versioning；默认 7 天 `GOVERNANCE` Lock | 使用离线 OpenPGP；保留与对应 Shamir/Seal Generation、Manifest 和恢复演练共同判定 |
@@ -135,7 +141,7 @@ Bucket Class 的对象保护矩阵固定为：
 
 `GOVERNANCE` Lock 不授予普通服务 Retention Bypass；`COMPLIANCE` Lock 不可由 Super Admin、Reconciler 或普通运维缩短。任何 Class 的 Prefix 都不能替代独立 Bucket、Credential、Quota、Encryption 或 Retention Boundary。
 
-Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体。附件或 Agent Artifact 的归档、逻辑删除、Requirement 恢复状态变化都不释放对象容量；仅在其领域 owner 明确的引用、状态和保留条件满足后才可能改变存储引用。上传和下载仅能由应用授权签发短期、精确版本的 Presigned Request。文件检查由应用 `FileSecurityPort` 处理；只有合格 Verdict 的对象可进入可用业务状态，具体业务状态由其领域 owner 决定。
+Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体。附件或 Agent Artifact 的归档、逻辑删除、Requirement 恢复状态变化都不释放对象容量；仅在其领域 owner 明确的引用、状态和保留条件满足后才可能改变存储引用。上传和下载仅能由应用授权签发短期、精确版本的 Presigned Request。文件检查由应用 `FileSecurityPort` 处理：需要扫描的对象只有合格 Verdict 才可用；由 02/08 的版本化 Source/Media Policy 合法跳过扫描的受信内部纯文本可在完整性验证后不带 Verdict 进入 `AVAILABLE`。本模块不决定扫描分支、Verdict 或 Artifact 业务状态。
 
 Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 和 Environment Bucket-Class Capacity Ledger；任何一侧失败都不形成可用预占。物理 RGW native quota 只作为最后后备保护，不能替代双账本准入。达到产品额度返回 `ARTIFACT_QUOTA`；达到 Bucket Class 或 Raw Capacity 边界返回 `STORAGE_CAPACITY` 并创建 Operations Incident。提高产品配额不能突破 Environment Capacity、08 Security Contract 或 File Security Scanner Envelope。
 
@@ -145,9 +151,9 @@ Backup 是组件自己的应用一致性恢复链：CloudNativePG 使用 Base Ba
 
 当前恢复边界是单站点 Cluster HA 与 Cluster DR，不提供 Zone、Region、Account 或 Site DR 保证。DEV 不是 PROD Standby；每个环境独立执行 Backup、Restore 与 Drill。
 
-`Object Retention Reconciler` 只清理 `audit-worm`、`postgres-backup`、`nats-backup` 和 `openbao-recovery` 中超过各自权威保留期的精确 Object Version。删除前必须同时证明：Object Lock/Retention 到期、无 Legal Hold/调查/恢复/业务引用，且 Backup 类别仍有满足 Recovery Window 和恢复链的更新有效副本。每次判定、拒绝、删除、失败和 GC 验证均追加 Audit。Reconciler 使用专用最小权限身份，不具备 Retention Bypass、跨 Bucket 或通配 Prefix 删除能力。
+`Object Retention Reconciler` 只清理 `audit-worm`、`postgres-backup`、`nats-backup` 和 `openbao-recovery` 中超过各自权威保留期的精确 Object Version。对于 `audit-worm`，08 owner 先依据 Audit Retention、Legal Hold/调查冻结与 Security Floor 产生策略级资格，本模块不得重新解释或缩短；对象执行还必须证明 Object Lock 已到期且无恢复/业务引用。Backup 类别还须证明存在满足 Recovery Window 和恢复链的更新有效副本。每次判定、拒绝、删除、失败和 GC 验证均追加 Audit。Reconciler 使用专用最小权限身份，不具备 Retention Bypass、跨 Bucket 或通配 Prefix 删除能力。
 
-无法完整证明资格、Manifest/索引不一致、删除失败或 GC 未验证时，对象继续计入容量，不能仅因逻辑 Retention 到期扣减。Loki/Tempo 的对象由各自 Backend Retention 清理，Reconciler 不得绕过其索引一致性。Bucket Class Operating Quota、底层 Enforcement 和容量扩展由版本化 `GITOPS_CONFIG`/Environment Capacity Profile 约束，管理后台只读显示。
+无法完整证明资格、Manifest/索引不一致、删除失败或 GC 未验证时，对象继续计入容量，不能仅因逻辑 Retention 到期扣减。当前已经被业务接受的 `requirement-attachments` 与 `agent-artifacts` 只做归档、逻辑删除和引用治理，不进入业务数据物理清理；归档、逻辑删除或 Requirement 恢复均不释放 Object Storage 容量。未完成 Multipart Abort 与无业务引用的 `ORPHANED` 技术垃圾仍可按精确 Object Version 受控清理。Loki/Tempo 的对象由各自 Backend Retention 清理，Reconciler 不得绕过其索引一致性。Bucket Class Operating Quota、底层 Enforcement 和容量扩展由版本化 `GITOPS_CONFIG`/Environment Capacity Profile 约束，管理后台只读显示。
 
 ## 8. 一致性与故障语义
 

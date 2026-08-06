@@ -1,6 +1,6 @@
 # 架构文档重构与可视化设计
 
-> 状态：已确认设计，待实施
+> 状态：已实施并通过验证
 > 日期：2026-08-06
 > 范围：`docs/architecture/` 文档信息架构与 HTML 架构图
 
@@ -148,7 +148,7 @@ docs/architecture/visuals/platform-architecture-map.html
 
 页面包含三个可切换视图：
 
-1. **业务交付链路**：平台责任链展示 Requirement、Route/SDD、Human Gate、WorkItem、Agent、IntegrationBaselineEvidence/RequirementIntegrationBaselineSelection、Integration MR、验收、Formal MR 与 `main`；用户到 Jenkins 另以独立人工动作线呈现；
+1. **业务交付链路**：平台责任链分别展示 05 owner 的 IntegrationBaselineEvidence/Integration MR 与 02 owner 的 RequirementIntegrationBaselineSelection，再进入验收、Formal MR 与 `main`；用户到 Jenkins 另以独立人工动作线呈现；
 2. **逻辑架构**：用户、Gateway、Web、Control Plane、Workflow、Agent、Sandbox、Adapter、数据组件和 Observability；
 3. **部署与信任边界**：当前 DEV、未来独立 PROD、Cloud Account、VPC、Kubernetes、Node Role、外部系统和运维边界。
 

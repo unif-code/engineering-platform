@@ -112,7 +112,7 @@ RGW 承载对象类存储，不承载实时 RBD/CephFS PVC。Bucket Class 业务
 
 ## 8. Observability 与 Operations
 
-首版组件组为：Prometheus 双副本、Thanos Query 双副本、Alertmanager 三副本、Grafana 双副本、Loki monolithic 三副本加 Gateway 双副本、Tempo monolithic 单副本、每 Node OpenTelemetry Agent 加 Gateway 双副本、Hubble Relay 双副本与 UI。首版不包含 Mimir、Kafka、Thanos Object Store、distributed Loki 或 distributed Tempo。
+当前架构基线的组件组为：Prometheus 双副本、Thanos Query 双副本、Alertmanager 三副本、Grafana 双副本、Loki monolithic 三副本加 Gateway 双副本、Tempo monolithic 单副本、每 Node OpenTelemetry Agent 加 Gateway 双副本、Hubble Relay 双副本与 UI。当前不包含 Mimir、Kafka、Thanos Object Store、distributed Loki 或 distributed Tempo。
 
 Loki 入口 Gateway 必须清除客户端提交的 `X-Scope-OrgID`、认证和身份 Header，再根据当前环境的可信 mTLS Identity 注入固定 tenant；NetworkPolicy 禁止绕过 Gateway 访问 Loki。Tempo 固定 `multitenancy_enabled=false`，但该设置不替代入口认证：Trace Ingest 只允许当前环境两个批准的 OpenTelemetry Gateway Identity，查询只允许 Grafana 与只读 Operations Query Identity，并通过 TLS/mTLS、证书用途校验和 NetworkPolicy 分别限制写入与查询端口。Browser、普通 Pod、Sandbox 或任意转发链不能直连 Tempo，也不能通过 Header 取得写入或查询资格。
 
@@ -197,7 +197,27 @@ Active ESSD PVC 可由 07/08/本节的单组件 Profile 逐项复算：
 
 该 BOM 是计费输入，不等于可用业务容量、Kubernetes Allocatable 或故障后容量；Snapshot、Retain 遗留卷、演练临时卷、性能等级和文件系统保留量单列。Active ESSD PVC 已包含 PostgreSQL、Valkey、NATS、OpenBao Data/Audit、Scanner Signature 和 Observability RWO；Temporal 与 Grafana 的持久事实计入 PostgreSQL。Ceph Bucket Class、Audit Emergency Margin 与 Loki/Tempo Object Data 均在已计费的 Raw OSD 内，不能再次相加或按三副本再次乘算；在线 ESSD PVC 与其 Ceph Backup Object 是两类真实、用途不同的成本项。
 
-`audit-worm` 的环境容量由本 Capacity Profile 唯一定义：DEV 正常 Operating Quota 64 GiB、专用 Emergency Margin 16 GiB、admission/native ceiling 80 GiB；未来 PROD 分别为 96 GiB、32 GiB 与 128 GiB。其他 Bucket Class 不得借用 Audit Emergency Margin。进入 Emergency Margin 后，平台优先拒绝 Attachment、普通 Artifact、Trace 等低优先级对象写入，并按 Audit p99 增长率与扩容 Lead Time 判断是否还能可靠提交必需 Audit；无法覆盖 Lead Time 时按 08 Security Contract Fail Closed。365 天 `COMPLIANCE` 保留不能通过缩短 Retention、删除 Version 或绕过 Object Lock 释放容量。
+八类 Bucket Class 的首个 Environment Capacity Profile 固定为：
+
+| Bucket Class | DEV Operating Quota | PROD Operating Quota | Emergency Margin | Admission / RGW Ceiling |
+| --- | ---: | ---: | ---: | ---: |
+| `requirement-attachments` | 16 GiB | 24 GiB | 0 | 等于对应 Operating Quota |
+| `agent-artifacts` | 48 GiB | 56 GiB | 0 | 等于对应 Operating Quota |
+| `audit-worm` | 64 GiB | 96 GiB | DEV 16 GiB / PROD 32 GiB | DEV 80 GiB / PROD 128 GiB |
+| `postgres-backup` | 72 GiB | 128 GiB | 0 | 等于对应 Operating Quota |
+| `nats-backup` | 40 GiB | 80 GiB | 0 | 等于对应 Operating Quota |
+| `openbao-recovery` | 8 GiB | 16 GiB | 0 | 等于对应 Operating Quota |
+| `observability-logs` | 150 GiB | 150 GiB | 0 | 等于对应 Operating Quota |
+| `observability-traces` | 50 GiB | 50 GiB | 0 | 等于对应 Operating Quota |
+| **Operating Quota 合计** | **448 GiB** | **600 GiB** | **16 GiB / 32 GiB，仅 Audit** | — |
+
+DEV 的 `3 TiB Raw × 50% ÷ 3 replicas = 512 GiB logical`，未来 PROD 的 `4 TiB Raw × 50% ÷ 3 replicas ≈ 682.7 GiB logical`；因此 50%-Raw 线内未分配 Reserve 分别为 64 GiB 与约 82.7 GiB。扣除 Audit Emergency Margin 后，纯基础设施 Reserve 分别约为 48 GiB 与 50.7 GiB。Reserve 用于 Metadata、历史 Version、Delete Marker、Multipart、GC 延迟、OSD 倾斜、预测误差及 Recovery/Backfill，不能被普通 Class 借用；Audit Margin 也不能被其他 Class 借用。
+
+每个 Class 在 Operating Quota 70% 产生 Warning、85% 产生 Critical；当前用量或 30 天预测达到 70% 即启动扩容流程，不等待硬拒绝。Cluster Raw 平均值、任一 OSD 当前或 30 天预测达到 50% 同样启动扩容；Ceph `nearFullRatio=0.70`、`backfillFullRatio=0.75`、`fullRatio=0.80` 是更晚的保护阈值，不得用于放宽 50% Planning Boundary。`rgwMaxObjects` 不使用猜测常量，必须由至少一周对象大小分布、日对象数、Version/Lock 放大和 Multipart 证据生成并进入 PCS 验证；证据不足时 Capacity Candidate 失败。
+
+`postgres-backup` 必须覆盖 Recovery Window 内全部压缩 Base Backup/WAL、一个额外有效恢复点、Working Set、按需备份与 Version/Lock/Multipart 放大；`nats-backup` 必须覆盖 DEV 3 天、PROD 7 天 Retention 及上传重叠；`openbao-recovery` 必须按 Snapshot p95 验证，并计入 PROD 7 天 Lock 下最多约 168 个小时 Snapshot、每日/按需点、Manifest 与历史 Version。任何实测结果越过 Class Envelope 都必须调整 Capacity Candidate 或增加同规格 OSD/Storage Node，不能缩短 Audit Retention、Object Lock 或 Recovery Window。
+
+`audit-worm` 达到正常 Operating Quota即进入 Critical Capacity Incident并使用专用 Emergency Margin，同时按剩余 Margin、Audit p99 写入率和扩容 Lead Time判断可靠提交能力。平台优先拒绝 Attachment、普通 Artifact、Trace 等低优先级新写；若 Margin 或底层 Raw Gate无法覆盖 Lead Time，所有必须产生 Audit却无法可靠持久化的新受审计状态变更按 08 Security Contract Fail Closed。365天 `COMPLIANCE`保留不能通过缩短 Retention、删除 Version或绕过 Object Lock释放容量。
 
 Cluster 外 `kubernetes-etcd-backup` Repository、外部 Watchdog/Collector、NLB、KMS、NAT/EIP/Egress 与恢复演练瞬时资源不在 Node/PVC 磁盘合计中，必须作为独立 TCO 项。`Environment TCO Snapshot` 是版本化只读 Contract，引用 Binding、PCS、Capacity Profile 与报价时间/有效期，并记录精确 SKU、数量、购买方式/期限、磁盘类型与性能、NLB、KMS、外部 Backup、NAT/EIP/Egress、网络/流量假设、币种、税费和折扣。Region、Zone、SKU 和价格由部署输入填充；先计算当前 DEV，未来 PROD 单独估价。
 

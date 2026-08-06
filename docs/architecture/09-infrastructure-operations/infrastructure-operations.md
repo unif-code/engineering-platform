@@ -39,7 +39,7 @@ OpenTelemetry 是统一遥测协议。Prometheus/Thanos Query、Alertmanager、G
 
 当前承诺为单站点 Cluster HA 与 Cluster DR，不承诺 Zone、Region、Account 或 Site DR；DEV 不是 PROD Standby。组件数据恢复以 07 为准，信任与解密恢复顺序以 08 为准。
 
-首个环境容量 Contract 为 DEV 12 个 Node、未来 PROD 15 个 Node，并保留 Sandbox 的 N+1 余量。精确 Region、Zone、SKU、价格和折扣都是部署输入；它们在通过 PCS 与 Provisioning Gate 后才进入只读 TCO Snapshot。
+环境容量 Contract 为 DEV 与未来 PROD 分别定义 Node Role、数量、资源、存储与 Sandbox N+1 余量；完整数值只由[详细说明](./infrastructure-operations-detail.md)拥有。精确 Region、Zone、SKU、价格和折扣都是部署输入；它们在通过 PCS 与 Provisioning Gate 后才进入只读 TCO Snapshot。
 
 ## 不变量
 

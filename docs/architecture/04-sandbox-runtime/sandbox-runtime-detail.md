@@ -59,7 +59,7 @@ Controller 使用 Execution ID、Generation、Fencing Token、唯一约束与 Re
 
 ## 4. Resource Profile、容量与 N+1
 
-Resource Profile 是不可变的 `GITOPS_CONFIG`，已形成的 Binding 始终使用原 Profile。变更 Request/Limit、Unit Weight 或 Runtime Binding 必须创建新的 Profile ID、Digest 与 Capacity Profile Candidate；首版不向用户提供 Small/Large 自选规格。
+Resource Profile 是不可变的 `GITOPS_CONFIG`，已形成的 Binding 始终使用原 Profile。变更 Request/Limit、Unit Weight 或 Runtime Binding 必须创建新的 Profile ID、Digest 与 Capacity Profile Candidate；当前架构基线不向用户提供 Small/Large 自选规格。
 
 | Profile | CPU Request / Limit | Memory Request / Limit | Ephemeral Request / Limit | Unit |
 | --- | --- | --- | --- | ---: |

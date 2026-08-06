@@ -40,7 +40,7 @@ OpenBao API/UI Listener 只启用 TLS 1.2/1.3，并以 ClusterIP 暴露。8200 �
 
 Agent Injector 只将 Secret 写入 Pod `tmpfs` 内存文件，并用文件权限限制读取者。Secret 禁止写入环境变量、镜像、Git、Prompt、Artifact、PV、日志、Trace 或 Metric；进程退出、Pod 销毁或 Lease 失效时，内存文件随运行时清除。Workload 必须通过其自身 Kubernetes Identity 获取短期 Token，不共享人类或其他服务的 Token。
 
-首版数据库凭据是按服务、用途、Schema 与环境隔离的静态最小权限凭据，由 Agent Injector 写入 Pod `tmpfs` 文件；Deployment、Helm Values、ConfigMap 和 Environment Variable 不保存凭据。未来启用动态数据库凭据时，只替换 `SecretManagerPort`/credential provider、轮换与连接重建实现，不改变领域模块、数据库 owner 或授权语义。
+当前架构基线的数据库凭据是按服务、用途、Schema 与环境隔离的静态最小权限凭据，由 Agent Injector 写入 Pod `tmpfs` 文件；Deployment、Helm Values、ConfigMap 和 Environment Variable 不保存凭据。未来启用动态数据库凭据时，只替换 `SecretManagerPort`/credential provider、轮换与连接重建实现，不改变领域模块、数据库 owner 或授权语义。
 
 每个环境采用 Shamir `5/3` 初始化：共五个分片，任意三个可完成解封。没有外部 Seal KMS/HSM。当前所有分片由同一保管人暂管，这是明确的治理例外，不构成多人制衡；交接、盘点、使用与变更都必须写入独立 Audit。OpenBao Root Token 不作为日常服务凭据，Root 操作只在受控 Break-glass 条件下执行。
 
@@ -151,11 +151,11 @@ File Security Worker 使用 [09 PCS](../09-infrastructure-operations/infrastruct
 
 `freshclam` 每 2 小时检查一次，并对副本使用受控随机 Jitter；数据库更新先验证签名、完整性和 Engine Load Test，再由 `clamd` Concurrent Reload。连续 6/12/24 小时未成功更新分别为 Warning/Critical/退出 Ready；超过 24 小时的副本不能返回 `CLEAN`，新对象保持不可用。`MaxThreads=2`、`MaxQueue=4`，单副本最多并发扫描 2 个对象；单副本故障时环境并发降至 2，由持久化异步队列承接任务。
 
-只有 `CLEAN` 且扫描覆盖完整的对象可以进入可用业务状态。其余 Verdict、超限、超时、签名库不可用和覆盖不完整全部 Fail Closed；业务状态变更由其领域 owner 定义。文件上传配额、Object Version、Bucket Capacity 与 Artifact 语义以[07](../07-data-messaging-storage/data-messaging-storage-detail.md)为准。
+需要扫描的对象只有在 Verdict 为 `CLEAN` 且扫描覆盖完整时才可进入可用业务状态；其余 Verdict、超限、超时、签名库不可用和覆盖不完整全部 Fail Closed。平台内部受信流程生成且类型受约束的纯文本 Spec、Plan、日志可以由版本化 Source/Media Policy 跳过扫描，但该决定由服务端生成并绑定 Artifact Source、Media Category 与 Policy Version，Frontend、Agent 或调用方不能声明可信，也不能把“跳过”记录为 `CLEAN`。扫描错误的有界重试、`SCAN_FAILED`、受控重新入队、Quarantine 不可绕过与 Artifact 业务状态由 [02](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有。文件上传配额、Object Version 与 Bucket Capacity 以[07](../07-data-messaging-storage/data-messaging-storage-detail.md)为准。
 
 运行镜像必须具备可验证 provenance、SBOM、漏洞扫描和签名。部署 Gate 验证镜像 digest、签名身份、SBOM、扫描结论和 PCS 兼容性；不满足任一条件的镜像不得进入工作负载。镜像扫描结论和例外只记录受限摘要与证据引用。
 
-首版 Image Security 使用独立 Trivy 与 `ImageSecurityPort`，不复用 ClamAV、CI 或 Jenkins。Quarantine 中保存不可变 Manifest/List Digest；Scanner 使用 read-only、repository-scoped Registry Identity。每环境运行 2 个 Replica，每副本单并发；单副本 CPU Request/Limit 为 `500m/2 CPU`，Memory Request/Limit 为 `1/4 GiB`，Ephemeral Storage Request/Limit 为 `10/20 GiB`。
+当前架构基线的 Image Security 使用独立 Trivy 与 `ImageSecurityPort`，不复用 ClamAV、CI 或 Jenkins。Quarantine 中保存不可变 Manifest/List Digest；Scanner 使用 read-only、repository-scoped Registry Identity。每环境运行 2 个 Replica，每副本单并发；单副本 CPU Request/Limit 为 `500m/2 CPU`，Memory Request/Limit 为 `1/4 GiB`，Ephemeral Storage Request/Limit 为 `10/20 GiB`。
 
 独立 `trivy-data-sync` 以 6 小时周期更新 Vulnerability DB，以 24 小时周期更新 Java DB 与 Checks。Freshness Gate 为：Vulnerability DB 12/18/24 小时 Warning/Critical/Expired；仅对相关镜像启用的 Java DB 为 36/48/72 小时；Checks 为 48/72 小时/7 天。数据库过期、Coverage 不完整、Schema/Digest/Smoke Test 失败或 Scanner Error 均 Fail Closed。
 
@@ -171,7 +171,7 @@ PENDING_SCAN → PASSED | BLOCKED | ERROR | EXPIRED
 
 Audit 是独立的追加式不可篡改事实。任何需要 Audit 的受保护状态变更，只有在 Audit 与对应持久证据可靠提交后才能成功；Audit 容量无法覆盖扩容 Lead Time 时相关写操作 Fail Closed。Coverage 至少包括 Identity/认证因子重置、授权/配置、Requirement/Workflow/MR/Attempt、Secret/PKI、Archive/Restore/Delete、DLQ/Replay、Provider Feed、Break-glass、加密轮换、文件/镜像判定、工作负载安全异常和治理操作。平台、OpenBao、Provider 与 Kubernetes Audit 独立保存并可按 Correlation ID、环境和对象关联；任一来源都不能替代其他来源。
 
-`audit-worm` 默认使用 365 天 `COMPLIANCE` Object Lock。Audit 正文不保存 Secret、密码、TOTP、Token、Private Key、完整 Presigned URL、Prompt 或源码。对象版本、Retention、Legal Hold 与删除资格由 07 的 Object Retention Contract 定义。
+`audit-worm` 默认使用 365 天 `COMPLIANCE` Object Lock。本文唯一拥有 Audit Retention 期限、Legal Hold/调查冻结、策略级删除资格与不可缩短 Security Floor；任何身份都不能在 Retention 到期前删除、缩短或绕过锁定。Audit 正文不保存 Secret、密码、TOTP、Token、Private Key、完整 Presigned URL、Prompt 或源码。07 只拥有 Object Version、容量计入、精确删除执行与 Reconciler 机制，并且必须消费本文产生的资格，不能另行解释 Audit Retention 或 Legal Hold。
 
 Break-glass 仅通过 01 的受限 Recovery Port 和 GitOps 锁定的一次性 Job/CLI 执行，不经过 Web 页面、普通平台 API 或直接数据库修改。它使用短期、最小化的高权限资格，必须给出原因、双 Audit 证据、执行范围和失效时间。无法建立审计双写、身份验证、受限范围或恢复证据时，Break-glass 不执行。
 

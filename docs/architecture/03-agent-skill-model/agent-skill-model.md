@@ -22,13 +22,13 @@ Agent Run → Agent Attempt → immutable Execution Binding
 ```
 
 - `Agent Definition` 描述职责、输入输出、所需逻辑能力与权限模板。
-- Runtime Bundle 是随 Runtime 镜像发布的 Skill 集合；首版为 Superpowers。
+- Runtime Bundle 是随 Runtime 镜像发布的 Skill 集合；当前架构基线使用 Superpowers。
 - `Chat Model` 服务于用户对话，`Execution Model` 服务于 Agent；二者独立治理，不能相互隐式继承。
 - Run 是业务目标，Attempt 是一次可复现执行；重试或变更输入创建新 Attempt。
 
 ## 模型路由
 
-用户对话按 Chat Model Policy 的 Allowlist 选择 Deployment；Agent 只请求如 `coding-backend` 或 `review-code` 的逻辑 Capability，由 Execution Model Route Policy 选择实际 Deployment。首版通过阿里云百炼 `compatible-mode` 接入，Provider 参数由 Adapter 映射，不能渗入 Workflow 或前端领域模型。
+用户对话按 Chat Model Policy 的 Allowlist 选择 Deployment；Agent 只请求如 `coding-backend` 或 `review-code` 的逻辑 Capability，由 Execution Model Route Policy 选择实际 Deployment。当前架构基线通过阿里云百炼 `compatible-mode` 接入，Provider 参数由 Adapter 映射，不能渗入 Workflow 或前端领域模型。
 
 联网搜索与深度思考是 Deployment Capability。Model Search 与批准的 Connector 均是受控路径，不等价于开放 Sandbox 公网出口。
 
@@ -36,7 +36,7 @@ Agent Run → Agent Attempt → immutable Execution Binding
 
 Attempt 在启动前形成不可变 Execution Binding，固定 Agent、Runtime/Bundle/Skill、Model、Context、Tool/Network Permission、仓库分支、资源约束、Policy 与 Deadline。运行中不得静默换 Model、Skill、Runtime、Policy、仓库或分支。
 
-主路径是 `CREATED → BINDING → QUEUED → PROVISIONING → RUNNING → FINALIZING → SUCCEEDED`。等待用户输入或 Child Execution 时释放活动资源，恢复时沿用同一 Binding 并重新排队；终态不复活。Sandbox 的 Lease、容量、Kata/KVM 与 Secret Materialization 只通过 Sandbox Port 使用。
+Attempt 生命周期覆盖创建、Binding、排队、Sandbox 物化、运行、收尾与终态；完整状态枚举、转换 Guard 和失败语义只由[详细说明](./agent-skill-model-detail.md)定义。等待用户输入或 Child Execution 时释放活动资源，恢复时沿用同一 Binding 并重新排队；终态不复活。Sandbox 的 Lease、容量、Kata/KVM 与 Secret Materialization 只通过 Sandbox Port 使用。
 
 ## 最小权限与可审计性
 
