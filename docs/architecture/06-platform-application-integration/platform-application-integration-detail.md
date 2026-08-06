@@ -1,0 +1,146 @@
+# 平台应用与集成详细说明
+
+> 文档层级：L2 规范事实源
+> 对应主文：[平台应用与集成](./platform-application-integration.md)
+
+## 1. 责任边界
+
+本文是前端应用边界、Control Plane 模块化单体、Deployable、Port/Adapter、Typed Configuration、应用通信、External Provider Contract、Operations Read Model、Console Access 与安全公告的唯一规范事实源。
+
+本文消费领域 owner 的稳定 ID、受保护命令与有效配置快照，不重新定义 Identity、授权、Requirement、Agent、Sandbox 或 GitLab 的状态机。PostgreSQL、Valkey、NATS、Temporal 与 Object Storage 的运行和恢复事实由 [数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有。安全密钥、加密、Secret 与 Audit 保留规则只见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；Cluster、Node、组件版本和总容量只见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
+
+## 2. Umi Web 与 Session Bootstrap
+
+用户端和平台管理后台是同一 Umi Max、React、TypeScript 应用的两个路由空间，使用同一 Design Token、Layout、API Client 与当前环境 Session；`/admin` 是路由前缀，不是第二个工程。建议目录边界为：
+
+```text
+src/
+  pages/                         路由装配
+  features/{auth,navigation,requirements,workflows,runs,agents,administration}/
+  components/                    跨 Feature UI
+  services/{generated,transport}/
+  models/ hooks/ types/ utils/
+```
+
+依赖方向为 `pages → features → services/generated`；共享组件不得依赖具体业务 service，Feature 间只能使用公开入口。OpenAPI 生成客户端位于 `services/generated` 且不得手改；transport 将服务端错误归一为 Problem Details，页面不得依赖底层 HTTP 客户端异常。
+
+状态边界如下：路由、筛选与对象标识使用 URL；服务端数据由 React Query 管理；当前用户、当前 Workspace 与轻量 UI 偏好使用 Umi Initial State/Model；表单使用 ProForm 或 Ant Design Form；临时交互状态保留在组件；SSE/WebSocket 更新必须携带实体版本，旧事件不得覆盖新状态。
+
+Session Bootstrap 固定为：
+
+```text
+Secure + HttpOnly + SameSite Cookie
+→ 当前环境 me（Principal、组织摘要、Workspace、有效 Capability）
+→ navigation（预注册 routeKey、Capability、Scope、排序、元数据）
+→ 静态 Route Registry
+→ 受保护 API 的服务端实时授权
+```
+
+后端不能下发任意模块路径、脚本或 URL。Umi Access、菜单和按钮只控制用户体验；API 仍调用 [01 的当前授权判定](../01-identity-organization-authorization/identity-organization-authorization-detail.md)。浏览器不持有或直连数据库、消息系统、Kubernetes、Secret Manager、RGW 管理接口、Model Gateway 或基础设施凭据；对象读写仅可在授权后使用绑定精确 Object Version 的短期 Presigned Request。
+
+## 3. Python Control Plane 与模块边界
+
+Control Plane 使用 Python 3.12、FastAPI、Pydantic 2、SQLAlchemy 2 与 Alembic；依赖及 PostgreSQL Driver 版本由锁文件固定。它是一个 Python 项目和一个业务部署单元的**模块化单体**，不是预先拆分的微服务。
+
+```text
+backend/control_plane/app/
+  bootstrap/
+  modules/{identity,organization,workspace,authorization,configuration,
+           requirement_workflow,agent_run,audit}/
+  shared/{api,db,events,observability,security}/
+```
+
+每个模块内部使用 `api/`（HTTP DTO、路由、鉴权声明）、`application/`（命令、查询、用例与事务）、`domain/`（实体、值对象、领域服务、事件）、`ports/`（Repository 与外部依赖接口）和 `adapters/`（SQL、Provider、Transport 实现）。模块拥有自己的领域模型、数据库 Schema、迁移目录、数据访问账号、配置 Schema 和 Audit 责任；`shared` 不得承载无主业务表或无主业务规则。
+
+模块只能调用其他模块公开的 Application Facade 或消费领域事件，禁止导入其 ORM Model、Repository 或内部 Entity。每个本地事务只改写一个模块拥有的数据；跨模块动作通过 Facade 编排或 Transactional Outbox 收敛，禁止分布式事务。API 只返回显式 DTO，架构测试必须验证依赖方向和禁止导入规则。
+
+模块未来可以连同 Domain、Application、Schema、Migration、Configuration、Audit 责任与公开 Contract 一起独立提取；在提取发生前，它们仍在同一模块化单体中运行。
+
+## 4. Deployable 与 Port/Adapter
+
+Control Plane 之外的独立 Deployable 按信任、高风险或独立扩缩容边界划分：
+
+| Deployable | 责任 | 禁止拥有的事实 |
+| --- | --- | --- |
+| Platform Orchestrator Worker | Temporal Workflow、Timer、Activity 与 Agent 编排 | Requirement、用户与权限主数据 |
+| Model Gateway | Model Catalog、能力映射、Route、配额、Usage 与 Provider 兼容 | Requirement Workflow |
+| Sandbox Controller | Resource/Runtime Profile 的物化、Lease/Fencing、回收 | 业务审批 |
+| GitLab Connector | SourceControlPort 的协议转换与外部效果收敛 | 平台 Capability 或业务状态 |
+| File Security Worker | 文件检查与规范化 Verdict | Artifact 领域归属 |
+| Operations Adapter | 受限查询与外部状态投影 | 基础设施 Desired State |
+
+稳定 Port 至少包括 `SourceControlPort`、`ContainerRegistryPort`、`ModelProviderPort`、`WorkflowOrchestratorPort`、`EventBusPort`、`CachePort`、`SecretManagerPort`、`ObjectStoragePort`、`FileSecurityPort`、`ImageSecurityPort`、`ArtifactSignerPort`、`SandboxPort`、`ImageBuildPort`、`TelemetryPort`、Metrics/Log/Trace/Alert Query Port、`ConsoleAccessPort`、`OperationsStatusFeedPort`、`TrustBundlePort` 与 `ServiceIdentityPort`。领域 DTO 不泄露厂商 SDK 对象、Pod、消息、Token、Bucket Admin API 或 Cloud Resource ID。
+
+Browser 的业务请求只经当前环境 `platform-gateway`；内部同步调用携带 Workload Identity、`traceparent`、request ID 与 correlation ID。TLS/mTLS 与业务授权分别校验。外部 Webhook 必须先验签、持久化与去重，之后异步处理。外部调用必须有 timeout、有限重试与 circuit breaker；没有幂等保证的外部效果进入 `UNKNOWN/RECONCILIATION`，不得虚构 exactly-once。
+
+## 5. 同步、异步与一致性
+
+同步调用适用于认证、查询、校验和命令受理；长任务同步只返回受理结果，状态通过 Query、SSE 或事件取得。Workflow 的编排事实由 [03](../03-agent-skill-model/agent-skill-model-detail.md)拥有，持久化约束由 [07](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有。
+
+```text
+单一模块领域写入 + Audit + Outbox
+             └── 同一 PostgreSQL transaction
+→ Relay 取得 EventBus 持久 ACK
+→ 标记已发布
+→ Consumer Inbox 以唯一键去重
+→ Effect Ledger 完成外部副作用
+→ 业务提交后 Ack
+```
+
+传输为 at-least-once；Outbox Relay 可重试，Inbox/Effect Ledger 必须将重复交付归并为相同业务效果。大对象仅传 Object Reference。命令使用稳定 Idempotency Key 与显式版本/并发条件；消息的 Schema 与主版本通过 Contract 演进，不允许消费者猜测未知字段或将传输顺序当作业务顺序。
+
+## 6. Typed Configuration Contract
+
+每个领域模块拥有自己的注册配置、类型、默认值、约束、解析器及其 Policy 语义；Configuration Catalog 只枚举这些已注册 Schema，禁止通用 Key/Value、任意 JSON、SQL、表达式或脚本编辑器。配置分类固定为：
+
+| 分类 | 权威事实与通道 | 应用边界 |
+| --- | --- | --- |
+| `PLATFORM_POLICY` | 对应模块 PostgreSQL；受控后台发布 | 可产生 Effective Snapshot |
+| `GITOPS_CONFIG` | Git/Helm/Manifest | 后台只读，变更走 GitOps |
+| `SYSTEM_INVARIANT` | 代码、数据库约束、安全规则 | 只读且不可降级 |
+
+只有当前有效 Super Admin 通过 [01 的 `platform.configuration.manage`](../01-identity-organization-authorization/identity-organization-authorization-detail.md) 才能创建、校验、发布或回滚 `PLATFORM_POLICY`；每次发布或回滚重新检查当前权限、记录原因并完成新的 TOTP Challenge。发布最小原子单位为单一模块 Namespace 与单一 Scope 的 ChangeSet，使用 Active Pointer CAS；跨模块 ChangeSet 不伪装为全局原子事务，回滚创建新版本而不删除历史。
+
+每项注册配置声明类型、单位、时区、默认值、范围、允许值、依赖、Scope、继承、事实源、变更通道、Effect Semantics、Promotion Mode、回滚值与 Redaction。发布依次完成服务端类型/依赖/Security Floor 校验、Impact Preview、TOTP Challenge 与 Published；生效语义仅可为 `IMMEDIATE`、`NEW_OBJECT`、`NEXT_SCHEDULE`、`NEW_ATTEMPT`、`RESTART`、`ROLLOUT` 或 `RECREATE` 等受控枚举。
+
+每个需要冻结配置语义的对象在建立时保存所属模块解析的 Effective Snapshot 与版本；既有快照不被后来发布改写。DEV→PROD Promotion 传递签名 Canonical JSON Bundle；PROD 不读 DEV 运行时状态、不复制数据库或 Secret，导入后按本地 Schema、Security Floor、Scope、Envelope 与 Secret Reference 重新验证并形成本地 Draft，再由本地 Super Admin 发布。Promotion provenance、乱序保护和差异投影均属于此 Contract 的可重建查询事实，不能成为跨环境同步服务。
+
+## 7. External Provider Contract
+
+External Provider Contract 只治理平台外的 Cloud/Operations Plane Binding：`CLOUD_FOUNDATION`、`BUSINESS_EDGE`、`CONTROL_PLANE_ENDPOINT`、`EGRESS`、`CONTROL_PLANE_RECOVERY`、`EXTERNAL_WATCHDOG`、`PROVIDER_AUDIT` 与 `EXTERNAL_PROVIDER_CONSOLE`。集群内 Grafana、Hubble、Temporal、OpenBao 的 Console 使用本地 Console Access Contract；GitLab、Model Provider 与安全公告 Feed 由各自 Connector/Source Adapter 管理。Jenkins 是用户手工使用的外部系统，首版不存在 Jenkins Adapter、Webhook 或状态投影。
+
+运维/IaC拥有 Cloud Account、网络、外部 Edge、DNS、Egress、Cloud KMS、Cluster 外 Backup、Watchdog、Provider Audit 及其变更恢复；平台只拥有 gateway 之后的应用路由、认证、稳定 Infrastructure Port、状态 Feed 校验、只读 Projection、告警关联与受权 Console 入口。Super Admin 和平台 API 不跨越这个边界。
+
+每个外部依赖必须有版本化、不可原地修改的 `ExternalProviderBinding` Generation，至少记录 Environment、Binding ID/Kind、Provider Mapping、逻辑 Endpoint/Resource Reference、方向/协议、Trust Profile、Desired IaC/PCS Revision、健康/失败 Contract、数据分类、Operations Owner、Runbook、Console Link 与生命周期。只允许保存 Secret Reference、证书 Fingerprint、Key ID 等非敏感标识；凭据和恢复材料由 [08](../08-security-audit-governance/security-audit-governance-detail.md) 管理。
+
+权威链为：Cluster 外 IaC/PCS/`CloudEnvironmentBinding` 定义 Desired → Provider API/外部探针提供 Observed → Provider Audit 记录变更 → 平台保存已签名 Feed 的只读 Projection。Projection、页面颜色与人工备注不是 Desired State；Observed 偏离 Desired 时标记 `DRIFT` 并链接 Runbook，不从平台自动修复。
+
+每个环境有一个位于目标 Kubernetes Cluster 外、由运维管理的 `Environment Operations Collector` 逻辑实例。它以彼此隔离的短期只读/探测身份读取本环境 Provider、IaC 摘要、Edge/Egress、外部 Backup、Watchdog 与 Audit；不持有业务数据库、平台用户、OpenBao 或 Kubernetes Admin 凭据，也不读取另一环境。写 Provider 的恢复工具与只读 Collector 必须是不同 Identity、Process 和 Audit 用途。
+
+Collector 经 `OperationsStatusFeedPort` 推送 Canonical、签名、版本化的 `ExternalProviderStatusEnvelope`。Envelope 至少包含 Schema Version、Environment、Binding/Generation、Collector Lineage、全局 Envelope ID、Lineage 单调 Sequence、生成/到期时间、Coverage、Observed Health/Drift、Incident、IaC Revision、Payload Digest 与 Signing Key ID；不得包含 Access Key、Token、Cookie、完整账号标识、Secret 或敏感原始 Provider 响应。
+
+Ingest 依次验证传输策略、环境与 Binding Generation、Schema、Signing Key 状态/Scope、签名与 Digest、Envelope ID、Sequence、时钟偏差与 `Valid Until`。High-water Mark 的键为 `(environment, binding, generation, collector lineage)`：同 Sequence 同 Digest 幂等成功、同 Sequence 不同 Digest 为安全冲突、低序号拒绝。未知、过期、重放、乱序、不兼容或签名错误均拒绝并产生结构化 Audit/Alert；恢复后不能静默清零 High-water Mark。成功只更新当前环境 Operations Read Model，保留非敏感收取证据。
+
+External Watchdog 是 Cluster 外独立告警链，必须在 Kubernetes、Control Plane、PostgreSQL 和 Collector 均不可用时仍能通知失联；Collector 只能投影其结果。Feed 超过 `Valid Until`、签名无效或 Collector 不可用时状态为 `STALE/PARTIAL/UNKNOWN`，不保留旧绿色状态。
+
+## 8. Operations Read Model、Console 与安全公告
+
+Operations Read Model 是当前环境的可重建只读投影，统一查询组件 Baseline、有效配置、Health、容量、性能、Backup/Restore、依赖、Alert、Gap、Drift 与趋势。它消费受限 Observability/Operations Adapter，不替代业务事实、Audit、IaC Desired State 或专业查询产品。页面层级固定为：
+
+```text
+全局概览 → 组件详情 → 实例 / 告警 / Gap / Drift / Runbook
+```
+
+管理后台按 Capability + Scope 展示当前环境的 Kubernetes、PostgreSQL、Valkey、NATS、Temporal、Object Storage、Agent/Sandbox、Model、GitLab 与外部 Provider 状态。`GITOPS_CONFIG`、PCS、Replica、Node、Ceph fullness 等基础设施值仅展示 Desired/Effective/Drift，不能从后台写入。任何投影 Lag、查询失败或 Coverage 不完整都必须显式显示，不得把部分结果伪装为健康。
+
+`ConsoleAccessPort` 在每次跳转前校验当前 Session、Capability 和 Scope，生成受控的新标签页入口；Grafana、Hubble、Temporal、OpenBao 与外部 Provider Console 均不使用 iframe。平台不向浏览器暴露 Data Source、Kubernetes、Cloud 或 Console Admin Credential。
+
+安全公告采用 API 拉取而非任意网页抓取。Source Adapter 仅访问批准的 CISA KEV、NVD API 2.0 与 OSV API，并各自隔离 Endpoint、timeout、限流与凭据引用。Technology Inventory 是平台级版本化配置；采集按配置的时区/周期执行，增量结果以 CVE 优先、来源 Advisory 与规范化指纹辅助去重，筛选匹配 Inventory 的 CISA KEV 与 High/Critical 漏洞。部分来源失败时公告必须标识 Coverage；全部失败时保留上一期、不发布空公告并告警。公告、游标、来源摘要/Hash、去重、筛选、重试、生成与发布均可查询且可审计；可见性只由公告读取 Capability + Scope 判定。
+
+## 9. 不变量
+
+1. DEV 与 PROD 同源但完全独立实例化，绝不共享 Web、gateway、Session、Control Plane、数据库、凭据或运行时状态。
+2. 当前 Control Plane 始终是模块化单体；独立 Deployable 与未来可提取模块均不得被描述为已存在的领域微服务。
+3. 领域模块只依赖公开 Contract；Adapter 可替换，领域语义与私有数据边界不可被 Adapter 绕过。
+4. Policy 发布权限、有效版本与快照可追溯；前端、脚本或旧缓存不能自行决定有效配置。
+5. 外部状态的唯一导入形式是已验证、可去重、受时效约束的只读 Envelope，平台不接受 IaC、Shell、Provider Mutation 或任意 Callback。
