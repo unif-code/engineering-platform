@@ -167,6 +167,12 @@ CREATED | QUEUED | PROVISIONING | RUNNING | FINALIZING | SUCCEEDED
 
 Child 使用独立 Execution ID、Binding、Lease、Credential 与 Fencing Token。Child 终态先固化 Digest、SBOM/Provenance、日志、Artifact 或结构化错误，再释放资源。Parent 仅在仍等待、未取消/归档/删除/超时、原 Binding 与 Checkpoint 有效且结果属于绑定 Child 时回到 `QUEUED`。Child 失败自身不终结 Parent；Parent 的后续处理由 Tool/Workflow Policy 决定。
 
+Child 完成 `FINALIZING` 且其 Build Lease 可安全释放时，若 Parent 仍通过上述恢复校验，系统必须在同一受控提交中释放 Child Lease，并为该 Parent 创建专属 `ParentContinuationReservation`。该 Reservation 只用于重新取得 Parent 原 Execution Binding 所绑定的 standard Agent Lease；具体 Resource Profile、Unit Weight、Capacity Ledger 与 Lease 原子实现由[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)拥有。
+
+Parent 随后进入 Agent Continuation Queue，优先使用自己的 Reservation 恢复；剩余容量才向普通新 Agent 或后续 Build 开放。优先恢复不得绕过 `agent.sandbox.active_attempt_limit`、Resource Vector、Placement、并发或安全 Gate，也不得抢占现有执行。
+
+`ParentContinuationReservation` 必须绑定 Parent、原 Binding、Generation/Fencing Token、版本化 TTL 与 Policy Version，并通过 Reconciliation 收敛。Parent 失效、取消、归档、删除或超时，恢复 Gate 失败，或 TTL 到期时，Reservation 必须立即释放，不能永久占用容量。本领域拥有 Parent/Child 生命周期和优先恢复语义；Sandbox Runtime 拥有 Reservation 对 Capacity Ledger/Lease 的原子物化与释放。
+
 Parent 取消、Requirement 归档/删除或 Deadline 到期时，须级联安全终止非终态 Child；迟到 Child 结果只可审计，不得复活 Parent。Parent/Child 的队列、执行和总 Deadline 分别保存，不可用 `WAITING_INPUT` 默认期限重置。Lease、资源向量与物理调度仅通过[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)契约处理。
 
 ## 8. Context、Tool、Network 与权限
