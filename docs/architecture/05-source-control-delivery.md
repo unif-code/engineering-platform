@@ -1,66 +1,62 @@
 # GitLab、MR 与交付集成
 
 > 文档层级：L1 精简版
-> 状态：设计基线（待整体评审）
+> 状态：完整架构基线（已批准）
+> 更新日期：2026-08-06
 > 详细设计：[GitLab、MR 与交付集成详细设计](./05-source-control-delivery-detail.md)
 
 ## 1. 模块目标
 
-用统一的 Source Control Adapter 管理 Workspace 仓库、Requirement 分支、Commit、AI Review、MR 和合并，并为未来替换或增加 Git Provider 保留边界。
+通过稳定 Source Control Port 管理 GitLab Project、WorkItem 仓库绑定、任务分支、Integration MR、Formal MR、Review 和 Merge。平台不复制 GitLab Project，也不让 Workflow 依赖 GitLab 私有响应或凭据格式。
 
-## 2. Workspace 仓库
+## 2. Project 与仓库绑定
 
-开发 Leader连接 GitLab 后，可以从凭据可见的仓库中选择部分仓库加入 Workspace。只有 Workspace 已授权的仓库才能被 Requirement 和 Agent 使用。
+平台中的 Project 直接对应 GitLab Project。Workspace 只暴露已经授权的 GitLab Project，平台授权不复制或推导一套 GitLab 仓库岗位体系。
 
-平台保存仓库标识、默认分支、保护规则和技术栈信息，不保存明文 PAT。
+- 创建 Requirement 时必须且只能选择一个初始仓库；
+- 第一个 WorkItem 自动继承该仓库；
+- 后续 WorkItem 可以先处于 `WAITING_REPOSITORY`，由其人类负责人从 Workspace 已授权 Project 中选择一个仓库；
+- 每个 WorkItem 最终只绑定一个仓库和自己的任务分支；
+- 分支创建后仓库选错时，原 WorkItem 标记 `SUPERSEDED`，以新 WorkItem、新编号和新分支替代，不篡改历史绑定。
 
-## 3. Requirement 分支
+## 3. 任务分支
 
-创建 Requirement 时必须选择前端仓库，并从已记录的 `main` Commit 创建：
-
-```text
-feat/REQ-20260731-001
-fix/REQ-20260731-002
-```
-
-后端仓库由开发 Leader审核时选择，并创建同名分支。一个 Requirement 对应一组 `RepositoryBranchBinding`，而不是跨仓库共享一个物理分支。
-
-## 4. 阶段基线
-
-同一前端任务分支持续承载当前 Requirement 类型的完整路由。对 `feat`，同一分支承载 Product SDD 和 Frontend Delivery；对 `fix`、`refactor` 和 `chore`，同一分支承载对应 Debug 或技术快速流程及后续交付。平台记录：
-
-- `baseCommitSha`；
-- `goldenRequirementCommitSha`（仅 `feat`）；
-- `frontendCompletedCommitSha`；
-- `acceptedCommitSha`（当前路由要求产品验收时）。
-
-阶段审批绑定具体 Commit 和 Artifact，代码发生变化后相关检查与审批需要重新执行。
-
-## 5. MR 与 Review
-
-当前路由要求的测试、必要产品验收及其他 Gate 通过后，前后端按实际交付范围各自创建 MR：
+任务分支从对应仓库的 `main` 当前 Commit 创建，名称为：
 
 ```text
-确定性检查
-→ AI Review 建议
-→ 开发 Leader审批
-→ 合并 main
+type/wi-<全局递增号>-<semantic-slug>
 ```
 
-AI Review 默认不阻塞，不可用时如实记录；编译失败、测试失败、凭据泄漏等确定性门禁可以按 Policy 阻塞。Agent 不能直接 Push 或合并 `main`。
+例如 `feat/wi-1024-user-profile`；`1024` 是全局编号，不是日期。同一 Requirement 的不同 WorkItem 即使落在同一仓库，也使用不同分支。
 
-## 6. Jenkins
+`main` 是受保护分支，人员和 Agent 都不得直接 Push，只能通过 Formal MR 合并。Agent 只能操作 Execution Binding 固定的仓库和任务分支。
 
-平台监听 MR 和 `main` 状态，但不重建发布能力：
+## 4. `dev` 集成与 Formal MR
 
 ```text
-MR 合并 main
-→ Jenkins 触发
-→ 平台展示构建和发布状态
+task branch（from main）
+→ Integration MR：task branch → dev
+→ 开发人员自行合并并在独立 Jenkins 手工构建/测试
+→ 当前 Integration Baseline 完成必要 Gate 与 Requirement Acceptance
+→ 平台一键创建 Formal MR：task branch → main
+→ Human Review
+→ squash merge main
 ```
 
-Jenkins 失败不回写 Git 历史，由 Jenkins 执行重试或回滚，平台只同步状态和关联记录。
+Integration MR 不要求 Leader 人工审核，但仍受 GitLab 分支保护和确定性检查约束；`dev` 使用 merge commit。平台不建立固定 `main → dev` 同步步骤。
 
-## 7. 可替换性
+一键创建 Formal MR 时由 Model 生成 title/description，GitLab Connector 幂等创建 MR，不先弹出编辑 Modal。Formal MR 合并后自动删除 source branch，Commit、MR、Decision 与 Audit 历史继续保留。
 
-Workflow 依赖统一的 Source Control Port 和 Delivery Port，不直接调用 GitLab 或 Jenkins SDK。Webhook 采用幂等 Inbox，外部写操作带 Idempotency Key。
+## 5. Formal MR Review
+
+Formal MR 的默认审核人按 WorkItem 当前人类负责人解析：普通开发人员的默认审核人为其直属 Leader，Leader 自己负责的 WorkItem 默认由本人审核。默认审核人可以把 Current Review Assignment 改派给具备 `merge_request.review`、有效 Scope 和 Membership 的候选人，包括 MR 作者本人。
+
+只有 Current Assignment 的 assignee 可以作出 Decision。Review 绑定准确 `headSha`；新 Commit、rebase 或冲突解决使旧 Decision 失效并重新审核。要求修改时继续使用同一 WorkItem、分支和 MR；批准后冻结 source branch。`merge_request.review` 与 `merge_request.merge` 相互独立。
+
+## 6. Jenkins 边界
+
+首版 Jenkins 是独立平台。开发人员手动触发、查看和处置 Jenkins 构建/测试，研发平台不调用 Jenkins、不接收 Jenkins Webhook、不读取或展示 Jenkins 状态，也不把它建模为平台 Gate 或 Delivery Port。
+
+## 7. 一致性与审计
+
+GitLab 外部写操作使用 Idempotency Key，Webhook 使用签名校验、幂等 Inbox 和 Reconciliation。平台记录 Project/Repository Binding、base/head SHA、分支、MR、检查、Assignment、Decision、Merge 和异常处置，但不保存明文 PAT 或把 Agent/Connector 身份伪装成人工审核人。
