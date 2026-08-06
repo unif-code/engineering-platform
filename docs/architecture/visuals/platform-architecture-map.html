@@ -130,6 +130,8 @@
     .business-graph .edge-layer line, .business-graph .edge-layer path[data-from] { marker-end: url(#arrow); }
     .logical-graph .edge-layer line, .logical-graph .edge-layer path[data-from] { marker-end: url(#arrow-logical); }
     .deployment-graph .edge-layer line, .deployment-graph .edge-layer path[data-from] { marker-end: url(#arrow-deployment); }
+    .business-graph .edge-layer .manual-action { stroke: var(--muted); stroke-width: 2; fill: none; stroke-dasharray: 8 6; marker-end: url(#arrow-manual); }
+    .business-graph .edge-layer .manual-start, .business-graph .edge-layer .manual-arrow-head { fill: var(--muted); }
     .edge-layer .manual { stroke-dasharray: 8 6; }
     .edge-layer text { fill: var(--muted); font-size: 13px; }
     .node {
@@ -160,7 +162,7 @@
     .edge-layer .is-downstream { stroke: var(--warning); stroke-width: 3; }
     .auxiliary-layer[hidden] { display: none; }
 
-    .business-graph { min-height: 300px; }
+    .business-graph { min-height: 430px; }
     .business-graph .node { top: 82px; }
     .business-graph .n1 { left: 8px; }
     .business-graph .n2 { left: 180px; }
@@ -263,8 +265,8 @@
         <p class="notice">这是离线导航与摘要图，不替代 Markdown 的规范 Contract；点击任一节点可查看职责、事实边界、关系和唯一事实源。</p>
       </div>
       <fieldset class="toolbar" aria-label="地图控制">
-        <button class="control" id="theme-toggle" type="button" aria-pressed="false">主题：跟随系统</button>
-        <button class="control" id="layer-toggle" type="button" aria-pressed="true">隐藏辅助层</button>
+        <button class="control" id="theme-toggle" type="button">主题：跟随系统</button>
+        <button class="control" id="layer-toggle" type="button" aria-label="辅助层" aria-pressed="true">辅助层：显示中</button>
         <button class="control" id="reset-map" type="button">重置地图</button>
       </fieldset>
     </div>
@@ -283,8 +285,8 @@
       <div class="layout">
         <section id="architecture-map" aria-label="业务架构图">
           <div class="graph business-graph">
-            <svg class="edge-layer" viewBox="0 0 900 340" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
-              <line data-from="business-requirement" data-to="business-route" x1="158" y1="124" x2="180" y2="124"></line><line data-from="business-route" data-to="business-gate" x1="330" y1="124" x2="352" y2="124"></line><line data-from="business-gate" data-to="business-attempt" x1="502" y1="124" x2="524" y2="124"></line><line data-from="business-attempt" data-to="business-integration" x1="674" y1="124" x2="696" y2="124"></line><path data-from="business-integration" data-to="business-acceptance" d="M735,166 L735,200 L600,200 L600,226"></path><line data-from="business-acceptance" data-to="business-formal" x1="524" y1="268" x2="502" y2="268"></line><line data-from="business-formal" data-to="business-main" x1="352" y1="268" x2="330" y2="268"></line><text class="auxiliary-layer" x="718" y="214">独立平台外人工工具</text>
+            <svg class="edge-layer" viewBox="0 0 900 430" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker><marker id="arrow-manual" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path class="manual-arrow-head" d="M0,0 L8,3.5 L0,7z"></path></marker></defs>
+              <line data-from="business-requirement" data-to="business-route" x1="158" y1="124" x2="180" y2="124"></line><line data-from="business-route" data-to="business-gate" x1="330" y1="124" x2="352" y2="124"></line><line data-from="business-gate" data-to="business-attempt" x1="502" y1="124" x2="524" y2="124"></line><line data-from="business-attempt" data-to="business-integration" x1="674" y1="124" x2="696" y2="124"></line><path data-from="business-integration" data-to="business-acceptance" d="M735,166 L735,200 L600,200 L600,226"></path><line data-from="business-acceptance" data-to="business-formal" x1="524" y1="268" x2="502" y2="268"></line><line data-from="business-formal" data-to="business-main" x1="352" y1="268" x2="330" y2="268"></line><text class="auxiliary-layer" x="718" y="214">独立平台外人工工具</text><circle class="manual-start auxiliary-layer" cx="770" cy="392" r="5"></circle><path class="manual-action auxiliary-layer" d="M770,384 L770,340"></path><text class="auxiliary-layer" x="731" y="414">用户手工</text>
             </svg>
             <button class="node n1" type="button" data-node-id="business-requirement" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Requirement，打开详情" aria-controls="detail-panel"><strong>Requirement</strong><small>交付责任聚合</small></button>
             <button class="node n2" type="button" data-node-id="business-route" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Route 与 SDD，打开详情" aria-controls="detail-panel"><strong>Route / SDD</strong><small>固定方法与证据</small></button>
@@ -544,18 +546,23 @@
       const layerToggle = document.getElementById('layer-toggle');
       layerToggle.addEventListener('click', () => {
         const visible = layerToggle.getAttribute('aria-pressed') === 'true';
-        document.querySelectorAll('.auxiliary-layer').forEach((layer) => { layer.hidden = visible; });
-        layerToggle.setAttribute('aria-pressed', String(!visible));
-        layerToggle.textContent = visible ? '显示辅助层' : '隐藏辅助层';
-        status.textContent = visible ? '已隐藏辅助层；架构关系未改变。' : '已显示辅助层。';
+        const nextVisible = !visible;
+        document.querySelectorAll('.auxiliary-layer').forEach((layer) => { layer.toggleAttribute('hidden', !nextVisible); });
+        layerToggle.setAttribute('aria-pressed', String(nextVisible));
+        layerToggle.textContent = nextVisible ? '辅助层：显示中' : '辅助层：已隐藏';
+        status.textContent = nextVisible ? '已显示辅助层。' : '已隐藏辅助层；架构关系未改变。';
       });
       const themeToggle = document.getElementById('theme-toggle');
       const themes = ['system', 'light', 'dark'];
       function applyTheme(theme, persist) {
         document.documentElement.dataset.theme = theme;
-        themeToggle.setAttribute('aria-pressed', String(theme !== 'system'));
-        themeToggle.textContent = `主题：${theme === 'system' ? '跟随系统' : theme === 'light' ? '浅色' : '深色'}`;
-        if (persist) { try { localStorage.setItem('platform-architecture-map-theme', theme); } catch (_error) { status.textContent = '主题已应用，但无法保存本地偏好。'; } }
+        const themeLabel = theme === 'system' ? '跟随系统' : theme === 'light' ? '浅色' : '深色';
+        themeToggle.textContent = `主题：${themeLabel}`;
+        if (persist) {
+          let storageFailed = false;
+          try { localStorage.setItem('platform-architecture-map-theme', theme); } catch (_error) { storageFailed = true; }
+          status.textContent = storageFailed ? `主题已切换为${themeLabel}，但无法保存本地偏好。` : `主题已切换为${themeLabel}。`;
+        }
       }
       try { const savedTheme = localStorage.getItem('platform-architecture-map-theme'); if (themes.includes(savedTheme)) applyTheme(savedTheme, false); } catch (_error) { applyTheme('system', false); }
       themeToggle.addEventListener('click', () => { const current = document.documentElement.dataset.theme || 'system'; applyTheme(themes[(themes.indexOf(current) + 1) % themes.length], true); });
