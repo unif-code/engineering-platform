@@ -7,7 +7,7 @@
 
 本文只定义跨模块不变量、依赖边界、事实 owner 索引、质量属性场景和演进 Gate 的引用关系。每个领域对象的状态、协议字段、资源参数、恢复步骤和安全机制均由其模块 detail 唯一拥有；本文不复制这些规则。
 
-平台当前只有 DEV 运行环境，本仓库仍是 Umi Max 前端模板。Python Control Plane、数据服务、Deployable、基础设施和未来 PROD 是已批准的目标架构。本文中的 target Contract 仅在相应实现和环境实例化后生效。
+平台当前只有 DEV 运行环境，本仓库仍是 Umi Max 前端模板。Python Control Plane、数据服务、Deployable、基础设施和未来 PROD 是已批准的目标架构。这些 target Contract 自本基线生效起即约束实现、环境实例化与验收，但不表示相关运行实例已经存在。
 
 ## 2. 跨模块不变量矩阵
 
@@ -61,7 +61,7 @@ UI → public API → domain/application → Port → Adapter → external
 | --- | --- | --- |
 | 用户授权或 Assignment 发生撤销，同时存在 Session 或待执行操作。 | 新受保护请求立即按当前服务端授权拒绝；已启动 Attempt 的控制权按领域 Contract 收敛。 | [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md) |
 | 并发写入或外部调用结果未知。 | 权威事务保持一致；外部副作用通过幂等和 Reconciliation 收敛，不以投影猜测成功。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) |
-| Attempt 或承载它的 Node 发生恢复。 | 不可变 Binding、fenced lease 和容量边界仍有效；执行从可验证检查点继续或安全结束。 | [03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md) |
+| Attempt 或承载它的 Node 发生恢复。 | 执行恢复保持不可变 Binding、fenced lease 和容量边界，并从可验证检查点继续或安全结束；物理 Node 或 Cluster 恢复由环境 Contract 验证后再承载工作负载。 | [03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md)、[09](../09-infrastructure-operations/infrastructure-operations-detail.md) |
 | Collector 或 External Status Feed 不可用。 | 诊断和可见性降级；独立的 Requirement、事务、Agent 与控制循环继续按其 owner Contract 工作。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) |
 | Artifact 并发上传或安全扫描结果未知。 | exact Object Version 与双 Ledger reservation 仍一致；不满足安全条件的对象不能成为可用证据。 | [07](../07-data-messaging-storage/data-messaging-storage-detail.md)、[08](../08-security-audit-governance/security-audit-governance-detail.md) |
 | 组件数据或 Cluster 需要恢复。 | 组件恢复、信任恢复和环境恢复按各自 owner 的验证链执行；数据恢复完成不等同于端到端 Workflow 可恢复。 | [07](../07-data-messaging-storage/data-messaging-storage-detail.md)、[08](../08-security-audit-governance/security-audit-governance-detail.md)、[09](../09-infrastructure-operations/infrastructure-operations-detail.md) |

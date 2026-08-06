@@ -35,7 +35,7 @@
 
 - 每个主题的 main 是 L1 架构地图，只写目标、边界、关系、主要链路与进入 detail 的导航。
 - 对应 detail 是 L2 规范事实源，唯一拥有该主题的 Contract；其他文档只引用 owner，不复制状态、参数、算法或默认值。
-- 架构地图入口位于 `./visuals/platform-architecture-map.html`。该离线 HTML 由后续的可视化交付提供，节点只用于导航和摘要，不是架构事实源。
+- 离线 HTML 架构地图固定入口为 `./visuals/platform-architecture-map.html`；其中节点只提供导航和摘要，Markdown 仍是唯一架构事实源。
 
 ## 维护规则
 
