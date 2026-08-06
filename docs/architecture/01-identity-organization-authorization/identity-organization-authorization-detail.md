@@ -42,7 +42,11 @@
 
 平台只保存足以安全验证密码的受保护派生结果，不能保存或回读明文密码。所有用户必须绑定并在登录时验证 TOTP，不因岗位、Capability 或 Super Admin 身份而豁免。
 
-密码过期 Policy 是版本化 `PLATFORM_POLICY`，支持永不过期、90 天、180 天和受约束的自定义周期。变更必须按该配置声明的生效语义执行，不能追溯改写既有安全事实，也不能由 Frontend 自行解释。
+密码过期 Policy 是版本化 `PLATFORM_POLICY`，支持永不过期、90 天、180 天和受约束的自定义周期。每个 Policy Version 自服务端成功发布并成为当前 Effective Policy 时生效；变更不能追溯改写既有安全事实，也不能由 Frontend 自行解释。
+
+密码年龄以最近一次成功设置正式密码的服务端时间事实 `passwordSetAt` 起算，Policy 切换不得改写该事实。Effective Policy 为永不过期时，密码不因年龄到期；为有限周期时，密码在 `now >= passwordSetAt + period` 时到期。有限周期生效后，已经超过该周期的存量密码在下一次交互式登录必须进入仅允许设置正式密码的受限流程，不能进入业务能力；这一交互式改密门禁不取消已经启动的后台 Agent Attempt。
+
+新密码设置成功后，服务端以该次成功设置时间更新 `passwordSetAt`，并按当时的 Effective Policy 重新起算密码年龄。
 
 TOTP Enrollment 只能在受限初始化或受控重置流程中显示二维码和一次性 Secret；确认后不能查询明文。首版不提供恢复码。丢失 TOTP 时由具备相应 Identity Capability 和 Scope 的人员完成身份核验后独立重置；该操作撤销既有 Session，要求重新 Enrollment，并写入安全 Audit。
 
