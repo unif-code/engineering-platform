@@ -50,7 +50,7 @@ OpenBao Audit 同时尝试写入独立 Audit PVC 与 stdout 两个 `file` Audit 
 
 OpenBao Raft Snapshot 使用应用一致性快照，不以多个 PVC/CSI Snapshot 充当恢复来源。DEV 每 6 小时生成并保留 7 天；未来 PROD 每 1 小时生成，保留 48 小时周期点和 30 天每日点。DEV 每月、PROD 每季度在隔离环境执行完整恢复演练；DR 目标为 DEV `RPO ≤ 6h`、`RTO ≤ 60min` 及 PROD `RPO ≤ 1h`、`RTO ≤ 60min`。调度、保留、Object Lock、阈值和演练周期均为版本化 GitOps 运维配置，管理后台只读展示有效值与证据。
 
-OpenBao/Chart/Plugin 升级以及高风险 Auth、Policy、Secret Engine、Seal、Shamir 或 Transit Key 变更前，必须生成并验证按需 Snapshot。每份 Manifest 绑定 Environment、Cluster ID、Snapshot Time、OpenBao/Chart/Image Version、Raft Index、Seal Generation、Object Version、Size、SHA-256 与 OpenPGP Recipient Fingerprint；`openbao-recovery` 对象使用 Versioning 和默认 7 天 `GOVERNANCE` Object Lock。Shamir 轮换后立即生成并验证新 Snapshot；旧 Generation 的 Share 保留到依赖它的最后一份 Snapshot 到期且 Restore 验证通过。`snapshot-force` 只能由受控 Break-glass 身份在批准的恢复窗口执行，CronJob 和普通运维身份没有该权限。
+OpenBao/Chart/Plugin 升级以及高风险 Auth、Policy、Secret Engine、Seal、Shamir 或 Transit Key 变更前，必须生成并验证按需 Snapshot。每份 Manifest 绑定 Environment、Cluster ID、Snapshot Time、OpenBao/Chart/Image Version、Raft Index、Seal Generation、独立的 Shamir Share Generation、Object Version、Size、SHA-256 与 OpenPGP Recipient Fingerprint；Seal Generation 与 Shamir Share Generation 是两个独立字段，不得合并、互相推导或互相替代。`openbao-recovery` 对象使用 Versioning 和默认 7 天 `GOVERNANCE` Object Lock。Shamir 轮换后立即生成并验证新 Snapshot；旧 Shamir Share Generation 的 Share 保留到与其一一绑定的最后一份 Snapshot 到期且 Restore 验证通过。`snapshot-force` 只能由受控 Break-glass 身份在批准的恢复窗口执行，CronJob 和普通运维身份没有该权限。
 
 ## 4. OpenBao PKI 与 Trust Bundle
 
