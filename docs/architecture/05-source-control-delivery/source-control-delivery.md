@@ -7,7 +7,7 @@
 
 本领域通过稳定 `SourceControlPort` 管理 GitLab Project、Requirement/WorkItem 的仓库绑定、任务分支、Integration MR、Formal MR、人工 Review 与 Merge。它复用 GitLab Project，不复制第二套代码项目、分支、MR 或 GitLab 权限体系。
 
-Requirement、WorkItem、Gate、Decision、Acceptance 与业务状态由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有；本领域拥有冻结的 Git/MR/Artifact Integration Baseline 证据与其 ID/Hash。Attempt 和 Execution Binding 由 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有；Sandbox 仅消费固定 Branch Binding 以执行代码，见 [Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)。
+Requirement、WorkItem、Gate、Decision、Acceptance、`RequirementIntegrationBaselineSelection` 与业务状态由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有；本领域唯一拥有 Git/MR/Artifact `IntegrationBaselineEvidence` 的证据结构、`integrationBaselineId/hash`、外部事实与变化事件。Attempt 和 Execution Binding 由 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有；Sandbox 仅消费固定 Branch Binding 以执行代码，见 [Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)。
 
 ## 绑定与任务分支
 
@@ -20,8 +20,10 @@ Requirement、WorkItem、Gate、Decision、Acceptance 与业务状态由 [Requir
 ```text
 task branch（from main）
 → task branch → dev Integration MR
-→ 平台内确定性检查与冻结 Integration Baseline
-→ 用户在独立 Jenkins 手工验证
+→ 平台内确定性检查与用户手工合并 Integration MR
+→ 用户在独立 Jenkins 手工验证并向平台提交外部证据引用
+→ 生成 IntegrationBaselineEvidence
+→ Requirement 选定 Evidence 并完成 Acceptance
 → task branch → main Formal MR
 → Formal Review + 受保护合并
 ```
@@ -30,7 +32,7 @@ Integration MR 面向 `dev`，必须满足 GitLab 检查与分支保护；它不
 
 ## 外部 Jenkins 与多仓交付
 
-Jenkins 完全在平台外部：用户在独立 Jenkins 平台手工触发、查看和处置构建或测试。平台不自动触发或调用 Jenkins，不接收 Jenkins Webhook，不读取、保存或展示 Jenkins 状态，也不将其结果投影为系统 Gate。
+Jenkins 完全在平台外部：用户在独立 Jenkins 平台手工触发、查看和处置构建或测试。平台不自动触发或调用 Jenkins，不接收 Jenkins Webhook，不读取、保存或展示 Jenkins 状态，也不将其结果投影为系统 Gate。用户提交的只是外部验证证据引用及其提交人、时间、目标 Commit 和说明，不是平台获取的 Jenkins 状态。
 
 一个 Requirement 可经多个 WorkItem 交付到多个仓库，每个 WorkItem 各自拥有 Binding、任务分支和 Formal MR。平台不宣称跨仓原子 Merge；部分合并保留已发生的外部事实，停止不安全后续 Merge，并让授权人员按当前 Requirement 的兼容与交付策略处置。
 

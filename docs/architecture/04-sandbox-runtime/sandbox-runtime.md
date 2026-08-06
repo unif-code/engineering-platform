@@ -43,4 +43,4 @@ Image Build 使用独立 Kata Materialization 与 Rootless BuildKit，先固化 
 - 逻辑 Sandbox Environment 不能成为可写执行实例的别名；不同 Attempt、Child 或 Workspace 不共享可写目录、执行身份或短期 Secret。
 - 只有 Sandbox Controller 可以把已绑定的 Runtime Profile 物化为 Kata 执行；业务对象、用户与 Agent 都不能选择 Node、RuntimeClass 或 Host 权限。
 - Agent 的有效代码必须 Commit 并 Push 到当前绑定的任务分支；Formal MR 不得依赖 Sandbox 本地快照，恢复也不得依赖旧 Node 或本地磁盘。
-- 运行时安全、故障清理、证据与审计规则见[详细说明](./sandbox-runtime-detail.md)；平台应用入口与 API 集成边界见未来的[平台应用与集成](../06-platform-application-integration/platform-application-integration.md)。
+- 运行时安全、故障清理、证据与审计规则见[详细说明](./sandbox-runtime-detail.md)；平台应用入口与 API 集成边界见[平台应用与集成](../06-platform-application-integration/platform-application-integration.md)。

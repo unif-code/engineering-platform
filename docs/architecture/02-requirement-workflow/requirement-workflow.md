@@ -5,7 +5,7 @@
 
 ## 目标与边界
 
-Requirement Workflow 将一项业务交付从创建、基线确认、实现、验证、验收直到合并完成串为可追溯流程。它拥有 Requirement、WorkItem、Route、Gate、Decision、Artifact 与 Integration Baseline 的业务语义；不拥有人员资格、Agent 执行实现、Sandbox 物理形态或 GitLab 协议细节。
+Requirement Workflow 将一项业务交付从创建、基线确认、实现、验证、验收直到合并完成串为可追溯流程。它拥有 Requirement、WorkItem、Route、Gate、Decision、Artifact 与 `RequirementIntegrationBaselineSelection` 的业务语义；不拥有人员资格、Agent 执行实现、Sandbox 物理形态、GitLab 协议细节或 `IntegrationBaselineEvidence` 的证据结构。
 
 人员是否有资格承担责任由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)判定。本领域保存的是 Requirement、Gate 或验收的当前责任 Assignment，不能以 Assignment 补足 Capability、Scope 或 Membership。
 
@@ -20,7 +20,7 @@ Requirement
 │   ├── Route / test / external-validation Artifact
 │   └── delivery reference
 ├── Gate Instance → Assignment → Decision
-├── Integration Baseline
+├── RequirementIntegrationBaselineSelection → IntegrationBaselineEvidence reference
 └── recordState
 ```
 
@@ -37,7 +37,7 @@ Requirement
 → Human Gate 确认
 → 拆分、分配并启动 WorkItem
 → 实现与验证
-→ 冻结 Integration Baseline
+→ 选定并冻结 IntegrationBaselineEvidence 引用
 → 最终验收
 → Formal MR 合并
 → COMPLETED
@@ -51,7 +51,7 @@ Route 将方法与业务流程分开：`feat` 使用完整 SDD，`fix` 从 `syst
 
 Gate 以“Policy → 绑定版本的 Gate Instance → Current Assignment → Decision”表达。默认审核人由创建时解析的 Policy 决定，默认回退为 Requirement 创建人；默认责任人可在 Decision 前异步改派。Agent、AI Review 和确定性检查仅提交证据，不能形成 Human Decision。
 
-最终验收以冻结的 Integration Baseline 为输入；基线、Artifact、Commit 或交付证据改变会使相关结论失效。全部必需 WorkItem 的交付合并且验收仍有效时，Requirement 才完成。
+最终验收以冻结的 `RequirementIntegrationBaselineSelection` 为输入；其引用的 `IntegrationBaselineEvidence`、Artifact、Commit 或交付证据改变会使相关结论失效。全部必需 WorkItem 的交付合并且验收仍有效时，Requirement 才完成。
 
 ## 生命周期与不变量
 
@@ -59,4 +59,4 @@ Requirement 主路径为 `CREATED → PREPARING → AWAITING_CONFIRMATION → RE
 
 `recordState=ACTIVE | ARCHIVED | DELETED` 与业务进度正交。归档或逻辑删除须先安全停止活动执行，恢复恢复业务可见性与继续入口，但不复活旧 Attempt。所有状态转换、Assignment、Decision、Artifact 与外部事实均受后端 Guard、幂等和审计约束。
 
-Artifact 的对象存储、文件安全、配额账本和 Audit 存储实现由未来的[Data/Messaging/Storage](../07-data-messaging-storage/data-messaging-storage-detail.md)与[Security/Audit/Governance](../08-security-audit-governance/security-audit-governance-detail.md)拥有；本领域仅使用其可验证结果。
+Artifact 的对象存储、文件安全、配额账本和 Audit 存储实现由[Data/Messaging/Storage](../07-data-messaging-storage/data-messaging-storage-detail.md)与[Security/Audit/Governance](../08-security-audit-governance/security-audit-governance-detail.md)拥有；本领域仅使用其可验证结果。

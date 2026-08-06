@@ -19,7 +19,34 @@ Management Account 不承载平台运行资源、平台数据或恢复材料。D
 
 ## 3. Platform Compatibility Set 与 Provisioning Gate
 
-PCS 固定稳定技术系列：Kubernetes 1.36（candidate 1.36.3）、Ubuntu 24.04 LTS Minimal amd64、containerd 2.3 LTS、Kata 4.0.x、Cilium 1.20.x、Gateway API 1.6.x 与 cert-manager 1.21.x。精确 patch、image digest、Chart digest、Provider SKU 和镜像版本属于 PCS/部署输入，不是本文固定事实。
+PCS 是全部平台组件版本、Chart/Manifest、Image 与兼容关系的唯一注册表。首个 PCS 固定以下稳定系列和精确版本；每个制品仍须锁定 Artifact/Image Digest，禁止 `latest`、浮动 Tag 或启动时自动升级：
+
+| 领域 | 组件 | 稳定系列 | 首个 PCS 精确版本 |
+| --- | --- | --- | --- |
+| Kubernetes | Kubernetes | 1.36 | 1.36.3 |
+| Kubernetes | Ubuntu Server Minimal amd64 | 24.04 LTS | 24.04.4 |
+| Kubernetes | containerd | 2.3 LTS | 2.3.1；CRI v1、config v4、cgroup v2 |
+| Kubernetes | Kata Containers | 4.0.x | 4.0.0 |
+| Kubernetes | Cilium | 1.20.x | 1.20.0 |
+| Kubernetes | Gateway API | 1.6.x Standard | CRD v1.6.1 |
+| Kubernetes | cert-manager | 1.21.x | v1.21.1 |
+| Data | CloudNativePG | 1.30.x | 1.30.0 |
+| Data | PostgreSQL | 18 | 18.4 |
+| Data | PgBouncer | 1.25.x | 1.25.2 |
+| Data | Barman Cloud Plugin | 0.13.x | 0.13.0 |
+| Data | Valkey | 9.1 | 9.1.1-trixie |
+| Messaging | NATS Server / Helm Chart | 2.14 | Server 2.14.4-scratch；Chart 2.14.2 |
+| Workflow | Temporal | Server 1.31 | Chart 1.6.0；Server/Admin Tools 1.31.2；UI 2.52.0；Python SDK 1.30.0 |
+| Security | OpenBao | 2.6 | Server 2.6.1；Chart 0.28.6 |
+| Security | ClamAV | 1.5 | 1.5.3 |
+| Object Storage | Rook / Ceph | Rook 1.20 / Ceph 20.2 | Rook 1.20.2；Ceph 20.2.2 |
+| Observability | kube-prometheus-stack | 88.1.x | Chart 88.1.5；Prometheus Operator 0.93.0；Prometheus 3.13.2-distroless；Alertmanager 0.33.1；Grafana Chart 12.10.3 / Grafana 13.1.2 |
+| Observability | Thanos | 0.42.x | 0.42.4 |
+| Observability | Loki | 3.7 | Chart 18.7.3；Loki 3.7.5 |
+| Observability | OpenTelemetry Collector | Chart 0.168.x | Chart 0.168.0；默认 Operand 0.157.0 |
+| Observability | Tempo | 3.0 | 3.0.2 Monolithic `target=all` |
+
+精确 Patch、Chart、Operand、CRD 与 Image 的组合是同一 PCS 的不可分割内容。任何一项安全更新、Patch、Digest 或兼容配置变化都创建新 PCS，并依次通过 DEV 验证和目标环境批准；不能只升级 Chart、不验证 Operand/CRD，也不能由领域文档建立第二份版本表。
 
 每次部署、升级或扩容都生成可验证证据：
 
@@ -63,9 +90,9 @@ Sandbox 默认不得访问数据库、NATS、OpenBao、Kubernetes API、Cloud me
 
 ## 7. Storage Physical Baseline
 
-实时 Stateful Workload 只使用 `stateful-rwo-lowlatency`：RWO、`WaitForFirstConsumer`、`Retain`、online expansion、exclusive block，并禁止 Ceph fallback。该 StorageClass 承载 PostgreSQL、Valkey、NATS、Temporal、OpenBao 和可观测性所需实时卷；数据语义、Retention 和组件恢复由[07](../07-data-messaging-storage/data-messaging-storage-detail.md)定义。
+实时 Stateful Workload 只使用 `stateful-rwo-lowlatency`：RWO、`WaitForFirstConsumer`、`Retain`、online expansion、exclusive block，并禁止 Ceph fallback。该 StorageClass 承载 PostgreSQL、Valkey、NATS、OpenBao、Scanner Signature 和可观测性所需实时卷；Temporal Server/Worker 本身无独立数据 PVC，其 Durable Persistence 位于 PostgreSQL。数据语义、单组件 Resource/PVC Envelope、Retention 和组件恢复由[07](../07-data-messaging-storage/data-messaging-storage-detail.md)定义。
 
-Rook 1.20.2 与 Ceph 20.2.2 提供 RGW Object Storage。DEV 使用 3 个 OSD、未来 PROD 使用 4 个 OSD；每个 OSD 使用 1 TiB enterprise PLP SSD。Ceph 固定 `size=3`、`min_size=2`、`failureDomain=host`，并配置 3 MON、2 MGR、2 RGW。容量在 50% 使用率触发扩容评估，`nearfull/backfillfull/full` 阈值为 70/75/80。
+PCS 中锁定的 Rook/Ceph 组合提供 RGW Object Storage。DEV 使用 3 个 OSD、未来 PROD 使用 4 个 OSD；每个 OSD 使用 1 TiB enterprise PLP SSD。Ceph 固定 `size=3`、`min_size=2`、`failureDomain=host`，并配置 3 MON、2 MGR、2 RGW。容量在 50% 使用率触发扩容评估，`nearfull/backfillfull/full` 阈值为 70/75/80。
 
 每个 `storage-worker` 至少为 `8 vCPU / 32 GiB RAM`，使用独立 256 GiB enterprise SSD 作为 OS/MON 与独立 1 TiB Raw OSD；OS/Mon 盘与 OSD Raw Device 物理分离，节点内部东西向路径至少 10 Gbps。OSD 必须满足[08 的加密与恢复 Gate](../08-security-audit-governance/security-audit-governance-detail.md)，本文不重复其密钥或加密机制。
 
@@ -87,7 +114,7 @@ RGW 承载对象类存储，不承载实时 RBD/CephFS PVC。Bucket Class 业务
 
 首版组件组为：Prometheus 双副本、Thanos Query 双副本、Alertmanager 三副本、Grafana 双副本、Loki monolithic 三副本加 Gateway 双副本、Tempo monolithic 单副本、每 Node OpenTelemetry Agent 加 Gateway 双副本、Hubble Relay 双副本与 UI。首版不包含 Mimir、Kafka、Thanos Object Store、distributed Loki 或 distributed Tempo。
 
-Loki 入口 Gateway 必须清除客户端提交的 `X-Scope-OrgID`、认证和身份 Header，再根据当前环境的可信 mTLS Identity 注入固定 tenant；NetworkPolicy 禁止绕过 Gateway 访问 Loki。Tempo 固定 `multitenancy_enabled=false`。这两个规则防止 Browser、Pod 或转发链伪造观测租户。
+Loki 入口 Gateway 必须清除客户端提交的 `X-Scope-OrgID`、认证和身份 Header，再根据当前环境的可信 mTLS Identity 注入固定 tenant；NetworkPolicy 禁止绕过 Gateway 访问 Loki。Tempo 固定 `multitenancy_enabled=false`，但该设置不替代入口认证：Trace Ingest 只允许当前环境两个批准的 OpenTelemetry Gateway Identity，查询只允许 Grafana 与只读 Operations Query Identity，并通过 TLS/mTLS、证书用途校验和 NetworkPolicy 分别限制写入与查询端口。Browser、普通 Pod、Sandbox 或任意转发链不能直连 Tempo，也不能通过 Header 取得写入或查询资格。
 
 Telemetry 只用于诊断，不得改写业务、授权、配置、Audit、Provider 状态或恢复事实。Operations Adapter 采集的数据经 06 的 Read Model 展示；管理后台只读显示 Baseline、有效配置、Health、容量、性能、告警、Gap、Drift、Backup/Restore、依赖和趋势，不能执行 restore write 或显示敏感材料。
 
@@ -143,7 +170,7 @@ DEV 每月、PROD 每季度在隔离恢复环境完成 etcd/Control Plane Restor
 
 ## 10. Capacity Profile、BOM 与 TCO
 
-DEV 12 个 Node、未来 PROD 15 个 Node：DEV 为 3 Control Plane + 4 Platform + 2 Sandbox + 3 Storage；PROD 为 3 Control Plane + 6 Platform + 2 Sandbox + 4 Storage。每个环境有 2 个 Sandbox Worker；Capacity Contract 为 DEV 5 Units、PROD 8 Units，并保留 N+1 故障余量。
+DEV 12 个 Node、未来 PROD 15 个 Node：DEV 为 3 Control Plane + 4 Platform + 2 Sandbox + 3 Storage；PROD 为 3 Control Plane + 6 Platform + 2 Sandbox + 4 Storage。每个环境有 2 个 Sandbox Worker；首个 Active Capacity Profile 固定 DEV `maxSandboxCapacityUnits=5`、`maxActiveSandboxAttempts=5`、`maxActiveImageBuilds=1`，PROD 分别为 `8`、`8`、`1`，并保留 N+1 故障余量。这些字段是 04 Policy Maximum 的物理 Ceiling，不是另一组可由业务配置扩大的并发额度。
 
 | 环境 | Node Role | 数量 | 单 Node CPU / RAM | 单 Node 磁盘 | 角色 CPU / RAM 小计 |
 | --- | --- | ---: | --- | --- | --- |
@@ -162,6 +189,11 @@ DEV 12 个 Node、未来 PROD 15 个 Node：DEV 为 3 Control Plane + 4 Platform
 | --- | ---: | ---: | ---: | ---: | ---: |
 | DEV | 1,668 GiB | 1,000 GiB | 3 TiB = 3,072 GiB | 28 卷 / 425 GiB | 6,165 GiB ≈ 6.02 TiB |
 | PROD | 2,724 GiB | 1,600 GiB | 4 TiB = 4,096 GiB | 32 卷 / 675 GiB | 9,095 GiB ≈ 8.88 TiB |
+
+Active ESSD PVC 可由 07/08/本节的单组件 Profile 逐项复算：
+
+- DEV：卷数 `3 PostgreSQL + 3 Valkey + 3 NATS + 3 OpenBao Data + 3 OpenBao Audit + 2 Scanner + 11 Observability = 28`；容量 `120 + 15 + 60 + 30 + 15 + 10 + 175 = 425 GiB`。
+- PROD：卷数 `3 PostgreSQL + 3 Valkey + 3 NATS + 5 OpenBao Data + 5 OpenBao Audit + 2 Scanner + 11 Observability = 32`；容量 `300 + 30 + 60 + 50 + 50 + 10 + 175 = 675 GiB`。
 
 该 BOM 是计费输入，不等于可用业务容量、Kubernetes Allocatable 或故障后容量；Snapshot、Retain 遗留卷、演练临时卷、性能等级和文件系统保留量单列。Active ESSD PVC 已包含 PostgreSQL、Valkey、NATS、OpenBao Data/Audit、Scanner Signature 和 Observability RWO；Temporal 与 Grafana 的持久事实计入 PostgreSQL。Ceph Bucket Class、Audit Emergency Margin 与 Loki/Tempo Object Data 均在已计费的 Raw OSD 内，不能再次相加或按三副本再次乘算；在线 ESSD PVC 与其 Ceph Backup Object 是两类真实、用途不同的成本项。
 

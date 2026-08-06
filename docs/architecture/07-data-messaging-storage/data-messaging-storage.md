@@ -43,7 +43,7 @@ PostgreSQL 是平台业务事实源。Valkey 不可用时，安全/一致性操�
 - Valkey 的热数据可从 PostgreSQL 与领域事实重建；它不承担唯一安全事实。
 - NATS 以 Account Backup 恢复，再按 PostgreSQL Outbox watermark 安全重叠补发。
 - Temporal 使用同环境 CloudNativePG 的独立持久化数据库；Workflow Code 与 Worker Build ID 维持版本兼容。
-- Rook-Ceph RGW 提供 S3-compatible Bucket Class。PostgreSQL、Valkey、NATS、Temporal 等实时数据卷统一使用 `stateful-rwo-lowlatency`，不使用 Ceph RBD/CephFS。
+- Rook-Ceph RGW 提供 S3-compatible Bucket Class。PostgreSQL、Valkey、NATS 的实时数据卷统一使用 `stateful-rwo-lowlatency`，不使用 Ceph RBD/CephFS；Temporal Server 本身无独立数据 PVC，其 Durable Persistence 位于同环境 PostgreSQL。
 
 DEV 与未来 PROD 使用同源 Contract、同类复制与恢复语义，但每个环境独立部署、备份和恢复，绝不共享数据、Bucket 或运行状态。当前恢复边界仅为单站点 Cluster HA 与 Cluster DR，不提供 Site DR 保证。
 

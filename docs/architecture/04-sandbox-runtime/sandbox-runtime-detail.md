@@ -5,7 +5,7 @@
 
 ## 1. 责任边界与逻辑模型
 
-本文是 Sandbox Environment、Kata/KVM 物理隔离、Materialization、资源、网络、短期 Secret、Preview、Image Build 与清理语义的唯一规范事实源。Requirement、WorkItem、Gate、Decision、Integration Baseline 和业务状态只由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有；Run、Attempt、Execution Binding、Child 状态与等待语义只由 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有。
+本文是 Sandbox Environment、Kata/KVM 物理隔离、Materialization、资源、网络、短期 Secret、Preview、Image Build 与清理语义的唯一规范事实源。Requirement、WorkItem、Gate、Decision、`RequirementIntegrationBaselineSelection` 和业务状态只由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有；`IntegrationBaselineEvidence` 只由 [Source Control 与交付](../05-source-control-delivery/source-control-delivery-detail.md)拥有；Run、Attempt、Execution Binding、Child 状态与等待语义只由 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有。
 
 `SandboxEnvironment` 是 Requirement 级逻辑环境，关联 WorkItem Checkout、Service Binding、Preview 和可重建证据。`PlatformEnvironment` 是独立账号、VPC、Cluster 与控制平面的部署边界；它可承载多个 Workspace 和 Sandbox Environment，但不使它们共享数据面、凭据或网络可见性。逻辑环境不承诺保留 Pod、Guest、Node 或本地磁盘。
 
@@ -74,14 +74,14 @@ Agent Attempt 与 Image Build 共享同一个 Fencing Domain 和 Capacity Ledger
 
 Sandbox 先分别应用两个独立、版本化的 `PLATFORM_POLICY`，再执行共享 Capacity Ledger 与物理安全 Gate：
 
-| Policy Key | 准入 Contract |
-| --- | --- |
-| `agent.sandbox.active_attempt_limit` | 限制当前 Platform Environment 中同时持有 Agent Sandbox Lease 的 Attempt 数；值必须为正数。达到上限时拒绝后续 Agent Lease，并返回包含 Policy Version 的 `POLICY_LIMIT_REACHED`。 |
-| `agent.image_build.active_build_limit` | 限制当前 Platform Environment 中同时持有 Build Lease 的 Child 数及新 Build Handoff；值可为 `0`。值为 `0` 时拒绝新 Build Handoff，并返回包含 Policy Version 的 `POLICY_DISABLED`。 |
+| Policy Key | Minimum | Initial Desired | Maximum | 准入 Contract |
+| --- | ---: | --- | --- | --- |
+| `agent.sandbox.active_attempt_limit` | `1` | DEV `5`；PROD `8` | 当前 Active Capacity Profile 的 `maxActiveSandboxAttempts` | 限制当前 Platform Environment 中同时持有 Agent Sandbox Lease 的 Attempt 数。达到上限时拒绝后续 Agent Lease，并返回包含 Policy Version 的 `POLICY_LIMIT_REACHED`。 |
+| `agent.image_build.active_build_limit` | `0` | DEV `1`；PROD `1` | 当前 Active Capacity Profile 的 `maxActiveImageBuilds`，首个 Profile 固定为 `1` | 限制当前 Platform Environment 中同时持有 Build Lease 的 Child 数及新 Build Handoff。值为 `0` 时拒绝新 Build Handoff，并返回包含 Policy Version 的 `POLICY_DISABLED`。 |
 
-下调任一 Policy 只阻止后续 Lease 或 Handoff 并等待占用自然收敛，不撤销既有 Lease、不强杀已持有 Build Lease 的 Child，也不改写 Execution Binding。两个 Key 彼此独立；任何准入还必须同时满足共享 Capacity Ledger、绑定 Resource Profile 的完整 Resource Vector、Placement、Kata Gate、Runtime Disk 与 N+1 安全边界。业务配置不能扩大或突破物理 Capacity Envelope。
+下调任一 Policy 只阻止后续 Lease 或 Handoff 并等待占用自然收敛，不撤销既有 Lease、不强杀已持有 Build Lease 的 Child，也不改写 Execution Binding。Build Limit 生效为 `0` 时，已完成 Handoff 但尚未取得 Build Lease 的排队 Child 必须收到 `POLICY_DISABLED`；[03 owner](../03-agent-skill-model/agent-skill-model-detail.md)将其收敛为 `CANCELED/POLICY_DISABLED` 结构化终态并唤醒 Parent，不能无限等待 Policy 恢复。两个 Key 彼此独立；任何准入还必须同时满足共享 Capacity Ledger、绑定 Resource Profile 的完整 Resource Vector、Placement、Kata Gate、Runtime Disk 与 N+1 安全边界。业务配置不能扩大或突破物理 Capacity Envelope。
 
-两个 Policy 的 Effective Default 与 Ceiling 只由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)中的当前 Environment Capacity Profile 提供，本文不重复环境数值。Policy 发布与配置生命周期由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)的 Configuration Contract 拥有；发布权限与 Super Admin 边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 只消费已生效的 Policy Snapshot，不复制配置工作流。
+两个 Policy 的 Key、Minimum、Initial Desired 与准入效果由本文拥有；物理 Maximum 只能取[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)中当前 Environment Capacity Profile 已验证的 Ceiling。Policy 发布与配置生命周期由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)的 Configuration Contract 拥有；发布权限与 Super Admin 边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 只消费已生效的 Policy Snapshot，不复制配置工作流。
 
 专用 Pool 必须满足 N+1：任一个 `sandbox-worker` 或其 Host 失效后，剩余故障域仍能承载该 Platform Environment 获准的全部 Unit 组合。Node 数、每环境 Ceiling、磁盘容量、Provider Mapping 和总容量只由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)定义；本领域仅消费其有效 Capacity Profile。
 

@@ -25,7 +25,7 @@ Audit 和 Telemetry 只允许记录不可逆引用、受限摘要、结果、版
 
 每个环境部署独立 OpenBao。Kubernetes Auth 为每个服务建立独立 ServiceAccount、Auth Role 和最小权限 Policy，Role 精确绑定 Namespace 与 ServiceAccount；服务仅能读取自己用途的 Secret 路径和必要的短期凭据。Workload 使用 `audience=openbao` 的 projected ServiceAccount Token，OpenBao 仅以本环境、最小权限 TokenReview 验证该身份；不接受默认 Audience、长期 ServiceAccount Token 或跨环境身份。平台不提供集中高权 Token Broker，也不把平台 API 变成 Secret 转发通道。
 
-OpenBao Server `2.6.1`、官方 Helm Chart `0.28.6`、Agent Injector 和附属镜像的精确版本/digest 是 PCS Candidate 与冻结部署输入；不得使用浮动 Tag。OpenBao 使用 Integrated Storage（Raft），不以 PostgreSQL 或业务数据服务作为 Storage Backend。DEV 使用 3 个 Voting Server、quorum 2；未来 PROD 使用 5 个 Voting Server、quorum 3。每个 Server 使用独立 10 GiB SSD RWO Data PVC，并通过 Anti-Affinity 与 Topology Spread 分散；同一时刻只有一个 Active，其他满足 quorum 的 Voting Server 为同步 Standby。
+OpenBao Server、官方 Helm Chart、Agent Injector 和附属镜像的精确版本/digest 只由 [09 的 PCS](../09-infrastructure-operations/infrastructure-operations-detail.md)锁定；不得使用浮动 Tag。OpenBao 使用 Integrated Storage（Raft），不以 PostgreSQL 或业务数据服务作为 Storage Backend。DEV 使用 3 个 Voting Server、quorum 2；未来 PROD 使用 5 个 Voting Server、quorum 3。每个 Server 使用独立 10 GiB SSD RWO Data PVC，并通过 Anti-Affinity 与 Topology Spread 分散；同一时刻只有一个 Active，其他满足 quorum 的 Voting Server 为同步 Standby。
 
 | 环境 | Voting Server | 单 Server Request | 单 Server Limit | 单 Server Data PVC |
 | --- | ---: | --- | --- | ---: |
@@ -72,7 +72,35 @@ Root 或 Intermediate 轮换使用双 Root/双链重叠：先发布新旧 Root B
 
 每次 Gateway 叶证书续签必须设定 `privateKey.rotationPolicy=Always`，生成新的 Leaf Private Key；证书签发、Secret 更新、Gateway 热加载和实际对外证书 Serial/SAN/Chain/有效期形成可观测闭环。PKI 状态路径、CRL/OCSP 响应及 Trust Bundle 仅传播公开材料；轮换期间旧 Issuer 保持必要的只读吊销状态，直到其已签发叶证书、缓存窗口与安全缓冲均满足退役条件。
 
-## 5. Kubernetes API Secretbox Data-at-rest Encryption
+## 5. Data-Service Transport / Service Identity / Access Contract
+
+本 Contract 是 PostgreSQL/PgBouncer、Valkey、NATS 与 Temporal 的传输、工作负载身份和最小访问唯一安全事实源；07 只拥有拓扑、数据语义和恢复。所有数据服务只使用 ClusterIP 与双向 default-deny NetworkPolicy，并按当前 Environment、Deployable Unit、用途和协议端口精确放行。证书、Database Role、ACL User、NKey、Machine JWT、Secret 路径与运维身份不跨环境或用途复用；身份、证书、授权或吊销状态不可证明时连接 Fail Closed，禁止回退明文、匿名、default user 或共享高权限凭据。
+
+### 5.1 PostgreSQL 与 PgBouncer
+
+应用到 PgBouncer、PgBouncer 到 PostgreSQL、受控直连、复制、备份和监控路径全部启用 TLS，并执行受信任 CA、目标主机名与证书有效性校验；内部服务和复制/管理路径按各自 PKI Role 使用 mTLS。PgBouncer Frontend 与 Backend 都不得接受明文连接或 `sslmode=disable/allow/prefer`，普通应用没有绕过 Pooler 直连 `rw` Service 的网络路径。
+
+每个可独立部署服务、Schema、环境和用途使用独立 Runtime Role；Runtime Role 只获得目标 Schema 所需 DML。Alembic/Schema Job 使用短生命周期 DDL Identity，受控运维和 Break-glass 使用彼此隔离的 Operations Identity；Runtime、DDL、备份、复制、监控和运维身份不得互相替代。数据库凭据由 OpenBao 以内存文件提供，证书身份不能替代数据库最小权限，数据库密码也不能替代 TLS/mTLS。
+
+### 5.2 Valkey
+
+Valkey Client、Primary/Replica 复制和 Sentinel 通信只开放 TLS 端口并强制 mTLS；Server、Client、Replication、Sentinel 与 Monitoring 使用隔离的证书用途和服务身份。关闭明文数据端口与 `default` User，每个 Deployable Unit、复制、Sentinel、监控和 Break-glass 用途使用独立 ACL User，凭据由 OpenBao 以内存文件分发。
+
+普通身份仅允许业务需要的命令与 Key Prefix，并拒绝 `CONFIG`、`MODULE`、`DEBUG`、`FLUSHALL`、`FLUSHDB`、`SHUTDOWN`、`REPLICAOF` 和 ACL 管理等高风险能力。Break-glass 身份默认不可用；TLS、mTLS、ACL、证书轮换或撤销校验失败时拒绝连接和写入，不能开放明文或 default user 作为降级路径。
+
+### 5.3 NATS JetStream
+
+NATS Client Port 和 Cluster Route 全部使用 TLS；Client 连接同时要求受信任的 mTLS Workload Certificate 与独立 NKey Challenge，Route 使用单独的 Route Certificate 完成 mTLS。`PLATFORM` 与 `SYS` Account 隔离，不使用默认全局 `$G` Account；业务身份不能访问 `$SYS.>`，系统身份不能发布平台业务 Subject。
+
+每个 Deployable Unit 使用独立 NKey User，并以 Publish/Subscribe Allowlist 精确授予业务 Subject、Queue Group、Reply Inbox 与必要的 JetStream API Subject；默认拒绝跨领域通配符、不必要的 `$JS.API.>` 及 Stream/Consumer 管理权限。NKey Public Key、Account 和 Permission 是版本化 GitOps 配置，Seed 只保存在 OpenBao 并以内存文件注入。Sandbox 不获得 NATS 网络、证书或 NKey；证书/NKey 轮换仅允许短时新旧身份重叠，验证新身份后立即吊销旧身份。
+
+### 5.4 Temporal
+
+Temporal Internode 与 Frontend 分别启用 mTLS、目标主机名校验和证书用途隔离，Frontend 固定 `requireClientAuth=true`；全部 Service 仅使用 ClusterIP。`internal-frontend=false`，不保留绕过外部授权的内部管理入口。NetworkPolicy 只允许 Temporal Server 成员、Platform Orchestrator Client/Worker、只读 Operations Adapter 与受控一次性 Job 访问对应端口。
+
+Frontend 固定启用 `claimMapper=default` 与 `authorizer=default`，禁止 `noopAuthorizer`、`nopAuthority` 或仅凭 mTLS 放行。`ServiceIdentityPort` 签发由 OpenBao Transit 保护的短期 Machine JWT；默认 TTL 为 `10min`、最大 `30min`，并校验 Issuer、Audience、Subject、JTI、Expiry 与 `<namespace>:read|write|worker|admin` Claim。每个环境独立创建逻辑名为 `engineering-platform` 的 Temporal Namespace；Orchestrator Client、SDK Worker、只读 Operations Adapter 与一次性 Admin Job 分别使用 `write`、`worker`、`read` 和受控 `admin` 身份。普通用户、Browser、Agent 与 Sandbox 不直接持有 Temporal Certificate、Machine JWT 或 Admin Credential。
+
+## 6. Kubernetes API Secretbox Data-at-rest Encryption
 
 每个环境使用独立 CSPRNG 生成的 32-byte `secretbox` key，仅在 `EncryptionConfiguration.secret` 字段以 Base64 表示。EncryptionConfiguration Schema 固定为 `apiserver.config.k8s.io/v1`；三个 API Server 的有序 Keyring、Resource Catalog、Provider 顺序和内容哈希必须一致。启动前 Pre-start Gate 验证 `--encryption-provider-config`、Schema、Catalog、Keyring、配置哈希、generation、文件权限和恢复材料完整性。全新 Cluster 完全不配置任何 identity provider。
 
@@ -80,16 +108,20 @@ Root 或 Intermediate 轮换使用双 Root/双链重叠：先发布新旧 Root B
 
 `identity` 只允许作为既有明文迁移期间的最后临时读 fallback，永不作为 writer。新 Key 必须先作为同一 `secretbox.keys` 数组中的第二个 read candidate，再提升为第一个 writer；变更通过原子文件替换逐台 Drain、restart、verify，禁止各 API Server 使用不同 Keyring 或并行写配置。
 
+每次配置、Catalog 或 Keyring 变更都先生成 `BACKUP_VERIFIED` Pre-change etcd Snapshot；该 Snapshot 只能绑定变更时实际 Effective 的 Provider 顺序、Active Writer、完整 Read Keyring、Catalog、Config Hash 与不可变 Recovery Bundle ID。包含新 Key 或下一阶段顺序的 Candidate Bundle 必须使用不同 Bundle ID 并标记 `PENDING`，不能绑定到 Pre-change Snapshot，也不能在对应配置生效前冒充 Effective Recovery Bundle。每个阶段生效后生成新的不可变 Bundle/State Manifest，后续 Snapshot 只绑定其生成时的 Effective Generation。
+
 每次 Keyring 轮换和恢复都执行 Sensitive Catalog 的全量幂等 rewrite，并验证：
 
 1. API read 与 canary write/read 成功；
 2. 预期对象数量与重写计数一致；
-3. 原始 etcd 样本以 `k8s:enc:secretbox:v1:{keyName}:` 格式保存；
+3. 不输出 Payload 的原始 etcd 抽样验证 Envelope 前缀为 `k8s:enc:secretbox:v1:<keyName>:`；
 4. 三个 API Server 的 Config Hash、Generation 和 Keyring 顺序一致。
 
-etcd snapshot 与 recovery bundle 必须绑定 config hash、generation 和完整历史 Keyring。恢复时先恢复并验证 Keyring 与 EncryptionConfiguration，再接触 etcd 数据；缺少任一历史 Key 或配置证据时，不得启动 API Server 读取 Secret。
+只有全量 rewrite、对象计数、API canary、raw etcd Envelope 和三节点一致性全部通过，才允许结束该轮迁移。临时 `identity` fallback 必须在这些验证完成后从 Live Configuration 移除；旧 read key 也只能在证明当前 Catalog 已全部由新 writer 重写后从 Live Keyring 移除。只要任一保留 Snapshot/Object Version 仍依赖旧 key，其 Key Material 就必须继续封存在该 Snapshot 精确绑定的不可变 Recovery Bundle 与离线 Recovery Kit 中，并由 Restore Drill 证明可读，不能依据当前 Live Keyring 删除历史恢复能力。
 
-## 6. Volume、Ceph 与 Object Encryption
+etcd snapshot 与 Recovery Bundle 必须绑定 Config Hash、Generation 和该 Snapshot 所需的完整 Keyring。恢复时先恢复并验证 Keyring 与 EncryptionConfiguration，再接触 etcd 数据；缺少任一历史 Key 或配置证据时，不得启动 API Server 读取 Secret。
+
+## 7. Volume、Ceph 与 Object Encryption
 
 Volume 与 Ceph 的 dm-crypt/LUKS 安全语义由本节定义，物理 Storage Node 和 Rook-Ceph 拓扑由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)定义。
 
@@ -111,9 +143,9 @@ Cluster 外 etcd snapshot + recovery bundle
 
 各阶段都要验证环境绑定、对象版本、签名/校验和、Keyring/证书与 Audit 证据；验证失败时保持恢复冻结。PostgreSQL、NATS、Temporal 与对象版本的组件级恢复算法仍以[07](../07-data-messaging-storage/data-messaging-storage-detail.md)为准。
 
-## 7. File 与 Image Security
+## 8. File 与 Image Security
 
-File Security Worker 使用 ClamAV 1.5.3。每个环境运行 2 个 replica，总并发为 4；单对象上限 100 MiB，`MaxScanSize=400 MiB`、`MaxRecursion=17`、`MaxFiles=10000`、`MaxScanTime=120s`。扫描结果固定为 `CLEAN`、`MALICIOUS`、`SUSPICIOUS` 或 `ERROR`。
+File Security Worker 使用 [09 PCS](../09-infrastructure-operations/infrastructure-operations-detail.md)锁定的 ClamAV Engine/Image。每个环境运行 2 个 replica，总并发为 4；单对象上限 100 MiB，`MaxScanSize=400 MiB`、`MaxRecursion=17`、`MaxFiles=10000`、`MaxScanTime=120s`。扫描结果固定为 `CLEAN`、`MALICIOUS`、`SUSPICIOUS` 或 `ERROR`。
 
 每个 Scanner Replica 是带 `File Security Worker` 与 `clamd/freshclam` 的独立 StatefulSet Pod，通过 Pod 内 Unix Socket 调用，不暴露 ClamAV 网络服务。每副本使用独立 5 GiB RWO Signature PVC；ClamAV Container 的 Request/Limit 为 `1 CPU / 3 GiB` 与 `2 CPU / 6 GiB`，Worker Container 的 Request/Limit 为 `200m CPU / 256 MiB` 与 `1 CPU / 1 GiB`。两个副本以 Anti-Affinity/Topology Spread 分散，并设 `PDB minAvailable=1`。
 
@@ -135,7 +167,7 @@ PENDING_SCAN → PASSED | BLOCKED | ERROR | EXPIRED
 
 签名有效或 Build 成功都不能绕过扫描。不可绕过 Security Floor 包含 Trust/Provenance 失败、Coverage 不完整、Embedded Secret、Base OS EOL、CISA KEV 与 Critical Finding；High 默认 Block，仅允许对精确 Image Digest 与精确 Finding 建立限时、可审计 Exception，且不能覆盖上述 Floor。Image Security 不重新定义 03/04 的 Build 或 Sandbox 生命周期。
 
-## 8. Audit、WORM 与 Break-glass
+## 9. Audit、WORM 与 Break-glass
 
 Audit 是独立的追加式不可篡改事实。任何需要 Audit 的受保护状态变更，只有在 Audit 与对应持久证据可靠提交后才能成功；Audit 容量无法覆盖扩容 Lead Time 时相关写操作 Fail Closed。Coverage 至少包括 Identity/认证因子重置、授权/配置、Requirement/Workflow/MR/Attempt、Secret/PKI、Archive/Restore/Delete、DLQ/Replay、Provider Feed、Break-glass、加密轮换、文件/镜像判定、工作负载安全异常和治理操作。平台、OpenBao、Provider 与 Kubernetes Audit 独立保存并可按 Correlation ID、环境和对象关联；任一来源都不能替代其他来源。
 
@@ -143,7 +175,7 @@ Audit 是独立的追加式不可篡改事实。任何需要 Audit 的受保护�
 
 Break-glass 仅通过 01 的受限 Recovery Port 和 GitOps 锁定的一次性 Job/CLI 执行，不经过 Web 页面、普通平台 API 或直接数据库修改。它使用短期、最小化的高权限资格，必须给出原因、双 Audit 证据、执行范围和失效时间。无法建立审计双写、身份验证、受限范围或恢复证据时，Break-glass 不执行。
 
-## 9. External Provider Trust Material
+## 10. External Provider Trust Material
 
 06 定义 External Provider Envelope 字段、签名验证顺序、Ingest 和 High-water 算法；本文只定义其信任材料。每个 Signing Key 精确绑定 Environment、Binding Kind、Binding ID Scope、Binding Generation 与 Collector Lineage，Private Key 保持在 Cluster 外受控边界，平台只持有验证所需的公开材料。
 
@@ -157,11 +189,12 @@ ADD_NEW → CANARY → ACTIVE → VERIFY_ONLY → RETIRED / REVOKED
 
 Console 的预注册链接、允许列表、目标认证与打开 Audit 由 06 的 `ConsoleAccessPort` 定义。本文只保证 Console Access 不会获得 Secret、Private Key、Cloud Admin Credential 或跨环境信任材料。
 
-## 10. 不变量
+## 11. 不变量
 
 1. 每个环境的 OpenBao、PKI、Keyring、Transit、Audit、Trust Store 与恢复材料相互独立。
 2. Secret 只通过最小权限 Workload Identity 与 Pod 内存文件短期分发，不进入任何持久化或可观测性载体。
-3. 新 Kubernetes Cluster 禁止 identity provider；secretbox 轮换和恢复始终先完成一致 Keyring/配置验证。
-4. OpenBao 恢复 Bucket 不依赖待恢复的 OpenBao Transit，离线 OpenPGP 是其唯一解密根。
-5. Audit WORM、双写证据与 Break-glass 限制始终优先于高权限操作便利性。
-6. Provider 信任材料、环境绑定与回放证据必须在恢复后保持连续、可验证和可审计。
+3. 数据服务只接受当前环境、当前用途的受信任传输身份和最小访问身份，不能以网络可达或单一凭据替代完整授权链。
+4. 新 Kubernetes Cluster 禁止 identity provider；secretbox 轮换和恢复始终先完成一致 Keyring/配置验证。
+5. OpenBao 恢复 Bucket 不依赖待恢复的 OpenBao Transit，离线 OpenPGP 是其唯一解密根。
+6. Audit WORM、双写证据与 Break-glass 限制始终优先于高权限操作便利性。
+7. Provider 信任材料、环境绑定与回放证据必须在恢复后保持连续、可验证和可审计。

@@ -7,7 +7,7 @@
 
 本文是 Agent Definition、Superpowers Runtime Bundle、Model Catalog/Capability/Route、Run/Attempt、Execution Binding、Child Execution、执行等待、Context/Tool/Network Policy、事件和失败语义的唯一规范事实源。
 
-Requirement、WorkItem、Route、Gate、人工 Assignment 与 Decision 的业务语义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有。人员资格由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 的 KVM/Kata、Materialization、Secret 注入、Lease 物理实现和容量 BOM 由未来的[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)拥有；本文只约束其通过 Port 提供的逻辑契约。
+Requirement、WorkItem、Route、Gate、人工 Assignment 与 Decision 的业务语义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有。人员资格由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 的 KVM/Kata、Materialization、Secret 注入、Lease 物理实现和容量 BOM 由[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)拥有；本文只约束其通过 Port 提供的逻辑契约。
 
 Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human Gate Decision。Prompt、UI 开关和 Model 输出都不是授权事实。Runtime 以随镜像发布的版本化 Superpowers Runtime Bundle 与 Loaded Skill Contract 执行；Workflow 不保存 Provider 专有参数或具体 Model 名称。
 
@@ -164,6 +164,8 @@ CREATED | QUEUED | PROVISIONING | RUNNING | FINALIZING | SUCCEEDED
 ```
 
 `SUCCEEDED`、`CANCELED`、`FAILED`、`TIMED_OUT` 是供 Parent 消费的结构化终态结果。`WAITING_INPUT` 与 `WAITING_CHILD` 只属于 Parent Attempt，不能写入 Child Build Execution。
+
+Build Handoff 已完成但 Child 尚未取得 Lease 时，如果有效的 `agent.image_build.active_build_limit=0`，Sandbox 返回 `POLICY_DISABLED`。本领域必须将 Child 收敛为带该原因码的 `CANCELED` 终态、固化结构化结果并唤醒仍有效的 Parent；该 Child 不能无限保持 `QUEUED`，也不能把普通 Policy 下调解释为强杀已持有 Lease 的 Child。
 
 Child 使用独立 Execution ID、Binding、Lease、Credential 与 Fencing Token。Child 终态先固化 Digest、SBOM/Provenance、日志、Artifact 或结构化错误，再释放资源。Parent 仅在仍等待、未取消/归档/删除/超时、原 Binding 与 Checkpoint 有效且结果属于绑定 Child 时回到 `QUEUED`。Child 失败自身不终结 Parent；Parent 的后续处理由 Tool/Workflow Policy 决定。
 

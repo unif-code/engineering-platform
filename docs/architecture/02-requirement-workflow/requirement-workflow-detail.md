@@ -5,7 +5,7 @@
 
 ## 1. 责任边界与治理
 
-本文是 Requirement、WorkItem、Route、人工 Gate、业务责任 Assignment、Decision、Artifact 与 Integration Baseline 的唯一规范事实源。它描述业务状态、版本约束和恢复结果，不定义人员资格、Agent 内部执行、Sandbox 物理资源、GitLab Adapter 或对象存储实现。
+本文是 Requirement、WorkItem、Route、人工 Gate、业务责任 Assignment、Decision、Artifact 与 `RequirementIntegrationBaselineSelection` 的唯一规范事实源。它拥有 Requirement 何时选定或冻结当前证据引用、Acceptance 绑定与失效以及业务状态，不定义 `IntegrationBaselineEvidence` 的 Git/MR/Artifact 证据结构、人员资格、Agent 内部执行、Sandbox 物理资源、GitLab Adapter 或对象存储实现。`IntegrationBaselineEvidence` 只由 [Source Control 与交付](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
 
 人员、Capability、Scope、Membership、账号与 Session 的有效性由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Workflow 在每次受保护命令中调用该 owner；Assignment 只说明当前责任，永不授予资格或扩大范围。
 
@@ -25,7 +25,7 @@ System Invariant 不可由 Policy 关闭。Platform Policy 与允许的 Workspac
 
 ### 2.1 Requirement 与 WorkItem
 
-Requirement 是整体交付聚合，至少关联 Workspace、创建人、不可静默变更的类型、初始仓库、Route Snapshot、状态、recordState、必需 WorkItem、Gate、Artifact、Integration Baseline、乐观并发版本与 Audit 关联。
+Requirement 是整体交付聚合，至少关联 Workspace、创建人、不可静默变更的类型、初始仓库、Route Snapshot、状态、recordState、必需 WorkItem、Gate、Artifact、`RequirementIntegrationBaselineSelection`、乐观并发版本与 Audit 关联。
 
 类型只能为：
 
@@ -41,7 +41,7 @@ WorkItem 是单一仓库中的可分配交付，分别记录 `createdBy`、`huma
 
 ### 2.2 版本绑定
 
-Route、Gate、Attempt 与 Artifact 在形成时保存 Effective Policy 与解析快照。Decision 必须绑定 subject、准确版本/hash、Current Assignment 与决策时资格快照；Acceptance Decision 还绑定 Integration Baseline。Artifact version、Commit、交付 head SHA、Route Bundle 或被确认输入变化时，旧结论失效而历史保留。
+Route、Gate、Attempt 与 Artifact 在形成时保存 Effective Policy 与解析快照。Decision 必须绑定 subject、准确版本/hash、Current Assignment 与决策时资格快照；Acceptance Decision 还绑定当前 `RequirementIntegrationBaselineSelection`。该选择对象至少保存 Requirement、选定的 `integrationBaselineId/hash`、选择时间、选择时 Requirement Version 与当前状态；Artifact version、Commit、交付 head SHA、Route Bundle 或被确认输入变化时，旧结论失效而历史保留。
 
 完成的 Decision、Attempt、Artifact 与 Audit 始终保存原 actor，不因组织、授权或 Assignment 后续变化而重写。外部交付的准确 Commit、分支与 MR 事实由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)提供，本领域只保存稳定引用。
 
@@ -109,7 +109,7 @@ GatePolicy
 | Gate Type | subject | 责任 |
 | --- | --- | --- |
 | `REQUIREMENT_BASELINE_CONFIRMATION` | Route 的 SDD、Debug Baseline 或技术基线版本 | 确认可执行基线 |
-| `REQUIREMENT_ACCEPTANCE` | 冻结的 Integration Baseline | 最终验收 |
+| `REQUIREMENT_ACCEPTANCE` | 冻结的 `RequirementIntegrationBaselineSelection` | 最终验收 |
 | `FORMAL_MR_REVIEW` | Formal MR 的精确 `headSha` | 人工代码 Review |
 
 Decision 使用 `APPROVED`、`CHANGES_REQUESTED`、`REJECTED` 等稳定结果；岗位不能编码进 Gate Type 或结果。Formal MR 的默认路由、Review Assignment 与 `headSha` 失效由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)唯一规定。
@@ -126,7 +126,7 @@ Decision 使用 `APPROVED`、`CHANGES_REQUESTED`、`REJECTED` 等稳定结果；
 
 最终验收默认责任人为 Requirement 创建人，可按同一 Assignment 语义异步改派。只有 Current Acceptance Assignment 的 assignee，且具备所需 Capability、Scope 与 Membership，才可提交验收 Decision；创建人不具资格时必须改派给合格候选人。SDD 确认、WorkItem 实现、最终验收、MR Review 与 Merge 是相互独立的责任。
 
-Acceptance Decision Snapshot 必须明确绑定 `requirementVersion`、`acceptanceCriteriaVersion/hash` 与 `integrationBaselineId/hash`，并保存 Current Acceptance Assignment 及决策时资格快照。Requirement 版本、验收标准或冻结的 Integration Baseline 任一变化，都会使旧 Acceptance Decision 失效；旧结论及其快照完整保留，新验收必须针对当前三项版本重新作出。
+Acceptance Decision Snapshot 必须明确绑定 `requirementVersion`、`acceptanceCriteriaVersion/hash` 与当前 Selection 中的 `integrationBaselineId/hash`，并保存 Current Acceptance Assignment 及决策时资格快照。Requirement 版本、验收标准、当前 `RequirementIntegrationBaselineSelection` 或其引用的 Evidence 任一变化，都会使旧 Acceptance Decision 失效；旧结论及其快照完整保留，新验收必须针对当前三项版本重新作出。
 
 ## 6. 业务状态机
 
@@ -147,7 +147,7 @@ CREATED → PREPARING → AWAITING_CONFIRMATION → READY → IN_PROGRESS
 | `READY` | 基线确认，可拆分、分配与准备执行 |
 | `IN_PROGRESS` | 必需 WorkItem 正在实现或返工 |
 | `VERIFYING` | 进行集成、测试和外部验证 |
-| `AWAITING_ACCEPTANCE` | Integration Baseline 冻结，等待验收 |
+| `AWAITING_ACCEPTANCE` | 当前 `RequirementIntegrationBaselineSelection` 已冻结，等待验收 |
 | `AWAITING_MERGE` | 验收有效，等待必需交付审核/合并 |
 | `COMPLETED` | 验收仍有效且所有必需 WorkItem 均完成合并 |
 | `CANCELED` | 取消已完成相关活动执行的安全终止 |
@@ -193,11 +193,11 @@ PENDING_UPLOAD → PENDING_VERIFICATION → PENDING_SCAN → AVAILABLE
 
 ## 8. 集成、外部验证与验收
 
-WorkItem 交付按 Source Control 的任务分支、`dev` 集成、冻结基线、验收与 Formal MR 顺序进行。Jenkins 是独立平台：用户手动运行和查看，平台不调用、不读取其状态，也不将其当作自动 Gate；用户可提交带提交人、时间、目标 Commit、引用和说明的外部验证证据。
+WorkItem 交付按 Source Control 的任务分支、`dev` 集成、外部人工验证、选定 Evidence、验收与 Formal MR 顺序进行。Jenkins 是独立平台：用户手动运行和查看，平台不调用、不读取其状态，也不将其当作自动 Gate；用户可提交带提交人、时间、目标 Commit、引用和说明的外部验证证据。
 
-所有必需 WorkItem 完成集成、测试和外部人工验证后，Requirement 冻结 Integration Baseline。该基线至少绑定每项的仓库、任务分支 Commit、集成结果、Artifact hash 与验证证据，不能绑定持续移动的分支 HEAD。任一必需项的 Commit、Artifact 或测试证据变化都会使旧验收失效，须重新冻结并再次验收。
+所有必需 WorkItem 完成集成、测试和外部人工验证后，05 owner 根据每项仓库、任务分支 Commit、集成结果、Artifact hash 与验证证据生成不可变 `IntegrationBaselineEvidence`，不能绑定持续移动的分支 HEAD。Requirement 随后创建并冻结指向该 `integrationBaselineId/hash` 的 `RequirementIntegrationBaselineSelection`。任一必需项的 Commit、Artifact 或测试证据变化都会形成新的 Evidence；02 owner 将旧 Selection 标记为不再当前并使旧验收失效，随后选择新 Evidence 并再次验收。
 
-验收通过且仍对当前 Baseline 有效后，才允许创建各 WorkItem 的 Formal MR。Requirement 进入 `COMPLETED` 的条件同时是：验收有效、所有必需 WorkItem 的 Formal MR 已合并 `main`、没有仍应计入的未完成 WorkItem。GitLab 分支、MR、Webhook、分支保护与 reconciliation 细节由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
+验收通过且仍对当前 `RequirementIntegrationBaselineSelection` 有效后，才允许创建各 WorkItem 的 Formal MR。Requirement 进入 `COMPLETED` 的条件同时是：验收有效、所有必需 WorkItem 的 Formal MR 已合并 `main`、没有仍应计入的未完成 WorkItem。GitLab 分支、MR、Webhook、分支保护与 reconciliation 细节由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
 
 ## 9. 归档、删除与恢复
 

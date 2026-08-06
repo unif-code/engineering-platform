@@ -23,11 +23,33 @@ CloudNativePG 通过 Barman Cloud Plugin、WAL Archive 与 S3-compatible `postgr
 
 PostgreSQL 默认 `archive_timeout=5min`，每日执行 Physical Base Backup，使用 LZ4；DEV Recovery Window 为 7 天，PROD 为 30 天。PROD Cluster DR Candidate 在 `PGDATA <= 50 GiB` 时为 `RPO <= 5min`、`RTO <= 60min`。DEV 每月、PROD 每季度执行完整 Restore Drill，并以实测结果验证恢复链。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。
 
+PostgreSQL 与 PgBouncer 的首个 Resource Envelope：
+
+| 组件/环境 | Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | `shared_buffers` | 单 Pod PVC |
+| --- | ---: | --- | --- | ---: | ---: |
+| PostgreSQL DEV | 3 | 500m / 500m | 1 GiB / 1 GiB | 256 MB | 40 GiB |
+| PostgreSQL PROD | 3 | 1 CPU / 1 CPU | 2 GiB / 2 GiB | 512 MB | 100 GiB |
+| PgBouncer DEV | 2 | 50m / 250m | 64 MiB / 128 MiB | — | 无 |
+| PgBouncer PROD | 2 | 100m / 500m | 128 MiB / 256 MiB | — | 无 |
+
+三个 PostgreSQL Pod 在同一环境使用相同规格，CPU/Memory Request 与 Limit 相等以保持 Guaranteed QoS；三个 Data PVC 合计为 DEV `120 GiB`、PROD `300 GiB`。PgBouncer 是无状态连接层，不声明数据 PVC。资源调整形成新的版本化 Data-Service Resource Profile，并由 09 的 Environment Capacity Profile 聚合和验证 N+1、PDB 与 Rollout Headroom。
+
 ## 3. Valkey
 
 每环境 Valkey 使用一个 Primary、两个 Replica 与三个 Sentinel（quorum=2），并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)；业务仅使用 Sentinel-aware Client，禁止固定 Primary 地址或厂商私有配置。使用 `noeviction`、AOF everysec 与周期 RDB，以避免在内存回收时无提示丢弃关键热状态。
 
 Valkey 仅保存可重建的 Session 热数据、撤销索引、缓存、限流、幂等键和短期锁。Session、安全和领域的权威事实始终保留在 PostgreSQL。缓存不可用、版本未知或安全写操作无法回源时，必须回查 PostgreSQL 或 Fail Closed；不得因 Valkey 故障放行陈旧授权、绕过撤销或将缓存内容升级为事实源。PVC 可用于快速恢复，但其丢失后的正确恢复方式是从权威事实重建。
+
+Valkey 与 Sentinel 的首个 Resource Envelope：
+
+| 组件/环境 | Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | `maxmemory` | 单 Pod PVC |
+| --- | ---: | --- | --- | ---: | ---: |
+| Valkey DEV | 3 | 100m / 500m | 256 MiB / 512 MiB | 192 MiB | 5 GiB |
+| Valkey PROD | 3 | 250m / 1 CPU | 512 MiB / 1 GiB | 384 MiB | 10 GiB |
+| Sentinel DEV | 3 | 25m / 100m | 32 MiB / 64 MiB | — | 无 |
+| Sentinel PROD | 3 | 50m / 200m | 64 MiB / 128 MiB | — | 无 |
+
+每个 Valkey 数据实例使用独立 PVC；合计为 DEV `15 GiB`、PROD `30 GiB`。Sentinel 无状态且不声明数据 PVC。`maxmemory` 必须低于 Pod Memory Limit，为复制、AOF、Client 和内存碎片保留余量；达到上限时按 `noeviction` 拒绝新写并告警。
 
 ## 4. NATS JetStream、Outbox 与 Inbox
 
@@ -39,13 +61,30 @@ NATS JetStream 每环境使用三个节点、File Storage、三副本，并消�
 platform.{command|event|dlq}.{domain}.{message}.v{major}
 ```
 
-每条消息限制为 256 KiB，大对象使用 Object Reference。Command Stream 使用 WorkQueue 语义；Event 与 DLQ 使用有限的时间/容量保留。满容量行为必须显式显示为拒绝或有界淘汰，不能把 JetStream 当作无限历史库。DLQ 不自动 redrive；人工重放必须重新校验 Capability、Subject、Schema、目标 Consumer、Idempotency Request ID 和审计关系。
+每条消息限制为 256 KiB，大对象使用 Object Reference。首个 Stream Contract 固定为：
+
+| Stream | Retention Policy | 时间规则 | `MaxBytes` | 满容量行为 |
+| --- | --- | --- | ---: | --- |
+| `PLATFORM_COMMANDS` | `WorkQueuePolicy` | 成功 ACK 后删除；未完成消息最多 7 天 | 1 GiB | `DiscardNew` 并告警 |
+| `PLATFORM_EVENTS` | `LimitsPolicy` | 最多保留 30 天 | 5 GiB | `DiscardOld`，删除最旧消息 |
+| `PLATFORM_DLQ` | `LimitsPolicy` | 最多保留 90 天 | 2 GiB | `DiscardNew` 并告警 |
+
+时间与容量限制同时生效。`PLATFORM_COMMANDS` 和 `PLATFORM_DLQ` 满容量时发布失败必须显式返回，不能静默丢弃命令或失败证据；`PLATFORM_EVENTS` 的有界淘汰只服务于恢复和受控重放，业务事实仍从 PostgreSQL 重建。JetStream 不是无限历史库，DLQ 不自动 redrive；人工重放必须重新校验 Capability、Subject、Schema、目标 Consumer、Idempotency Request ID 和审计关系。
 
 一致性流程固定为领域写入、Audit、Outbox 同一 PostgreSQL transaction 提交；Relay 收到 JetStream Persist ACK 后才标记发布；Consumer 先以 Inbox Unique Key 去重、成功提交业务效果后才 AckSync。传输是 at-least-once，Inbox 和 Effect Ledger 消除重复业务效果；外部副作用不确定时保留 `UNKNOWN/RECONCILIATION`，由 Reconciler 查询真实外部结果，禁止假设 exactly-once。
 
 NATS 的权威恢复是应用一致性 Account Backup，而不是多个 PVC/CSI Snapshot。备份 Manifest 必须记录 Stream、消息/Consumer 配置与位置、Sequence 范围、Checksum、版本及对应 PostgreSQL Outbox Watermark。恢复先重建空集群并验证 Stream、Sequence、Consumer、Schema 与抽样 Payload，再从 Watermark 以安全重叠窗补发 Outbox，保留原 Envelope ID，由 Inbox/Effect Ledger 去重。
 
 NATS 默认每日 `04:00 Asia/Shanghai` 执行应用一致性 Account Backup；前次任务未完成、完整性检查失败、空间不足或 Stream 配置正在变化时不得启动重叠任务。Backup Retention 为 DEV 3 天、PROD 7 天，已发布 Outbox 至少保留 30 天。DEV 每月、PROD 每季度执行完整 Restore Drill。Cluster DR 目标为 `RPO <= 5min`、`RTO <= 60min`；每日 Backup 周期不是消息 RPO，消息恢复还依赖 Outbox Watermark、安全重叠补发与幂等消费。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。
+
+NATS 的首个 Resource Envelope：
+
+| 环境 | Replica | 单 Node CPU Request / Limit | 单 Node Memory Request / Limit | Memory Store 上限 | File Store 上限 | 单 Node PVC |
+| --- | ---: | --- | --- | ---: | ---: | ---: |
+| DEV | 3 | 100m / 500m | 256 MiB / 512 MiB | 128 MiB | 12 GiB | 20 GiB |
+| PROD | 3 | 250m / 1 CPU | 512 MiB / 1 GiB | 128 MiB | 12 GiB | 20 GiB |
+
+三个 NATS Node 各自使用独立 PVC，两个环境均合计 `60 GiB`。业务 Stream 只使用 File Store；20 GiB PVC 中最多 12 GiB 用于 File Store，其余空间保留给 RAFT、索引、Compaction、临时文件与恢复。
 
 ## 5. Temporal Persistence
 
@@ -54,6 +93,19 @@ Temporal Server 的 Default Store 与 Visibility Store 使用同环境 CloudNati
 Runtime Role 只做 DML，Schema 由短生命周期 DDL Job 管理。History 只保存 Workflow 的非敏感控制元数据，禁止写入源码、Prompt、Secret 或完整附件。Worker Build ID 与不可变应用镜像/Workflow Code 绑定；活动 Workflow 的版本演进通过显式兼容策略完成，不在发布期间静默替换。Temporal 的 Durable History 只解释编排推进，领域状态仍以 PostgreSQL owner 为准。
 
 Temporal Persistence 恢复顺序固定为：先 Fence Temporal 写入入口与全部 SDK Worker；再对 Default/Visibility Store 执行 PostgreSQL PITR；随后以相同 Server、Schema、Shard 与 Namespace 配置启动 Temporal，验证 Visibility 查询和 Worker Build ID 映射；最后依据 PostgreSQL 领域事实、Outbox、Inbox 与 Effect Ledger 对账外部效果，确认无重复或遗漏后才重新开放 Worker。Persistence Database 的 RTO 不等于端到端 Workflow RTO；端到端恢复必须包含 Workflow/Visibility/Build ID/外部效果验证，并通过完整 Restore Drill 形成实测结果。
+
+Temporal 的首个 Resource Envelope：
+
+| 组件 | 每环境 Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | 数据 PVC |
+| --- | ---: | --- | --- | --- |
+| Frontend | 2 | 250m / 1 CPU | 512 MiB / 1 GiB | 无 |
+| History | 2 | 500m / 2 CPU | 1 GiB / 2 GiB | 无 |
+| Matching | 2 | 250m / 1 CPU | 512 MiB / 1 GiB | 无 |
+| Temporal System Worker | 2 | 250m / 1 CPU | 512 MiB / 1 GiB | 无 |
+| Platform Orchestrator Worker | 2 | 250m / 1 CPU | 512 MiB / 1 GiB | 无 |
+| Temporal UI / Console Access Adapter | 2 | 100m / 500m | 256 MiB / 512 MiB | 无 |
+
+上述稳态 Request 合计约为 `3.2 CPU / 6.5 GiB`，Limit 合计约为 `13 CPU / 13 GiB`。四类 Temporal Server、Worker、UI 与 Adapter 均不声明独立数据 PVC；Durable Persistence 与 Grafana 状态一样计入同环境 PostgreSQL，不能在 ESSD BOM 中重复增加 Temporal 数据卷。发布还必须为四类 Server Surge 预留约 `1.25 CPU / 2.5 GiB` Request，并为一整组新 Platform Orchestrator Worker 预留 `500m CPU / 1 GiB` Request。
 
 ## 6. Object Storage、Bucket Class 与 Artifact
 
@@ -67,6 +119,21 @@ nats-backup              openbao-recovery observability-logs observability-trace
 ```
 
 每个 Class 使用独立 Policy、Versioning、Retention、Quota 与 Capacity Ledger，并服从 [08 的权威 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。Prefix 不能替代 Bucket 级隔离；同一 Class 中的物理 Bucket 必须划分互斥配额，Class Usage 汇总当前/非当前 Version、Object Lock、Delete Marker、Multipart、GC 延迟和元数据估算。
+
+Bucket Class 的对象保护矩阵固定为：
+
+| Bucket Class | Versioning / Object Lock | 保留与清理语义 |
+| --- | --- | --- |
+| `requirement-attachments` | 启用 Versioning；普通对象默认不加 Lock | 由 Requirement/Artifact 引用、逻辑删除和产品 Retention 决定清理资格 |
+| `agent-artifacts` | 启用 Versioning；绑定 Decision、Acceptance、Merge 或 Release 的精确版本使用 `GOVERNANCE` Lock | 锁定期和业务引用同时满足后才可进入清理判定 |
+| `audit-worm` | 启用 Versioning；365 天 `COMPLIANCE` Lock | 只按 Audit Retention、Legal Hold 与 08 Security Floor 清理 |
+| `postgres-backup` | 启用 Versioning；近期 Backup Object 默认 7 天 `GOVERNANCE` Lock | 还须满足 DEV 7 天、PROD 30 天 Recovery Window 与完整 Base Backup + WAL 恢复链 |
+| `nats-backup` | 启用 Versioning；`GOVERNANCE` Lock 覆盖 DEV 3 天、PROD 7 天有效 Backup Retention | 仍须保留可恢复 Account Backup、Manifest 与 Outbox 对账链 |
+| `openbao-recovery` | 启用 Versioning；默认 7 天 `GOVERNANCE` Lock | 使用离线 OpenPGP；保留与对应 Shamir/Seal Generation、Manifest 和恢复演练共同判定 |
+| `observability-logs` | 由 Loki Backend 管理对象版本与 Retention，不使用通用 Reconciler 直接删除 | Loki 索引一致性与 09 的 Log Retention 决定清理 |
+| `observability-traces` | 由 Tempo Backend 管理对象版本与 Retention，不使用通用 Reconciler 直接删除 | Tempo Block/索引一致性与 09 的 Trace Retention 决定清理 |
+
+`GOVERNANCE` Lock 不授予普通服务 Retention Bypass；`COMPLIANCE` Lock 不可由 Super Admin、Reconciler 或普通运维缩短。任何 Class 的 Prefix 都不能替代独立 Bucket、Credential、Quota、Encryption 或 Retention Boundary。
 
 Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体。附件或 Agent Artifact 的归档、逻辑删除、Requirement 恢复状态变化都不释放对象容量；仅在其领域 owner 明确的引用、状态和保留条件满足后才可能改变存储引用。上传和下载仅能由应用授权签发短期、精确版本的 Presigned Request。文件检查由应用 `FileSecurityPort` 处理；只有合格 Verdict 的对象可进入可用业务状态，具体业务状态由其领域 owner 决定。
 

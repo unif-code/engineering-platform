@@ -32,6 +32,7 @@ Human / Workload Identity
 | 身份保护 | 密码验证材料、TOTP、Session 敏感值保护 | [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md) 与本文 detail |
 | Secret 与 Workload Identity | OpenBao、Kubernetes Auth、Agent Injector、最小 Policy | 本文 detail |
 | PKI 与传输信任 | 环境证书链、CRL、OCSP、Trust Bundle | 本文 detail |
+| 数据服务访问 | PostgreSQL/PgBouncer、Valkey、NATS、Temporal 的传输、服务身份与最小访问 | 本文 detail |
 | 数据静态加密 | Kubernetes Secret、Volume、Ceph/RGW Object 加密 | 本文 detail |
 | 审计与供应链 | WORM Audit、文件扫描、镜像来源与签名 | 本文 detail |
 | 环境与恢复 | Cluster、PCS、DR、容量和运维观测 | [09](../09-infrastructure-operations/infrastructure-operations-detail.md) |
