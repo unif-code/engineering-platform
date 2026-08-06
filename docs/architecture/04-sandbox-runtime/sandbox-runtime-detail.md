@@ -70,13 +70,28 @@ Resource Profile 是不可变的 `GITOPS_CONFIG`，已形成的 Binding 始终�
 
 Agent Attempt 与 Image Build 共享同一个 Fencing Domain 和 Capacity Ledger。一次请求必须原子取得完整 Unit；产品并发限制、剩余 Unit、完整资源向量、Node Placement、Kata Gate、Runtime Disk 与安全余量任一不足时，Controller 拒绝 Lease 并返回 `CAPACITY_UNAVAILABLE` 及结构化维度。它不排队、不抢占、不超卖，也不临时扩大配额；排队和后续动作由 Agent owner 决定。
 
+### 4.1 Platform Policy 准入 Gate
+
+Sandbox 在共享 Capacity Ledger 与物理安全 Gate 之前，分别应用两个独立、版本化的 `PLATFORM_POLICY`：
+
+| Policy Key | 准入 Contract |
+| --- | --- |
+| `agent.sandbox.active_attempt_limit` | 限制当前 Platform Environment 中同时持有 Agent Sandbox Lease 的 Attempt 数；值必须为正数。达到上限时拒绝后续 Agent Lease，并返回包含 Policy Version 的 `POLICY_LIMIT_REACHED`。 |
+| `agent.image_build.active_build_limit` | 限制当前 Platform Environment 中同时持有 Build Lease 的 Child 数及新 Build Handoff；值可为 `0`。值为 `0` 时拒绝新 Build Handoff，并返回包含 Policy Version 的 `POLICY_DISABLED`。 |
+
+下调任一 Policy 只阻止后续 Lease 或 Handoff 并等待占用自然收敛，不撤销既有 Lease、不强杀已持有 Build Lease 的 Child，也不改写 Execution Binding。两个 Key 彼此独立；任何准入还必须同时满足共享 Capacity Ledger、绑定 Resource Profile 的完整 Resource Vector、Placement、Kata Gate、Runtime Disk 与 N+1 安全边界。业务配置不能扩大或突破物理 Capacity Envelope。
+
+两个 Policy 的 Effective Default 与 Ceiling 只由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)中的当前 Environment Capacity Profile 提供，本文不重复环境数值。Policy 发布与配置生命周期由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)的 Configuration Contract 拥有；发布权限与 Super Admin 边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 只消费已生效的 Policy Snapshot，不复制配置工作流。
+
 专用 Pool 必须满足 N+1：任一个 `sandbox-worker` 或其 Host 失效后，剩余故障域仍能承载该 Platform Environment 获准的全部 Unit 组合。Node 数、每环境 Ceiling、磁盘容量、Provider Mapping 和总容量只由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)定义；本领域仅消费其有效 Capacity Profile。
 
 每个 Node 的 Runtime/Ephemeral 磁盘只存可再生 Checkout、缓存、中间文件、Writable Layer 与有界临时日志，不提供备份或跨 Node 恢复承诺。CPU 达到 Limit 时 Throttle；Memory 无 Swap，OOM 形成 `RESOURCE_EXHAUSTED/MEMORY`；Ephemeral Limit、DiskPressure、Eviction、Inode 或写满风险形成 `RESOURCE_EXHAUSTED/EPHEMERAL_STORAGE`。新 Lease 的磁盘投影不安全时返回 `CAPACITY_UNAVAILABLE`，Node 丢失只能从 Git、Checkpoint 和 Artifact 重建。
 
 ## 5. Repository、网络与 Secret
 
-Controller 仅按 Execution Binding 挂载当前 Requirement 的 WorkItem Checkout。每个 Checkout 固定 `repositoryId + branchName + baseCommitSha`；Agent 只能写自己的任务分支，同一 Repository Branch 同时最多一个写执行。测试和 Review 以固定 Commit 创建只读 Materialization。分支创建、保护、MR 和外部 GitLab 对账由 [Source Control 与交付](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
+Controller 仅按 Execution Binding 挂载当前 Requirement 的 WorkItem Checkout。每个 Checkout 固定 `repositoryId + branchName + baseCommitSha`；Agent 只能写自己的任务分支，同一 Repository Branch 同时最多一个写执行。Execution Binding 语义由 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有；分支创建、保护、MR 和外部 GitLab 对账由 [Source Control 与交付](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
+
+Agent 产生的有效代码必须 Commit 并 Push 到当前 `RepositoryBranchBinding` 的任务分支；测试和 Review 以固定 Commit 创建只读 Materialization，Formal MR 只能使用 GitLab 中的 Commit/`headSha`，不能依赖 Sandbox 本地快照。Controller 收到等待、结束、取消或清理命令后，在确认销毁前必须把仍需保留但尚未提交的状态固化为受控 Patch/Checkpoint Artifact。恢复以 Git Commit 为主、Patch/Checkpoint 为辅，不得依赖旧 Pod、Node、本地目录或 Runtime Disk。
 
 Sandbox 使用 NetworkPolicy 默认拒绝东西向和公网 Egress，只按 Binding 放行：当前 GitLab Source/Registry、批准依赖源与镜像源、Artifact Store、Model Gateway、必要平台 API、明确批准的测试服务或 Connector Endpoint。Sandbox 不能访问生产域名、生产数据库、NATS、Kubernetes API、Cloud Metadata/Admin API、其他环境或其他 Attempt。
 
@@ -92,6 +107,10 @@ Image Build 不是普通 Agent Container 内的 Privileged 操作。Parent 通�
 
 Child 使用独立 Kata Materialization、Rootless BuildKit、Binding、Credential、Workspace 和 Fencing Token；收到其结束或取消清理命令时，先固化 Image Digest、SBOM、Provenance、扫描结果、日志与结构化结果，再释放资源。Child Handoff 成功后 Parent 不持有 Unit、不共享本地目录或凭据；同一 Parent 同时最多一个活动 Child，故障恢复前必须 Fence 旧 Builder。Parent/Child 的状态与后续调度由 Agent owner 定义。
 
+当 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)确认 Child Lease 可以安全释放并请求创建 `ParentContinuationReservation` 时，Sandbox 必须在同一个 fenced、幂等的 Capacity Ledger 提交中释放 Child Lease，并按 Parent 原 Execution Binding 所绑定 Resource Profile 的 Unit Weight 物化 Reservation；不得为 Continuation 另设 Unit 默认值。收到 03 owner 的释放请求时，Sandbox 在同一账本语义下释放 Reservation，并通过 Reconciliation 收敛。
+
+Sandbox 只拥有 Child Lease 与 Reservation 在 Capacity Ledger 中的原子物化、释放和 Fencing。Parent 是否仍有效、Continuation Queue 的优先级、Reservation TTL 与失效语义均由 03 owner 定义；Reservation 也不绕过 `agent.sandbox.active_attempt_limit`、完整 Resource Vector、Placement、Kata、Runtime Disk、N+1 或其他物理准入 Gate。
+
 ## 7. 失败、清理与外部边界
 
 | 场景 | Sandbox 处理 |
@@ -99,6 +118,7 @@ Child 使用独立 Kata Materialization、Rootless BuildKit、Binding、Credenti
 | KVM/Kata/PCS Gate 失败 | Node 不可调度；返回结构化物化失败，绝不降级 Runtime |
 | Provision 失败 | Fence 未完成实例、吊销 Secret、保留诊断并有界重试 |
 | Capacity、Placement 或磁盘不足 | 拒绝 Lease，返回 `CAPACITY_UNAVAILABLE` 与可处置阻塞原因 |
+| Agent 或 Build Policy Gate 拒绝 | 返回 `POLICY_LIMIT_REACHED` 或 `POLICY_DISABLED` 及 Policy Version，不撤销既有 Lease |
 | Egress/依赖/Connector 被拒绝或不可用 | 使用允许的缓存/重试，绝不扩大权限或网络 |
 | Node 或 Materialization 丢失 | Fence 旧执行，从权威 Git、Checkpoint、Artifact 重建或结构化失败 |
 | 清理失败 | 先断网、吊销凭据、标记隔离，由 Janitor/Reconciler 幂等清理 |

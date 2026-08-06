@@ -28,7 +28,7 @@ Requirement Sandbox Environment
 
 Execution Binding 固定 Resource Profile、Runtime、Network、Secret、Repository Branch 与权限。Sandbox Controller 接收 Agent owner 发出的已授权物化请求，原子申请带 Fencing Token 的 Capacity Lease，并返回 `MaterializationReady`、结构化 `MaterializationBlocked` 或 `MaterializationFailed`；它不决定 Attempt 如何排队或转换。收到挂起、Child Handoff、结束或取消的物理清理命令时，Controller 固化事实、Fence 副作用、吊销凭据、释放 Lease 并销毁 Materialization。
 
-Agent 与 Build 共享同一 Capacity Ledger；Resource Profile 与 Capacity Unit 的具体 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。具体 Node、环境容量与基础设施配置由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
+Agent 与 Build 共享同一 Capacity Ledger，并分别受独立的版本化 Platform Policy 准入；Resource Profile、Capacity Unit、Policy Gate 与 `ParentContinuationReservation` 的物理账本 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。具体 Node、环境默认值、Ceiling 与基础设施容量由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
 
 ## 网络、Secret、Preview 与镜像构建
 
@@ -42,4 +42,5 @@ Image Build 使用独立 Kata Materialization 与 Rootless BuildKit，先固化 
 
 - 逻辑 Sandbox Environment 不能成为可写执行实例的别名；不同 Attempt、Child 或 Workspace 不共享可写目录、执行身份或短期 Secret。
 - 只有 Sandbox Controller 可以把已绑定的 Runtime Profile 物化为 Kata 执行；业务对象、用户与 Agent 都不能选择 Node、RuntimeClass 或 Host 权限。
+- Agent 的有效代码必须 Commit 并 Push 到当前绑定的任务分支；Formal MR 不得依赖 Sandbox 本地快照，恢复也不得依赖旧 Node 或本地磁盘。
 - 运行时安全、故障清理、证据与审计规则见[详细说明](./sandbox-runtime-detail.md)；平台应用入口与 API 集成边界见未来的[平台应用与集成](../06-platform-application-integration/platform-application-integration.md)。
