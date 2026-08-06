@@ -25,7 +25,18 @@ Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human G
 | Execution Binding | Attempt 的不可变运行输入与权限快照 |
 | Run / Attempt | 业务目标 / 目标的一次执行 |
 
-首批 Agent Definition 可包含：Requirement Orchestrator、Product Agent、Backend Development Agent、Frontend Delivery Agent、Test Agent 与 Code Review Agent。Definition 至少有稳定 ID、版本、职责、支持阶段、输入/输出 Schema、Skill/Model/Tool Capability、Context Policy 与 Runtime Permission 模板；它不保存人员 ID、实际镜像 digest 或实际 Model Deployment。
+首批 Agent Definition 的规范性基线如下：
+
+| Agent Definition | 输入 | 输出 |
+| --- | --- | --- |
+| Requirement Orchestrator | Requirement、Route、Policy、当前状态 | 子 Run、交互请求、阶段结果 |
+| Product Agent | `feat` 上下文、初始仓库、产品规范 | 澄清结果、Product SDD、页面或 Mock Artifact |
+| Backend Development Agent | 当前 Baseline、后端 WorkItem 与仓库 | Technical SDD、API Contract、代码与测试 |
+| Frontend Delivery Agent | 当前 Baseline、前端 WorkItem 与仓库 | 前端代码、Preview、测试 |
+| Test Agent | 固定 Commit、Contract、验收标准 | 测试结果与证据 |
+| Code Review Agent | 固定 `headSha`、Diff、规范、测试结果 | AI Review 建议 |
+
+每个 Agent Definition 至少有稳定 ID、版本、职责、支持阶段、输入/输出 Schema、Skill/Model/Tool Capability、Context Policy 与 Runtime Permission 模板；它不保存人员 ID、实际镜像 digest 或实际 Model Deployment。Definition 可按同一 Schema 扩展并版本化。
 
 执行授权链为：
 
@@ -40,9 +51,9 @@ Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human G
 
 ## 3. Superpowers Runtime Bundle
 
-Superpowers Runtime Bundle 随 Runtime 镜像交付。Workflow 解析 Route 并将所需 Bundle 与 Loaded Skill 写入 Execution Binding；Route→Skill 定义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有。
+首版 `Superpowers Runtime Bundle` 是 Skill 的唯一权威可加载来源，并随 Runtime 镜像交付。Workflow 解析 Route 并将所需 Bundle 与 Loaded Skill 写入 Execution Binding；Route→Skill 定义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有。
 
-Runtime 镜像必须记录镜像 digest、Bundle hash、可加载 Skill 名单、构建来源、签名与扫描结果。BINDING 阶段校验所需 Skill、Bundle 与 digest，并在校验失败时终止本次绑定。一个 Attempt 内保持同一 Bundle；Bundle 通过 `RuntimeBundlePort` 接入，并复用 Binding、权限与审计契约。
+Runtime 镜像必须记录镜像 digest、Bundle hash、Bundle Manifest、可加载 Skill 名单、构建来源、签名与扫描结果。BINDING 阶段只接受 Bundle Manifest 与 Agent Definition 共同允许的 Skill；缺少 Route 所需 Skill、Manifest/Definition 不一致或出现其他动态来源时 Fail Closed。一个 Attempt 内保持同一 Bundle；Bundle 通过 `RuntimeBundlePort` 接入，并复用 Binding、权限与审计契约。
 
 ## 4. Model Catalog、Capability 与 Route
 
@@ -144,6 +155,15 @@ RUNNING → WAITING_CHILD → QUEUED
 ### 7.2 WAITING_CHILD
 
 首发 Child Type 是 Image Build。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
+
+Child Build Execution 使用独立状态机，不能复用 Parent Attempt 状态；状态集合固定为：
+
+```text
+CREATED | QUEUED | PROVISIONING | RUNNING | FINALIZING | SUCCEEDED
+| CANCELING | CANCELED | FAILED | TIMED_OUT
+```
+
+`SUCCEEDED`、`CANCELED`、`FAILED`、`TIMED_OUT` 是供 Parent 消费的结构化终态结果。`WAITING_INPUT` 与 `WAITING_CHILD` 只属于 Parent Attempt，不能写入 Child Build Execution。
 
 Child 使用独立 Execution ID、Binding、Lease、Credential 与 Fencing Token。Child 终态先固化 Digest、SBOM/Provenance、日志、Artifact 或结构化错误，再释放资源。Parent 仅在仍等待、未取消/归档/删除/超时、原 Binding 与 Checkpoint 有效且结果属于绑定 Child 时回到 `QUEUED`。Child 失败自身不终结 Parent；Parent 的后续处理由 Tool/Workflow Policy 决定。
 

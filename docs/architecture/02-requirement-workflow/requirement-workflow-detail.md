@@ -126,6 +126,8 @@ Decision 使用 `APPROVED`、`CHANGES_REQUESTED`、`REJECTED` 等稳定结果；
 
 最终验收默认责任人为 Requirement 创建人，可按同一 Assignment 语义异步改派。只有 Current Acceptance Assignment 的 assignee，且具备所需 Capability、Scope 与 Membership，才可提交验收 Decision；创建人不具资格时必须改派给合格候选人。SDD 确认、WorkItem 实现、最终验收、MR Review 与 Merge 是相互独立的责任。
 
+Acceptance Decision Snapshot 必须明确绑定 `requirementVersion`、`acceptanceCriteriaVersion/hash` 与 `integrationBaselineId/hash`，并保存 Current Acceptance Assignment 及决策时资格快照。Requirement 版本、验收标准或冻结的 Integration Baseline 任一变化，都会使旧 Acceptance Decision 失效；旧结论及其快照完整保留，新验收必须针对当前三项版本重新作出。
+
 ## 6. 业务状态机
 
 Requirement 主状态：
