@@ -77,7 +77,7 @@
     .meta, .notice, .view-intro, .node small, .node em { color: var(--muted); }
     .notice { max-width: 820px; margin: 0 0 20px; }
     .toolbar, #view-switcher { display: flex; flex-wrap: wrap; gap: 8px; }
-    .toolbar { justify-content: flex-end; }
+    .toolbar { justify-content: flex-end; margin: 0; padding: 0; border: 0; min-inline-size: 0; }
     .control, [role="tab"] {
       min-height: 44px;
       border: 1px solid var(--line);
@@ -104,6 +104,9 @@
       flex-wrap: wrap;
       gap: 14px;
       margin: 12px 0 16px;
+      padding: 0;
+      border: 0;
+      min-inline-size: 0;
       color: var(--muted);
       font-size: .92rem;
     }
@@ -230,14 +233,14 @@
       #architecture-map, .architecture-map { padding: 16px; }
     }
     @media (prefers-reduced-motion: reduce) {
-      *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+      *, *::before, *::after { scroll-behavior: auto; transition-duration: .01ms; animation-duration: .01ms; animation-iteration-count: 1; }
     }
     @page { size: A3 landscape; margin: 12mm; }
     @media print {
       body { background: #fff; color: #000; font-size: 10pt; }
       header .toolbar, #view-switcher, #map-status { display: none; }
       .shell { width: 100%; }
-      [role="tabpanel"] { display: block !important; break-after: page; page-break-after: always; }
+      [role="tabpanel"] { display: block; break-after: page; page-break-after: always; }
       [role="tabpanel"]:last-of-type { break-after: auto; page-break-after: auto; }
       .layout { grid-template-columns: 1fr; }
       #architecture-map, .architecture-map { overflow: visible; min-height: 0; box-shadow: none; }
@@ -259,11 +262,11 @@
         <p class="meta">架构基线：<strong>2026-08-06.173</strong> · 当前为 DEV Platform Environment · 未来 PROD 独立实例化</p>
         <p class="notice">这是离线导航与摘要图，不替代 Markdown 的规范 Contract；点击任一节点可查看职责、事实边界、关系和唯一事实源。</p>
       </div>
-      <div class="toolbar" aria-label="地图控制">
+      <fieldset class="toolbar" aria-label="地图控制">
         <button class="control" id="theme-toggle" type="button" aria-pressed="false">主题：跟随系统</button>
         <button class="control" id="layer-toggle" type="button" aria-pressed="true">隐藏辅助层</button>
         <button class="control" id="reset-map" type="button">重置地图</button>
-      </div>
+      </fieldset>
     </div>
   </header>
 
@@ -276,33 +279,33 @@
 
     <section id="business-view" role="tabpanel" aria-labelledby="business-tab" class="is-active">
       <div class="view-heading"><div><h2>业务交付链</h2><p class="view-intro">业务事实在平台内形成；Jenkins 是用户手工使用的独立外部验证工具。</p></div></div>
-      <div id="legend" aria-label="图例"><span class="legend-item"><span class="legend-arrow">→</span> 平台业务责任链</span><span class="legend-item"><span class="legend-line"></span> 受控关系</span><span class="legend-item"><span class="legend-line dashed"></span> 虚线边框：独立平台外人工工具，不驱动 Gate</span></div>
+      <fieldset id="legend" aria-label="图例"><span class="legend-item"><span class="legend-arrow">→</span> 平台业务责任链</span><span class="legend-item"><span class="legend-line"></span> 受控关系</span><span class="legend-item"><span class="legend-line dashed"></span> 虚线边框：用户手工使用的独立平台外工具，不驱动 Gate</span></fieldset>
       <div class="layout">
-        <div id="architecture-map" aria-label="业务架构图">
+        <section id="architecture-map" aria-label="业务架构图">
           <div class="graph business-graph">
             <svg class="edge-layer" viewBox="0 0 900 340" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
               <line data-from="business-requirement" data-to="business-route" x1="158" y1="124" x2="180" y2="124"></line><line data-from="business-route" data-to="business-gate" x1="330" y1="124" x2="352" y2="124"></line><line data-from="business-gate" data-to="business-attempt" x1="502" y1="124" x2="524" y2="124"></line><line data-from="business-attempt" data-to="business-integration" x1="674" y1="124" x2="696" y2="124"></line><path data-from="business-integration" data-to="business-acceptance" d="M735,166 L735,200 L600,200 L600,226"></path><line data-from="business-acceptance" data-to="business-formal" x1="524" y1="268" x2="502" y2="268"></line><line data-from="business-formal" data-to="business-main" x1="352" y1="268" x2="330" y2="268"></line><text class="auxiliary-layer" x="718" y="214">独立平台外人工工具</text>
             </svg>
-            <button class="node n1" type="button" role="button" tabindex="0" data-node-id="business-requirement" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Requirement，打开详情" aria-controls="detail-panel"><strong>Requirement</strong><small>交付责任聚合</small></button>
-            <button class="node n2" type="button" role="button" tabindex="0" data-node-id="business-route" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Route 与 SDD，打开详情" aria-controls="detail-panel"><strong>Route / SDD</strong><small>固定方法与证据</small></button>
-            <button class="node n3" type="button" role="button" tabindex="0" data-node-id="business-gate" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Human Gate，打开详情" aria-controls="detail-panel"><strong>Human Gate</strong><small>资格与 Assignment</small></button>
-            <button class="node n4" type="button" role="button" tabindex="0" data-node-id="business-attempt" data-doc-href="../03-agent-skill-model/agent-skill-model-detail.md" aria-label="WorkItem 与 Attempt，打开详情" aria-controls="detail-panel"><strong>WorkItem / Attempt</strong><small>受控实现执行</small></button>
-            <button class="node n5" type="button" role="button" tabindex="0" data-node-id="business-integration" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="Integration Baseline 与 Integration MR，打开详情" aria-controls="detail-panel"><strong>Integration Baseline /<br>Integration MR</strong><small>冻结交付证据</small></button>
-            <button class="node n6 auxiliary-layer" type="button" role="button" tabindex="0" data-node-id="business-jenkins" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="平台外 Jenkins 人工验证，打开详情" aria-controls="detail-panel"><strong>平台外 Jenkins</strong><small>用户手工使用，非 Gate</small><em>不调用、不读状态、无 Webhook</em></button>
-            <button class="node n7" type="button" role="button" tabindex="0" data-node-id="business-acceptance" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Acceptance，打开详情" aria-controls="detail-panel"><strong>Acceptance</strong><small>绑定 Integration Baseline</small><em>用户可提交外部验证证据</em></button>
-            <button class="node n8" type="button" role="button" tabindex="0" data-node-id="business-formal" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="Formal MR，打开详情" aria-controls="detail-panel"><strong>Formal MR</strong><small>精确 head SHA 审核</small></button>
-            <button class="node n9" type="button" role="button" tabindex="0" data-node-id="business-main" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="protected main，打开详情" aria-controls="detail-panel"><strong>protected main</strong><small>仅 Formal MR 合并</small><em>禁止 direct push</em></button>
+            <button class="node n1" type="button" data-node-id="business-requirement" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Requirement，打开详情" aria-controls="detail-panel"><strong>Requirement</strong><small>交付责任聚合</small></button>
+            <button class="node n2" type="button" data-node-id="business-route" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Route 与 SDD，打开详情" aria-controls="detail-panel"><strong>Route / SDD</strong><small>固定方法与证据</small></button>
+            <button class="node n3" type="button" data-node-id="business-gate" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Human Gate，打开详情" aria-controls="detail-panel"><strong>Human Gate</strong><small>资格与 Assignment</small></button>
+            <button class="node n4" type="button" data-node-id="business-attempt" data-doc-href="../03-agent-skill-model/agent-skill-model-detail.md" aria-label="WorkItem 与 Attempt，打开详情" aria-controls="detail-panel"><strong>WorkItem / Attempt</strong><small>受控实现执行</small></button>
+            <button class="node n5" type="button" data-node-id="business-integration" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="Integration Baseline 与 Integration MR，打开详情" aria-controls="detail-panel"><strong>Integration Baseline /<br>Integration MR</strong><small>冻结交付证据</small></button>
+            <button class="node n6 auxiliary-layer" type="button" data-node-id="business-jenkins" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="平台外 Jenkins 人工验证，打开详情" aria-controls="detail-panel"><strong>平台外 Jenkins</strong><small>用户手工使用，非 Gate</small><em>不调用、不读状态、无 Webhook</em></button>
+            <button class="node n7" type="button" data-node-id="business-acceptance" data-doc-href="../02-requirement-workflow/requirement-workflow-detail.md" aria-label="Acceptance，打开详情" aria-controls="detail-panel"><strong>Acceptance</strong><small>绑定 Integration Baseline</small><em>用户可提交外部验证证据</em></button>
+            <button class="node n8" type="button" data-node-id="business-formal" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="Formal MR，打开详情" aria-controls="detail-panel"><strong>Formal MR</strong><small>精确 head SHA 审核</small></button>
+            <button class="node n9" type="button" data-node-id="business-main" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="protected main，打开详情" aria-controls="detail-panel"><strong>protected main</strong><small>仅 Formal MR 合并</small><em>禁止 direct push</em></button>
           </div>
-        </div>
+        </section>
         <aside id="detail-panel" class="detail-panel" aria-label="节点详情"><h2 id="detail-title" class="detail-title">选择一个节点</h2><p id="detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="detail-doc-link" class="detail-doc-link" href="../10-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
 
     <section id="logical-view" role="tabpanel" aria-labelledby="logical-tab">
       <div class="view-heading"><div><h2>逻辑架构</h2><p class="view-intro">Browser 只经 platform-gateway 与公开 API 进入；模块化单体不等同于既有微服务。</p></div></div>
-      <div class="legend" aria-label="图例"><span class="legend-item"><span class="legend-arrow">→</span> 受控调用</span><span class="legend-item"><span class="legend-line"></span> 数据或事件依赖</span><span class="legend-item"><span class="legend-line dashed"></span> Adapter/只读投影</span></div>
+      <fieldset class="legend" aria-label="图例"><span class="legend-item"><span class="legend-arrow">→</span> 受控调用</span><span class="legend-item"><span class="legend-line"></span> 数据或事件依赖</span><span class="legend-item"><span class="legend-line dashed"></span> Adapter/只读投影</span></fieldset>
       <div class="layout">
-        <div class="architecture-map" aria-label="逻辑架构图">
+        <section class="architecture-map" aria-label="逻辑架构图">
           <div class="graph logical-graph">
             <svg class="edge-layer" viewBox="0 0 1000 720" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow-logical" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
               <line data-from="logical-users" data-to="logical-gateway" x1="183" y1="122" x2="220" y2="122"></line><line data-from="logical-gateway" data-to="logical-web" x1="385" y1="104" x2="420" y2="104"></line><line data-from="logical-gateway" data-to="logical-control" x1="385" y1="140" x2="420" y2="210"></line><line data-from="logical-control" data-to="logical-orchestrator" x1="680" y1="205" x2="800" y2="120"></line><line data-from="logical-control" data-to="logical-model" x1="680" y1="220" x2="800" y2="230"></line><line data-from="logical-control" data-to="logical-sandbox" x1="680" y1="245" x2="800" y2="345"></line><line data-from="logical-control" data-to="logical-gitlab" class="manual" x1="680" y1="270" x2="800" y2="460"></line><line data-from="logical-control" data-to="logical-file" class="manual" x1="680" y1="300" x2="800" y2="575"></line><line data-from="logical-control" data-to="logical-readmodel" class="manual" x1="550" y1="340" x2="500" y2="390"></line><line data-from="logical-control" data-to="logical-postgres" x1="420" y1="290" x2="385" y2="430"></line><line data-from="logical-control" data-to="logical-valkey" x1="420" y1="300" x2="183" y2="430"></line><line data-from="logical-control" data-to="logical-nats" x1="420" y1="320" x2="183" y2="545"></line><line data-from="logical-orchestrator" data-to="logical-temporal" x1="800" y1="120" x2="385" y2="545"></line><line data-from="logical-file" data-to="logical-rgw" x1="800" y1="575" x2="585" y2="575"></line><line data-from="logical-control" data-to="logical-bao" x1="620" y1="340" x2="700" y2="545"></line><line data-from="logical-readmodel" data-to="logical-observability" class="manual" x1="585" y1="470" x2="800" y2="655"></line>
@@ -325,16 +328,16 @@
             <button class="node bao" type="button" data-node-id="logical-bao" data-doc-href="../08-security-audit-governance/security-audit-governance-detail.md" aria-label="OpenBao，打开详情" aria-controls="logical-detail-panel"><strong>OpenBao</strong><small>Secret 与 Trust</small></button>
             <button class="node obs" type="button" data-node-id="logical-observability" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="Observability，打开详情" aria-controls="logical-detail-panel"><strong>Observability</strong><small>诊断，不反写业务事实</small></button>
           </div>
-        </div>
+        </section>
         <aside id="logical-detail-panel" class="detail-panel" aria-label="逻辑架构节点详情"><h2 id="logical-detail-title" class="detail-title">选择一个节点</h2><p id="logical-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="logical-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="logical-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="logical-detail-doc-link" class="detail-doc-link" href="../10-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
 
     <section id="deployment-view" role="tabpanel" aria-labelledby="deployment-tab">
       <div class="view-heading"><div><h2>部署隔离</h2><p class="view-intro">每个 Platform Environment 都是独立的 Account、VPC、Cluster 与运行边界；无运行时共享线。</p></div></div>
-      <div class="legend" aria-label="图例"><span class="legend-item"><span class="legend-line"></span> 环境内受控边界</span><span class="legend-item"><span class="legend-line dashed"></span> Cluster 外独立运维组件</span><span class="legend-item"><span class="legend-arrow">→</span> 环境本地外部绑定</span></div>
+      <fieldset class="legend" aria-label="图例"><span class="legend-item"><span class="legend-line"></span> 环境内受控边界</span><span class="legend-item"><span class="legend-line dashed"></span> Cluster 外独立运维组件</span><span class="legend-item"><span class="legend-arrow">→</span> 环境本地外部绑定</span></fieldset>
       <div class="layout">
-        <div class="architecture-map" aria-label="部署架构图">
+        <section class="architecture-map" aria-label="部署架构图">
           <div class="graph deployment-graph">
             <svg class="edge-layer" viewBox="0 0 900 820" preserveAspectRatio="none" aria-hidden="true"><defs><marker id="arrow-deployment" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
               <line data-from="deploy-dev-account" data-to="deploy-dev-vpc" x1="220" y1="169" x2="220" y2="185"></line><line data-from="deploy-dev-vpc" data-to="deploy-dev-cluster" x1="220" y1="269" x2="220" y2="285"></line><line data-from="deploy-dev-cluster" data-to="deploy-dev-gateway" x1="220" y1="435" x2="220" y2="455"></line><line data-from="deploy-dev-cluster" data-to="deploy-dev-collector" class="manual" x1="175" y1="435" x2="70" y2="590"></line><line data-from="deploy-dev-cluster" data-to="deploy-dev-backup" class="manual" x1="195" y1="435" x2="171" y2="590"></line><line data-from="deploy-dev-cluster" data-to="deploy-dev-watchdog" class="manual" x1="245" y1="435" x2="272" y2="590"></line><line data-from="deploy-dev-gateway" data-to="deploy-dev-bindings" x1="280" y1="539" x2="373" y2="590"></line>
@@ -363,7 +366,7 @@
             </div>
             <p class="jenkins-note auxiliary-layer">Jenkins 独立于平台环境；用户手工验证，平台不调用、不读状态、无 Webhook。</p>
           </div>
-        </div>
+        </section>
         <aside id="deployment-detail-panel" class="detail-panel" aria-label="部署架构节点详情"><h2 id="deployment-detail-title" class="detail-title">选择一个节点</h2><p id="deployment-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="deployment-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="deployment-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="deployment-detail-doc-link" class="detail-doc-link" href="../10-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
@@ -447,14 +450,11 @@
       const mapEls = Array.from(document.querySelectorAll('#architecture-map, .architecture-map'));
       const edgeEls = Array.from(document.querySelectorAll('[data-from][data-to]'));
       const nodes = Array.from(document.querySelectorAll('[data-node-id]'));
-      let activeNodeId = '';
-
       function setText(elements, value) { elements.forEach((element) => { element.textContent = value; }); }
       function clearSelection(announce) {
-        activeNodeId = '';
-        nodes.forEach((node) => node.classList.remove('is-selected', 'is-upstream', 'is-downstream', 'is-muted'));
-        edgeEls.forEach((edge) => edge.classList.remove('is-selected', 'is-upstream', 'is-downstream'));
-        Array.from(document.querySelectorAll('.graph')).forEach((graph) => graph.classList.remove('has-selection'));
+        nodes.forEach((node) => { node.classList.remove('is-selected', 'is-upstream', 'is-downstream', 'is-muted'); });
+        edgeEls.forEach((edge) => { edge.classList.remove('is-selected', 'is-upstream', 'is-downstream'); });
+        Array.from(document.querySelectorAll('.graph')).forEach((graph) => { graph.classList.remove('has-selection'); });
         setText(titleEls, '选择一个节点');
         setText(summaryEls, '点击、按 Enter 或 Space 打开节点摘要。');
         setText(boundaryEls, '地图不拥有规范事实。');
@@ -480,7 +480,6 @@
         const nodeId = node.dataset.nodeId;
         const detail = nodeDetails[nodeId];
         if (!detail) return;
-        activeNodeId = nodeId;
         const upstream = connected(nodeId, 'upstream');
         const downstream = connected(nodeId, 'downstream');
         nodes.forEach((item) => {
@@ -495,7 +494,7 @@
           edge.classList.toggle('is-upstream', upstream.has(edge.dataset.from) || upstream.has(edge.dataset.to));
           edge.classList.toggle('is-downstream', downstream.has(edge.dataset.from) || downstream.has(edge.dataset.to));
         });
-        Array.from(document.querySelectorAll('.graph')).forEach((graph) => graph.classList.add('has-selection'));
+        Array.from(document.querySelectorAll('.graph')).forEach((graph) => { graph.classList.add('has-selection'); });
         setText(titleEls, detail[0]);
         setText(summaryEls, detail[1]);
         setText(boundaryEls, detail[2]);
@@ -509,7 +508,7 @@
           item.setAttribute('aria-selected', String(selected));
           item.tabIndex = selected ? 0 : -1;
         });
-        panels.forEach((panel) => panel.classList.toggle('is-active', panel.id === tab.getAttribute('aria-controls')));
+        panels.forEach((panel) => { panel.classList.toggle('is-active', panel.id === tab.getAttribute('aria-controls')); });
         clearSelection(false);
         status.textContent = `已切换到 ${tab.textContent}。`;
         if (focus) tab.focus();
@@ -556,9 +555,9 @@
         document.documentElement.dataset.theme = theme;
         themeToggle.setAttribute('aria-pressed', String(theme !== 'system'));
         themeToggle.textContent = `主题：${theme === 'system' ? '跟随系统' : theme === 'light' ? '浅色' : '深色'}`;
-        if (persist) { try { localStorage.setItem('platform-architecture-map-theme', theme); } catch (error) { status.textContent = '主题已应用，但无法保存本地偏好。'; } }
+        if (persist) { try { localStorage.setItem('platform-architecture-map-theme', theme); } catch (_error) { status.textContent = '主题已应用，但无法保存本地偏好。'; } }
       }
-      try { const savedTheme = localStorage.getItem('platform-architecture-map-theme'); if (themes.includes(savedTheme)) applyTheme(savedTheme, false); } catch (error) { applyTheme('system', false); }
+      try { const savedTheme = localStorage.getItem('platform-architecture-map-theme'); if (themes.includes(savedTheme)) applyTheme(savedTheme, false); } catch (_error) { applyTheme('system', false); }
       themeToggle.addEventListener('click', () => { const current = document.documentElement.dataset.theme || 'system'; applyTheme(themes[(themes.indexOf(current) + 1) % themes.length], true); });
       clearSelection(false);
     })();
