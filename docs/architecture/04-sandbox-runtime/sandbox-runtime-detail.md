@@ -72,7 +72,7 @@ Agent Attempt 与 Image Build 共享同一个 Fencing Domain 和 Capacity Ledger
 
 ### 4.1 Platform Policy 准入 Gate
 
-Sandbox 在共享 Capacity Ledger 与物理安全 Gate 之前，分别应用两个独立、版本化的 `PLATFORM_POLICY`：
+Sandbox 先分别应用两个独立、版本化的 `PLATFORM_POLICY`，再执行共享 Capacity Ledger 与物理安全 Gate：
 
 | Policy Key | 准入 Contract |
 | --- | --- |
