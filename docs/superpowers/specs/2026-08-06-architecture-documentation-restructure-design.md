@@ -148,7 +148,7 @@ docs/architecture/visuals/platform-architecture-map.html
 
 页面包含三个可切换视图：
 
-1. **业务交付链路**：Requirement、Route/SDD、Human Gate、WorkItem、Agent、Integration MR、Jenkins 人工验证、验收、Formal MR、`main`；
+1. **业务交付链路**：平台责任链展示 Requirement、Route/SDD、Human Gate、WorkItem、Agent、IntegrationBaselineEvidence/RequirementIntegrationBaselineSelection、Integration MR、验收、Formal MR 与 `main`；用户到 Jenkins 另以独立人工动作线呈现；
 2. **逻辑架构**：用户、Gateway、Web、Control Plane、Workflow、Agent、Sandbox、Adapter、数据组件和 Observability；
 3. **部署与信任边界**：当前 DEV、未来独立 PROD、Cloud Account、VPC、Kubernetes、Node Role、外部系统和运维边界。
 
