@@ -137,6 +137,8 @@ CPU 按受控可突发方式规划，Memory 和 Runtime Disk 按 Limit 侧规划
 
 首批按最多 `3` 个 Standard Agent Attempt 与 `1` 个 Image Build 同时运行；更多请求进入队列。
 
+这里的 `1` 是 V1.0 已选择的首批 `IMAGE_BUILD` Capability 所需并纳入验收的物理 `maxActiveImageBuilds` Ceiling，不是未激活能力的空闲预留。V0.4 Image Build Capability Activation Gate 未通过时，有效 `agent.image_build.active_build_limit` 必须为 `0`；Gate 通过后也只能在 `0..1` 内选择，并继续受独立 Child Lease、Fencing 与 Capacity Admission 约束。Capacity Profile 本身不能把 Capability 标记为已启用或已部署。
+
 | Node | 数量 | 单 Node 逻辑容量 | 说明 |
 | --- | ---: | --- | --- |
 | `core` | 3 | `16 vCPU / 64 GiB`；`256 GiB` OS；`1 TiB` Raw OSD | 平台、数据、Observability 与 Storage 融合部署 |
@@ -184,6 +186,8 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 
 ## 9. Evolution Trigger
 
+### 9.1 Trigger 条件
+
 满足下列任一条件时，应形成新的 Capacity Candidate，并评估增加 Sandbox Node、拆分 Platform/Storage 或进入 Hardened Target Profile：
 
 - Agent Queue 等待时间持续越过已批准 SLO；
@@ -194,7 +198,18 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 - 融合 Node 无法保留滚动发布、升级或故障恢复所需 Headroom；
 - Storage Capacity Gate 已触发且融合 Node 无法继续安全扩盘。
 
-Hardened Target Profile 仍保留完整 Node Role 拆分、Sandbox N+1、数据服务 HA、分布式 Observability 和更强 Cluster DR；它是目标架构，不是 V0.1 或 V1.0 的无条件采购清单。
+### 9.2 Hardened Target 场景
+
+下表是 Evolution Trigger 成立并形成新 Capacity Candidate 后的目标 Node 数量，不是 V1.0 默认 Release Gate、采购清单或 Deployed State：
+
+| 环境 | `k8s-control-plane` | `platform-worker` | `sandbox-worker` | `storage-worker` | Node 总数校验 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| DEV | 3 | 4 | 2 | 3 | **12** |
+| PROD | 3 | 6 | 2 | 4 | **15** |
+
+算术固定为 DEV `3 + 4 + 2 + 3 = 12`，PROD `3 + 6 + 2 + 4 = 15`。Hardened Target 保留四类 Node Role 拆分、Sandbox N+1、数据服务 HA、分布式 Observability 和更强 Cluster DR；Cluster 外 Operations Collector、External Watchdog 与 Backup Repository 不计入 Node 总数。
+
+两个 `sandbox-worker` 只定义目标拓扑数量，不能单凭数量证明 N+1；必须使用新 Capacity Candidate 选定的单机 SKU、Unit Ceiling 与故障实测，证明失去一台后仍满足获准组合或按 Contract 安全降载。精确 SKU、磁盘、网络和 Provider Mapping 仍须重新通过 Provisioning、Load、故障、迁移、回退、安全与恢复 Gate。该场景是目标架构，不是 V0.1 或 V1.0 的无条件采购清单。
 
 ## 10. 上线前验证证据
 
