@@ -176,7 +176,9 @@ Launch 必须具备最小 Metrics、Logs、Alert、Backup/Restore 和 Operations
 3. 单点故障可以导致受影响诊断能力停止，但不得阻断安全停止、Audit 可靠提交或真实恢复；
 4. 管理端保持只读，不建立 Grafana/Flux/Kubernetes/Cloud 的嵌入式写控制面。
 
-`PrometheusRule + Alertmanager` 是告警计算与通知状态事实源，Grafana Managed Alerting 关闭。Loki Gateway 必须清除调用方提交的 tenant、认证和身份 Header，再按当前环境受信 mTLS Identity 注入固定 tenant；Tempo 即使为单租户也必须用 TLS/mTLS、证书用途和 NetworkPolicy 分离 Ingest 与 Query。Browser、普通 Pod 与 Sandbox 不能直连任何 Observability Backend。
+`PrometheusRule + Alertmanager` 是告警计算与通知状态事实源，Grafana Managed Alerting 关闭。Loki Gateway 必须清除调用方提供的 `X-Scope-OrgID` 以及所有可伪造的认证和身份 Header；完成可信入口认证授权后，再按当前 Platform Environment 注入固定 `X-Scope-OrgID`。该 Header 只作为 Tenant 路由与隔离标签，绝不能作为认证或授权证据；NetworkPolicy 必须禁止绕过 Gateway 直连 Loki。
+
+Tempo 固定 `multitenancy_enabled=false`，但单租户不等于开放访问。Ingest 与 Query 入口仍必须分别执行 TLS/mTLS、Workload Identity、认证授权、证书用途、端口与 NetworkPolicy 隔离；Browser、普通 Pod 与 Sandbox 不得直连 Tempo 或其他 Observability Backend，也不能通过 Header 取得写入或查询资格。
 
 ### 8.2 Hardened Target Profile
 
