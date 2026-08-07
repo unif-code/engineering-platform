@@ -37,7 +37,7 @@ GitOps、PCS 与 Operations Read Model 是运行状态证据。本文的 Environ
 | `PROD_CANDIDATE` | DEV 已验收候选及 Promotion 证据包已获准进入 PROD 发布流程，但尚未完成 PROD Release。 |
 | `PROD_RELEASED` | DEV 验收的同一 Image Digest/Bundle 已 Promotion 到独立 PROD 并通过 PROD Release Gate。 |
 
-Promotion 只能推进同一候选制品，不能在 V1.0 重新构建。DEV 与 PROD 的数据、Secret、凭据和环境本地配置值保持独立；配置 Promotion 传递受控版本谱系与兼容性，不复制环境 Secret。
+状态转换顺序固定为 `NOT_DEPLOYED → DEV_ACCEPTED → PROD_CANDIDATE → PROD_RELEASED`，不得跳级。Promotion 只能推进同一候选制品，不能在 V1.0 重新构建。DEV 与 PROD 的数据、Secret、凭据和环境本地配置值保持独立；配置 Promotion 传递受控版本谱系与兼容性，不复制环境 Secret。
 
 ### 2.3 当前状态总表
 
@@ -110,11 +110,13 @@ V0.4 的 Capability Activation Gate 只允许通过上述完整 Gate 的 `fix` A
 | 包含范围 | V0.1～V0.4 已验收 Capability 的集成与硬化；Compact Launch Profile 的 DEV 验收；滚动发布、Rollback、Backup/Restore、容量与故障演练；供应链、SBOM、签名与一次性 OSV-Scanner 漏洞匹配证据；promptfoo/EvalScope 回归证据；Production Readiness、GitOps/PCS/Operations 绑定和 Promotion 证据包。 |
 | 不包含范围 | 新的用户功能、未通过 Capability Activation Gate 的目标能力、PROD 正式流量、Hardened Target Profile、所有单点故障下无感继续。 |
 | 前置依赖 | V0.4 `ACCEPTED`；V0.1～V0.4 全部 Release Evidence；选定[V1.0 Compact Launch Profile](./environment-capacity-plan.md#6-v10-compact-launch-profile)；独立 PROD Environment 的 Provisioning Candidate 与 Promotion Runbook。 |
-| Release Gate | 首发用户旅程在 DEV 通过；安全、供应链、Evaluation、容量、Load、升级、Rollback、故障安全停止、证据保留和真实恢复 Gate 通过；OSV-Scanner 只扫描固化输入且不完整结果不能形成“无漏洞”结论；Image Digest/Bundle 与兼容配置冻结；候选可追溯到 Git、PCS 和全部验收证据。 |
-| 验收证据 | DEV Acceptance Record、端到端旅程与负载测试、Image/SBOM/Signature、OSV-Scanner Evidence、promptfoo/EvalScope Evidence、故障注入、Backup/Restore、Upgrade/Rollback、Capacity、GitOps Revision、PCS、Operations Read Model Snapshot 与 Promotion Approval。 |
-| 当前状态 | 实现 `NOT_STARTED`；Environment Promotion `NOT_DEPLOYED`。Release Gate 通过后目标 Promotion 状态为 `PROD_CANDIDATE`。 |
+| Release Gate | 首发用户旅程在 DEV 通过；安全、供应链、Evaluation、容量、Load、升级、Rollback、故障安全停止、证据保留和真实恢复 Gate 通过；OSV-Scanner 只扫描固化输入且不完整结果不能形成“无漏洞”结论；Image Digest/Bundle 与兼容配置冻结；候选可追溯到 Git、PCS 和全部验收证据。该 Gate 通过只形成 `DEV_ACCEPTED`。 |
+| 验收证据 | DEV Acceptance Record 与 Approval、端到端旅程与负载测试、Image/SBOM/Signature、OSV-Scanner Evidence、promptfoo/EvalScope Evidence、故障注入、Backup/Restore、Upgrade/Rollback、Capacity、GitOps Revision、PCS 与 Operations Read Model Snapshot。 |
+| 当前状态 | 实现 `NOT_STARTED`；Environment Promotion `NOT_DEPLOYED`。Release Gate 通过后目标 Promotion 状态为 `DEV_ACCEPTED`。 |
 
 V0.5 不以增加功能区分于 V0.4，而是把已选择的首发 Capability 组合成可在独立 PROD 安全发布、留证和恢复的候选制品。
+
+V0.5 达到 `DEV_ACCEPTED` 后，只有同一 Image Digest/Bundle 的 Promotion 证据包通过独立 Production Promotion Approval、获准进入 PROD 发布流程，Environment Promotion 状态才从 `DEV_ACCEPTED` 转换为 `PROD_CANDIDATE`；该转换不重新执行 V0.5 Release Gate，也不新增 Capability。
 
 ## 8. V1.0 首次正式发布
 
