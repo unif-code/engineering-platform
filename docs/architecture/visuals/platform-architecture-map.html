@@ -310,7 +310,8 @@
       #detail-panel, .detail-panel { display: none; }
       .graph { transform: none; zoom: .72; }
       .node { color: #000; background: #fff; border-color: #333; box-shadow: none; }
-      :root[data-profile] [data-capability-scope], :root[data-profile] [data-profile-scope] { opacity: 1; filter: none; }
+      :root[data-profile][data-theme] body [data-capability-scope],
+      :root[data-profile][data-theme] body [data-profile-scope] { opacity: 1; filter: none; }
       .edge-layer line, .edge-layer path { stroke: #333; }
       .auxiliary-layer[hidden] { display: block; }
       #document-index { break-before: page; page-break-before: always; box-shadow: none; }
@@ -337,7 +338,7 @@
   <main class="shell">
     <fieldset class="profile-picker">
       <legend>语义 Profile</legend>
-      <div id="profile-switcher">
+      <div id="profile-switcher" role="toolbar" aria-label="架构语义 Profile">
         <button class="profile-control" type="button" aria-pressed="true" aria-controls="profile-summary" data-profile-value="target">Target Architecture</button>
         <button class="profile-control" type="button" aria-pressed="false" aria-controls="profile-summary" data-profile-value="launch" tabindex="-1">V1.0 Launch Scope / Launch Profile</button>
         <button class="profile-control" type="button" aria-pressed="false" aria-controls="profile-summary" data-profile-value="evolution" tabindex="-1">Triggered Evolution / Hardened Target</button>
