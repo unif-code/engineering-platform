@@ -1,14 +1,14 @@
 # 架构基线
 
-> 架构基线：`2026-08-06.173`
+> 架构基线：`2026-08-06.175`
 > 文档层级：L1 基线地图
 > 规范跨模块 Contract：[架构基线详细说明](./architecture-baseline-detail.md)
 
-## 状态与适用范围
+## 基线定位与适用范围
 
-本文是内部研发平台的批准目标架构基线，用于指导后续设计、实施、评审与运行准备。当前仅有 DEV Platform Environment，且本仓库是 Umi Max 前端模板；Python Control Plane、数据服务、可部署工作负载、基础设施以及未来 PROD 均为已批准的目标架构，并不表示已经存在对应的运行实例。
+本文是内部研发平台的批准 Target Architecture 基线，用于指导设计、实施、评审与运行准备。它定义完整目标模块及跨模块 Contract，不声明仓库实现进度、Release Scope、Platform Environment 部署状态或容量选择。
 
-未来 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibility Set 在独立环境中重新实例化。基线描述所需的结构和约束，不把目标能力表述为仓库当前实现。
+DEV 与 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibility Set 在独立环境中实例化。Release Scope、实施状态、环境 Promotion 与 Profile 选择由 [12 实施路线图](../12-implementation-roadmap/implementation-roadmap.md)唯一拥有；实际 Deployed State 由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
 
 ## 系统级原则
 
@@ -18,6 +18,14 @@
 4. 模块内事务保持单一事实边界；跨模块与外部副作用通过 Outbox、Inbox、Effect Ledger、幂等键和审计证据收敛。
 5. 配置是有类型、可版本化且可回溯的受控输入；运行和决策绑定有效配置快照，而不是依赖可变页面值。
 6. 架构可替换基础设施、可提取模块与可独立迁移 Deployable，但不以过早拆分牺牲当前系统的一致性和可运营性。
+
+## Gate 分类
+
+- **Release Gate**：判断路线图选定的 Release Scope 能否形成可发布候选或完成环境 Promotion。
+- **Capability Activation Gate**：判断某项已实施 Capability 是否可在指定 Environment、Scope 和配置下开启。
+- **Evolution Trigger**：由业务、容量、可靠性或运维证据触发新的演进候选评估，不直接批准实现、启用或部署。
+
+被路线图选入当前 Release 的能力必须满足其目标 Contract，未选能力保持关闭。任何 Gate 都不能通过缩减安全边界、以半成品启用目标能力或用路线图状态替代环境证据来通过；详细分类与跨模块验证维度见[架构基线详细说明](./architecture-baseline-detail.md)。
 
 ## 模块地图
 
@@ -39,10 +47,10 @@
 ## 阅读优先级
 
 - 负责人和架构评审先阅读 00、11 的 L1，再按决策主题进入对应 L2。
-- 产品、Leader 和研发从 01、02、05 开始，再结合 03、04 理解受控执行边界。
-- 应用和 Agent 开发阅读 02～07、10 的 L2，并以 08 的安全 Contract 和 09 的环境 Contract 约束实现。
-- 平台、安全与运维阅读 06～11 的 L2；业务规则仍回链其领域 owner，不通过运维投影取得业务结论。
+- 产品、Leader 和研发先阅读 00、12，再进入当前 Capability 对应的领域 detail。
+- 应用和 Agent 开发按 12 的 Release Scope 阅读 02～07、10 的 L2，并以 08 的安全 Contract 和 09 的环境 Contract 约束实现。
+- 平台、安全与运维按 12 的 Profile 选择阅读 06～10 的 L2；架构评审回到 11，运行判断回到 Deployed State 证据。
 
 ## 变更规则
 
-架构变更先识别事实 owner，再在该 owner 的 detail 中更新规范性 Contract，并同步更新相关 L1 地图、跨模块引用和验证证据。任何变更不得通过菜单、Read Model、部署参数或文档副本绕开 owner；若影响边界、信任、数据兼容性、运行恢复或交付责任，必须同时更新受影响模块的链接和质量场景。
+架构变更先识别事实 owner，再在该 owner 的 detail 中更新规范性 Contract，并同步更新相关 L1 地图、跨模块引用和验证证据。路线图只选择要交付的 Capability，不能修改目标 Contract；任何变更不得通过菜单、Read Model、部署参数或文档副本绕开 owner。若影响边界、信任、数据兼容性、运行恢复或交付责任，必须同时更新受影响模块的链接、质量场景和适用 Gate。
