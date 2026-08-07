@@ -184,7 +184,7 @@ rg -n 'PLATFORM_POLICY|GITOPS_CONFIG|SYSTEM_INVARIANT|Promotion Divergence' docs
 
 Expected: 应用/集成责任仍在 06，配置治理责任只在 10。
 
-- [ ] **Step 7: 提交引用迁移**
+- [x] **Step 7: 提交引用迁移**
 
 ```bash
 git add docs/architecture docs/superpowers/specs/2026-08-06-architecture-documentation-restructure-design.md docs/superpowers/plans/2026-08-06-architecture-documentation-restructure.md
@@ -202,11 +202,11 @@ git commit -m "docs(architecture): migrate configuration owner references"
 - Consumes: 新 10/11 文档路径和“Configuration 是 Control Plane 内模块”的边界。
 - Produces: 具有 Configuration 直接入口、无新增部署实例的离线架构图。
 
-- [ ] **Step 1: 扩展逻辑视图几何**
+- [x] **Step 1: 扩展逻辑视图几何**
 
 增加稳定节点 ID `logical-configuration`，标签为 `Configuration module`，说明“位于 Python Control Plane 内，不是独立微服务”。增加从 `logical-control` 到 `logical-configuration` 的模块内关系，并调整 SVG viewBox、固定宽高和节点位置，使边端点与节点边界对齐。
 
-- [ ] **Step 2: 增加节点详情与 canonical 链接**
+- [x] **Step 2: 增加节点详情与 canonical 链接**
 
 `logical-configuration` 的 `data-doc-href` 指向：
 
@@ -216,11 +216,11 @@ git commit -m "docs(architecture): migrate configuration owner references"
 
 `nodeDetails` 必须说明其拥有配置治理生命周期、消费领域 Schema、仍属于模块化单体。三个详情面板的默认链接改为 11 Architecture Baseline。
 
-- [ ] **Step 3: 更新文档索引**
+- [x] **Step 3: 更新文档索引**
 
 文档索引增加 10 Configuration Governance，并把 Architecture Baseline 改为 11；保持数字顺序和打印索引单页布局。
 
-- [ ] **Step 4: 静态验证 HTML Contract**
+- [x] **Step 4: 静态验证 HTML Contract**
 
 Run:
 
@@ -256,11 +256,11 @@ NODE
 
 Expected: `nodes=48`，`errors=0`。
 
-- [ ] **Step 5: 使用 happy-dom 验证交互**
+- [x] **Step 5: 使用 happy-dom 验证交互**
 
 模拟点击 `logical-configuration`，验证详情标题和链接更新；再验证业务 Selection、部署 DEV GitLab、Tab 切换、辅助层开关和 Escape Reset 均继续工作。
 
-- [ ] **Step 6: 浏览器与打印检查**
+- [x] **Step 6: 浏览器与打印检查**
 
 Run:
 

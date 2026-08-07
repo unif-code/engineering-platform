@@ -190,6 +190,7 @@
     .logical-graph .gitlab { left: 800px; top: 385px; }
     .logical-graph .file { left: 800px; top: 500px; }
     .logical-graph .readmodel { left: 420px; top: 390px; }
+    .logical-graph .configuration { left: 620px; top: 390px; }
     .logical-graph .postgres { left: 220px; top: 390px; }
     .logical-graph .valkey { left: 18px; top: 390px; }
     .logical-graph .nats { left: 18px; top: 505px; }
@@ -311,7 +312,7 @@
             <button class="node n9" type="button" data-node-id="business-main" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="protected main，打开详情" aria-controls="detail-panel"><strong>protected main</strong><small>仅 Formal MR 合并</small><em>禁止 direct push</em></button>
           </div>
         </section>
-        <aside id="detail-panel" class="detail-panel" aria-label="节点详情"><h2 id="detail-title" class="detail-title">选择一个节点</h2><p id="detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="detail-doc-link" class="detail-doc-link" href="../10-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
+        <aside id="detail-panel" class="detail-panel" aria-label="节点详情"><h2 id="detail-title" class="detail-title">选择一个节点</h2><p id="detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
 
@@ -322,7 +323,7 @@
         <section class="architecture-map" aria-label="逻辑架构图">
           <div class="graph logical-graph">
             <svg class="edge-layer" viewBox="0 0 1000 720" aria-hidden="true"><defs><marker id="arrow-logical" markerWidth="8" markerHeight="8" refX="7" refY="3.5" orient="auto"><path d="M0,0 L8,3.5 L0,7z" fill="currentColor"></path></marker></defs>
-              <line data-from="logical-users" data-to="logical-gateway" x1="183" y1="122" x2="220" y2="122"></line><line data-from="logical-gateway" data-to="logical-web" x1="385" y1="104" x2="420" y2="104"></line><line data-from="logical-gateway" data-to="logical-control" x1="385" y1="140" x2="420" y2="210"></line><line data-from="logical-control" data-to="logical-orchestrator" x1="680" y1="205" x2="800" y2="120"></line><line data-from="logical-control" data-to="logical-model" x1="680" y1="220" x2="800" y2="230"></line><line data-from="logical-control" data-to="logical-sandbox" x1="680" y1="245" x2="800" y2="345"></line><line data-from="logical-control" data-to="logical-gitlab" class="manual" x1="680" y1="270" x2="800" y2="460"></line><line data-from="logical-control" data-to="logical-file" class="manual" x1="680" y1="300" x2="800" y2="575"></line><line data-from="logical-control" data-to="logical-readmodel" class="manual" x1="550" y1="340" x2="500" y2="390"></line><line data-from="logical-control" data-to="logical-postgres" x1="420" y1="290" x2="385" y2="430"></line><line data-from="logical-control" data-to="logical-valkey" x1="420" y1="300" x2="183" y2="430"></line><line data-from="logical-control" data-to="logical-nats" x1="420" y1="320" x2="183" y2="545"></line><line data-from="logical-orchestrator" data-to="logical-temporal" x1="800" y1="120" x2="385" y2="545"></line><line data-from="logical-file" data-to="logical-rgw" x1="800" y1="575" x2="585" y2="575"></line><line data-from="logical-control" data-to="logical-bao" x1="620" y1="340" x2="700" y2="545"></line><line data-from="logical-readmodel" data-to="logical-observability" class="manual" x1="585" y1="470" x2="800" y2="655"></line>
+              <line data-from="logical-users" data-to="logical-gateway" x1="183" y1="122" x2="220" y2="122"></line><line data-from="logical-gateway" data-to="logical-web" x1="385" y1="104" x2="420" y2="104"></line><line data-from="logical-gateway" data-to="logical-control" x1="385" y1="140" x2="420" y2="210"></line><line data-from="logical-control" data-to="logical-orchestrator" x1="680" y1="205" x2="800" y2="120"></line><line data-from="logical-control" data-to="logical-model" x1="680" y1="220" x2="800" y2="230"></line><line data-from="logical-control" data-to="logical-sandbox" x1="680" y1="245" x2="800" y2="345"></line><line data-from="logical-control" data-to="logical-gitlab" class="manual" x1="680" y1="270" x2="800" y2="460"></line><line data-from="logical-control" data-to="logical-file" class="manual" x1="680" y1="300" x2="800" y2="575"></line><line data-from="logical-control" data-to="logical-readmodel" class="manual" x1="550" y1="340" x2="500" y2="390"></line><line data-from="logical-control" data-to="logical-configuration" x1="650" y1="340" x2="700" y2="390"></line><line data-from="logical-control" data-to="logical-postgres" x1="420" y1="290" x2="385" y2="430"></line><line data-from="logical-control" data-to="logical-valkey" x1="420" y1="300" x2="183" y2="430"></line><line data-from="logical-control" data-to="logical-nats" x1="420" y1="320" x2="183" y2="545"></line><line data-from="logical-orchestrator" data-to="logical-temporal" x1="800" y1="120" x2="385" y2="545"></line><line data-from="logical-file" data-to="logical-rgw" x1="800" y1="575" x2="585" y2="575"></line><line data-from="logical-control" data-to="logical-bao" x1="620" y1="340" x2="700" y2="545"></line><line data-from="logical-readmodel" data-to="logical-observability" class="manual" x1="585" y1="470" x2="800" y2="655"></line>
             </svg>
             <button class="node actors" type="button" data-node-id="logical-users" data-doc-href="../00-platform-overview/platform-overview-detail.md" aria-label="Browser users，打开详情" aria-controls="logical-detail-panel"><strong>Browser users</strong><small>用户与管理入口</small></button>
             <button class="node gateway" type="button" data-node-id="logical-gateway" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="platform gateway，打开详情" aria-controls="logical-detail-panel"><strong>platform-gateway</strong><small>唯一北向公开入口</small></button>
@@ -334,6 +335,7 @@
             <button class="node gitlab" type="button" data-node-id="logical-gitlab" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="GitLab Connector，打开详情" aria-controls="logical-detail-panel"><strong>GitLab Connector → GitLab</strong><small>代码与 MR 外部事实</small></button>
             <button class="node file" type="button" data-node-id="logical-file" data-doc-href="../08-security-audit-governance/security-audit-governance-detail.md" aria-label="File Security 与 RGW，打开详情" aria-controls="logical-detail-panel"><strong>File Security → RGW</strong><small>文件验证与对象访问</small></button>
             <button class="node readmodel" type="button" data-node-id="logical-readmodel" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="Operations Adapter 与 Read Model，打开详情" aria-controls="logical-detail-panel"><strong>Operations Adapter → Read Model</strong><small>只读运维可见性</small></button>
+            <button class="node configuration" type="button" data-node-id="logical-configuration" data-doc-href="../10-configuration-governance/configuration-governance-detail.md" aria-label="Configuration 模块，打开详情" aria-controls="logical-detail-panel"><strong>Configuration module</strong><small>Control Plane 内部模块</small><em>不是独立微服务</em></button>
             <button class="node postgres" type="button" data-node-id="logical-postgres" data-doc-href="../07-data-messaging-storage/data-messaging-storage-detail.md" aria-label="PostgreSQL，打开详情" aria-controls="logical-detail-panel"><strong>PostgreSQL</strong><small>权威业务事实</small></button>
             <button class="node valkey" type="button" data-node-id="logical-valkey" data-doc-href="../07-data-messaging-storage/data-messaging-storage-detail.md" aria-label="Valkey，打开详情" aria-controls="logical-detail-panel"><strong>Valkey</strong><small>热数据，不替代事实源</small></button>
             <button class="node nats" type="button" data-node-id="logical-nats" data-doc-href="../07-data-messaging-storage/data-messaging-storage-detail.md" aria-label="NATS，打开详情" aria-controls="logical-detail-panel"><strong>NATS</strong><small>异步消息与事件</small></button>
@@ -343,7 +345,7 @@
             <button class="node obs" type="button" data-node-id="logical-observability" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="Observability，打开详情" aria-controls="logical-detail-panel"><strong>Observability</strong><small>诊断，不反写业务事实</small></button>
           </div>
         </section>
-        <aside id="logical-detail-panel" class="detail-panel" aria-label="逻辑架构节点详情"><h2 id="logical-detail-title" class="detail-title">选择一个节点</h2><p id="logical-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="logical-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="logical-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="logical-detail-doc-link" class="detail-doc-link" href="../10-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
+        <aside id="logical-detail-panel" class="detail-panel" aria-label="逻辑架构节点详情"><h2 id="logical-detail-title" class="detail-title">选择一个节点</h2><p id="logical-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="logical-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="logical-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="logical-detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
 
@@ -388,7 +390,7 @@
             <p class="jenkins-note auxiliary-layer">Jenkins 独立于平台环境；用户手工验证，平台不调用、不读状态、无 Webhook。</p>
           </div>
         </section>
-        <aside id="deployment-detail-panel" class="detail-panel" aria-label="部署架构节点详情"><h2 id="deployment-detail-title" class="detail-title">选择一个节点</h2><p id="deployment-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="deployment-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="deployment-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="deployment-detail-doc-link" class="detail-doc-link" href="../10-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
+        <aside id="deployment-detail-panel" class="detail-panel" aria-label="部署架构节点详情"><h2 id="deployment-detail-title" class="detail-title">选择一个节点</h2><p id="deployment-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="deployment-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="deployment-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="deployment-detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
 
@@ -407,7 +409,8 @@
         <li><a href="../07-data-messaging-storage/data-messaging-storage-detail.md">07 数据、消息与存储详细说明</a></li>
         <li><a href="../08-security-audit-governance/security-audit-governance-detail.md">08 安全、审计与治理详细说明</a></li>
         <li><a href="../09-infrastructure-operations/infrastructure-operations-detail.md">09 基础设施与运维详细说明</a></li>
-        <li><a href="../10-architecture-baseline/architecture-baseline-detail.md">10 架构基线详细说明</a></li>
+        <li><a href="../10-configuration-governance/configuration-governance-detail.md">10 Configuration Governance 详细说明</a></li>
+        <li><a href="../11-architecture-baseline/architecture-baseline-detail.md">11 架构基线详细说明</a></li>
       </ul>
     </nav>
   </main>
@@ -430,7 +433,8 @@
         'logical-users': ['Browser users', '人员通过浏览器使用用户工作台和管理入口。', 'Browser 不直连数据服务、Kubernetes、OpenBao、Model 或 RGW 管理面。', '下游：platform-gateway。'],
         'logical-gateway': ['platform-gateway', '平台北向公开入口，承载公开 API 的受控边界。', '它不拥有领域状态、数据或授权结论。', '上游：Browser users；下游：Umi Web、Python Control Plane。'],
         'logical-web': ['Umi Web', '用户端与管理入口只呈现服务端返回的受控信息。', 'UI 可见性不是授权边界。', '上游：platform-gateway；下游：公开 API。'],
-        'logical-control': ['Python Control Plane', '模块化单体协调业务事实、公共 API、Port 与 Adapter。', '内部模块不是既有微服务；领域语义不依赖 Provider 实现。', '上游：platform-gateway；下游：编排、数据服务与 Adapter。'],
+        'logical-control': ['Python Control Plane', '模块化单体协调业务事实、公共 API、Port 与 Adapter。', '内部模块不是既有微服务；领域语义不依赖 Provider 实现。', '上游：platform-gateway；下游：Configuration、编排、数据服务与 Adapter。'],
+        'logical-configuration': ['Configuration module', '拥有 Catalog、通用配置治理协议与跨环境治理，并通过注册 Port 编排 Namespace owner。', '它位于 Python Control Plane 模块化单体内，不是独立 Deployable 或微服务；各领域仍拥有自己的 Typed Schema、Policy 数据与业务解释。', '上游：Python Control Plane；下游：领域 Namespace owner 与 Effective Configuration 消费者。'],
         'logical-orchestrator': ['Temporal + Orchestrator', '编排异步业务步骤并支持受控恢复。', '它不替代 Requirement 责任、Gate 或人工决定。', '上游：Control Plane；下游：Temporal persistence。'],
         'logical-model': ['Model Gateway → Provider', '按逻辑 Capability 将模型请求映射到环境 Provider。', 'Provider 参数不进入 Workflow 或前端领域模型。', '上游：Control Plane；下游：外部 Model Provider。'],
         'logical-sandbox': ['Sandbox Controller → Sandbox', '按不可变 Binding 物化隔离执行环境。', 'Sandbox 不取得 Requirement 业务写权限。', '上游：Control Plane；下游：Sandbox Runtime。'],
