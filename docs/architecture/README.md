@@ -14,7 +14,7 @@
 | Implementation Roadmap | 哪些 Capability 被选入哪个 Release、实施到什么状态、采用哪个 Profile，以及如何从 DEV Promotion 到 PROD？ | [12 实施路线图](./12-implementation-roadmap/implementation-roadmap.md)、[路线图详细说明](./12-implementation-roadmap/implementation-roadmap-detail.md)与[环境容量和服务器规划](./12-implementation-roadmap/environment-capacity-plan.md)。 |
 | Deployed State | 某个 Platform Environment 实际运行什么 Image Digest/Bundle、配置、拓扑、容量和健康状态？ | 该环境受保护 Git 路径形成的 GitOps Desired State、Platform Configuration Snapshot（PCS）和 Operations Read Model 证据；Markdown 与 HTML 不复制运行状态。 |
 
-Target Architecture 定义能力启用后必须满足的 Contract，不声明能力已经实现或部署。Implementation Roadmap 选择 Release Scope；未被选入当前 Release 或尚未通过 Capability Activation Gate 的目标能力保持关闭。Deployed State 必须由环境证据证明，不能由路线图状态或界面摘要推断。
+Target Architecture 的适用与 Gate 规则见[架构基线详细说明](./11-architecture-baseline/architecture-baseline-detail.md)；Implementation Roadmap 的 Scope、状态与 Profile 选择见[实施路线图详细说明](./12-implementation-roadmap/implementation-roadmap-detail.md)；Deployed State 的环境证据定义见[基础设施与运维详细说明](./09-infrastructure-operations/infrastructure-operations-detail.md)和[Configuration Governance 详细说明](./10-configuration-governance/configuration-governance-detail.md)。
 
 ## 受众阅读路径
 
