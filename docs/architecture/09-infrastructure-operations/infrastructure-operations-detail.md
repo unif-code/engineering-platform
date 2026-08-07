@@ -5,7 +5,7 @@
 
 ## 1. 责任边界与环境状态
 
-本文是 Platform Environment、CloudEnvironmentBinding、PCS、Kubernetes、Node、网络、物理存储拓扑、可观测性、环境级 Cluster DR、容量与 TCO 的唯一规范事实源。它不定义身份、业务状态、Artifact 配额、数据服务恢复算法、Secret、加密、PKI 或 Audit 内容保护；这些分别链接[01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[02](../02-requirement-workflow/requirement-workflow-detail.md)、[07](../07-data-messaging-storage/data-messaging-storage-detail.md)和[08](../08-security-audit-governance/security-audit-governance-detail.md)。Operations Read Model、Console Access、External Status Feed 与公告流程由[06](../06-platform-application-integration/platform-application-integration-detail.md)拥有。
+本文是 Platform Environment、CloudEnvironmentBinding、PCS、Kubernetes、Node、网络、物理存储拓扑、可观测性、环境级 Cluster DR、容量与 TCO 的唯一规范事实源。它不定义身份、业务状态、Artifact 配额、数据服务恢复算法、Secret、加密、PKI、Audit 内容保护或 `PLATFORM_POLICY` 生命周期；这些分别链接[01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[02](../02-requirement-workflow/requirement-workflow-detail.md)、[07](../07-data-messaging-storage/data-messaging-storage-detail.md)、[08](../08-security-audit-governance/security-audit-governance-detail.md)和 [10](../10-configuration-governance/configuration-governance-detail.md)。本文仍拥有基础设施 `GITOPS_CONFIG` 的 Desired State；Operations Read Model、Console Access、External Status Feed 与公告流程由[06](../06-platform-application-integration/platform-application-integration-detail.md)拥有。
 
 DEV 是当前唯一实例化的 Platform Environment，当前仓库仍是 Umi Max 前端模板。Python Control Plane、数据服务、基础设施和 PROD 是批准的目标架构，不表示已有对应运行实例。未来 PROD 以同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC、Cluster 重新实例化，绝不共享 DEV 的运行实例、Session、数据、凭据、密钥或故障域。
 

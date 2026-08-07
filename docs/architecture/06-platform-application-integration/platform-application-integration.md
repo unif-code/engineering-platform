@@ -9,7 +9,7 @@
 
 目标 Control Plane 交付为一个 Python 项目中的**模块化单体**；模块保有自己的领域模型、Application Service、数据和迁移，并以公开 Port/DTO/事件协作。模块可在未来提取为独立服务，但可提取性不表示当前已有领域微服务。
 
-本文不拥有 Identity、Requirement、Agent、Sandbox、GitLab 或 Configuration 的领域状态；它们分别由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[02](../02-requirement-workflow/requirement-workflow-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md)、[05](../05-source-control-delivery/source-control-delivery-detail.md) 与 [10](../10-configuration-governance/configuration-governance-detail.md) 定义。数据事实与持久化由 [07](../07-data-messaging-storage/data-messaging-storage-detail.md) 定义。
+本文不拥有 Identity、Requirement、Agent、Sandbox 或 GitLab 的领域状态；它们分别由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[02](../02-requirement-workflow/requirement-workflow-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md) 与 [05](../05-source-control-delivery/source-control-delivery-detail.md) 定义。Configuration 的通用治理协议与生命周期状态语义由 [10](../10-configuration-governance/configuration-governance-detail.md) 定义，各 Namespace 的 Policy 数据仍归对应领域模块；数据事实与持久化基线由 [07](../07-data-messaging-storage/data-messaging-storage-detail.md) 定义。
 
 ## 组件地图
 

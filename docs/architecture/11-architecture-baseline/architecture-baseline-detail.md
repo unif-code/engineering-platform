@@ -13,17 +13,17 @@
 
 | 不变量 | 规范 owner | 消费者 | 证据 |
 | --- | --- | --- | --- |
-| 服务端以实时授权投影和 Assignment 判定受保护动作；Assignment 只委派既有权限，不能扩大 Capability 或 Scope。 | [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md) | 02、05、06、管理入口 | 授权判定、Assignment 记录与 Audit |
+| 服务端以实时授权投影和 Assignment 判定受保护动作；Assignment 只委派既有权限，不能扩大 Capability 或 Scope。 | [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md) | 02、05、06、10、管理入口 | 授权判定、Assignment 记录与 Audit |
 | Requirement、WorkItem、Route、Gate、Decision、Acceptance 与 Artifact 形成业务责任链；跨模块只以稳定标识和版本引用协作。 | [02](../02-requirement-workflow/requirement-workflow-detail.md) | 01、03、05、06、07 | 领域版本、Decision、Acceptance 与 Artifact 证据 |
 | Run、Attempt 与不可变 Execution Binding 是受控执行事实；执行资源不取得 Requirement 的业务写权限。 | [03](../03-agent-skill-model/agent-skill-model-detail.md) | 02、04、06、07 | Binding、运行事件与 Effect Ledger |
 | Git/MR/Artifact `IntegrationBaselineEvidence` 的结构、ID/hash、外部事实与变化事件由 05 拥有；Requirement 选定/冻结 Evidence 引用、Acceptance 绑定与失效及业务状态由 02 拥有。 | [05](../05-source-control-delivery/source-control-delivery-detail.md) 与 [02](../02-requirement-workflow/requirement-workflow-detail.md) | 03、06、07 | Evidence、Selection、外部事实、Acceptance 与交付 Audit |
-| Browser、菜单、Read Model、Telemetry 与外部 Feed 只用于展示、诊断或可见性；它们不能授权、反写领域事实或阻断独立的已运行业务。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) | 00～05、07～09 | 应用 API、Read Model freshness、Collector/Feed 状态与 Audit |
-| 模块内事务在单一事实边界完成；跨模块与外部副作用经 Outbox、Inbox、Effect Ledger、幂等键和可重放证据收敛。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) | 02～05、07、09 | Transaction、Outbox/Inbox、Effect Ledger、Reconciliation |
-| DEV 与未来 PROD 的运行实例、信任边界、数据、凭据、密钥、备份和故障域完全隔离。 | [09](../09-infrastructure-operations/infrastructure-operations-detail.md) | 00～08 | CloudEnvironmentBinding、PCS、部署与恢复证据 |
-| 配置有类型、版本和生效快照；运行、审核和集成使用被绑定的 effective snapshot，不读取未受控的可变值。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) | 01～05、07～09 | 配置版本、snapshot、发布与 Audit |
+| Browser、菜单、Read Model、Telemetry 与外部 Feed 只用于展示、诊断或可见性；它们不能授权、反写领域事实或阻断独立的已运行业务。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) | 00～05、07～10 | 应用 API、Read Model freshness、Collector/Feed 状态与 Audit |
+| 模块内事务在单一事实边界完成；跨模块与外部副作用经 Outbox、Inbox、Effect Ledger、幂等键和可重放证据收敛。 | [06](../06-platform-application-integration/platform-application-integration-detail.md) | 02～05、07、09～10 | Transaction、Outbox/Inbox、Effect Ledger、Reconciliation |
+| DEV 与未来 PROD 的运行实例、信任边界、数据、凭据、密钥、备份和故障域完全隔离。 | [09](../09-infrastructure-operations/infrastructure-operations-detail.md) | 00～08、10 | CloudEnvironmentBinding、PCS、部署与恢复证据 |
+| 配置有类型、版本和生效快照；运行、审核和集成使用被绑定的 Effective Snapshot，不读取未受控的可变值。 | [10](../10-configuration-governance/configuration-governance-detail.md) | 01～09 | 配置版本、Snapshot、发布与 Audit |
 | Execution Binding 不可变；Sandbox 以 fenced lease、容量准入和 Kata 隔离运行，恢复不能绕过绑定和资源边界。 | [03](../03-agent-skill-model/agent-skill-model-detail.md) 与 [04](../04-sandbox-runtime/sandbox-runtime-detail.md) | 02、06、09 | Binding、lease、Capacity Profile、Runtime 事件 |
 | Artifact 以 exact Object Version 作为证据单位，同时受 Product Quota Ledger 与 Environment Bucket-Class Capacity Ledger 约束；两类不足独立呈现。 | [07](../07-data-messaging-storage/data-messaging-storage-detail.md) | 02、05、06、08、09 | Object Version、双 Ledger reservation、扫描与容量证据 |
-| 安全、Audit 与恢复依赖可验证信任、密钥、授权和证据；任一受保护条件不可证明时 Fail Closed。 | [08](../08-security-audit-governance/security-audit-governance-detail.md) | 01～07、09 | Trust、Audit、恢复验证与告警证据 |
+| 安全、Audit 与恢复依赖可验证信任、密钥、授权和证据；任一受保护条件不可证明时 Fail Closed。 | [08](../08-security-audit-governance/security-audit-governance-detail.md) | 01～07、09～10 | Trust、Audit、恢复验证与告警证据 |
 
 ## 3. 依赖方向与写入边界
 
@@ -33,7 +33,7 @@
 UI → public API → domain/application → Port → Adapter → external
 ```
 
-- 00 提供 System Context；01～05 提供领域 Contract；06 提供应用、集成与配置 Contract；07 提供数据事实与持久化 Contract；08 提供 Trust/Security Contract；09 提供环境与运维 Contract；10 仅提供跨模块索引。
+- 00 提供 System Context；01～05 提供领域 Contract；06 提供应用与集成 Contract；07 提供数据事实与持久化 Contract；08 提供 Trust/Security Contract；09 提供环境与运维 Contract；10 提供 Configuration Governance Contract；11 仅提供跨模块索引。
 - UI 只能调用 public API，不直连数据服务、消息系统、Secret、Kubernetes、Cloud 或外部 Provider。
 - domain/application 依赖 Port 抽象，不依赖 Adapter 实现；Adapter 不得塑形或替代领域语义。
 - projection、Read Model、Telemetry、Feed 和管理看板不得反写权威领域事实。
@@ -49,11 +49,12 @@ UI → public API → domain/application → Port → Adapter → external
 | 03 | Agent 定义、Skill/Model 路由、Run/Attempt 与 Execution Binding。 | [03 detail](../03-agent-skill-model/agent-skill-model-detail.md) |
 | 04 | Sandbox 物化、隔离、lease、容量准入、网络、Preview 与清理。 | [04 detail](../04-sandbox-runtime/sandbox-runtime-detail.md) |
 | 05 | GitLab Binding、分支交付、`IntegrationBaselineEvidence`、Formal MR 与外部事实收敛。 | [05 detail](../05-source-control-delivery/source-control-delivery-detail.md) |
-| 06 | Web/Control Plane、Port/Adapter、配置、一致性、Operations Read Model、Console 与公告。 | [06 detail](../06-platform-application-integration/platform-application-integration-detail.md) |
+| 06 | Web/Control Plane、Port/Adapter、一致性、Operations Read Model、Console 与公告。 | [06 detail](../06-platform-application-integration/platform-application-integration-detail.md) |
 | 07 | PostgreSQL、Valkey、NATS、Temporal、Object Storage、Artifact 对象/配额账本、Retention 与组件数据恢复。 | [07 detail](../07-data-messaging-storage/data-messaging-storage-detail.md) |
 | 08 | Secret、PKI、加密、供应链、Audit、Break-glass 与信任恢复。 | [08 detail](../08-security-audit-governance/security-audit-governance-detail.md) |
 | 09 | Environment Binding、PCS、Kubernetes、Node、网络、可观测性、Cluster DR、容量与 TCO。 | [09 detail](../09-infrastructure-operations/infrastructure-operations-detail.md) |
-| 10 | 跨模块不变量、引用关系、质量场景与演进 Gate。 | 本文 |
+| 10 | Configuration Catalog、生命周期协议、Effective Snapshot、兼容演进与 DEV→PROD Promotion。 | [10 detail](../10-configuration-governance/configuration-governance-detail.md) |
+| 11 | 跨模块不变量、引用关系、质量场景与演进 Gate。 | 本文 |
 
 ## 5. Quality Scenarios
 
@@ -76,7 +77,7 @@ UI → public API → domain/application → Port → Adapter → external
 | Authorization | Capability、Scope、Assignment、Session 与配置授权在服务端形成当前有效判定。 | [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md) |
 | Security | Trust、Secret、加密、Audit、供应链和恢复信任链可验证且 Fail Closed。 | [08](../08-security-audit-governance/security-audit-governance-detail.md) |
 | Execution | Requirement 的责任链、不可变 Execution Binding、Sandbox 准入与受控恢复保持一致。 | [02](../02-requirement-workflow/requirement-workflow-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md) |
-| Integration and configuration | Port/Adapter、typed/versioned configuration、Outbox/Inbox 与外部证据可独立验证和回放。 | [05](../05-source-control-delivery/source-control-delivery-detail.md)、[06](../06-platform-application-integration/platform-application-integration-detail.md) |
+| Integration and configuration | Port/Adapter、typed/versioned configuration、Outbox/Inbox 与外部证据可独立验证和回放。 | [05](../05-source-control-delivery/source-control-delivery-detail.md)、[06](../06-platform-application-integration/platform-application-integration-detail.md)、[10](../10-configuration-governance/configuration-governance-detail.md) |
 
 以下演进路径彼此独立，每一项只替换其 owner 的 Port/Adapter、数据或部署边界，并分别通过兼容、迁移、回退、恢复和 Observability Gate；不能借一次演进重写无关领域模块：
 

@@ -107,7 +107,7 @@ rg -n 'Draft|Takeover|Three-way Rebase|Promotion Divergence|Source Lineage Rebin
 
 Expected: 第一条不返回 Configuration 生命周期定义；第二条覆盖全部关键规则。
 
-- [ ] **Step 7: 提交主题拆分**
+- [x] **Step 7: 提交主题拆分**
 
 ```bash
 git add docs/architecture/06-platform-application-integration docs/architecture/10-configuration-governance docs/architecture/11-architecture-baseline
@@ -138,11 +138,11 @@ git commit -m "docs(architecture): split configuration canonical owner"
 - Consumes: Task 1 产生的新 10/11 路径和 owner。
 - Produces: 唯一、无陈旧路径的主题索引与跨模块引用图。
 
-- [ ] **Step 1: 更新 README 与总览主题地图**
+- [x] **Step 1: 更新 README 与总览主题地图**
 
 README 改为 `00`～`11` 共 12 个主题，增加 Configuration Governance，Architecture Baseline 改为 11。00 的系统上下文和导航明确 Configuration 是 Control Plane 内独立模块，并链接新 10，不描述为 Deployable。
 
-- [ ] **Step 2: 更新配置生命周期消费者**
+- [x] **Step 2: 更新配置生命周期消费者**
 
 将 01、04、07、08、09 中关于 Configuration Catalog、Policy 生命周期、发布、Snapshot、Effect Semantics 或 Promotion 的 owner 链接改为：
 
@@ -152,28 +152,28 @@ README 改为 `00`～`11` 共 12 个主题，增加 Configuration Governance，A
 
 保留指向 06 的 Web、Port/Adapter、External Provider、Operations Read Model、Console 和公告引用。
 
-- [ ] **Step 3: 更新 11 Architecture Baseline**
+- [x] **Step 3: 更新 11 Architecture Baseline**
 
 依赖方向调整为：00 总览；01～05 领域；06 应用与集成；07 数据；08 安全；09 基础设施；10 Configuration Governance；11 跨模块索引。Fact Owner Index 增加 10 并将自身改为 11；配置不变量和 Integration/configuration Evolution Gate 链接新 10。
 
-- [ ] **Step 4: 更新既有文档重构 Spec/Plan 的最终路径**
+- [x] **Step 4: 更新既有文档重构 Spec/Plan 的最终路径**
 
 只更新受编号与 owner 变化影响的最终文件路径和数量，不加入迁移对话、备选方案或实施路线图内容。
 
-- [ ] **Step 5: 扫描陈旧引用**
+- [x] **Step 5: 扫描陈旧引用**
 
 Run:
 
 ```bash
 rg -n '10-architecture-baseline|10 架构基线|00～10|Configuration Contract.*06-platform|配置生命周期.*06-platform' \
-  docs/architecture \
+  docs/architecture --glob '*.md' \
   docs/superpowers/specs/2026-08-06-architecture-documentation-restructure-design.md \
   docs/superpowers/plans/2026-08-06-architecture-documentation-restructure.md
 ```
 
 Expected: 无返回。本次拆分设计 Spec 明确记录 source 与 target，不在该陈旧引用检查范围内。
 
-- [ ] **Step 6: 验证引用语义没有被过度迁移**
+- [x] **Step 6: 验证引用语义没有被过度迁移**
 
 Run:
 

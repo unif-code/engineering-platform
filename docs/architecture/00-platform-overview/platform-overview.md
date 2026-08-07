@@ -11,7 +11,7 @@
 
 ## 系统边界与核心价值
 
-平台负责本地身份、组织与 Workspace、授权、Requirement 到交付的业务编排、Agent Runtime 的控制以及业务审计。它通过稳定的 Adapter 使用 GitLab、Model Provider、Sandbox、对象存储和运维系统。
+平台负责本地身份、组织与 Workspace、授权、Requirement 到交付的业务编排、Agent Runtime 的控制、Configuration Governance 以及业务审计。它通过稳定的 Adapter 使用 GitLab、Model Provider、Sandbox、对象存储和运维系统。
 
 平台不重建外部系统的专业能力，不把外部系统的实现细节纳入业务领域。其核心价值是：
 
@@ -42,7 +42,7 @@
 └── 用户工作台、管理入口
     └── Control Plane
         ├── Identity / Organization / Workspace / Authorization
-        ├── Requirement Workflow / Agent Run / Audit
+        ├── Requirement Workflow / Agent Run / Configuration / Audit
         └── Integration Ports
             ├── Workflow Orchestrator / Model Gateway / Sandbox Controller
             └── GitLab、Model Provider、存储与运维系统 Adapter
@@ -70,3 +70,5 @@
 - [数据、消息与存储](../07-data-messaging-storage/data-messaging-storage.md)：领域事实与数据支撑边界。
 - [安全、审计与治理](../08-security-audit-governance/security-audit-governance.md)：安全边界与治理证据。
 - [基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)：部署、运维与兼容性 Contract。
+- [Configuration Governance](../10-configuration-governance/configuration-governance.md)：配置分类、生命周期与跨环境 Promotion。
+- [架构基线](../11-architecture-baseline/architecture-baseline.md)：跨模块不变量、质量场景与演进 Gate。

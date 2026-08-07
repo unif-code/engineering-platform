@@ -5,7 +5,7 @@
 
 ## 目标与边界
 
-本主题定义平台通用 Typed Configuration 的分类、生命周期、Effective Snapshot、兼容演进与 DEV→PROD Promotion。Configuration 是 Python Control Plane 模块化单体中的独立领域模块，不是独立 Deployable 或既有微服务。
+本主题定义平台通用 Typed Configuration 的分类、生命周期、Effective Snapshot、兼容演进与 DEV→PROD Promotion。Configuration 位于 `backend/control_plane/app/modules/configuration/`，是 Python Control Plane 模块化单体中的独立领域模块，不是独立 Deployable 或既有微服务。
 
 各领域模块拥有自己的 Namespace、Typed Schema、Policy 数据、默认值、约束、Reader/Migrator、解析器和业务解释；Configuration Governance 统一约束 Draft、Publish、Rollback、Rebase、Snapshot、Promotion、Lineage 与 Divergence 协议，禁止各模块建立平行配置工作流。
 

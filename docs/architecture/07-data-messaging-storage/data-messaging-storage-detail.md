@@ -7,7 +7,7 @@
 
 本文是 PostgreSQL、Valkey、NATS JetStream、Temporal Persistence、Rook-Ceph RGW/Object Storage、Artifact 存储、应用级 Backup、Retention、跨组件一致性和组件故障语义的唯一规范事实源。
 
-领域状态仍由对应领域 owner 拥有，应用调用、Port/Adapter 和 Outbox 使用边界由 [平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。本文不定义密钥、加密、Secret 或审计内容保护机制，统一链接 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；不定义 Cluster、Node、SKU、总容量、组件精确版本或环境容量，统一链接 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
+领域状态仍由对应领域 owner 拥有，应用调用、Port/Adapter 和 Outbox 使用边界由 [平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有；Typed Configuration 的生命周期、Snapshot 与 Promotion 协议由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有，本文只规定其 PostgreSQL 持久化基线。本文不定义密钥、加密、Secret 或审计内容保护机制，统一链接 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；不定义 Cluster、Node、SKU、总容量、组件精确版本或环境容量，统一链接 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
 DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max 前端模板。本文规定的 CloudNativePG、Valkey、NATS、Temporal、Rook-Ceph RGW 与 Backup/Retention 组件是已批准的目标架构，不声明对应运行实例已经部署。未来 PROD 从相同 Contract、GitOps 模板与 PCS 独立实例化，不共享 DEV 的数据、消息、对象或恢复状态。
 

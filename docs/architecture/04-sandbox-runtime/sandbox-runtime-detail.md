@@ -81,7 +81,7 @@ Sandbox 先分别应用两个独立、版本化的 `PLATFORM_POLICY`，再执行
 
 下调任一 Policy 只阻止后续 Lease 或 Handoff 并等待占用自然收敛，不撤销既有 Lease、不强杀已持有 Build Lease 的 Child，也不改写 Execution Binding。Build Limit 生效为 `0` 时，已完成 Handoff 但尚未取得 Build Lease 的排队 Child 必须收到 `POLICY_DISABLED`；[03 owner](../03-agent-skill-model/agent-skill-model-detail.md)将其收敛为 `CANCELED/POLICY_DISABLED` 结构化终态并唤醒 Parent，不能无限等待 Policy 恢复。两个 Key 彼此独立；任何准入还必须同时满足共享 Capacity Ledger、绑定 Resource Profile 的完整 Resource Vector、Placement、Kata Gate、Runtime Disk 与 N+1 安全边界。业务配置不能扩大或突破物理 Capacity Envelope。
 
-两个 Policy 的 Key、Minimum、Initial Desired 与准入效果由本文拥有；物理 Maximum 只能取[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)中当前 Environment Capacity Profile 已验证的 Ceiling。Policy 发布与配置生命周期由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)的 Configuration Contract 拥有；发布权限与 Super Admin 边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 只消费已生效的 Policy Snapshot，不复制配置工作流。
+两个 Policy 的 Key、Minimum、Initial Desired 与准入效果由本文拥有；物理 Maximum 只能取[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)中当前 Environment Capacity Profile 已验证的 Ceiling。Policy 发布与配置生命周期由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有；发布权限与 Super Admin 边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 只消费已生效的 Policy Snapshot，不复制配置工作流。
 
 专用 Pool 必须满足 N+1：任一个 `sandbox-worker` 或其 Host 失效后，剩余故障域仍能承载该 Platform Environment 获准的全部 Unit 组合。Node 数、每环境 Ceiling、磁盘容量、Provider Mapping 和总容量只由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)定义；本领域仅消费其有效 Capacity Profile。
 

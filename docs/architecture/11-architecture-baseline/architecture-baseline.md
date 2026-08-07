@@ -33,14 +33,15 @@
 | 07 | 数据、消息与存储 | [架构地图](../07-data-messaging-storage/data-messaging-storage.md) | [详细说明](../07-data-messaging-storage/data-messaging-storage-detail.md) |
 | 08 | 安全、审计与治理 | [架构地图](../08-security-audit-governance/security-audit-governance.md) | [详细说明](../08-security-audit-governance/security-audit-governance-detail.md) |
 | 09 | 基础设施与运维 | [架构地图](../09-infrastructure-operations/infrastructure-operations.md) | [详细说明](../09-infrastructure-operations/infrastructure-operations-detail.md) |
-| 10 | 架构基线 | 本文 | [详细说明](./architecture-baseline-detail.md) |
+| 10 | Configuration Governance | [架构地图](../10-configuration-governance/configuration-governance.md) | [详细说明](../10-configuration-governance/configuration-governance-detail.md) |
+| 11 | 架构基线 | 本文 | [详细说明](./architecture-baseline-detail.md) |
 
 ## 阅读优先级
 
-- 负责人和架构评审先阅读 00、10 的 L1，再按决策主题进入对应 L2。
+- 负责人和架构评审先阅读 00、11 的 L1，再按决策主题进入对应 L2。
 - 产品、Leader 和研发从 01、02、05 开始，再结合 03、04 理解受控执行边界。
-- 应用和 Agent 开发阅读 02～07 的 L2，并以 08 的安全 Contract 和 09 的环境 Contract 约束实现。
-- 平台、安全与运维阅读 06～10 的 L2；业务规则仍回链其领域 owner，不通过运维投影取得业务结论。
+- 应用和 Agent 开发阅读 02～07、10 的 L2，并以 08 的安全 Contract 和 09 的环境 Contract 约束实现。
+- 平台、安全与运维阅读 06～11 的 L2；业务规则仍回链其领域 owner，不通过运维投影取得业务结论。
 
 ## 变更规则
 

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** 将已批准的 `.173` 架构重写为具有唯一事实所有权的 `00～10` 目录体系，并交付一份离线、自包含、可交互的 HTML 架构图。
+**Goal:** 将已批准的 `.173` 架构重写为具有唯一事实所有权的 `00～11` 目录体系，并交付一份离线、自包含、可交互的 HTML 架构图。
 
 **Architecture:** 新文档按领域与技术视图拆分，每个编号目录包含主文和 detail；主文负责地图、边界和主流程，detail 负责唯一规范性 Contract。现有完整基线只作为重写事实输入，所有事实归位后删除旧平铺文件；HTML 从新文档路径引用节点详情，不成为新的架构事实源。
 
@@ -188,7 +188,7 @@ git commit -m "docs(architecture): rewrite sandbox and delivery"
 - Create: `docs/architecture/07-data-messaging-storage/data-messaging-storage-detail.md`
 
 **Interfaces:**
-- Consumes: 现有 `06-*`、`07-*`、`08` 的 Web/Control Plane/Port/Adapter/Configuration/PostgreSQL/Valkey/NATS/Temporal/Ceph 有效事实。
+- Consumes: 现有 `06-*`、`07-*`、`08` 的 Web/Control Plane/Port/Adapter/PostgreSQL/Valkey/NATS/Temporal/Ceph 有效事实。
 - Produces: 应用组件边界、集成 Contract、数据事实源和一致性的唯一技术文档。
 
 - [x] **Step 1: 运行结构性失败检查**
@@ -201,7 +201,7 @@ Expected: FAIL。
 
 - [x] **Step 2: 编写 Platform Application/Integration 文档**
 
-主文包含 Umi Web、platform-gateway、Python Control Plane、模块化单体、独立 Deployable、Port/Adapter、Typed Configuration、管理后台和集成边界。
+主文包含 Umi Web、platform-gateway、Python Control Plane、模块化单体、独立 Deployable、Port/Adapter、管理后台和集成边界。
 
 detail 唯一定义前端应用边界、Session Bootstrap、Python 3.12/FastAPI/Pydantic/SQLAlchemy/Alembic 技术系列、模块依赖规则、Deployable、同步/异步通信、Outbox/Inbox、External Provider Contract、Operations Read Model、安全公告和 Console Access。不得重新定义领域状态或基础设施拓扑。
 
@@ -279,11 +279,13 @@ git add docs/architecture/08-security-audit-governance docs/architecture/09-infr
 git commit -m "docs(architecture): rewrite security and operations views"
 ```
 
-### Task 6: Architecture Baseline、README 与旧文件收口
+### Task 6: Configuration Governance、Architecture Baseline、README 与旧文件收口
 
 **Files:**
-- Create: `docs/architecture/10-architecture-baseline/architecture-baseline.md`
-- Create: `docs/architecture/10-architecture-baseline/architecture-baseline-detail.md`
+- Create: `docs/architecture/10-configuration-governance/configuration-governance.md`
+- Create: `docs/architecture/10-configuration-governance/configuration-governance-detail.md`
+- Create: `docs/architecture/11-architecture-baseline/architecture-baseline.md`
+- Create: `docs/architecture/11-architecture-baseline/architecture-baseline-detail.md`
 - Rewrite: `docs/architecture/README.md`
 - Delete: `docs/architecture/00-platform-architecture.md`
 - Delete: `docs/architecture/01-organization-workspace-capability.md`
@@ -304,30 +306,33 @@ git commit -m "docs(architecture): rewrite security and operations views"
 
 **Interfaces:**
 - Consumes: Tasks 1～5 的最终文档路径和事实所有权。
-- Produces: 唯一导航、全局不变量索引和无重复的最终目录树。
+- Produces: Configuration 生命周期唯一 owner、唯一导航、全局不变量索引和无重复的最终目录树。
 
 - [x] **Step 1: 运行完整结构的失败检查**
 
 ```bash
-test -f docs/architecture/10-architecture-baseline/architecture-baseline-detail.md
+test -f docs/architecture/10-configuration-governance/configuration-governance-detail.md
+test -f docs/architecture/11-architecture-baseline/architecture-baseline-detail.md
 test ! -f docs/architecture/00-platform-architecture.md
 ```
 
 Expected: FAIL。
 
-- [x] **Step 2: 编写 Architecture Baseline 主文与 detail**
+- [x] **Step 2: 编写 Configuration Governance 与 Architecture Baseline 主文和 detail**
 
-主文只包含 `.173` 版本、架构状态、系统级原则、全局模块地图、阅读优先级和变更规则。
+Configuration Governance 主文与 detail 唯一拥有 Catalog、Draft、Publish、Rollback、Effective Snapshot、兼容演进、Promotion、Lineage 与 Divergence 协议；Configuration 仍是 Python Control Plane 模块化单体中的领域模块，不是独立 Deployable。
+
+Architecture Baseline 主文只包含 `.173` 版本、架构状态、系统级原则、全局模块地图、阅读优先级和变更规则。
 
 detail 只包含跨模块不变量矩阵、模块依赖方向、事实所有权索引、质量属性场景、环境/授权/安全/执行等跨模块约束及演进 Gate；不得复制任何模块状态机、组件配置表、容量 BOM 或历史批准过程。
 
 - [x] **Step 3: 重写 README**
 
-README 只包含文档目标、四类受众阅读路径、`00～10` 导航、main/detail Contract、HTML入口和维护规则。不得重复身份、Workflow、技术选型或容量结论。
+README 只包含文档目标、四类受众阅读路径、`00～11` 导航、main/detail Contract、HTML入口和维护规则。不得重复身份、Workflow、技术选型或容量结论。
 
 - [x] **Step 4: 验证事实覆盖后删除旧平铺文件**
 
-使用 `apply_patch` 删除上述16个旧架构 Markdown。删除前必须逐项确认 Tasks 1～5 的20个新文档和本 Task 的2个基线文档均存在且非空。
+使用 `apply_patch` 删除上述16个旧架构 Markdown。删除前必须逐项确认 Tasks 1～5 的20个新文档和本 Task 的2个 Configuration 文档、2个基线文档均存在且非空。
 
 - [x] **Step 5: 验证旧路径清零**
 
@@ -369,7 +374,7 @@ Expected: FAIL。
 
 业务视图的平台责任链包含 Requirement→Route/SDD→Human Gate→WorkItem/Attempt→IntegrationBaselineEvidence/Integration MR→RequirementIntegrationBaselineSelection→验收→Formal MR→main；Evidence/MR 节点链接 05 owner，Selection 节点链接 02 owner。Jenkins 只通过“用户→平台外 Jenkins”的独立人工动作线呈现，不与平台责任链相连，也不表达为 Gate。
 
-逻辑视图包含参与者、Edge/Gateway、Umi Web、Python Control Plane模块、Temporal/Orchestrator、Model Gateway、Sandbox Controller、Adapter、PostgreSQL/Valkey/NATS/OpenBao/Ceph和Observability。
+逻辑视图包含参与者、Edge/Gateway、Umi Web、Python Control Plane 模块及其内部 Configuration 模块、Temporal/Orchestrator、Model Gateway、Sandbox Controller、Adapter、PostgreSQL/Valkey/NATS/OpenBao/Ceph 和 Observability；Configuration 不形成独立部署节点。
 
 部署视图包含当前DEV和未来PROD的独立Resource Account/VPC/Kubernetes边界、四类Node Role、外部Edge、Operations Collector、Watchdog、Cluster外备份、GitLab、Model Provider与Jenkins；两个环境之间不得有运行时共享连线。
 
@@ -407,9 +412,9 @@ git commit -m "docs(architecture): add interactive architecture map"
 - [x] **Step 1: 验证目标文件数量和目录**
 
 ```bash
-test "$(find docs/architecture -mindepth 1 -maxdepth 1 -type d -name '[0-9][0-9]-*' | wc -l | tr -d ' ')" = 11
-test "$(find docs/architecture -mindepth 2 -maxdepth 2 -type f -name '*.md' | wc -l | tr -d ' ')" = 22
-node -e "const fs=require('fs'),path=require('path'); const root='docs/architecture',dirs=fs.readdirSync(root,{withFileTypes:true}).filter(function(d){return d.isDirectory()&&/^\\d{2}-/.test(d.name)}).map(function(d){return d.name}).sort(); if(dirs.length!==11) throw new Error('numbered directories='+dirs.length); for(const dir of dirs){const stem=dir.replace(/^\\d{2}-/,''); const got=fs.readdirSync(path.join(root,dir)).filter(function(f){return f.endsWith('.md')}).sort(); const want=[stem+'-detail.md',stem+'.md'].sort(); if(JSON.stringify(got)!==JSON.stringify(want)) throw new Error(dir+': '+got.join(','))} console.log('canonical_tree=11x2')"
+test "$(find docs/architecture -mindepth 1 -maxdepth 1 -type d -name '[0-9][0-9]-*' | wc -l | tr -d ' ')" = 12
+test "$(find docs/architecture -mindepth 2 -maxdepth 2 -type f -name '*.md' | wc -l | tr -d ' ')" = 24
+node -e "const fs=require('fs'),path=require('path'); const root='docs/architecture',dirs=fs.readdirSync(root,{withFileTypes:true}).filter(function(d){return d.isDirectory()&&/^\\d{2}-/.test(d.name)}).map(function(d){return d.name}).sort(); if(dirs.length!==12) throw new Error('numbered directories='+dirs.length); for(const dir of dirs){const stem=dir.replace(/^\\d{2}-/,''); const got=fs.readdirSync(path.join(root,dir)).filter(function(f){return f.endsWith('.md')}).sort(); const want=[stem+'-detail.md',stem+'.md'].sort(); if(JSON.stringify(got)!==JSON.stringify(want)) throw new Error(dir+': '+got.join(','))} console.log('canonical_tree=12x2')"
 test -f docs/architecture/visuals/platform-architecture-map.html
 ```
 

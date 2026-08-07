@@ -52,11 +52,11 @@ backend/control_plane/app/
   shared/{api,db,events,observability,security}/
 ```
 
-每个模块内部使用 `api/`（HTTP DTO、路由、鉴权声明）、`application/`（命令、查询、用例与事务）、`domain/`（实体、值对象、领域服务、事件）、`ports/`（Repository 与外部依赖接口）和 `adapters/`（SQL、Provider、Transport 实现）。模块拥有自己的领域模型、数据库 Schema、迁移目录、数据访问账号、配置 Schema 和 Audit 责任；`shared` 不得承载无主业务表或无主业务规则。
+每个模块内部使用 `api/`（HTTP DTO、路由、鉴权声明）、`application/`（命令、查询、用例与事务）、`domain/`（实体、值对象、领域服务、事件）、`ports/`（Repository 与外部依赖接口）和 `adapters/`（SQL、Provider、Transport 实现）。模块拥有自己的领域模型、数据库 Schema、迁移目录、数据访问账号、本领域 Namespace 的 Typed Configuration Schema 和 Audit 责任；`shared` 不得承载无主业务表或无主业务规则。
 
 模块只能调用其他模块公开的 Application Facade 或消费领域事件，禁止导入其 ORM Model、Repository 或内部 Entity。每个本地事务只改写一个模块拥有的数据；跨模块动作通过 Facade 编排或 Transactional Outbox 收敛，禁止分布式事务。API 只返回显式 DTO，架构测试必须验证依赖方向和禁止导入规则。
 
-模块未来可以连同 Domain、Application、Schema、Migration、Configuration、Audit 责任与公开 Contract 一起独立提取；在提取发生前，它们仍在同一模块化单体中运行。
+模块未来可以连同 Domain、Application、Schema、Migration、本领域 Policy 数据与配置语义、Audit 责任和公开 Contract 一起独立提取；在提取发生前，它们仍在同一模块化单体中运行。
 
 ## 4. Deployable 与 Port/Adapter
 

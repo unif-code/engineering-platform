@@ -52,7 +52,10 @@ docs/architecture/
 ├── 09-infrastructure-operations/
 │   ├── infrastructure-operations.md
 │   └── infrastructure-operations-detail.md
-├── 10-architecture-baseline/
+├── 10-configuration-governance/
+│   ├── configuration-governance.md
+│   └── configuration-governance-detail.md
+├── 11-architecture-baseline/
 │   ├── architecture-baseline.md
 │   └── architecture-baseline-detail.md
 └── visuals/
@@ -105,11 +108,12 @@ docs/architecture/
 | `03` | Agent、Skill、Model、Run、Attempt、Execution Binding 与 Model Gateway |
 | `04` | Kata/KVM Sandbox、Image Build、Runtime Profile、资源、网络、Egress 与 Secret 注入 |
 | `05` | GitLab Project、Repository、Branch、Integration MR、Formal MR 与 Jenkins 外部边界 |
-| `06` | Umi Web、Python Control Plane、模块化单体、Deployable、Port/Adapter、配置后台与外部应用集成 |
+| `06` | Umi Web、Python Control Plane、模块化单体、Deployable、Port/Adapter、管理后台与外部应用集成 |
 | `07` | PostgreSQL、Valkey、NATS、Temporal、Ceph、Object Storage、数据事实源、一致性和组件级备份 |
 | `08` | Security Floor、Trust Boundary、OpenBao、PKI、加密、Audit、文件与镜像供应链安全 |
 | `09` | Platform Environment、Cloud Account、VPC、Kubernetes、网络、Observability、HA/DR、容量和 TCO |
-| `10` | 架构版本、全局不变量、模块依赖方向、质量属性、事实所有权索引和演进规则 |
+| `10` | Configuration Catalog、Typed Configuration 生命周期、Effective Snapshot、兼容演进与跨环境 Promotion |
+| `11` | 架构版本、全局不变量、模块依赖方向、质量属性、事实所有权索引和演进规则 |
 
 ## 5. 重写规则
 
@@ -132,9 +136,10 @@ docs/architecture/
 - 数据组件规则进入 `07`；
 - 安全和 Audit 规则进入 `08`；
 - 基础设施、Observability、HA/DR、容量和 TCO 进入 `09`；
-- 只有真正跨模块的不变量、依赖约束和事实所有权留在 `10`。
+- Configuration Governance 规则进入 `10`；
+- 只有真正跨模块的不变量、依赖约束和事实所有权留在 `11`。
 
-新 `10` 不再成为覆盖其他文档的第三份完整副本。
+新 `11` 不再成为覆盖其他文档的第三份完整副本。
 
 ## 7. HTML 架构图
 
@@ -149,7 +154,7 @@ docs/architecture/visuals/platform-architecture-map.html
 页面包含三个可切换视图：
 
 1. **业务交付链路**：平台责任链分别展示 05 owner 的 IntegrationBaselineEvidence/Integration MR 与 02 owner 的 RequirementIntegrationBaselineSelection，再进入验收、Formal MR 与 `main`；用户到 Jenkins 另以独立人工动作线呈现；
-2. **逻辑架构**：用户、Gateway、Web、Control Plane、Workflow、Agent、Sandbox、Adapter、数据组件和 Observability；
+2. **逻辑架构**：用户、Gateway、Web、Control Plane 内的 Configuration、Workflow、Agent、Sandbox、Adapter、数据组件和 Observability；
 3. **部署与信任边界**：当前 DEV、未来独立 PROD、Cloud Account、VPC、Kubernetes、Node Role、外部系统和运维边界。
 
 交互要求：
@@ -181,7 +186,7 @@ docs/architecture/visuals/platform-architecture-map.html
 
 - `docs/architecture/` 与目标目录完全一致；
 - README 能引导业务、开发、运维和 Agent 进入正确视图；
-- `00～10` 主文与 detail 职责清晰且不重复；
+- `00～11` 主文与 detail 职责清晰且不重复；
 - 旧 `00～08` 平铺 Markdown 全部删除；
 - HTML 架构图完整表达主链路、逻辑架构、环境与信任边界；
 - 文档与 HTML 的引用、格式和事实所有权检查全部通过。

@@ -5,7 +5,7 @@
 
 ## 目标与边界
 
-本视图定义 PostgreSQL、Valkey、NATS、Temporal 与 Ceph/Object Storage 的事实源、数据流、一致性和恢复关系。它不定义领域对象的状态机，也不定义应用调用边界；前者由 01–05 领域文档拥有，后者由 [平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md) 拥有。
+本视图定义 PostgreSQL、Valkey、NATS、Temporal 与 Ceph/Object Storage 的事实源、数据流、一致性和恢复关系。它不定义领域对象的状态机、应用调用边界或 Configuration 生命周期；它们分别由 01–05 领域文档、[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)与 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。
 
 DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max 前端模板。下述数据服务和恢复关系是已批准的目标架构，不表示 CloudNativePG、Valkey、NATS、Temporal 或 Rook-Ceph 运行实例已经存在；未来 PROD 使用同一 Contract 与模板独立实例化。
 

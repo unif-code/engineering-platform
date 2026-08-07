@@ -9,7 +9,7 @@
 
 DEV 是当前唯一实例化的 Platform Environment，当前仓库仍是 Umi Max 前端模板。Python Control Plane、数据服务、基础设施和 PROD 都是批准的目标架构，不表示已有对应运行实例。未来 PROD 从同源代码、Contract、GitOps 和 PCS 在独立 Account、VPC、Cluster 中重新实例化；DEV 与 PROD 不共享运行实例、Session、数据、凭据、密钥或故障域。
 
-安全、PKI、Secret、加密和 Audit 由[安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)拥有；数据服务及组件恢复由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；运行状态投影、Console 和外部 Feed 由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。
+安全、PKI、Secret、加密和 Audit 由[安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)拥有；数据服务及组件恢复由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；运行状态投影、Console 和外部 Feed 由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。`GITOPS_CONFIG` 的基础设施事实仍由本文拥有，`PLATFORM_POLICY` 生命周期则由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。
 
 ## 环境隔离
 

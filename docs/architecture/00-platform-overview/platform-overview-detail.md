@@ -5,7 +5,7 @@
 
 ## 1. 文档目的与边界
 
-本文定义平台的 System Context、总体责任和依赖边界。它说明各领域如何共同组成一个 Platform Environment，但不重复定义身份授权、Workflow、Agent、Sandbox、交付、安全或基础设施主题的内部规则。
+本文定义平台的 System Context、总体责任和依赖边界。它说明各领域如何共同组成一个 Platform Environment，但不重复定义身份授权、Workflow、Agent、Sandbox、交付、Configuration、安全或基础设施主题的内部规则。
 
 本文不定义组件精确版本、领域状态机全集或容量表；这些事实分别属于其技术、业务或环境 owner。
 
@@ -41,7 +41,7 @@
 | 层 | 责任 | 不负责 |
 | --- | --- | --- |
 | 体验层 | 呈现工作台、管理入口和当前授权上下文 | 把客户端展示作为授权结论。 |
-| Control Plane | 保存并处理身份、组织、Workspace、授权、Workflow、Agent Run 和 Audit 等业务事实 | 绕过领域规则直接操作基础设施。 |
+| Control Plane | 保存并处理身份、组织、Workspace、授权、Workflow、Agent Run、Configuration Governance 和 Audit 等业务事实 | 绕过领域规则直接操作基础设施。 |
 | 编排与执行层 | 编排异步业务步骤，解析执行能力并调度隔离 Runtime | 改写人员责任或替代人工 Decision。 |
 | 集成层 | 以 Adapter 实现内部 Port 与外部系统之间的 Contract | 将外部 Provider 细节泄漏进领域模型。 |
 | 基础设施与运维层 | 提供运行、数据、网络、Secret、恢复和可观测性能力 | 成为业务领域事实的第二来源。 |
@@ -86,6 +86,7 @@ DEV 与 PROD 是两个独立的 Platform Environment：不共享 Web/API 运行�
 - UI 不能直接连接领域数据存储或基础设施 Backend；后端返回的菜单与可见性也不是安全边界。
 - Adapter 依赖内部 Port，不能反向要求业务模块采用外部系统的角色、状态或数据模型。
 - 事件与投影依赖权威领域事实；它们的延迟、失败或重建不得静默放宽安全规则。
+- Configuration 通用治理协议由 [10](../10-configuration-governance/configuration-governance-detail.md)拥有；各 Namespace 的 Policy 数据与业务解释仍由对应领域模块拥有。
 
 ## 9. 架构质量目标
 

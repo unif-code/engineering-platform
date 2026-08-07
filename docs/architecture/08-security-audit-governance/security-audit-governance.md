@@ -9,7 +9,7 @@
 
 DEV 是当前唯一实例化的 Platform Environment，当前仓库仍是 Umi Max 前端模板。Python Control Plane、数据服务、基础设施与 PROD 都是批准的目标架构，不表示已有对应运行实例。未来 PROD 使用同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC 和 Cluster 中重新实例化；DEV 与 PROD 不共享运行实例、Session、数据、凭据、密钥或故障域。
 
-身份、组织、Session、Capability 与 Super Admin 的业务语义由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。应用 Console Access、External Provider Envelope 与公告流程由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。数据服务恢复由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；环境、Cluster 和运维基线由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)拥有。
+身份、组织、Session、Capability 与 Super Admin 的业务语义由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。应用 Console Access、External Provider Envelope 与公告流程由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有；Configuration 生命周期和 Promotion 由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。数据服务恢复由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；环境、Cluster 和运维基线由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)拥有。
 
 ## Security Floor
 
@@ -41,7 +41,7 @@ Human / Workload Identity
 
 Audit 是独立于业务投影和 Telemetry 的追加式事实。它关联身份、时间、环境、目标、动作、结果、原因、版本与 Correlation ID，保留可验证的治理证据；它不承载可重放的认证材料或业务内容。
 
-平台只读展示安全、配置、轮换、过期和恢复证据。Super Admin 的配置权限、Policy 发布与带外恢复资格由 01 的授权 Contract 判定；平台管理后台不提供云资源、Kubernetes、Secret 或恢复材料的通用写入口。
+平台只读展示安全、配置、轮换、过期和恢复证据。Super Admin 的配置权限与带外恢复资格由 01 的授权 Contract 判定，Policy 发布过程由 [10](../10-configuration-governance/configuration-governance-detail.md)约束；平台管理后台不提供云资源、Kubernetes、Secret 或恢复材料的通用写入口。
 
 ## 信任与恢复顺序
 
