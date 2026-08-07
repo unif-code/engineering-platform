@@ -35,7 +35,7 @@
 - Consumes: 已批准 Spec 中的 owner 边界，以及现有 06 Detail 的完整 Typed Configuration Contract。
 - Produces: 新 10 L1/L2、收敛后的 06 L1/L2、顺延后的 11 L1/L2，供所有后续引用使用。
 
-- [ ] **Step 1: 记录迁移前 Configuration 契约边界**
+- [x] **Step 1: 记录迁移前 Configuration 契约边界**
 
 Run:
 
@@ -45,7 +45,7 @@ rg -n '^## 6\. Typed Configuration Contract|^### 6\.[1-7]|^## 7\. External Provi
 
 Expected: 起点为 `## 6. Typed Configuration Contract`，终点紧邻 `## 7. External Provider Contract`，包含 6.1～6.7。
 
-- [ ] **Step 2: 顺延 Architecture Baseline 目录**
+- [x] **Step 2: 顺延 Architecture Baseline 目录**
 
 Run:
 
@@ -55,7 +55,7 @@ git mv docs/architecture/10-architecture-baseline docs/architecture/11-architect
 
 Expected: `10-architecture-baseline` 不存在，原两份 Baseline 文件位于 `11-architecture-baseline`。
 
-- [ ] **Step 3: 创建新 10 L1**
+- [x] **Step 3: 创建新 10 L1**
 
 写入 `configuration-governance.md`，必须包含以下一级结构和语义：
 
@@ -72,7 +72,7 @@ Expected: `10-architecture-baseline` 不存在，原两份 Baseline 文件位于
 
 L1 只提供分类、生命周期、Snapshot、Promotion 与 owner 关系概览，不复制 L2 字段和算法。
 
-- [ ] **Step 4: 创建新 10 L2 并完整迁移配置语义**
+- [x] **Step 4: 创建新 10 L2 并完整迁移配置语义**
 
 写入 `configuration-governance-detail.md`，使用以下连续结构：
 
@@ -92,11 +92,11 @@ L1 只提供分类、生命周期、Snapshot、Promotion 与 owner 关系概览�
 
 将现有 06 的 Configuration Contract 按上述责任重新编排，保留 Draft、Takeover、Clone、Archive、Validation、Preview、Optimistic Concurrency、Effective Snapshot、Rollback、Three-way Rebase、Schema 演进、签名 Bundle、Key 生命周期、Import、High-water、Rebind 与 Divergence 的全部规则。
 
-- [ ] **Step 5: 收敛 06 L1/L2**
+- [x] **Step 5: 收敛 06 L1/L2**
 
 从 06 L2 删除完整 Typed Configuration 章节，将后续章节连续编号；06 只保留一段消费新 10 Effective Configuration Contract 的关系说明。06 L1 删除其对 Configuration 生命周期的 owner 声明，保留模块地图中的 `configuration` 模块以及到新 10 的链接。
 
-- [ ] **Step 6: 验证 owner 唯一性**
+- [x] **Step 6: 验证 owner 唯一性**
 
 Run:
 

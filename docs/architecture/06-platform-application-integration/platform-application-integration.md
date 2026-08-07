@@ -9,7 +9,7 @@
 
 目标 Control Plane 交付为一个 Python 项目中的**模块化单体**；模块保有自己的领域模型、Application Service、数据和迁移，并以公开 Port/DTO/事件协作。模块可在未来提取为独立服务，但可提取性不表示当前已有领域微服务。
 
-本文不拥有 Identity、Requirement、Agent、Sandbox 或 GitLab 的领域状态；它们分别由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[02](../02-requirement-workflow/requirement-workflow-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md) 与 [05](../05-source-control-delivery/source-control-delivery-detail.md) 定义。数据事实与持久化由 [07](../07-data-messaging-storage/data-messaging-storage-detail.md) 定义。
+本文不拥有 Identity、Requirement、Agent、Sandbox、GitLab 或 Configuration 的领域状态；它们分别由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[02](../02-requirement-workflow/requirement-workflow-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md)、[05](../05-source-control-delivery/source-control-delivery-detail.md) 与 [10](../10-configuration-governance/configuration-governance-detail.md) 定义。数据事实与持久化由 [07](../07-data-messaging-storage/data-messaging-storage-detail.md) 定义。
 
 ## 组件地图
 
@@ -20,7 +20,7 @@ Browser
   → platform-gateway
     ├── Umi Web（用户端 + 平台管理后台）
     └── Python Control Plane（模块化单体）
-          ├── 领域模块与 Typed Configuration
+          ├── 领域模块（含独立 Configuration 模块）
           ├── 公开 Application Facade / Port
           ├── Transactional Outbox / Inbox
           └── Operations Read Model / Console Access
@@ -43,9 +43,9 @@ GitLab Connector、File Security Worker、Operations Adapter
 3. 每个受保护 API 仍由 Control Plane 使用当前身份、权限、范围、成员资格、责任与资源条件判定；前端隐藏菜单只改善体验。
 4. 长任务同步返回受理结果，后续状态以 Query、SSE 或事件更新；外部副作用由 Outbox、Inbox 与 Effect Ledger 收敛。
 
-## 配置、管理与运维关系
+## Configuration、管理与运维关系
 
-每个领域模块拥有自己的 Typed Configuration Schema、Policy 与解析器；Configuration Catalog 仅聚合已注册配置。`PLATFORM_POLICY` 的发布、回滚、权限和 Effective Snapshot 由本视图的 Configuration Contract 统一约束，具体领域取值仍由其 owner 定义。发布权限与 Super Admin 边界由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md) 拥有。
+每个领域模块拥有自己的 Typed Configuration Schema、默认值、约束、解析器与业务解释；Configuration 模块位于同一 Python 模块化单体内，通过稳定 Port 提供 Effective Configuration。Catalog、Draft、Publish、Rollback、Snapshot、Schema 演进与 Promotion 生命周期由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)统一约束；发布资格与 Super Admin 边界由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。
 
 平台管理后台只展示当前环境。它消费 Operations Read Model 展示健康、容量、告警、Drift 与 Runbook，并通过预注册、允许列表内且逐次授权的新标签页入口打开专业 Console；它不接受任意目标 URL，也不成为基础设施写控制面。密钥、加密与安全审计机制见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；Cluster、Node 与容量基线见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
@@ -57,3 +57,4 @@ GitLab Connector、File Security Worker、Operations Adapter
 4. 领域事务、Audit 与待发布消息原子写入；消息传输至少一次，业务效果由 Inbox/Effect Ledger 幂等化。
 5. External Provider Contract 只导入可验证的只读状态，平台不以 Dashboard 或投影反写 IaC、Provider Desired State 或恢复事实。
 6. 外部状态 Feed 只影响可见性；其 `STALE/UNKNOWN` 不等于真实依赖故障，也不阻塞没有同步依赖该 Feed 的既有业务运行。
+7. Configuration 是 Control Plane 内独立领域模块；06 只消费其公开 Contract，文档拆分不产生新的 Deployable 或微服务。
