@@ -272,7 +272,7 @@ swift -e 'import Foundation; import PDFKit; let d = PDFDocument(url: URL(fileURL
 
 Expected: 截图中节点与边对齐；PDF 页数为 `4`，业务、逻辑、部署、文档索引各一页，Configuration 节点不使逻辑页溢出。
 
-- [ ] **Step 7: 提交 HTML 更新**
+- [x] **Step 7: 提交 HTML 更新**
 
 ```bash
 git add docs/architecture/visuals/platform-architecture-map.html
@@ -290,7 +290,7 @@ git commit -m "docs(architecture): expose configuration in architecture map"
 - Consumes: Tasks 1～3 的完整文档树和 HTML。
 - Produces: 可审计的完成状态、干净分支和可合并结果。
 
-- [ ] **Step 1: 验证目录契约**
+- [x] **Step 1: 验证目录契约**
 
 Run:
 
@@ -323,7 +323,7 @@ NODE
 
 Expected: `numberedDirectories=12`、`markdownFiles=25`。
 
-- [ ] **Step 2: 验证全部相对链接和 Markdown 结构**
+- [x] **Step 2: 验证全部相对链接和 Markdown 结构**
 
 Run:
 
@@ -357,7 +357,7 @@ git diff --check
 
 Expected: `errors=0`；`git diff --check` 无输出。
 
-- [ ] **Step 3: 扫描 canonical 纯净度**
+- [x] **Step 3: 扫描 canonical 纯净度**
 
 Run:
 
@@ -367,7 +367,7 @@ rg -n '方案[[:space:]]*[A-C]|之前|本次讨论|用户确认|审查发现|待
 
 Expected: 无返回。
 
-- [ ] **Step 4: 运行项目验证**
+- [x] **Step 4: 运行项目验证**
 
 Run:
 
@@ -378,7 +378,7 @@ pnpm lint
 
 Expected: Vitest 全部通过；Biome 和 `tsc --noEmit` exit 0。
 
-- [ ] **Step 5: 执行两类独立审查**
+- [x] **Step 5: 执行两类独立审查**
 
 分别审查：
 
@@ -387,7 +387,7 @@ Expected: Vitest 全部通过；Biome 和 `tsc --noEmit` exit 0。
 
 任一审查发现阻断或重要问题时修正并重新运行相应验证。
 
-- [ ] **Step 6: 标记计划完成并提交**
+- [x] **Step 6: 标记计划完成并提交**
 
 将本计划全部 checkbox 更新为 `[x]`，运行 `git diff --check`，然后：
 
@@ -396,7 +396,7 @@ git add docs/superpowers/plans/2026-08-06-configuration-canonical-split.md
 git commit -m "docs(architecture): complete configuration canonical split"
 ```
 
-- [ ] **Step 7: 合并前最终核对**
+- [x] **Step 7: 合并前最终核对**
 
 Run:
 
