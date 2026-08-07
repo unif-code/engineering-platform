@@ -2,6 +2,7 @@
 
 > 文档层级：L1 运行地图
 > 规范事实源：[Source Control 与交付详细说明](./source-control-delivery-detail.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 目标与边界
 
@@ -13,7 +14,7 @@ Requirement、WorkItem、Gate、Decision、Acceptance、`RequirementIntegrationB
 
 本领域接收 Workflow owner 的 Repository Binding 请求，并返回 `BindingReady` 或含原因的 `BindingBlocked`。创建 Requirement 的初始仓库选择、后续 WorkItem 的责任和业务限制由 Workflow owner 决定；未获得 `BindingReady` 的请求不会创建 Branch 或 MR。
 
-一旦任务分支成功创建，`repositoryId + baseCommitSha + branchName` 即成为不可变的 Repository Branch Binding。任务分支从对应仓库的 `main` 固定 Commit 创建，Agent 只可写已绑定的当前任务分支；Binding 选择错误时，本领域保留原外部事实并返回结构化处置结果，由 Workflow owner 决定业务补救。
+一旦任务分支成功创建，`repositoryId + baseCommitSha + branchName` 即成为不可变的 Repository Branch Binding。任务分支从对应仓库的 `main` 固定 Commit 创建；Binding 选择错误时，本领域保留原外部事实并返回结构化处置结果，由 Workflow owner 决定业务补救。
 
 ## 交付主流程
 
@@ -30,9 +31,15 @@ task branch（from main）
 
 Integration MR 面向 `dev`，必须满足 GitLab 检查与分支保护；它不要求 Formal Human Review，且合并时保留任务分支。Formal MR 始终从同一任务分支进入受保护 `main`，绑定准确 `headSha`、当前 Formal Review Assignment 与 Requirement Acceptance；新 Commit 或重写分支会使依赖旧版本的结论失效。
 
-## 外部 Jenkins 与多仓交付
+## 外部 Jenkins 与人工证据
 
 Jenkins 完全在平台外部：用户在独立 Jenkins 平台手工触发、查看和处置构建或测试。平台不自动触发或调用 Jenkins，不接收 Jenkins Webhook，不读取、保存或展示 Jenkins 状态，也不将其结果投影为系统 Gate。用户提交的只是外部验证证据引用及其提交人、时间、目标 Commit 和说明，不是平台获取的 Jenkins 状态。
+
+## Agent 受控提交来源
+
+在前述人工交付 Contract 保持不变的前提下，Agent 可以作为任务分支 Commit/Push 的受控来源，但只能写 Execution Binding 固定的当前任务分支。短期 Credential 必须绑定 Environment、Attempt、Project、Branch 与 TTL；Commit、Push 和远端 `headSha` 形成可核验外部事实后才能进入 Evidence。Agent 不能直接 Push `dev`/`main`、创建 Human Decision、代替 Acceptance 或 Formal Review，也不能因自动化扩大 Repository 或 Merge 权限。Agent Commit 在实际交付时仍先于 Integration MR 和后续人工责任链；本节的后置只表达架构 Contract 的依赖次序。
+
+## 多仓交付
 
 一个 Requirement 可经多个 WorkItem 交付到多个仓库，每个 WorkItem 各自拥有 Binding、任务分支和 Formal MR。平台不宣称跨仓原子 Merge；部分合并保留已发生的外部事实，停止不安全后续 Merge，并让授权人员按当前 Requirement 的兼容与交付策略处置。
 

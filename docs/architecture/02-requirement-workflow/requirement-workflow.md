@@ -2,6 +2,7 @@
 
 > 文档层级：L1 领域地图
 > 规范事实源：[Requirement Workflow 详细说明](./requirement-workflow-detail.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 目标与边界
 
@@ -14,12 +15,12 @@ Requirement Workflow 将一项业务交付从创建、基线确认、实现、�
 ```text
 Requirement
 ├── Route Snapshot
+├── Gate Instance → Assignment → Decision
 ├── WorkItem × 1..n
 │   ├── Human Assignment / Repository Branch Binding
-│   ├── Run → Attempt × 1..n
 │   ├── Route / test / external-validation Artifact
-│   └── delivery reference
-├── Gate Instance → Assignment → Decision
+│   ├── delivery reference
+│   └── Run → Attempt × 1..n（受控执行扩展）
 ├── RequirementIntegrationBaselineSelection → IntegrationBaselineEvidence reference
 └── recordState
 ```
@@ -58,5 +59,7 @@ Gate 以“Policy → 绑定版本的 Gate Instance → Current Assignment → D
 Requirement 生命周期依次覆盖创建准备、基线确认、执行、验证、验收、正式合并与完成，并允许受控取消。完整状态枚举、转换 Guard 与失败语义只由[详细说明](./requirement-workflow-detail.md)定义。WorkItem、Attempt、Child Execution 与交付对象使用独立状态机；执行失败产生阻塞和恢复入口，不伪造 Requirement 失败终态。
 
 记录可见性与业务进度正交；完整 `recordState` 枚举只由[详细说明](./requirement-workflow-detail.md)拥有。归档或逻辑删除须先安全停止活动执行，恢复业务可见性与继续入口，但不复活旧 Attempt。所有状态转换、Assignment、Decision、Artifact 与外部事实均受后端 Guard、幂等和审计约束。
+
+多仓 Requirement、Agent/Child Execution 与高级 Artifact 配额、扫描和恢复属于核心 Requirement/SDD/人工责任链之上的受控协作能力。它们只能消费已经成立的 Assignment、Gate、Decision 与 Acceptance Contract，不能反向替代人工责任或改变 Requirement 的业务语义。
 
 Artifact 的对象存储、文件安全、配额账本和 Audit 存储实现由[Data/Messaging/Storage](../07-data-messaging-storage/data-messaging-storage-detail.md)与[Security/Audit/Governance](../08-security-audit-governance/security-audit-governance-detail.md)拥有；本领域仅使用其可验证结果。

@@ -2,6 +2,7 @@
 
 > 文档层级：L1 运行地图
 > 规范事实源：[Sandbox Runtime 详细说明](./sandbox-runtime-detail.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 目标与边界
 
@@ -22,13 +23,19 @@ Requirement Sandbox Environment
 
 物理实例丢失后，代码从 GitLab、Checkpoint 与证据从 Artifact Store、执行绑定与 Lease 从 Control Plane 重建；任何 Attempt 均不依赖旧 Node、本地磁盘或 Pod 身份恢复。
 
+## 正式 Agent Capability Activation Gate
+
+正式 Agent 只允许在专用 `sandbox-worker` Host 上激活；同机 Sandbox 只能标记为 `LAB_ONLY`，不能通过正式安全验收。每次激活和物化必须同时满足 KVM/Kata、不可变 Runtime、CPU/Memory/Ephemeral Request/Limit、当前有效 Capacity Profile、Binding Deadline、Fencing、Repository、default-deny Network、短期 Secret 与清理恢复 Gate。任一条件未知或不满足时 Fail Closed，Capability 保持关闭或执行保持不可运行。
+
+Launch Profile 的容量与可靠性选择来自 [12 的有效 Capacity Profile](../12-implementation-roadmap/implementation-roadmap-detail.md)，不在本领域固定环境服务器数或并发 Ceiling。Sandbox N+1 属于 Hardened Target Profile；无论当前选中哪个 Profile，都不得绕过已验证的物理 Ceiling、资源硬上限或隔离 Gate。
+
 ## 隔离、容量与生命周期
 
-每个 Platform Environment 在独立 Kubernetes Cluster 中运行专用 `sandbox-worker` Pool。Sandbox 使用社区 Kata Containers 的 `runtime-rs` 和 QEMU/KVM；一个 Pod 对应一个独立 Guest，Kata 启动失败绝不降级为普通容器 Runtime。
+正式 Sandbox 使用社区 Kata Containers 的 `runtime-rs` 和 QEMU/KVM；一个 Pod 对应一个独立 Guest，Kata 启动失败绝不降级为普通容器 Runtime。
 
 Execution Binding 固定 Resource Profile、Runtime、Network、Secret、Repository Branch 与权限。Sandbox Controller 接收 Agent owner 发出的已授权物化请求，原子申请带 Fencing Token 的 Capacity Lease，并返回 `MaterializationReady`、结构化 `MaterializationBlocked` 或 `MaterializationFailed`；它不决定 Attempt 如何排队或转换。收到挂起、Child Handoff、结束或取消的物理清理命令时，Controller 固化事实、Fence 副作用、吊销凭据、释放 Lease 并销毁 Materialization。
 
-Agent 与 Build 共享同一 Capacity Ledger，并分别受独立的版本化 Platform Policy 准入；Resource Profile、Capacity Unit、Policy Gate 与 `ParentContinuationReservation` 的物理账本 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。具体 Node、环境默认值、Ceiling 与基础设施容量由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
+Agent 与 Build 共享同一 Capacity Ledger，并分别受独立的版本化 Platform Policy 准入；Resource Profile、Capacity Unit、Policy Gate 与 `ParentContinuationReservation` 的物理账本 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。当前有效 Profile 的选择见 12；具体 Node、Ceiling 与基础设施容量 Contract 由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
 
 ## 网络、Secret、Preview 与镜像构建
 

@@ -2,6 +2,7 @@
 
 > 文档层级：L1 主文
 > 规范事实源：[身份、组织与授权详细说明](./identity-organization-authorization-detail.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 模块目标
 
@@ -38,6 +39,10 @@ Workspace 是团队协作与业务资源边界。每个 Workspace 有一个 Owne
 Super Admin 是受保护的平台级身份，而不是拥有全部业务权限的万能 Role。其保留能力只覆盖平台配置治理和 Super Admin 生命周期；业务资源、人工 Gate、责任分配和其他安全不变量仍遵循普通授权规则。
 
 平台始终保留至少一个可用 Super Admin。无法执行正常认证时，只能使用受限的带外恢复路径，恢复不成为读取或修改一般业务资源的入口。
+
+## 认证演进边界
+
+Passkey/WebAuthn 是本地密码、强制 TOTP、可撤销 Session、Organization、Workspace 与服务端授权 Contract 稳定后的独立演进路径。它通过认证器无关的 Port 接入，不改变 Capability、Scope、Assignment 或业务 Workflow 语义；未完成完整注册、验证、恢复与 Audit Contract 前保持关闭。
 
 ## 关键不变量
 

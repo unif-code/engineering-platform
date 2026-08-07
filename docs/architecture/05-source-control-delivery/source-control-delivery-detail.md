@@ -2,6 +2,7 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[Source Control 与交付](./source-control-delivery.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 1. 责任边界
 
@@ -49,7 +50,7 @@ type/wi-<全局递增号>-<semantic-slug>
 
 GitLab 分支未真实创建或验证失败时，返回 `BranchCreationFailed` 与结构化阻塞原因。成功时返回 `TaskBranchCreated` 和不可变 Binding 证据；Workflow owner 决定这些结果如何影响业务。同名分支只在能证明属于同一 WorkItem 且 base SHA 一致时复用。若外部分支已创建而本地事务失败，Reconciler 依 Effect Ledger 补写 Binding 或报告孤儿分支，禁止重复创建或静默接管未知分支。
 
-`main` 是受保护分支，人员、Agent 和 Connector 均不能直接 Push，只能由 Formal MR 合并。`dev` 只经 Integration MR 接收任务分支。Agent Credential 必须绑定 Environment、Attempt、Project、任务分支与 TTL；Force Push 默认拒绝。受控 rebase 或冲突解决生成新 `headSha`，并发布带新旧 hash 的检查、Baseline 与 Review 证据变化；02 owner 处理其 Gate/Acceptance 影响。
+`main` 是受保护分支，人员、Agent 和 Connector 均不能直接 Push，只能由 Formal MR 合并。`dev` 只经 Integration MR 接收任务分支。Force Push 默认拒绝。受控 rebase 或冲突解决生成新 `headSha`，并发布带新旧 hash 的检查、Baseline 与 Review 证据变化；02 owner 处理其 Gate/Acceptance 影响。
 
 ## 4. Integration MR 与外部人工验证
 
@@ -98,7 +99,15 @@ Reviewer 必须同时是当前 Assignment assignee，且实时具备 `merge_requ
 
 新 Commit、rebase、冲突解决、受控同步 `main`、关键 Artifact 或 API Contract 改变，以及 Formal MR `headSha` 变化，均生成带新旧 hash 的 Review/检查/Baseline 证据变化事件，历史保留。02 owner 依其 Gate 与 Acceptance Contract 处理 Decision 的版本有效性；本领域不作业务状态转换。要求修改的外部事实仍使用同一 task branch 与 Formal MR；当接到当前有效人工 Decision 对应的冻结请求时，Connector 冻结该 source branch，禁止继续 Push。后续新增代码的业务建模由 02 owner 决定。
 
-## 7. Merge、多仓与外部事实收敛
+## 7. Agent 受控 Commit/Push 来源
+
+本节在前文已经定义 GitLab Project/Repository、Branch、Integration MR、人工 Jenkins Evidence、Acceptance、Formal MR 与 Review Contract 后，只扩展任务分支 Commit/Push 的受控来源，不改变实际交付时序。Agent Commit 仍发生在 Integration MR 之前；Agent 场景除通用账号、Membership、Capability、Scope、Repository Binding 与 GitLab 保护校验外，还必须满足不可变 Execution Binding 和 Tool Policy。
+
+Agent Credential 必须绑定 Platform Environment、Attempt、Project、任务分支与 TTL，只允许读取 Binding 固定的 Repository/Commit 并写当前任务分支。Agent 产生的有效代码必须先形成可核验 Commit，再通过 Connector 幂等 Push；远端确认的 Commit SHA、Push Effect、实际 Agent、发起人员和 Binding 引用共同进入交付证据。未知或失败的 Push 只通过 Effect Ledger 与 Reconciliation 收敛，不能被解释为已交付。
+
+Agent 不能直接 Push `dev` 或 `main`，不能扩大 Repository Scope、Force Push、选择 Reviewer、形成 Human Decision、代替 Acceptance/Formal Review 或执行 Merge。Agent 自动化只改变任务分支 Commit 的来源，不改变前述人工交付顺序、证据绑定和责任链。
+
+## 8. Merge、多仓与外部事实收敛
 
 Merge 请求必须携带 02 owner 已验证的 Formal Review/Acceptance 证据，并实时确认 Formal MR 仍指向该 `headSha`、执行人有 `merge_request.merge` 与 Scope、GitLab 检查/分支保护满足，且 Effect Ledger 未记录同一 Merge 的已完成或冲突结果。Connector 只返回 `FormalMergeSucceeded`、`FormalMergeBlocked` 或 `FormalMergeFailed` 外部事实。
 
@@ -122,7 +131,7 @@ deleteSourceBranch
 reconcileExternalEffect
 ```
 
-## 8. 失败与审计
+## 9. 失败与审计
 
 | 场景 | 处理 |
 | --- | --- |

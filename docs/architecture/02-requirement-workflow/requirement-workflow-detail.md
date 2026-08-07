@@ -2,6 +2,7 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[Requirement Workflow](./requirement-workflow.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 1. 责任边界与治理
 
@@ -179,7 +180,15 @@ blockedReasons[] / Attempt.status / ChildExecution.status / delivery status
 
 Attempt、Model、Adapter 或 Sandbox 的失败只产生可处置阻塞，不把 Requirement 或 WorkItem 直接标为失败。验收拒绝返回 `IN_PROGRESS`；基线或交付代码变化按影响回到 `IN_PROGRESS` 或 `VERIFYING`；多仓库仅部分合并时 Requirement 留在 `AWAITING_MERGE`。
 
-## 7. Artifact
+## 7. 集成、外部验证与验收
+
+WorkItem 交付按 Source Control 的任务分支、`dev` 集成、外部人工验证、选定 Evidence、验收与 Formal MR 顺序进行。Jenkins 是独立平台：用户手动运行和查看，平台不调用、不读取其状态，也不将其当作自动 Gate；用户可提交带提交人、时间、目标 Commit、引用和说明的外部验证证据。
+
+所有必需 WorkItem 完成集成、测试和外部人工验证后，02 owner 先冻结当前 `RequirementDeliverySnapshot`，05 owner 再根据该快照生成不可变 `IntegrationBaselineEvidence`，不能绑定持续移动的分支 HEAD。Requirement 通过上述 CAS 与覆盖校验创建并冻结指向该 `integrationBaselineId/hash` 的 `RequirementIntegrationBaselineSelection`。任一必需项的 Commit、Artifact、测试证据或必需集合变化都会形成新的 Evidence；02 owner 将旧 Selection 标记为不再当前并使旧验收失效，随后基于当前快照选择新 Evidence 并再次验收。
+
+验收通过且仍对当前 `RequirementIntegrationBaselineSelection` 有效后，才允许创建各 WorkItem 的 Formal MR。Requirement 进入 `COMPLETED` 的条件同时是：验收有效、所有必需 WorkItem 的 Formal MR 已合并 `main`、没有仍应计入的未完成 WorkItem。GitLab 分支、MR、Webhook、分支保护与 reconciliation 细节由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
+
+## 8. Artifact 与高级协作
 
 Artifact 是不可变版本元数据与对象或外部引用，统一表示用户附件、Spec、Plan、测试报告、完整 Attempt 日志、截图、结构化执行证据及外部 Registry/Jenkins/GitLab 产物引用。源码、Working Tree 与 Commit 的权威副本在 GitLab；大对象保留在相应外部 Registry，平台只保存稳定 URL/ID、版本、SHA-256、大小、来源、时间与验证状态。
 
@@ -201,13 +210,7 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 
 扫描投递按 Artifact Version、SHA-256 与 Scan Policy Version 幂等。Engine 不可用、Signature 过期、Timeout 或解析失败时保持不可用并按可配置的有界退避重试；超过上限进入 `SCAN_FAILED`、告警，Engine 恢复后只能通过受控命令重新入队。`MALICIOUS/SUSPICIOUS` 进入 `QUARANTINED`，不能人工放行或绕过，只能在 Signature/Policy 更新后重新扫描得到 `CLEAN`，或由用户重新上传。只有 `AVAILABLE` Artifact 能下载或进入 Workflow Gate。Presigned Request 默认 `5min`、只对应单一 Object Version，不持久化也不写入日志。文件类型、扫描、Object Lock、技术垃圾清理和存储/安全实现分别由[Data/Messaging/Storage](../07-data-messaging-storage/data-messaging-storage-detail.md)与[Security/Audit/Governance](../08-security-audit-governance/security-audit-governance-detail.md)拥有；本领域依赖其状态而不复制实现。
 
-## 8. 集成、外部验证与验收
-
-WorkItem 交付按 Source Control 的任务分支、`dev` 集成、外部人工验证、选定 Evidence、验收与 Formal MR 顺序进行。Jenkins 是独立平台：用户手动运行和查看，平台不调用、不读取其状态，也不将其当作自动 Gate；用户可提交带提交人、时间、目标 Commit、引用和说明的外部验证证据。
-
-所有必需 WorkItem 完成集成、测试和外部人工验证后，02 owner 先冻结当前 `RequirementDeliverySnapshot`，05 owner 再根据该快照生成不可变 `IntegrationBaselineEvidence`，不能绑定持续移动的分支 HEAD。Requirement 通过上述 CAS 与覆盖校验创建并冻结指向该 `integrationBaselineId/hash` 的 `RequirementIntegrationBaselineSelection`。任一必需项的 Commit、Artifact、测试证据或必需集合变化都会形成新的 Evidence；02 owner 将旧 Selection 标记为不再当前并使旧验收失效，随后基于当前快照选择新 Evidence 并再次验收。
-
-验收通过且仍对当前 `RequirementIntegrationBaselineSelection` 有效后，才允许创建各 WorkItem 的 Formal MR。Requirement 进入 `COMPLETED` 的条件同时是：验收有效、所有必需 WorkItem 的 Formal MR 已合并 `main`、没有仍应计入的未完成 WorkItem。GitLab 分支、MR、Webhook、分支保护与 reconciliation 细节由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
+多仓 Requirement 与 Agent/Child Execution 产生的 Artifact 都只能扩展协作范围，不能绕过已经成立的 Requirement、SDD、人工 Assignment、Gate、Decision、Evidence Selection 与 Acceptance 责任链。多仓部分合并保留已发生事实并进入受控处置，不伪造跨仓原子性。
 
 ## 9. 归档、删除与恢复
 

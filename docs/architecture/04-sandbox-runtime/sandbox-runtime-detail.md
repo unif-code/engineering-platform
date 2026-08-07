@@ -2,6 +2,7 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[Sandbox Runtime](./sandbox-runtime.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 1. 责任边界与逻辑模型
 
@@ -24,9 +25,23 @@
 
 代码与分支以 GitLab 为准，Checkpoint、日志、测试与构建证据以 Artifact Store 为准，业务对象与 Lease 以 Control Plane 为准。Sandbox 不保存这些事实的唯一副本。
 
+### 1.1 正式 Agent Capability Activation Gate
+
+正式 Agent Capability 只有在下列条件同时具备并形成当前 Platform Environment 的可验证证据后才能激活：
+
+| Gate | 必须证明的 Contract |
+| --- | --- |
+| 专用 Host 与 KVM/Kata | 使用专用 `sandbox-worker` Host、通过 KVM/Node Gate，并以独立 Kata Guest 运行；同机联调只能标记为 `LAB_ONLY`。 |
+| Resource 与 Capacity | CPU、Memory、Ephemeral Storage 的 Request/Limit、Pod Overhead、Capacity Ledger 与当前有效 Capacity Profile 的物理 Ceiling 全部可验证。 |
+| Deadline 与 Fencing | Binding Deadline 有效；Lease、Generation、Fencing Token、取消、超时和旧实例副作用能够安全收敛。 |
+| Repository、Network 与 Secret | 只挂载绑定分支，Network default-deny 后按 Binding 放行，短期 Secret 只注入 `tmpfs` 且可吊销。 |
+| Fail Closed 与恢复 | 任一隔离、容量、凭据、证据或清理条件未知时拒绝物化或安全停止；只能从权威 Git、Checkpoint 与 Artifact 重建。 |
+
+Release Gate 不替代本 Gate，路线图选中 Agent Capability 也不表示自动激活。Gate 通过只允许在批准的 Environment、Scope、Binding 与有效 Capacity Profile 内运行；边界变化必须重新验证。
+
 ## 2. KVM、Kata 与 Node Gate
 
-每个 Platform Environment 在独立 Kubernetes Cluster 中使用专用、同构的 `sandbox-worker` Node Pool。Pool 与平台、存储和 Control Plane Node 隔离，使用专用 Label、Taint、Admission 与 RuntimeClass 调度；Sandbox 绝不调度到其他 Node Role。
+正式 Sandbox 在当前 Platform Environment 的独立 Kubernetes Cluster 中使用专用 `sandbox-worker` Host/Pool。Pool 与平台、存储和 Control Plane 工作负载隔离，使用专用 Label、Taint、Admission 与 RuntimeClass 调度；Sandbox 绝不调度到其他 Node Role。同机实验只可用于标记为 `LAB_ONLY` 的功能联调，不得成为正式 Agent Activation Gate 或 Release 验收证据。
 
 正式 Runtime 为社区 Kata Containers、`runtime-rs`、`containerd-shim-kata-v2`、QEMU/KVM 与独立 Guest Kernel。每个 Sandbox Pod 必须使用独立 Kata Guest，且 Kata Runtime 启动失败时不得回退至 `runc`、ACK `runV` 或其他普通容器/VMM Runtime。
 
@@ -51,13 +66,13 @@ destroyMaterialization
 reconcileLease
 ```
 
-Controller 接收 Agent owner 已授权的 `ProvisionMaterialization` 请求后，依次原子取得 Lease、校验 Binding/Runtime/Network/Secret、创建 Kata Materialization、Checkout 固定分支与 Commit、注入短期凭据、应用 Tool Policy 并健康检查。准备成功返回 `MaterializationReady`；不可满足的输入或基础设施问题返回带原因和诊断引用的 `MaterializationBlocked` 或 `MaterializationFailed`。Attempt 的排队、重试和状态转换不属于本领域。
+Controller 接收 Agent owner 已授权的 `ProvisionMaterialization` 请求后，依次校验 Binding Deadline，原子取得 Lease，校验 Binding/Runtime/Network/Secret，创建 Kata Materialization、Checkout 固定分支与 Commit、注入短期凭据、应用 Tool Policy 并健康检查。准备成功返回 `MaterializationReady`；Deadline 已过、输入不可满足或基础设施条件未知时 Fail Closed，返回带原因和诊断引用的 `MaterializationBlocked` 或 `MaterializationFailed`。Attempt 的排队、重试和状态转换不属于本领域。
 
 收到 Agent owner 的 `CheckpointAndRelease`、`HandoffToChild`、`FinalizeExecution` 或 `CancelExecution` 命令时，Controller 必须先持久化 Commit、Checkpoint、日志与 Artifact，Fence 仍可能产生副作用的实例，吊销 Secret，再释放 Lease 与销毁 Materialization，并回报可审计的清理结果。恢复是否使用原 Binding、何时重试或是否创建新 Attempt 只由 Agent/Workflow owner 决定。
 
 Controller 使用 Execution ID、Generation、Fencing Token、唯一约束与 Reconciliation 防止重复启动。只有旧 Materialization、凭据与副作用已经停止或被 Fence 后才可回收 Lease；禁止以 Pod 数量推断容量。
 
-## 4. Resource Profile、容量与 N+1
+## 4. Resource Profile、容量与有效 Profile
 
 Resource Profile 是不可变的 `GITOPS_CONFIG`，已形成的 Binding 始终使用原 Profile。变更 Request/Limit、Unit Weight 或 Runtime Binding 必须创建新的 Profile ID、Digest 与 Capacity Profile Candidate；当前架构基线不向用户提供 Small/Large 自选规格。
 
@@ -74,16 +89,16 @@ Agent Attempt 与 Image Build 共享同一个 Fencing Domain 和 Capacity Ledger
 
 Sandbox 先分别应用两个独立、版本化的 `PLATFORM_POLICY`，再执行共享 Capacity Ledger 与物理安全 Gate：
 
-| Policy Key | Minimum | Initial Desired | Maximum | 准入 Contract |
-| --- | ---: | --- | --- | --- |
-| `agent.sandbox.active_attempt_limit` | `1` | DEV `5`；PROD `8` | 当前 Active Capacity Profile 的 `maxActiveSandboxAttempts` | 限制当前 Platform Environment 中同时持有 Agent Sandbox Lease 的 Attempt 数。达到上限时拒绝后续 Agent Lease，并返回包含 Policy Version 的 `POLICY_LIMIT_REACHED`。 |
-| `agent.image_build.active_build_limit` | `0` | DEV `1`；PROD `1` | 当前 Active Capacity Profile 的 `maxActiveImageBuilds`，首个 Profile 固定为 `1` | 限制当前 Platform Environment 中同时持有 Build Lease 的 Child 数及新 Build Handoff。值为 `0` 时拒绝新 Build Handoff，并返回包含 Policy Version 的 `POLICY_DISABLED`。 |
+| Policy Key | Minimum | Maximum | 准入 Contract |
+| --- | ---: | --- | --- |
+| `agent.sandbox.active_attempt_limit` | `1` | 当前有效 Capacity Profile 的 `maxActiveSandboxAttempts` | 限制当前 Platform Environment 中同时持有 Agent Sandbox Lease 的 Attempt 数。达到上限时拒绝后续 Agent Lease，并返回包含 Policy Version 的 `POLICY_LIMIT_REACHED`。 |
+| `agent.image_build.active_build_limit` | `0` | 当前有效 Capacity Profile 的 `maxActiveImageBuilds` | 限制当前 Platform Environment 中同时持有 Build Lease 的 Child 数及新 Build Handoff。值为 `0` 时拒绝新 Build Handoff，并返回包含 Policy Version 的 `POLICY_DISABLED`。 |
 
-下调任一 Policy 只阻止后续 Lease 或 Handoff 并等待占用自然收敛，不撤销既有 Lease、不强杀已持有 Build Lease 的 Child，也不改写 Execution Binding。Build Limit 生效为 `0` 时，已完成 Handoff 但尚未取得 Build Lease 的排队 Child 必须收到 `POLICY_DISABLED`；[03 owner](../03-agent-skill-model/agent-skill-model-detail.md)将其收敛为 `CANCELED/POLICY_DISABLED` 结构化终态并唤醒 Parent，不能无限等待 Policy 恢复。两个 Key 彼此独立；任何准入还必须同时满足共享 Capacity Ledger、绑定 Resource Profile 的完整 Resource Vector、Placement、Kata Gate、Runtime Disk 与 N+1 安全边界。业务配置不能扩大或突破物理 Capacity Envelope。
+下调任一 Policy 只阻止后续 Lease 或 Handoff 并等待占用自然收敛，不撤销既有 Lease、不强杀已持有 Build Lease 的 Child，也不改写 Execution Binding。Build Limit 生效为 `0` 时，已完成 Handoff 但尚未取得 Build Lease 的排队 Child 必须收到 `POLICY_DISABLED`；[03 owner](../03-agent-skill-model/agent-skill-model-detail.md)将其收敛为 `CANCELED/POLICY_DISABLED` 结构化终态并唤醒 Parent，不能无限等待 Policy 恢复。两个 Key 彼此独立；任何准入还必须同时满足共享 Capacity Ledger、绑定 Resource Profile 的完整 Resource Vector、Placement、Kata Gate、Runtime Disk 与当前有效 Capacity Profile 的安全边界。业务配置不能扩大或突破物理 Capacity Envelope。
 
-两个 Policy 的 Key、Minimum、Initial Desired 与准入效果由本文拥有；物理 Maximum 只能取[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)中当前 Environment Capacity Profile 已验证的 Ceiling。Policy 发布与配置生命周期由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有；发布权限与 Super Admin 边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 只消费已生效的 Policy Snapshot，不复制配置工作流。
+两个 Policy 的 Key、Minimum 与准入效果由本文拥有；有效值与物理 Maximum 必须读取 [12 当前选择的 Capacity Profile](../12-implementation-roadmap/implementation-roadmap-detail.md)，并受[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)对该 Profile 已验证 Ceiling 的约束。Policy 发布与配置生命周期由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有；发布权限与 Super Admin 边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 只消费已生效的 Policy Snapshot，不复制配置工作流或 Profile 数值。
 
-专用 Pool 必须满足 N+1：任一个 `sandbox-worker` 或其 Host 失效后，剩余故障域仍能承载该 Platform Environment 获准的全部 Unit 组合。Node 数、每环境 Ceiling、磁盘容量、Provider Mapping 和总容量只由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)定义；本领域仅消费其有效 Capacity Profile。
+Sandbox N+1 是 Hardened Target Profile 的可靠性目标：任一个 `sandbox-worker` Host 失效后，剩余故障域仍能承载该 Profile 获准的全部 Unit 组合。Launch Profile 不无条件承诺 N+1；Host 故障时必须 Fence 旧执行、拒绝超出剩余已验证容量的新 Lease，并从权威 Git、Checkpoint 与 Artifact 恢复或安全结束。Node 数、每环境 Ceiling、磁盘容量、Provider Mapping 和总容量只由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)定义；本领域仅消费 12 为当前阶段选择的有效 Capacity Profile。
 
 每个 Node 的 Runtime/Ephemeral 磁盘只存可再生 Checkout、缓存、中间文件、Writable Layer 与有界临时日志，不提供备份或跨 Node 恢复承诺。CPU 达到 Limit 时 Throttle；Memory 无 Swap，OOM 形成 `RESOURCE_EXHAUSTED/MEMORY`；Ephemeral Limit、DiskPressure、Eviction、Inode 或写满风险形成 `RESOURCE_EXHAUSTED/EPHEMERAL_STORAGE`。新 Lease 的磁盘投影不安全时返回 `CAPACITY_UNAVAILABLE`，Node 丢失只能从 Git、Checkpoint 和 Artifact 重建。
 
@@ -109,7 +124,7 @@ Child 使用独立 Kata Materialization、Rootless BuildKit、Binding、Credenti
 
 当 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)确认 Child Lease 可以安全释放并请求创建 `ParentContinuationReservation` 时，Sandbox 必须在同一个 fenced、幂等的 Capacity Ledger 提交中释放 Child Lease，并按 Parent 原 Execution Binding 所绑定 Resource Profile 的 Unit Weight 物化 Reservation；不得为 Continuation 另设 Unit 默认值。收到 03 owner 的释放请求时，Sandbox 在同一账本语义下释放 Reservation，并通过 Reconciliation 收敛。
 
-Sandbox 只拥有 Child Lease 与 Reservation 在 Capacity Ledger 中的原子物化、释放和 Fencing。Parent 是否仍有效、Continuation Queue 的优先级、Reservation TTL 与失效语义均由 03 owner 定义；Reservation 也不绕过 `agent.sandbox.active_attempt_limit`、完整 Resource Vector、Placement、Kata、Runtime Disk、N+1 或其他物理准入 Gate。
+Sandbox 只拥有 Child Lease 与 Reservation 在 Capacity Ledger 中的原子物化、释放和 Fencing。Parent 是否仍有效、Continuation Queue 的优先级、Reservation TTL 与失效语义均由 03 owner 定义；Reservation 也不绕过 `agent.sandbox.active_attempt_limit`、完整 Resource Vector、Placement、Kata、Runtime Disk、当前有效 Capacity Profile 或其他物理准入 Gate。
 
 ## 7. 失败、清理与外部边界
 

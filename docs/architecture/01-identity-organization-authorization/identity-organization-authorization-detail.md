@@ -2,6 +2,7 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[身份、组织与授权](./identity-organization-authorization.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 1. 目的与边界
 
@@ -50,15 +51,7 @@
 
 TOTP Enrollment 只能在受限初始化或受控重置流程中显示二维码和一次性 Secret；确认后不能查询明文。当前架构基线不提供恢复码。丢失 TOTP 时由具备相应 Identity Capability 和 Scope 的人员完成身份核验后独立重置；该操作撤销既有 Session，要求重新 Enrollment，并写入安全 Audit。
 
-### 2.4 Passkey/WebAuthn 演进边界
-
-当前认证路径只有“员工编号 + 正式密码 + 强制 TOTP”，不创建未使用的 Passkey 数据表、API、UI、字段或空 Adapter。Identity 模块使用由现有密码和 TOTP 流程实际调用、且与认证器实现无关的 `AuthenticatorPort`；未来通过新增 Authenticator Adapter 接入 Passkey，不改变 Session、Authorization、Capability 或业务 Workflow 语义。
-
-Passkey 作为未来抗钓鱼替代登录路径时，一次满足策略的 Passkey 登录可同时替代该次密码和 TOTP。WebAuthn 必须使用 `userVerification=required`，服务端验证 UV Flag、Challenge、Origin、RP ID、Credential 与 Replay 条件，不能信任客户端自报结果。平台只保存 Public-key Credential、Signature Counter 与验证所需元数据；Private Key 与 Biometrics 始终留在用户设备。
-
-注册新 Passkey 必须在正式密码与 TOTP 初始化完成后再次验证当前密码和 TOTP。遗失认证器只能通过专用 Identity Override Capability、有效 Scope、人工身份核验、Session 撤销与安全 Audit 获得短期受限恢复资格；实际注册仍由用户设备完成，管理员与平台不得接触 Private Key 或把流程实现为隐式恢复码。TOTP 在迁移期继续作为回退路径，绑定 Passkey 不自动停用 TOTP，也不代表全部登录路径都具备抗钓鱼能力；是否允许停用只能由未来独立认证 Policy 决定。Session 与 Audit 必须记录实际认证方式和认证强度。
-
-### 2.5 Session
+### 2.4 Session
 
 平台使用服务端可撤销 Session。连续 60 分钟没有用户操作后 Session 失效；只有受认证 API 活动或受控心跳可以更新活动时间，后台 Agent 执行不能刷新人员 Session。
 
@@ -185,7 +178,15 @@ Super Admin 不自动获得 Requirement、Workspace、MR、Agent 或其他业务
 
 人员变动与授权影响可以通过只读视图关联组织变化、Workspace Membership、Grant、Assignment、授权版本和同步结果；实际修改必须在其所属的受权入口执行。
 
-## 8. 不变量
+## 8. Passkey/WebAuthn 演进边界
+
+当前认证路径只有“员工编号 + 正式密码 + 强制 TOTP”，不创建未使用的 Passkey 数据表、API、UI、字段或空 Adapter。Identity 模块使用由现有密码和 TOTP 流程实际调用、且与认证器实现无关的 `AuthenticatorPort`；未来通过新增 Authenticator Adapter 接入 Passkey，不改变 Session、Authorization、Capability 或业务 Workflow 语义。
+
+Passkey 作为未来抗钓鱼替代登录路径时，一次满足策略的 Passkey 登录可同时替代该次密码和 TOTP。WebAuthn 必须使用 `userVerification=required`，服务端验证 UV Flag、Challenge、Origin、RP ID、Credential 与 Replay 条件，不能信任客户端自报结果。平台只保存 Public-key Credential、Signature Counter 与验证所需元数据；Private Key 与 Biometrics 始终留在用户设备。
+
+注册新 Passkey 必须在正式密码与 TOTP 初始化完成后再次验证当前密码和 TOTP。遗失认证器只能通过专用 Identity Override Capability、有效 Scope、人工身份核验、Session 撤销与安全 Audit 获得短期受限恢复资格；实际注册仍由用户设备完成，管理员与平台不得接触 Private Key 或把流程实现为隐式恢复码。TOTP 在迁移期继续作为回退路径，绑定 Passkey 不自动停用 TOTP，也不代表全部登录路径都具备抗钓鱼能力；是否允许停用只能由未来独立认证 Policy 决定。Session 与 Audit 必须记录实际认证方式和认证强度。
+
+## 9. 不变量
 
 1. 员工编号始终是可含前导 `0` 的 8 位字符串。
 2. 新账号和密码重置始终使用唯一随机的一次性临时密码，不使用固定默认密码。

@@ -2,10 +2,11 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[Agent、Skill 与 Model](./agent-skill-model.md)
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
 
 ## 1. 责任边界
 
-本文是 Agent Definition、Superpowers Runtime Bundle、Model Catalog/Capability/Route、Run/Attempt、Execution Binding、Child Execution、执行等待、Context/Tool/Network Policy、事件和失败语义的唯一规范事实源。
+本文是 Agent Definition、Superpowers Runtime Bundle、Model Catalog/Capability/Route、Run/Attempt、Execution Binding、模型评测工具链、执行等待、Child Execution、Context/Tool/Network Policy、事件和失败语义的唯一规范事实源。
 
 Requirement、WorkItem、Route、Gate、人工 Assignment 与 Decision 的业务语义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有。人员资格由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 的 KVM/Kata、Materialization、Secret 注入、Lease 物理实现和容量 BOM 由[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)拥有；本文只约束其通过 Port 提供的逻辑契约。
 
@@ -22,8 +23,9 @@ Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human G
 | Model Capability | 经服务端验证的 chat、coding、search、thinking 等能力 |
 | Chat Model Policy | 对话界面的 Deployment/Capability Allowlist |
 | Execution Model Route Policy | 将 Agent 逻辑能力解析到 Deployment |
-| Execution Binding | Attempt 的不可变运行输入与权限快照 |
 | Run / Attempt | 业务目标 / 目标的一次执行 |
+| Execution Binding | Attempt 的不可变运行输入与权限快照 |
+| Evaluation Evidence | 固定工具、数据集、模型路由和阈值后生成的不可变评测 Artifact |
 
 首批 Agent Definition 的规范性基线如下：
 
@@ -121,8 +123,6 @@ Binding 保存逻辑 Sandbox/Runtime Profile 引用，不保存 Pod、Node 或 R
 CREATED → BINDING → QUEUED → PROVISIONING → RUNNING → FINALIZING → SUCCEEDED
 
 RUNNING → WAITING_INPUT → QUEUED
-RUNNING → WAITING_CHILD → QUEUED
-
 任意活动状态 → CANCELING → CANCELED | TIMED_OUT
 其他终态：FAILED
 ```
@@ -135,7 +135,6 @@ RUNNING → WAITING_CHILD → QUEUED
 | `PROVISIONING` | 通过 Sandbox Port 准备物化、固定分支和短期凭据 |
 | `RUNNING` | Agent 运行中 |
 | `WAITING_INPUT` | 问题与 Checkpoint 已持久化，等待用户输入 |
-| `WAITING_CHILD` | Parent 完成 Handoff，等待独立 Child 的持久化结果 |
 | `FINALIZING` | 固化结果、Commit、Artifact、日志、Checkpoint 并清理副作用 |
 | `CANCELING` | 幂等终止 Parent/Child、Fence 副作用并回收资源 |
 | `SUCCEEDED`、`CANCELED`、`FAILED`、`TIMED_OUT` | 不可逆终态 |
@@ -144,15 +143,29 @@ RUNNING → WAITING_CHILD → QUEUED
 
 终态不可复活。Temporal Activity 可在同一 Binding 中有限重试瞬时基础设施错误，不能变更 Binding。Attempt 失败、取消或超时不自动终结 WorkItem/Requirement；上层 Workflow 决定阻塞、重试、取消或继续。
 
-## 7. 等待、恢复与 Child Execution
+## 7. Evaluation 工具链
 
-### 7.1 WAITING_INPUT
+当前架构基线不自建常驻 Prompt/LLMOps 平台。`promptfoo` 是 Prompt、Model Route 与 Agent 黑盒行为的默认回归评测执行器，运行在版本锁定的一次性 Evaluation Job 中；未来 CI 只可触发同一 Job Contract。`EvalScope` 是模型选型、质量基准和推理性能压测的默认按需执行器。二者都不是长期运行的 Deployable，不拥有账号、权限、Prompt、Dataset、Workflow、Gate 或运行事实，也不引入独立数据库和管理界面。
+
+每次评测必须固定工具版本与镜像 digest、Evaluation Config、Dataset/Case Version、Prompt/Template Hash、Model Deployment/Capability Snapshot、随机 Seed、并发、阈值、超时和数据分类。`promptfoo`/`EvalScope` 只能通过 `ModelEvaluationPort → ModelGatewayPort → Provider Adapter` 调用当前环境的批准 Deployment，不取得 Provider 原始 Endpoint、API Key 或 SDK Credential，也不能把工具自己的 Provider/Model 配置带入领域层；能力校验、参数吸收、配额、成本、Correlation 与取消仍由现有 Gateway/Adapter Contract 执行。
+
+执行结果形成不可变 `Evaluation Evidence`，至少包含原始结构化结果、摘要、工具版本、输入 Hash、实际 Model Deployment、Provider Request/Correlation ID、Token/成本/延迟、失败与 Coverage，并通过[Requirement Workflow 的 Artifact Contract](../02-requirement-workflow/requirement-workflow-detail.md)保存稳定引用和内容校验值。业务 Workflow 只能消费该证据并自行判定 Gate；工具的页面、退出码或临时缓存不能直接改写 Requirement、Attempt、Model Catalog 或有效配置。
+
+Evaluation Job 是运行在 `platform-worker` 的受限可信工作负载，只获得本次数据集、批准 Model Route 与结果 Artifact 的最小短期权限，并以 Non-root、只读 RootFS、`automountServiceAccountToken=false` 和 default-deny NetworkPolicy 运行；主工具容器禁止挂载默认 Token 或 Kubernetes API audience Token。确需短期服务身份时，只有 OpenBao Agent init/sidecar 可挂载短 TTL、`audience=openbao` 的 projected ServiceAccount Token，并将短期 mTLS/Service Identity 写入 tmpfs；主工具容器只读取该内存文件，不能挂载或读取用于登录 OpenBao 的 Token。不需要 Secret 的 Job 不启动 Injector。Egress 只允许 Model Gateway、Artifact API 与明确批准的数据集来源。Evaluation Config 只允许已注册的声明式 Provider、Assertion、Evaluator 和 Dataset Adapter，禁止用户提供或加载内联 JavaScript/Python、Shell Command、远程 Plugin 或其他可执行扩展；未来确需执行不可信评测代码时必须新增独立 Sandbox Execution Contract，不能放宽本 Job。
+
+Secret 仍按 08 注入，Prompt、测试输入和模型输出只进入按数据分类保护的评测 Artifact，不进入普通 Log、Trace、Metric Label 或 Audit 正文。评测固定到精确 Model Deployment，禁止静默 Provider fallback；工具崩溃、Case 缺失、结果不可解析、目标 Deployment 不可用或 Coverage 不完整时，本次证据为无效或不完整，禁止伪造通过结论，重新执行必须生成新的 Evaluation Evidence。
+
+## 8. 等待、恢复与 Child Execution
+
+### 8.1 WAITING_INPUT
 
 `WAITING_INPUT` 不是人工 Gate。等待期限为版本化 Platform Policy，默认 `24h`，在 Binding 时保存有效值与版本。进入等待前必须持久化结构化问题、Checkpoint、日志与 Artifact，释放活动 Sandbox Capacity Lease 与短期 Secret。
 
 期限内答复时，重新校验当前访问权、WorkItem Assignment 与控制 Capability；通过后仍使用同一个 Attempt/Binding 回到 `QUEUED`，重新获得 Lease 才能 `PROVISIONING`。逾期后经 `CANCELING` 进入 `TIMED_OUT`；迟到答复只能从 Checkpoint 创建新 Attempt。
 
-### 7.2 WAITING_CHILD
+### 8.2 WAITING_CHILD
+
+高级 Child 路径增加 `RUNNING → WAITING_CHILD → QUEUED` 转换；`WAITING_CHILD` 表示 Parent 已完成 Handoff，正在等待独立 Child 的持久化结果。
 
 当前已启用的 Child Type 是 Image Build。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
 
@@ -177,7 +190,7 @@ Parent 随后进入 Agent Continuation Queue，优先使用自己的 Reservation
 
 Parent 取消、Requirement 归档/删除或 Deadline 到期时，须级联安全终止非终态 Child；迟到 Child 结果只可审计，不得复活 Parent。Parent/Child 的队列、执行和总 Deadline 分别保存，不可用 `WAITING_INPUT` 默认期限重置。Lease、资源向量与物理调度仅通过[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)契约处理。
 
-## 8. Context、Tool、Network 与权限
+## 9. Context、Tool、Network 与权限
 
 Runtime Permission 可包含读取已绑定仓库、写当前任务分支、执行批准命令/测试、写 Artifact、发布 Preview、访问批准网络目标。默认拒绝：
 
@@ -191,7 +204,7 @@ Context 仅由当前 Requirement/WorkItem、固定版本 SDD/Plan/API Contract�
 
 短期凭据绑定 Environment、Attempt、Repository、Branch、Tool、Scope 与有效期。进入等待、终态、取消、超时或收到业务终止时立即吊销。Sandbox 的 Secret 注入、网络 Egress 与物理隔离不在本文重新定义。
 
-## 9. 事件、一致性与失败
+## 10. 事件、一致性与失败
 
 稳定 Port：
 
@@ -200,6 +213,7 @@ AgentDefinitionPort
 RuntimeBundlePort
 ModelGatewayPort
 ModelCapabilityCatalogPort
+ModelEvaluationPort
 ExecutionPolicyPort
 AgentRunPort
 ArtifactPort
