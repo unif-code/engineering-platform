@@ -9,21 +9,31 @@
 
 领域状态仍由对应领域 owner 拥有，应用调用、Port/Adapter 和 Outbox 使用边界由 [平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有；Typed Configuration 的生命周期、Snapshot 与 Promotion 协议由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有，本文只规定其 PostgreSQL 持久化基线。本文不定义密钥、加密、Secret 或审计内容保护机制，统一链接 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；不定义 Cluster、Node、SKU、总容量、组件精确版本或环境容量，统一链接 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
-DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max 前端模板。本文规定的 CloudNativePG、Valkey、NATS、Temporal、Rook-Ceph RGW 与 Backup/Retention 组件是已批准的目标架构，不声明对应运行实例已经部署。未来 PROD 从相同 Contract、GitOps 模板与 PCS 独立实例化，不共享 DEV 的数据、消息、对象或恢复状态。
+本文描述完整 Target Architecture，不声明任何环境已经部署 CloudNativePG、Valkey、NATS、Temporal、Rook-Ceph RGW 或 Backup/Retention 组件。实施阶段、Capability 激活状态、Release 验收与 Capacity Profile 选择只见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)；环境实际拓扑由 GitOps Desired State、PCS 与运行证据证明。
 
 PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger 和可重建投影的权威关系事实源。Valkey、NATS、Temporal、对象存储、普通日志与指标均不能替代它。每个 Platform Environment 都有独立的组件、数据、Backup、Bucket 与恢复链；DEV 与 PROD 只共享同源 Contract，不共享运行时状态。
 
+### 1.1 Capability 激活与 Profile Contract
+
+PostgreSQL 作为最早被业务 Capability 消费的权威事实源优先激活。Valkey 只在 Session 热索引、撤销索引、缓存或限流需要独立服务时激活；NATS 只在持久异步传输首次被消费时激活；Temporal 只在 Durable Workflow 首次被消费时激活；Object Storage 只在附件、Artifact、WORM Audit、组件 Backup 或 Observability Object 首次消费时激活。未被消费的组件不部署，不以占位实例、空 Stream、空 Bucket 或 Feature Toggle 宣称能力可用。
+
+Launch Profile 可以为已启用组件选择单实例或最小拓扑，但每个实例必须同时满足：TLS 和最小 Workload Identity、显式硬 Resource Request/Limit 与存储/队列上限、Cluster 外 Backup、真实 Restore 验证、容量不足时拒绝或背压、依赖不可证明时 Fail Closed。单实例故障允许受影响能力安全停止，不能丢失已确认事实、伪造成功证据或回退到明文、匿名、无限资源和未受保护存储。
+
+Hardened Target Profile 在相同数据语义上增加 Replica、Standby、Sentinel、Quorum、跨 Node 分散和更高恢复频率。下文标注为 Hardened Target 的拓扑不构成无条件部署要求；Profile 由 12 选择，09 校验 Aggregate Physical Ceiling、放置、PDB、Rollout 与 Headroom，07 只拥有组件数据、故障和恢复 Contract。
+
 ## 2. PostgreSQL 与连接边界
 
-每环境使用 CloudNativePG 的一个 Primary 与两个 Standby，并采用 quorum-based synchronous replication：`method=any`、`number=1`、`dataDurability=required`、`failoverQuorum=true`。两个 Standby 都不可用时，不得自动降级为异步写入；Failover 候选必须证明包含全部已确认事务。
+PostgreSQL 一经激活即使用独立 Schema/Role、有界连接、TLS、应用一致性 Backup/PITR、硬资源与存储 Ceiling，并在依赖或恢复链不可证明时 Fail Closed。Launch Profile 可使用单 Primary；其故障时停止数据库依赖能力，恢复验证完成前不开放写流量。
 
-业务流量经两个 PgBouncer Transaction Pooling Pod 进入数据库；所有连接池有界。只有 Alembic、DDL Job、DBA 或受控 Break-glass 可直连 rw service。模块拥有独立 Schema、迁移目录和数据访问账号，任何模块不得直接读写其他模块内部表。
+Hardened Target 使用 CloudNativePG 的一个 Primary 与两个 Standby，并采用 quorum-based synchronous replication：`method=any`、`number=1`、`dataDurability=required`、`failoverQuorum=true`。两个 Standby 都不可用时，不得自动降级为异步写入；Failover 候选必须证明包含全部已确认事务。
+
+业务流量经 PgBouncer Transaction Pooling 进入数据库，Launch 可使用一个实例，Hardened Target 使用两个 Pod；所有连接池有界。只有 Alembic、DDL Job、DBA 或受控 Break-glass 可直连 rw service。模块拥有独立 Schema、迁移目录和数据访问账号，任何模块不得直接读写其他模块内部表。
 
 CloudNativePG 通过 Barman Cloud Plugin、WAL Archive 与 S3-compatible `postgres-backup` Class 实现应用一致性 Backup/PITR。每个备份必须绑定环境、时间、版本、校验结果与恢复链；持续 WAL Archive 与 Base Backup 均需要可用 Headroom。恢复只能从经验证的 Base Backup + WAL 链进行，不能把任意 PVC/CSI Snapshot 声明为一致性数据库恢复源。恢复成功后需先验证数据与服务，再重新开放应用流量。
 
 PostgreSQL 默认 `archive_timeout=5min`，每日执行 Physical Base Backup，使用 LZ4；DEV Recovery Window 为 7 天，PROD 为 30 天。PROD Cluster DR Candidate 在 `PGDATA <= 50 GiB` 时为 `RPO <= 5min`、`RTO <= 60min`。DEV 每月、PROD 每季度执行完整 Restore Drill，并以实测结果验证恢复链。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。
 
-PostgreSQL 与 PgBouncer 的首个 Resource Envelope：
+PostgreSQL 与 PgBouncer 的 Hardened Target Component Envelope：
 
 | 组件/环境 | Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | `shared_buffers` | 单 Pod PVC |
 | --- | ---: | --- | --- | ---: | ---: |
@@ -32,15 +42,17 @@ PostgreSQL 与 PgBouncer 的首个 Resource Envelope：
 | PgBouncer DEV | 2 | 50m / 250m | 64 MiB / 128 MiB | — | 无 |
 | PgBouncer PROD | 2 | 100m / 500m | 128 MiB / 256 MiB | — | 无 |
 
-三个 PostgreSQL Pod 在同一环境使用相同规格，CPU/Memory Request 与 Limit 相等以保持 Guaranteed QoS；三个 Data PVC 合计为 DEV `120 GiB`、PROD `300 GiB`。PgBouncer 是无状态连接层，不声明数据 PVC。资源调整形成新的版本化 Data-Service Resource Profile，并由 09 的 Environment Capacity Profile 聚合和验证 N+1、PDB 与 Rollout Headroom。
+Hardened Target 的三个 PostgreSQL Pod 在同一环境使用相同规格，CPU/Memory Request 与 Limit 相等以保持 Guaranteed QoS；三个 Data PVC 合计为 DEV `120 GiB`、PROD `300 GiB`。PgBouncer 是无状态连接层，不声明数据 PVC。Launch 与 Hardened 的有效 Resource Profile 均由 12 选择并进入 PCS，09 聚合验证物理 Ceiling、PDB 与 Rollout Headroom；任何 Profile 都禁止无 Request/Limit 的 BestEffort 数据实例。
 
 ## 3. Valkey
 
-每环境 Valkey 使用一个 Primary、两个 Replica 与三个 Sentinel（quorum=2），并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)；业务仅使用 Sentinel-aware Client，禁止固定 Primary 地址或厂商私有配置。使用 `noeviction`、AOF everysec 与周期 RDB，以避免在内存回收时无提示丢弃关键热状态。
+Valkey 只在对应 Capability Package 首次消费时激活。Launch Profile 可使用一个实例，但仍消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)，使用 `noeviction`、AOF everysec、周期 RDB、硬 Memory Ceiling 与真实重建验证；实例故障时回源 PostgreSQL 或 Fail Closed。
+
+Hardened Target 使用一个 Primary、两个 Replica 与三个 Sentinel（quorum=2）；业务仅使用 Sentinel-aware Client，禁止固定 Primary 地址或厂商私有配置。Replica/Sentinel 不改变 Valkey 仅保存可重建热数据的事实边界。
 
 Valkey 仅保存可重建的 Session 热数据、撤销索引、缓存、限流、幂等键和短期锁。Session、安全和领域的权威事实始终保留在 PostgreSQL。缓存不可用、版本未知或安全写操作无法回源时，必须回查 PostgreSQL 或 Fail Closed；不得因 Valkey 故障放行陈旧授权、绕过撤销或将缓存内容升级为事实源。PVC 可用于快速恢复，但其丢失后的正确恢复方式是从权威事实重建。
 
-Valkey 与 Sentinel 的首个 Resource Envelope：
+Valkey 与 Sentinel 的 Hardened Target Component Envelope：
 
 | 组件/环境 | Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | `maxmemory` | 单 Pod PVC |
 | --- | ---: | --- | --- | ---: | ---: |
@@ -53,7 +65,9 @@ Valkey 与 Sentinel 的首个 Resource Envelope：
 
 ## 4. NATS JetStream、Outbox 与 Inbox
 
-NATS JetStream 每环境使用三个节点、File Storage、三副本，并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)。每个 Deployable Unit 按 Publish/Subscribe Subject Allowlist 获得最小访问；平台和系统账号隔离，Sandbox 不获得 NATS 访问。
+NATS JetStream 只在持久异步传输被对应 Capability Package 首次消费时激活。Launch Profile 可使用单节点 File Storage，但仍必须消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)，执行 Stream 硬上限、Persist ACK、应用一致性 Account Backup、真实 Restore 和 Outbox Watermark 对账；节点故障时发布保留在 Outbox 并背压，不静默丢消息。
+
+Hardened Target 使用三个节点、File Storage 与三副本 Quorum。每个 Deployable Unit 按 Publish/Subscribe Subject Allowlist 获得最小访问；平台和系统账号隔离，Sandbox 不获得 NATS 访问。
 
 事件为 CloudEvents Structured JSON，命令为平台 `CommandEnvelope`；Subject 为：
 
@@ -77,7 +91,7 @@ NATS 的权威恢复是应用一致性 Account Backup，而不是多个 PVC/CSI 
 
 NATS 默认每日 `04:00 Asia/Shanghai` 执行应用一致性 Account Backup；前次任务未完成、完整性检查失败、空间不足或 Stream 配置正在变化时不得启动重叠任务。Backup Retention 为 DEV 3 天、PROD 7 天，已发布 Outbox 至少保留 30 天。DEV 每月、PROD 每季度执行完整 Restore Drill。Cluster DR 目标为 `RPO <= 5min`、`RTO <= 60min`；每日 Backup 周期不是消息 RPO，消息恢复还依赖 Outbox Watermark、安全重叠补发与幂等消费。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。
 
-NATS 的首个 Resource Envelope：
+NATS 的 Hardened Target Component Envelope：
 
 | 环境 | Replica | 单 Node CPU Request / Limit | 单 Node Memory Request / Limit | Memory Store 上限 | File Store 上限 | 单 Node PVC |
 | --- | ---: | --- | --- | ---: | ---: | ---: |
@@ -88,13 +102,15 @@ NATS 的首个 Resource Envelope：
 
 ## 5. Temporal Persistence
 
+Temporal 只在 Durable Workflow 被对应 Capability Package 首次消费时激活。Launch Profile 可让各 Server Role 和 Platform Orchestrator Worker 使用单 Replica，但 Durable Persistence、TLS/身份授权、Worker Build ID、硬 Resource Limit、恢复 Fencing 与端到端对账不得省略；故障时暂停长任务推进。
+
 Temporal Server 的 Default Store 与 Visibility Store 使用同环境 CloudNativePG 中隔离的 `temporal` 与 `temporal_visibility` 数据库。Temporal 仅使用 ClusterIP，并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)；普通浏览器和 Sandbox 不具有 Temporal 访问资格。
 
 Runtime Role 只做 DML，Schema 由短生命周期 DDL Job 管理。History 只保存 Workflow 的非敏感控制元数据，禁止写入源码、Prompt、Secret 或完整附件。Worker Build ID 与不可变应用镜像/Workflow Code 绑定；活动 Workflow 的版本演进通过显式兼容策略完成，不在发布期间静默替换。Temporal 的 Durable History 只解释编排推进，领域状态仍以 PostgreSQL owner 为准。
 
 Temporal Persistence 恢复顺序固定为：先 Fence Temporal 写入入口与全部 SDK Worker；再对 Default/Visibility Store 执行 PostgreSQL PITR；随后以相同 Server、Schema、Shard 与 Namespace 配置启动 Temporal，验证 Visibility 查询和 Worker Build ID 映射；最后依据 PostgreSQL 领域事实、Outbox、Inbox 与 Effect Ledger 对账外部效果，确认无重复或遗漏后才重新开放 Worker。Persistence Database 的 RTO 不等于端到端 Workflow RTO；端到端恢复必须包含 Workflow/Visibility/Build ID/外部效果验证，并通过完整 Restore Drill 形成实测结果。
 
-Temporal 的首个 Resource Envelope：
+Temporal 的 Hardened Target Component Envelope：
 
 | 组件 | 每环境 Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | 数据 PVC |
 | --- | ---: | --- | --- | --- |
@@ -108,6 +124,8 @@ Temporal 的首个 Resource Envelope：
 上述稳态 Request 合计约为 `3.2 CPU / 6.5 GiB`，Limit 合计约为 `13 CPU / 13 GiB`。四类 Temporal Server、Worker、UI 与 Adapter 均不声明独立数据 PVC；Durable Persistence 与 Grafana 状态一样计入同环境 PostgreSQL，不能在 ESSD BOM 中重复增加 Temporal 数据卷。发布还必须为四类 Server Surge 预留约 `1.25 CPU / 2.5 GiB` Request，并为一整组新 Platform Orchestrator Worker 预留 `500m CPU / 1 GiB` Request。
 
 ## 6. Object Storage、Bucket Class 与 Artifact
+
+Object Storage 只在附件、Artifact、WORM Audit、组件 Backup 或 Observability Object 被对应 Capability Package 首次消费时激活。无论 Launch 选择最小实现还是 Hardened Target 选择 Rook-Ceph RGW，S3-compatible API、版本化精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变；实现和拓扑不得降低已启用能力的证据判定。
 
 Rook-Ceph RGW 是每环境的 S3-compatible Object Storage，职责仅限 Object Storage；它不为 PostgreSQL、Valkey、NATS、Temporal 或其他实时 Stateful Workload 提供 RBD/CephFS。实时 PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 和容量由 [09](../09-infrastructure-operations/infrastructure-operations-detail.md)拥有。
 
@@ -149,7 +167,7 @@ Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 O
 
 Backup 是组件自己的应用一致性恢复链：CloudNativePG 使用 Base Backup + WAL，NATS 使用 Account Backup + Outbox 对账，Temporal 随其 PostgreSQL Persistence 恢复。对象 Backup Job 在上传前必须预检并原子预占目标 Bucket Class 的 working set 与 Version/Lock 放大；空间不足时形成 Backup/RPO Degraded Incident，不得上传半份“成功 Backup”、缩短恢复窗口或借用 Audit Emergency Margin。
 
-当前恢复边界是单站点 Cluster HA 与 Cluster DR，不提供 Zone、Region、Account 或 Site DR 保证。DEV 不是 PROD Standby；每个环境独立执行 Backup、Restore 与 Drill。
+目标默认恢复边界是单站点 Cluster DR，不提供 Zone、Region、Account 或 Site DR 保证。DEV 不是 PROD Standby；每个环境独立执行 Backup、Restore 与 Drill。
 
 `Object Retention Reconciler` 只清理 `audit-worm`、`postgres-backup`、`nats-backup` 和 `openbao-recovery` 中超过各自权威保留期的精确 Object Version。对于 `audit-worm`，08 owner 先依据 Audit Retention、Legal Hold/调查冻结与 Security Floor 产生策略级资格，本模块不得重新解释或缩短；对象执行还必须证明 Object Lock 已到期且无恢复/业务引用。Backup 类别还须证明存在满足 Recovery Window 和恢复链的更新有效副本。每次判定、拒绝、删除、失败和 GC 验证均追加 Audit。Reconciler 使用专用最小权限身份，不具备 Retention Bypass、跨 Bucket 或通配 Prefix 删除能力。
 
@@ -179,3 +197,4 @@ Backup 是组件自己的应用一致性恢复链：CloudNativePG 使用 Base Ba
 3. Temporal、NATS 与 Object Storage 都只保存各自职责内的数据，不能承接跨领域主状态。
 4. RGW 只提供对象服务，`stateful-rwo-lowlatency` 承载实时 Stateful RWO 数据；二者不混用。
 5. Retention 与恢复始终以精确版本、经验证 Manifest 和有效恢复链判定，归档或逻辑删除从不等同于物理释放。
+6. Valkey、NATS、Temporal 与 Object Storage 只在对应 Capability Package 首次消费时激活；未启用组件不部署，已启用组件不得省略 TLS、身份、硬资源上限、Backup/Restore 或 Fail Closed。

@@ -5,11 +5,11 @@
 
 ## 1. 责任边界
 
-本文是前端应用边界、Control Plane 模块化单体、Deployable、Port/Adapter、应用通信、External Provider Contract、Operations Read Model、Console Access 与安全公告的唯一规范事实源。
+本文是前端应用边界、Control Plane 模块化单体、Deployable、Port/Adapter、应用通信、External Provider Contract、Operations Read Model、Console Access 与安全公告的唯一 Target Architecture 规范事实源。
 
 本文消费领域 owner 的稳定 ID、受保护命令与有效配置快照，不重新定义 Identity、授权、Requirement、Agent、Sandbox 或 GitLab 的状态机。PostgreSQL、Valkey、NATS、Temporal 与 Object Storage 的运行和恢复事实由 [数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有。安全密钥、加密、Secret 与 Audit 保留规则只见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；Cluster、Node、组件版本和总容量只见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
 
-DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max 前端模板。本文规定的 Python Control Plane、数据服务、独立 Deployable、Operations Adapter 与基础设施属于已批准的目标架构，不声明这些运行实例已经部署。未来 PROD 只从相同代码、Contract、GitOps 模板与 PCS 独立实例化，始终使用独立入口、Session、组件和状态。
+本文不声明任何环境已部署哪些组件。实施阶段、Capability 激活状态、Release 验收与 Profile 选择只见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)；实际运行组件由环境 GitOps Desired State、PCS 与运行证据证明。DEV 与 PROD 只从相同代码、Contract、Flux GitOps 模板与 PCS 独立实例化，始终使用独立入口、Session、组件和状态。
 
 ## 2. Umi Web 与 Session Bootstrap
 
@@ -18,7 +18,7 @@ DEV 是当前唯一实例化的 Platform Environment，当前仓库是 Umi Max �
 ```text
 src/
   pages/                         路由装配
-  features/{auth,navigation,requirements,workflows,runs,agents,administration}/
+  features/{auth,navigation,chat,requirements,workflows,runs,agents,administration}/
   components/                    跨 Feature UI
   services/{generated,transport}/
   models/ hooks/ types/ utils/
@@ -26,7 +26,7 @@ src/
 
 依赖方向为 `pages → features → services/generated`；共享组件不得依赖具体业务 service，Feature 间只能使用公开入口。OpenAPI 生成客户端位于 `services/generated` 且不得手改；transport 将服务端错误归一为 Problem Details，页面不得依赖底层 HTTP 客户端异常。
 
-状态边界如下：路由、筛选与对象标识使用 URL；服务端数据由 React Query 管理；当前用户、当前 Workspace 与轻量 UI 偏好使用 Umi Initial State/Model；表单使用 ProForm 或 Ant Design Form；临时交互状态保留在组件；SSE/WebSocket 更新必须携带实体版本，旧事件不得覆盖新状态。
+状态边界如下：路由、筛选与对象标识使用 URL；服务端数据由 React Query 管理；当前用户、当前 Workspace 与轻量 UI 偏好使用 Umi Initial State/Model；表单使用 ProForm 或 Ant Design Form；对话界面的 `Bubble`、`Conversations`、`Sender`、`Attachments` 与 `ThoughtChain` 复用已锁定的 `@ant-design/x` 组件；临时交互状态保留在组件；SSE/WebSocket 更新必须携带实体版本，旧事件不得覆盖新状态。`@ant-design/x` 只是同一 Umi Web 内的 UI 组件库，不拥有登录、权限、对话事实、Model Route 或独立服务端。
 
 Session Bootstrap 固定为：
 
@@ -71,7 +71,11 @@ backend/control_plane/app/
 | File Security Worker | 文件检查与规范化 Verdict | Artifact 领域归属 |
 | Operations Adapter | 受限查询与外部状态投影 | 基础设施 Desired State |
 
-稳定 Port 至少包括 `SourceControlPort`、`ContainerRegistryPort`、`ModelProviderPort`、`WorkflowOrchestratorPort`、`EventBusPort`、`CachePort`、`SecretManagerPort`、`ObjectStoragePort`、`FileSecurityPort`、`ImageSecurityPort`、`ArtifactSignerPort`、`SandboxPort`、`ImageBuildPort`、`TelemetryPort`、Metrics/Log/Trace/Alert Query Port、`ConsoleAccessPort`、`OperationsStatusFeedPort`、`TrustBundlePort` 与 `ServiceIdentityPort`。领域 DTO 不泄露厂商 SDK 对象、Pod、消息、Token、Bucket Admin API 或 Cloud Resource ID。
+Deployable 遵循按需激活 Contract：Umi Web、Python Control Plane、OpenAPI、单模块 Transaction 与 Port/Adapter 骨架构成应用基础；只有当路线图选中的 Capability Package 首次消费某项能力、其依赖和 Security Floor 可验证且 Capability Activation Gate 通过后，才部署对应 Worker、Gateway、Controller、Connector、Scanner 或 Operations Adapter。未启用 Capability 不部署专属 Deployable，不创建空消息链或空数据服务；代码中的 Port、DTO 与受控 Feature Toggle 只保留兼容边界，不能被解释为能力已启用。
+
+Flux 只从当前环境受保护 Git 路径 Reconcile 已批准的 Deployable Desired State。管理后台、Control Plane、Operations Read Model 与 Adapter 不得直接创建、修改或删除 Kubernetes Workload，也不得把 Flux Observed Status 反写为 Desired State。
+
+稳定 Port 至少包括 `SourceControlPort`、`ContainerRegistryPort`、`ModelProviderPort`、`ModelEvaluationPort`、`WorkflowOrchestratorPort`、`EventBusPort`、`CachePort`、`SecretManagerPort`、`ObjectStoragePort`、`FileSecurityPort`、`ImageSecurityPort`、`VulnerabilityScannerPort`、`ArtifactSignerPort`、`SandboxPort`、`ImageBuildPort`、`TelemetryPort`、Metrics/Log/Trace/Alert Query Port、`ConsoleAccessPort`、`OperationsStatusFeedPort`、`TrustBundlePort` 与 `ServiceIdentityPort`。领域 DTO 不泄露厂商 SDK 对象、Pod、消息、Token、Bucket Admin API 或 Cloud Resource ID。
 
 Browser 的业务请求只经当前环境 `platform-gateway`；内部同步调用携带 Workload Identity、`traceparent`、request ID 与 correlation ID。TLS/mTLS 与业务授权分别校验。外部 Webhook 必须先验签、持久化与去重，之后异步处理。外部调用必须有 timeout、有限重试与 circuit breaker；没有幂等保证的外部效果进入 `UNKNOWN/RECONCILIATION`，不得虚构 exactly-once。
 
@@ -93,9 +97,9 @@ Browser 的业务请求只经当前环境 `platform-gateway`；内部同步调�
 
 Configuration 的 Catalog、Draft、Publish、Rollback、Effective Snapshot、Schema 演进与 DEV→PROD Promotion 生命周期只由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。本文只规定 Control Plane 如何通过稳定 Port 消费 Effective Configuration，并保持模块、Outbox、Adapter 与管理入口边界；各领域配置值的业务语义仍由对应领域 owner 定义。
 
-## 6. External Provider Contract
+## 6. 增强 External Provider Contract
 
-External Provider Contract 只治理平台外的 Cloud/Operations Plane Binding：`CLOUD_FOUNDATION`、`BUSINESS_EDGE`、`CONTROL_PLANE_ENDPOINT`、`EGRESS`、`CONTROL_PLANE_RECOVERY`、`EXTERNAL_WATCHDOG`、`PROVIDER_AUDIT` 与 `EXTERNAL_PROVIDER_CONSOLE`。集群内 Grafana、Hubble、Temporal、OpenBao 的 Console 使用本地 Console Access Contract；GitLab、Model Provider 与安全公告 Feed 由各自 Connector/Source Adapter 管理。Jenkins 是用户手工使用的外部系统，当前架构基线不存在 Jenkins Adapter、Webhook 或状态投影。
+External Provider Contract 只治理平台外的 Cloud/Operations Plane Binding：`CLOUD_FOUNDATION`、`BUSINESS_EDGE`、`CONTROL_PLANE_ENDPOINT`、`EGRESS`、`CONTROL_PLANE_RECOVERY`、`EXTERNAL_WATCHDOG`、`PROVIDER_AUDIT` 与 `EXTERNAL_PROVIDER_CONSOLE`。集群内 Grafana、Hubble、Temporal、OpenBao 的 Console 使用本地 Console Access Contract；GitLab、Model Provider 与安全公告 Feed 由各自 Connector/Source Adapter 管理。Target Architecture 中 Jenkins 是用户手工使用的外部系统，不存在 Jenkins Adapter、Webhook 或状态投影。
 
 运维/IaC拥有 Cloud Account、网络、外部 Edge、DNS、Egress、Cloud KMS、Cluster 外 Backup、Watchdog、Provider Audit 及其变更恢复；平台只拥有 gateway 之后的应用路由、认证、稳定 Infrastructure Port、状态 Feed 校验、只读 Projection、告警关联与受权 Console 入口。Super Admin 和平台 API 不跨越这个边界。
 
@@ -115,7 +119,9 @@ Collector、Feed 与 imported Projection 只改变运维可见性。它们不可
 
 外部来源没有机器可读 API 或受控探针时，其集成状态必须为 `NOT_INTEGRATED`。运维可以提供有界有效期的签名 Operations Declaration；Projection 必须显示声明来源、Coverage 与到期时间，过期后回到 `UNKNOWN`，不能把人工声明当作持续机器观测或真实依赖健康证明。
 
-## 7. Operations Read Model、Console 与安全公告
+## 7. 增强 Operations Read Model、Console 与安全公告
+
+Operations Read Model、安全公告、复杂 Console 与高级 Provider 治理是完整 Target Architecture 中按 Capability Package 激活的增强能力，不是基础应用启动的前置条件。启用时必须满足本节完整 Contract；未启用时不部署其专属 Adapter、Collector、Scanner 或页面后端，也不以空实现宣称通过。
 
 Operations Read Model 是当前环境的可重建只读投影，统一查询组件 Baseline、有效配置、Health、容量、性能、Backup/Restore、依赖、Alert、Gap、Drift 与趋势。它消费受限 Observability/Operations Adapter，不替代业务事实、Audit、IaC Desired State 或专业查询产品。页面层级固定为：
 
@@ -129,11 +135,15 @@ Operations Read Model 是当前环境的可重建只读投影，统一查询组�
 
 每次打开前都校验当前 Session、Capability、Scope 与目标 Link Policy。平台没有 SSO 时，目标系统继续执行自己的认证；Console Access 不得降低、跳过或替代目标认证，也不得向浏览器暴露 Data Source、Kubernetes、Cloud 或 Console Admin Credential。Audit 至少记录 actor、Environment、目标 console/link、授权结果与打开动作，不记录短期访问材料、目标 Session 或目标页面内容。
 
-当前架构基线的安全公告由 Frontend 轮询 Backend API，不使用 WebSocket 或实时推送。Source Adapter 只访问批准的 CISA KEV、NVD API 2.0 与 OSV API 这三类官方机器可读来源，不抓取 HTML，也不接受任意 URL；各来源隔离 Endpoint、timeout、限流与凭据引用。
+Target Architecture 的安全公告由 Frontend 轮询 Backend API，不使用 WebSocket 或实时推送。Source Adapter 只访问批准的 CISA KEV、NVD API 2.0 与 OSV API 这三类官方机器可读来源，不抓取 HTML，也不接受任意 URL；各来源隔离 Endpoint、timeout、限流与凭据引用，并生成包含 Source、Retrieved At、有效期、Coverage、Canonical Hash 和原始响应/Object Reference 的不可变 `Vulnerability Data Snapshot`。
 
-默认每周日 `02:00 Asia/Shanghai` 增量采集，每周一 `07:00 Asia/Shanghai` 自动发布。单个失败来源最多有界重试 3 次。调度、时区、来源允许列表、Endpoint、筛选条件、timeout、限流与重试值全部是注册的版本化配置，不硬编码在 Frontend、业务代码或任务脚本中。Technology Inventory 同样是平台级版本化配置；结果以 CVE 优先、来源 Advisory 与规范化指纹辅助去重，筛选匹配 Inventory 的 CISA KEV 与 High/Critical 漏洞。
+依赖与 SBOM 漏洞匹配通过 `VulnerabilityScannerPort` 使用版本锁定的 `OSV-Scanner` 一次性 Job。Job 只消费 Source Adapter 提供的精确 OSV Data Snapshot，并以 Offline Mode 扫描批准的 CycloneDX/SPDX Artifact 或受支持的 Package Manifest/Lockfile；它没有外部 Egress，不能自行查询 OSV、deps.dev、Package Registry 或其他补充来源。解析需要 Snapshot 之外的数据时本次 Coverage 标记不完整，不能临时放行网络。`OSV-Scanner` 不作为常驻服务、不拥有公告状态，也不替代 CISA KEV/NVD Source Adapter、筛选、去重、发布和 Audit。
 
-部分来源失败时公告必须标识成功、失败与缺失的 Coverage；全部来源失败时保留上一期、不发布空公告并告警。公告、游标、来源摘要/Hash、去重、筛选、重试、生成与发布均可查询且可审计；可见性只由公告读取 Capability + Scope 判定。
+默认每周日 `02:00 Asia/Shanghai` 增量采集并运行 `OSV-Scanner`，每周一 `07:00 Asia/Shanghai` 自动发布。单个失败来源或扫描 Job 最多有界重试 3 次。调度、时区、来源允许列表、Endpoint、扫描器版本/digest、筛选条件、timeout、限流与重试值全部是注册的版本化配置，不硬编码在 Frontend、业务代码或任务脚本中。Technology Inventory 同样是平台级版本化配置；结果以 CVE 优先、来源 Advisory 与规范化指纹辅助去重，筛选匹配 Inventory 的 CISA KEV 与 High/Critical 漏洞。
+
+每次扫描形成不可变 `Vulnerability Scan Evidence`，至少绑定 Scanner Image/Config Digest、输入 Artifact exact Object Version 与 Hash、Vulnerability Data Snapshot ID/Hash、开始/完成时间、Coverage、结构化 JSON/SARIF、输出 Hash、状态和错误摘要；公告生成记录只保存稳定 Evidence 引用并可据此重放筛选。扫描状态固定为 `SUCCEEDED | PARTIAL | FAILED | EXPIRED`：仅可在扫描证据有效且全部必需输入/来源成功时标记 `SUCCEEDED`；可选来源缺失但有效结果仍可证明时为 `PARTIAL`，自动发布必须醒目标明 Gap；扫描失败/超时、输出不可解析、必需 Snapshot/输入缺失或证据超过有效期时为 `FAILED/EXPIRED`，保留上一期公告、阻止本期自动发布并告警。任何未扫描、缺失或过期状态都不能解释为“无漏洞”。
+
+部分可选来源失败时公告必须标识成功、失败与缺失的 Coverage；全部来源失败、任一必需来源失败或扫描为 `FAILED/EXPIRED` 时保留上一期、不发布空公告并告警。公告、游标、来源摘要/Hash、扫描 Evidence、去重、筛选、重试、生成与发布均可查询且可审计；可见性只由公告读取 Capability + Scope 判定。
 
 ## 8. 不变量
 
@@ -143,3 +153,4 @@ Operations Read Model 是当前环境的可重建只读投影，统一查询组�
 4. Frontend、脚本、旧缓存或 Operations Projection 不能自行决定 Effective Configuration。
 5. 外部状态的唯一导入形式是已验证、可去重、受时效约束的只读 Envelope，平台不接受 IaC、Shell、Provider Mutation 或任意 Callback。
 6. Configuration 生命周期只由 10 Configuration Governance 拥有；06 只消费 Effective Configuration，不建立平行 Draft、Publish、Rollback 或 Promotion 状态。
+7. Capability 未激活时不部署其专属 Deployable；已激活能力必须满足完整 Port/Adapter、安全、恢复和可观测 Contract，不能使用半成品降级启用。

@@ -7,9 +7,13 @@
 
 本文是 Configuration Catalog、Typed Configuration 生命周期、兼容演进、Effective Snapshot 与跨环境 Promotion 的唯一规范事实源。它定义通用 Draft、Publish、Rollback、Rebase、Promotion、Lineage 与 Divergence 协议；各领域模块拥有本模块的 Namespace、Typed Schema、默认值、约束、Reader/Migrator、解析器、业务解释与对应 Policy 数据，不得另行建立平行配置协议。
 
+本文描述完整 Target Architecture，不记录 Release 版本、实现状态、环境 Promotion 状态或 Capacity Profile 选择；这些事实只见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)。Typed Schema、仅 Super Admin 管理、服务端 Validation、Publish、不可变 Effective Snapshot、可靠 Audit 与 Rollback 是基础生命周期；Draft Takeover、Schema-aware Three-way Rebase、DEV→PROD Bundle Promotion、Lineage High-water 与 Divergence Review 是增强 Contract。
+
 Configuration 位于 `backend/control_plane/app/modules/configuration/`，是 Python Control Plane 模块化单体中的独立领域模块，不是独立 Deployable 或既有微服务。Web、Control Plane 装配、Port/Adapter、External Provider、Operations Read Model、Console 与安全公告由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有；Super Admin、`platform.configuration.manage`、TOTP Challenge 与恢复资格由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有；通用 Audit Envelope、WORM、Retention 与安全保护由[安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)拥有。
 
 “唯一 owner”指 Catalog、通用生命周期协议、状态语义、跨环境治理和公开 Configuration Facade 只有一个事实来源，不表示把所有 Namespace 数据集中到一个数据库 Schema。每个领域模块仍在自己的模块 Schema 中拥有本 Namespace 的 Draft、Published Version、Active Pointer、Policy Snapshot 与迁移，并负责在本模块事务内完成校验、切换 Pointer、Outbox 与 Audit；Configuration 模块拥有 Catalog 注册元数据、跨模块索引以及 Promotion Case、Lineage、Rebind、Divergence 等治理数据，并只通过已注册的 Application Facade/Port 编排领域 owner。它不得直写其他模块表，跨模块或跨 Scope 的 ChangeSet 不形成全局事务。
+
+责任边界固定为：12 选择 Reliability/Capacity Profile；10 拥有已发布 `PLATFORM_POLICY` 的有效值、Snapshot 与生命周期；09 读取 PCS 与有效配置校验 Aggregate Physical Ceiling、资源放置和 Headroom。10 不声明物理容量，09 不产生或修改 Policy 有效值，12 不复制配置生命周期。
 
 ## 2. Catalog、分类与 Schema
 
@@ -29,13 +33,13 @@ Configuration 位于 `backend/control_plane/app/modules/configuration/`，是 Py
 
 `DRAFT` 是不参与运行时解析和 Effective Policy 的候选；创建、编辑、校验失败与归档均进入 Audit，不得记作已发布变化。相同模块 Namespace + Scope 可并存多个互不阻塞且不共享可变内容的 Draft；每个 Draft 固定记录独立 Draft ID、Base Active Policy Version、Schema Revision、Content Hash、Draft Revision/ETag、Owner 与 `lastMeaningfulActivityAt`。每个 Draft 同时只有一个 Owner，且只有仍有效的 Super Admin Owner 可编辑、手工归档、校验、Apply Rebase 或发起 Publish；任何写命令都校验 Draft Revision/ETag。
 
-其他有效 Super Admin 只能查看、比较、Clone，或填写原因并以 ETag 条件执行 Takeover。Clone 创建新 Draft ID、独立内容和新 Owner，保留来源 Draft/Version/Base，但不继承 Validation、Impact Preview 或 TOTP；Base 过期时仍须 Rebase。Takeover 原子切换 Owner、提升 Revision、使既有 Validation、Preview 与 Challenge 失效并写 Audit；旧 Owner 的旧 Revision 写入返回 Conflict。Owner 失效不会发布或删除 Draft，只能由相同 Takeover Contract 接管。
+增强 Draft Collaboration 允许其他有效 Super Admin 查看、比较、Clone，或填写原因并以 ETag 条件执行 Takeover。Clone 创建新 Draft ID、独立内容和新 Owner，保留来源 Draft/Version/Base，但不继承 Validation、Impact Preview 或 TOTP；Base 过期时仍须 Rebase。Takeover 原子切换 Owner、提升 Revision、使既有 Validation、Preview 与 Challenge 失效并写 Audit；旧 Owner 的旧 Revision 写入返回 Conflict。Owner 失效不会发布或删除 Draft，只能由相同 Takeover Contract 接管。
 
 Draft 生命周期为 `DRAFT → ARCHIVED`，不物理删除或原地恢复。连续 30 天无 Meaningful Activity 自动归档；30 天是版本化 `PLATFORM_POLICY` 的默认值，由 Super Admin 修改并按 `NEXT_SCHEDULE` 生效，不得写死在 Frontend、任务或镜像。Meaningful Activity 仅包括创建/修改内容、Apply Rebase、Takeover 和重新执行服务端校验；查看、列表刷新、Diff/Preview 与健康检查不刷新时间。后台展示最后活动时间、按当前 Policy 计算的预计归档时间及归档来源。
 
 Configuration 受控任务以 Workload Identity 执行幂等归档，并以 Draft ID、状态、Revision/ETag、Owner、`lastMeaningfulActivityAt` 做条件更新；扫描后发生有效活动即跳过本次归档，Policy Version、Cutoff 与处理结果进入 Audit。`ARCHIVED` 是不可变只读记录，禁止编辑、校验、Rebase、Takeover 或 Publish，并使 Validation、Preview、Content Hash Binding 与 Challenge 失效；归档不改变 Active Pointer，无需 Publish TOTP，但必须写 Outbox/Audit 并通知 Owner，Owner 不可用时通知当前 Super Admin。任何有效 Super Admin 只能从 Archived Draft Clone 新 Draft；`clonedFromArchivedDraftId`、来源 Revision/Base、全部 Draft Revision、Clone/Takeover/Rebase 链和 Audit 永久保留。`STALE` 表示 Base 过期，`ARCHIVED` 表示只读生命周期，管理后台分别筛选 Active、Stale 与 Archived。
 
-## 4. ChangeSet、发布、快照与回滚
+## 4. 基础生命周期：ChangeSet、发布、快照与回滚
 
 `Configuration ChangeSet` 是 `PLATFORM_POLICY` 的最小发布原子单位，只属于一个模块 Namespace 和一个 Scope，可包含多个已注册且允许用于该 Scope 的 Key。模块以当前 Active Policy 和 Scope 继承结果组装完整 Candidate，对跨字段约束统一校验；任一 Key 失败则整个 ChangeSet 不生效。跨模块或跨 Scope 使用独立 ChangeSet、版本与补偿结果，只可关联到同一运维记录，不形成全局事务。
 
@@ -53,7 +57,7 @@ Published Version 保存规范化、带 Snapshot Hash 的完整不可变 `Policy
 
 Rollback 不移动旧 Active Pointer，也不编辑历史 Version；它以选定的不可变 Published Snapshot 创建带 `rollbackFromVersion` 的新 Draft，按当前 Schema 迁移后重新经历 Validation、Impact Preview、授权、全新 TOTP 与 Publish，形成更高版本。旧值不再满足 Schema、依赖或 Security Floor 时回滚必须拒绝。Policy 的 Publish/Rollback 只按 Effect Semantics 影响对象；Session 撤销、Model 停用、Attempt 取消或 Artifact 隔离使用各领域显式安全命令。
 
-## 5. Stale Draft、Rebase 与 Schema 演进
+## 5. 增强 Contract：Stale Draft、Rebase 与 Schema 演进
 
 ### 5.1 Schema-aware Three-way Rebase
 
@@ -73,7 +77,7 @@ Configuration Schema、Policy Snapshot 与应用版本必须执行 `EXPAND → M
 
 模块必须声明每个应用版本支持的 Schema Revision 范围；Configuration Publish Gate 与 Kubernetes Rollout Gate 同时核对 Active Snapshot、目标版本和回滚镜像的支持范围，不兼容即阻止并展示模块、Scope、Snapshot Version、Revision 与修复动作。启动、Readiness 与普通请求不得自动创建 Published Version、切换 Pointer 或写回迁移；自动化只能生成 Draft、只读扫描和建议。无法解析 Active Snapshot、Hash 不一致或 Revision 越界时 Fail Closed、Readiness 失败并告警，禁止回退代码默认值、旧缓存或部分 Key；滚动升级期间必须保留兼容实例。迁移、扫描、阻断、覆盖率与 Contract 清理进入 Audit/Observability。
 
-## 6. DEV→PROD Promotion
+## 6. 增强 Contract：DEV→PROD Bundle Promotion
 
 DEV→PROD 只传递从 DEV 不可变 `PLATFORM_POLICY` Published ChangeSet 选择出的签名 Typed Change Intent。Promotion 不复制 PostgreSQL、数据库备份、Draft、运行时缓存、业务数据或 Secret，不建立 DEV→PROD 数据库连接、内部写 API、共享凭据、运行时读取或自动同步；Super Admin 在同一管理应用的 DEV 实例导出 Canonical JSON Bundle，并在独立 PROD 实例主动导入。
 
@@ -89,7 +93,7 @@ Signing Key 生命周期为 `PENDING → ACTIVE → VERIFY_ONLY → RETIRED`，D
 
 疑似泄露的 Key 立即停止签名并经紧急 GitOps 标记 `REVOKED`。PROD 拒绝该 Key 所有尚未首次导入的 Bundle；由其创建但未 Published 的 Case/Draft 转为安全阻断并要求用新 Key 从可信 DEV Version 重导。已 Published PROD Version 不自动回滚，而是产生 Critical 安全事件，列出 Bundle、Draft、发布人、Scope 与回滚入口。Key 创建、Trust Store 变更、Canary、切换、Verify-only、Retire、Revoke、过期拒绝和受影响 Case 都进入关联 Audit/Observability；Private Key Material 永不进入 PostgreSQL、Git、Bundle、日志或管理后台。
 
-## 7. Import、Lineage、Rebind 与 Divergence
+## 7. 增强 Contract：Import、Lineage、Rebind 与 Divergence Review
 
 ### 7.1 PROD Import、来源与顺序保护
 
@@ -136,3 +140,4 @@ Audit 不得包含 Secret、Token、密码、Access Key、TOTP Secret、Private 
 5. DEV 与 PROD 不建立运行时配置同步、共享数据库、共享凭据或反向写入；Promotion 只传递签名、Typed、可验证的 Change Intent。
 6. Source Lineage、High-water Mark、Signing Key 与 Divergence 历史不能因恢复、轮换、回滚或重新导入而静默重置或改写。
 7. Configuration 始终是模块化单体中的独立领域模块，不形成独立 Deployable 或微服务。
+8. 12 选择 Capacity Profile，10 拥有已发布 Policy 的有效值与生命周期，09 只校验物理 Ceiling；任何一方都不能复制或改写另一方事实。

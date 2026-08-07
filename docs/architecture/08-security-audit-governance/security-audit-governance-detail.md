@@ -3,11 +3,26 @@
 > 文档层级：L2 规范事实源
 > 对应主文：[安全、审计与治理](./security-audit-governance.md)
 
-## 1. 责任边界与环境状态
+## 1. 责任边界与 Profile 语义
 
 本文是安全、Secret、PKI、加密、Audit、供应链、Provider 信任材料与 Break-glass 的唯一规范事实源。它消费 01 的本地身份、Session、Capability、Super Admin 和 Recovery Port 语义，却不复制这些业务状态或授权判定；它消费 06 的 Console Access 与 External Provider Contract，却不复制其链接、Envelope 或 Ingest 算法；它消费 07 的数据服务恢复链和 09 的环境、Cluster、网络、容量与 DR 语义。
 
-DEV 是当前唯一实例化的 Platform Environment，当前仓库仍是 Umi Max 前端模板。Python Control Plane、数据服务、基础设施和 PROD 是批准的目标架构，不表示已有对应运行实例。未来 PROD 从同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC、Cluster 中重新实例化，不共享 DEV 的运行实例、Session、数据、凭据、密钥或故障域。
+本文描述完整 Target Architecture，不声明任何 Environment 已经部署哪些安全组件。实施阶段、Capability 激活状态、Release 验收与 Reliability/Capacity Profile 只见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)；实际 Trust、Image、配置、拓扑和恢复证据由环境 GitOps Desired State、PCS、Audit 与 Restore Drill 证明。
+
+### 1.1 Security Floor
+
+下列控制是所有已启用 Capability 的不可降级 Security Floor，与 Replica 数、HA 或 Hardened Profile 无关：
+
+| 控制 | 最低判定 |
+| --- | --- |
+| Human Identity | 本地账号 Password 使用 Argon2id、独立 salt 与受保护 pepper；TOTP、Session、撤销和服务端授权按 01 Contract 执行。 |
+| Secret | Secret、Token、Private Key 和认证材料不进入普通 Environment Variable、镜像、Git、Artifact、PV、日志、Trace、Metric 或 Audit 正文；只经最小权限 Workload Identity 注入 Pod `tmpfs` 内存文件。 |
+| Transport and identity | Browser、Gateway、Workload 与数据服务使用 TLS/mTLS、目标验证、环境/用途隔离的身份和最小权限；身份或吊销状态未知时 Fail Closed。 |
+| Audit | 受保护写入、高权限动作、配置、安全判定与恢复形成可靠、追加式、可关联且受 WORM 保护的 Audit。 |
+| Supply chain | 运行镜像绑定 provenance、SBOM、签名、漏洞扫描和精确 digest；Coverage 或判定未知时阻止部署。 |
+| Recovery | 密钥、Trust Store、Backup、Manifest、对象版本、恢复顺序和真实 Restore 结果可验证；不能通过清空回放状态或放宽安全判定恢复服务。 |
+
+Launch Profile 可以对 OpenBao、PKI Publication、File/Image Scanner 采用单实例并允许单点故障时安全停止，但仍必须满足上表全部判定、硬 Resource Limit、Cluster 外 Backup 和真实 Restore。OpenBao 多 Voting Server、完整 PKI 轮换自动化、Scanner 多副本与更高频率 DR 属于 Hardened Target；这些增强提高连续性和恢复目标，不为任何已启用能力创建较弱安全模式。
 
 ## 2. 身份材料保护
 
@@ -25,30 +40,32 @@ Audit 和 Telemetry 只允许记录不可逆引用、受限摘要、结果、版
 
 每个环境部署独立 OpenBao。Kubernetes Auth 为每个服务建立独立 ServiceAccount、Auth Role 和最小权限 Policy，Role 精确绑定 Namespace 与 ServiceAccount；服务仅能读取自己用途的 Secret 路径和必要的短期凭据。Workload 使用 `audience=openbao` 的 projected ServiceAccount Token，OpenBao 仅以本环境、最小权限 TokenReview 验证该身份；不接受默认 Audience、长期 ServiceAccount Token 或跨环境身份。平台不提供集中高权 Token Broker，也不把平台 API 变成 Secret 转发通道。
 
-OpenBao Server、官方 Helm Chart、Agent Injector 和附属镜像的精确版本/digest 只由 [09 的 PCS](../09-infrastructure-operations/infrastructure-operations-detail.md)锁定；不得使用浮动 Tag。OpenBao 使用 Integrated Storage（Raft），不以 PostgreSQL 或业务数据服务作为 Storage Backend。DEV 使用 3 个 Voting Server、quorum 2；未来 PROD 使用 5 个 Voting Server、quorum 3。每个 Server 使用独立 10 GiB SSD RWO Data PVC，并通过 Anti-Affinity 与 Topology Spread 分散；同一时刻只有一个 Active，其他满足 quorum 的 Voting Server 为同步 Standby。
+Launch Profile 可使用一个 OpenBao Voting Server 与一个 Agent Injector Replica，但 Integrated Storage、TLS、Kubernetes Auth、最小 Policy、`tmpfs` 注入、双 Audit Device、应用一致性 Raft Snapshot、Cluster 外 `openbao-recovery`、离线 OpenPGP 和 Restore Drill 均不可省略。单实例不可用时依赖新 Secret 或续租的动作安全停止，不能回退到普通 Environment Variable、长期共享 Token 或明文 Listener。
+
+OpenBao Server、官方 Helm Chart、Agent Injector 和附属镜像的精确版本/digest 只由 [09 的 PCS](../09-infrastructure-operations/infrastructure-operations-detail.md)锁定；不得使用浮动 Tag。OpenBao 使用 Integrated Storage（Raft），不以 PostgreSQL 或业务数据服务作为 Storage Backend。Hardened Target 中 DEV 使用 3 个 Voting Server、quorum 2，PROD 使用 5 个 Voting Server、quorum 3。每个 Server 使用独立 10 GiB SSD RWO Data PVC，并通过 Anti-Affinity 与 Topology Spread 分散；同一时刻只有一个 Active，其他满足 quorum 的 Voting Server 为同步 Standby。
 
 | 环境 | Voting Server | 单 Server Request | 单 Server Limit | 单 Server Data PVC |
 | --- | ---: | --- | --- | ---: |
 | DEV | 3 | 250m CPU / 512 MiB | 1 CPU / 1 GiB | 10 GiB |
 | PROD | 5 | 500m CPU / 1 GiB | 2 CPU / 2 GiB | 10 GiB |
 
-Data PVC 使用低延迟、非共享、支持在线扩容的 SSD RWO StorageClass；70%/85% 为 Warning/Critical，扩容不执行在线缩容。Server 副本数固定为 DEV 3、PROD 5，不使用 HPA；资源变化经 GitOps 逐节点执行，并重新验证 quorum、Raft Catch-up、PKI、Snapshot 与故障切换。
+Data PVC 使用低延迟、非共享、支持在线扩容的 SSD RWO StorageClass；70%/85% 为 Warning/Critical，扩容不执行在线缩容。Hardened Target 的 Server 副本数固定为 DEV 3、PROD 5，不使用 HPA；资源变化经 GitOps 逐节点执行，并重新验证 quorum、Raft Catch-up、PKI、Snapshot 与故障切换。Launch 单实例同样必须在 PCS 中声明硬 Request/Limit 与 PVC Ceiling。
 
 OpenBao API/UI Listener 只启用 TLS 1.2/1.3，并以 ClusterIP 暴露。8200 仅允许 Agent Injector、批准的 Workload、受控运维和备份入口访问；8201 仅允许 OpenBao Pod 之间的 Raft/Cluster mTLS 通信。Sandbox、Browser 和未登记 Namespace 均无 OpenBao 网络路径；明文 Listener、NodePort、LoadBalancer 和公网暴露均被禁止。
 
-各环境默认 Workload Token TTL 为 1 小时，续期和撤销严格受所属 Auth Role/Policy 控制。OpenBao Agent Injector 在每个 Cluster 以两个无状态副本跨 Node 运行：DEV 单副本 Request/Limit 为 `50m CPU / 128 MiB` 与 `250m CPU / 256 MiB`，未来 PROD 为 `100m CPU / 256 MiB` 与 `500m CPU / 512 MiB`。注入的 Agent Sidecar 计入所属业务 Workload，不计入 Server 或 Injector 容量。
+各环境默认 Workload Token TTL 为 1 小时，续期和撤销严格受所属 Auth Role/Policy 控制。Hardened Target 的 OpenBao Agent Injector 在每个 Cluster 以两个无状态副本跨 Node 运行：DEV 单副本 Request/Limit 为 `50m CPU / 128 MiB` 与 `250m CPU / 256 MiB`，PROD 为 `100m CPU / 256 MiB` 与 `500m CPU / 512 MiB`。注入的 Agent Sidecar 计入所属业务 Workload，不计入 Server 或 Injector 容量。
 
 Agent Injector 只将 Secret 写入 Pod `tmpfs` 内存文件，并用文件权限限制读取者。Secret 禁止写入环境变量、镜像、Git、Prompt、Artifact、PV、日志、Trace 或 Metric；进程退出、Pod 销毁或 Lease 失效时，内存文件随运行时清除。Workload 必须通过其自身 Kubernetes Identity 获取短期 Token，不共享人类或其他服务的 Token。
 
-当前架构基线的数据库凭据是按服务、用途、Schema 与环境隔离的静态最小权限凭据，由 Agent Injector 写入 Pod `tmpfs` 文件；Deployment、Helm Values、ConfigMap 和 Environment Variable 不保存凭据。未来启用动态数据库凭据时，只替换 `SecretManagerPort`/credential provider、轮换与连接重建实现，不改变领域模块、数据库 owner 或授权语义。
+基础 Credential Provider 使用按服务、用途、Schema 与环境隔离的静态最小权限数据库凭据，由 Agent Injector 写入 Pod `tmpfs` 文件；Deployment、Helm Values、ConfigMap 和 Environment Variable 不保存凭据。动态数据库凭据作为独立演进只替换 `SecretManagerPort`/credential provider、轮换与连接重建实现，不改变领域模块、数据库 owner 或授权语义。
 
 每个环境采用 Shamir `5/3` 初始化：共五个分片，任意三个可完成解封。没有外部 Seal KMS/HSM。当前所有分片由同一保管人暂管，这是明确的治理例外，不构成多人制衡；交接、盘点、使用与变更都必须写入独立 Audit。OpenBao Root Token 不作为日常服务凭据，Root 操作只在受控 Break-glass 条件下执行。
 
 OpenBao Audit 同时尝试写入独立 Audit PVC 与 stdout 两个 `file` Audit Device。一个 Device 发生非阻塞失败而另一个成功记录时请求可以继续；两个 Device 均无法记录时请求 Fail Closed。归档 Audit 写入 `audit-worm`，默认保留 365 天 `COMPLIANCE` Object Lock；对象保护、精确版本与清理由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有。
 
-每个 OpenBao Pod 的 Audit PVC 与 Raft Data PVC 分离：DEV 为 5 GiB，未来 PROD 为 10 GiB。本地缓冲默认保留 7 天，不是长期权威归档；PVC 使用率在 70%/85% 进入 Warning/Critical。两个 `file` Audit Device 以 HCL/GitOps 声明，一个落入独立 Audit PVC，另一个写入 stdout；均采用 JSON、`log_raw=false` 与 HMAC 保护。任一 Device 失败但另一个可记录时请求可继续，两个 Device 都无法记录时必须 Fail Closed。
+每个 OpenBao Pod 的 Audit PVC 与 Raft Data PVC 分离：DEV 为 5 GiB，PROD 为 10 GiB。本地缓冲默认保留 7 天，不是长期权威归档；PVC 使用率在 70%/85% 进入 Warning/Critical。两个 `file` Audit Device 以 HCL/GitOps 声明，一个落入独立 Audit PVC，另一个写入 stdout；均采用 JSON、`log_raw=false` 与 HMAC 保护。任一 Device 失败但另一个可记录时请求可继续，两个 Device 都无法记录时必须 Fail Closed。
 
-OpenBao Raft Snapshot 使用应用一致性快照，不以多个 PVC/CSI Snapshot 充当恢复来源。DEV 每 6 小时生成并保留 7 天；未来 PROD 每 1 小时生成，保留 48 小时周期点和 30 天每日点。DEV 每月、PROD 每季度在隔离环境执行完整恢复演练；DR 目标为 DEV `RPO ≤ 6h`、`RTO ≤ 60min` 及 PROD `RPO ≤ 1h`、`RTO ≤ 60min`。调度、保留、Object Lock、阈值和演练周期均为版本化 GitOps 运维配置，管理后台只读展示有效值与证据。
+OpenBao Raft Snapshot 使用应用一致性快照，不以多个 PVC/CSI Snapshot 充当恢复来源。Backup/Restore 和演练是 Security Floor；Hardened Target 提高频率：DEV 每 6 小时生成并保留 7 天，PROD 每 1 小时生成，保留 48 小时周期点和 30 天每日点。DEV 每月、PROD 每季度在隔离环境执行完整恢复演练；Hardened DR 目标为 DEV `RPO ≤ 6h`、`RTO ≤ 60min` 及 PROD `RPO ≤ 1h`、`RTO ≤ 60min`。调度、保留、Object Lock、阈值和演练周期均为版本化 GitOps 运维配置，管理后台只读展示有效值与证据。
 
 OpenBao/Chart/Plugin 升级以及高风险 Auth、Policy、Secret Engine、Seal、Shamir 或 Transit Key 变更前，必须生成并验证按需 Snapshot。每份 Manifest 绑定 Environment、Cluster ID、Snapshot Time、OpenBao/Chart/Image Version、Raft Index、Seal Generation、独立的 Shamir Share Generation、Object Version、Size、SHA-256 与 OpenPGP Recipient Fingerprint；Seal Generation 与 Shamir Share Generation 是两个独立字段，不得合并、互相推导或互相替代。`openbao-recovery` 对象使用 Versioning 和默认 7 天 `GOVERNANCE` Object Lock。Shamir 轮换后立即生成并验证新 Snapshot；旧 Shamir Share Generation 的 Share 保留到与其一一绑定的最后一份 Snapshot 到期且 Restore 验证通过。`snapshot-force` 只能由受控 Break-glass 身份在批准的恢复窗口执行，CronJob 和普通运维身份没有该权限。
 
@@ -64,11 +81,13 @@ OpenBao PKI 提供环境内证书签发，cert-manager 负责 Kubernetes 工作�
 
 Root Private Key 保持离线；每个环境只使用自己的 Intermediate、签发策略、CRL 和证书库存。公开 Root Bundle 是经 GitOps 审核、版本化且绑定 digest/review evidence 的 PKI Artifact；`TrustBundlePort` 将其分发到批准的 Node、Workload 和受控员工终端，不能分发 Private Key、Token、Intermediate 或可签发凭据。PKI 发行和吊销均记录证书标识、用途、环境、Issuer、时间、结果与 Correlation ID。
 
+TLS、受信 Root、环境隔离 Issuer、叶证书更新和吊销可验证性属于 Security Floor。双 Root/双链重叠、完整 CRL/OCSP Publication 冗余和全自动覆盖验证属于 Hardened Target；尚未采用完整增强自动化时，证书过期、吊销状态或 Trust Bundle 不可证明仍必须 Fail Closed，不能降级为跳过校验。
+
 Gateway Leaf 有效期 30 天，提前 10 天进入轮换窗口。Full CRL 每 24 小时发布，并给予最多 6 小时的受控传播宽限；OCSP 响应有效期 4 小时；不使用 Delta CRL。紧急吊销在 Revocation 可靠提交后立即 rotate/publish Full CRL 并验证签名、Issuer、Serial 状态和实际发布内容。依赖吊销状态的受控 mTLS Client 在 CRL/OCSP 状态不可证明时 Fail Closed。
 
 Root 或 Intermediate 轮换使用双 Root/双链重叠：先发布新旧 Root Bundle，验证 Node、Workload、Runtime 与受控终端的分发覆盖，再切换新 Intermediate/Leaf Chain。旧 Issuer 保持只读 CRL/OCSP 能力，旧 Root/链只有在全部相关 Leaf、缓存窗口与安全缓冲结束且无消费者证据后才能退役。公开 CRL、OCSP 和证书链只通过只读 `pki-publication` 发布。
 
-每个环境的 `pki-publication` 使用两个跨 Node 分散的无状态副本。它只访问当前环境的公开 Issuer Certificate、Full CRL 与 OCSP Read Endpoint，不持有 OpenBao Token、Kubernetes Secret、CA/Leaf Private Key 或签发/吊销权限。Gateway 只允许精确 `/.well-known/pki/` 状态路径与协议规定的方法，拒绝 Cookie、Authorization、Session、未知 Issuer、超限请求和非 PKI 路径。
+Hardened Target 中每个环境的 `pki-publication` 使用两个跨 Node 分散的无状态副本。它只访问当前环境的公开 Issuer Certificate、Full CRL 与 OCSP Read Endpoint，不持有 OpenBao Token、Kubernetes Secret、CA/Leaf Private Key 或签发/吊销权限。Gateway 只允许精确 `/.well-known/pki/` 状态路径与协议规定的方法，拒绝 Cookie、Authorization、Session、未知 Issuer、超限请求和非 PKI 路径。
 
 每次 Gateway 叶证书续签必须设定 `privateKey.rotationPolicy=Always`，生成新的 Leaf Private Key；证书签发、Secret 更新、Gateway 热加载和实际对外证书 Serial/SAN/Chain/有效期形成可观测闭环。PKI 状态路径、CRL/OCSP 响应及 Trust Bundle 仅传播公开材料；轮换期间旧 Issuer 保持必要的只读吊销状态，直到其已签发叶证书、缓存窗口与安全缓冲均满足退役条件。
 
@@ -106,7 +125,7 @@ Frontend 固定启用 `claimMapper=default` 与 `authorizer=default`，禁止 `n
 
 `Sensitive API Resource Catalog` 至少包含 `secrets` 与 `configmaps`，并只在经过数据分类、API Discovery 与资源标识校验后加入确实承载敏感 Payload 的 CRD。Catalog 使用官方精确小写复数 `resource` 或 `resource.group` 标识，例如 `widgets.example.io`，不使用 Kind、API Version、模糊业务名称或 `*.*` Wildcard。Catalog、CRD 或 Provider 的改变属于新的 PCS/GitOps 变更，不能由平台后台动态修改。
 
-`identity` 只允许作为既有明文迁移期间的最后临时读 fallback，永不作为 writer。新 Key 必须先作为同一 `secretbox.keys` 数组中的第二个 read candidate，再提升为第一个 writer；变更通过原子文件替换逐台 Drain、restart、verify，禁止各 API Server 使用不同 Keyring 或并行写配置。
+`identity` 只允许作为既有明文迁移期间的最后临时读 fallback，永不作为 writer。新 Key 必须加入同一 provider array 中现有 `secretbox` provider 的同一个 `keys` 数组，先作为第二个 read candidate，再提升为第一个 writer；变更通过原子文件替换逐台 Drain、restart、verify，禁止各 API Server 使用不同 Keyring 或并行写配置。
 
 每次配置、Catalog 或 Keyring 变更都先生成 `BACKUP_VERIFIED` Pre-change etcd Snapshot；该 Snapshot 只能绑定变更时实际 Effective 的 Provider 顺序、Active Writer、完整 Read Keyring、Catalog、Config Hash 与不可变 Recovery Bundle ID。包含新 Key 或下一阶段顺序的 Candidate Bundle 必须使用不同 Bundle ID 并标记 `PENDING`，不能绑定到 Pre-change Snapshot，也不能在对应配置生效前冒充 Effective Recovery Bundle。每个阶段生效后生成新的不可变 Bundle/State Manifest，后续 Snapshot 只绑定其生成时的 Effective Generation。
 
@@ -145,9 +164,9 @@ Cluster 外 etcd snapshot + recovery bundle
 
 ## 8. File 与 Image Security
 
-File Security Worker 使用 [09 PCS](../09-infrastructure-operations/infrastructure-operations-detail.md)锁定的 ClamAV Engine/Image。每个环境运行 2 个 replica，总并发为 4；单对象上限 100 MiB，`MaxScanSize=400 MiB`、`MaxRecursion=17`、`MaxFiles=10000`、`MaxScanTime=120s`。扫描结果固定为 `CLEAN`、`MALICIOUS`、`SUSPICIOUS` 或 `ERROR`。
+File Security Worker 使用 [09 PCS](../09-infrastructure-operations/infrastructure-operations-detail.md)锁定的 ClamAV Engine/Image。Launch Profile 可使用单 Replica；Hardened Target 每环境运行 2 个 Replica、总并发为 4。两种 Profile 的单对象上限均为 100 MiB，`MaxScanSize=400 MiB`、`MaxRecursion=17`、`MaxFiles=10000`、`MaxScanTime=120s`，扫描结果固定为 `CLEAN`、`MALICIOUS`、`SUSPICIOUS` 或 `ERROR`。
 
-每个 Scanner Replica 是带 `File Security Worker` 与 `clamd/freshclam` 的独立 StatefulSet Pod，通过 Pod 内 Unix Socket 调用，不暴露 ClamAV 网络服务。每副本使用独立 5 GiB RWO Signature PVC；ClamAV Container 的 Request/Limit 为 `1 CPU / 3 GiB` 与 `2 CPU / 6 GiB`，Worker Container 的 Request/Limit 为 `200m CPU / 256 MiB` 与 `1 CPU / 1 GiB`。两个副本以 Anti-Affinity/Topology Spread 分散，并设 `PDB minAvailable=1`。
+每个 Scanner Replica 是带 `File Security Worker` 与 `clamd/freshclam` 的独立 StatefulSet Pod，通过 Pod 内 Unix Socket 调用，不暴露 ClamAV 网络服务。每副本使用独立 5 GiB RWO Signature PVC；ClamAV Container 的 Request/Limit 为 `1 CPU / 3 GiB` 与 `2 CPU / 6 GiB`，Worker Container 的 Request/Limit 为 `200m CPU / 256 MiB` 与 `1 CPU / 1 GiB`。Hardened Target 的两个副本以 Anti-Affinity/Topology Spread 分散，并设 `PDB minAvailable=1`。
 
 `freshclam` 每 2 小时检查一次，并对副本使用受控随机 Jitter；数据库更新先验证签名、完整性和 Engine Load Test，再由 `clamd` Concurrent Reload。连续 6/12/24 小时未成功更新分别为 Warning/Critical/退出 Ready；超过 24 小时的副本不能返回 `CLEAN`，新对象保持不可用。`MaxThreads=2`、`MaxQueue=4`，单副本最多并发扫描 2 个对象；单副本故障时环境并发降至 2，由持久化异步队列承接任务。
 
@@ -155,7 +174,7 @@ File Security Worker 使用 [09 PCS](../09-infrastructure-operations/infrastruct
 
 运行镜像必须具备可验证 provenance、SBOM、漏洞扫描和签名。部署 Gate 验证镜像 digest、签名身份、SBOM、扫描结论和 PCS 兼容性；不满足任一条件的镜像不得进入工作负载。镜像扫描结论和例外只记录受限摘要与证据引用。
 
-当前架构基线的 Image Security 使用独立 Trivy 与 `ImageSecurityPort`，不复用 ClamAV、CI 或 Jenkins。Quarantine 中保存不可变 Manifest/List Digest；Scanner 使用 read-only、repository-scoped Registry Identity。每环境运行 2 个 Replica，每副本单并发；单副本 CPU Request/Limit 为 `500m/2 CPU`，Memory Request/Limit 为 `1/4 GiB`，Ephemeral Storage Request/Limit 为 `10/20 GiB`。
+Image Security 使用独立 Trivy 与 `ImageSecurityPort`，不复用 ClamAV、CI 或 Jenkins。Quarantine 中保存不可变 Manifest/List Digest；Scanner 使用 read-only、repository-scoped Registry Identity。Launch Profile 可使用单 Replica，Hardened Target 每环境运行 2 个 Replica；每副本单并发，CPU Request/Limit 为 `500m/2 CPU`，Memory Request/Limit 为 `1/4 GiB`，Ephemeral Storage Request/Limit 为 `10/20 GiB`。
 
 独立 `trivy-data-sync` 以 6 小时周期更新 Vulnerability DB，以 24 小时周期更新 Java DB 与 Checks。Freshness Gate 为：Vulnerability DB 12/18/24 小时 Warning/Critical/Expired；仅对相关镜像启用的 Java DB 为 36/48/72 小时；Checks 为 48/72 小时/7 天。数据库过期、Coverage 不完整、Schema/Digest/Smoke Test 失败或 Scanner Error 均 Fail Closed。
 
@@ -198,3 +217,4 @@ Console 的预注册链接、允许列表、目标认证与打开 Audit 由 06 �
 5. OpenBao 恢复 Bucket 不依赖待恢复的 OpenBao Transit，离线 OpenPGP 是其唯一解密根。
 6. Audit WORM、双写证据与 Break-glass 限制始终优先于高权限操作便利性。
 7. Provider 信任材料、环境绑定与回放证据必须在恢复后保持连续、可验证和可审计。
+8. Launch 与 Hardened Target 使用相同 Security Floor；Replica、Quorum、完整轮换自动化和更高 DR 频率只能增强可用性，不能改变已启用能力的安全通过条件。

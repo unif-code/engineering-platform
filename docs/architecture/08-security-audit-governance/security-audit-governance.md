@@ -7,7 +7,7 @@
 
 本视图定义平台的安全 Trust Boundary、Secret、加密、PKI、供应链保护、不可篡改 Audit 与受限恢复控制。它为各业务模块和基础设施提供统一的安全 Contract，却不拥有人员、权限、Requirement、Agent、Sandbox、GitLab 或数据服务的领域状态。
 
-DEV 是当前唯一实例化的 Platform Environment，当前仓库仍是 Umi Max 前端模板。Python Control Plane、数据服务、基础设施与 PROD 都是批准的目标架构，不表示已有对应运行实例。未来 PROD 使用同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC 和 Cluster 中重新实例化；DEV 与 PROD 不共享运行实例、Session、数据、凭据、密钥或故障域。
+本文描述完整 Target Architecture，不声明任何环境的实际部署状态。实施阶段、Capability 激活状态、Release 验收与 Reliability/Capacity Profile 只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)；DEV 与 PROD 使用同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC 和 Cluster 中实例化，不共享运行实例、Session、数据、凭据、密钥或故障域。
 
 身份、组织、Session、Capability 与 Super Admin 的业务语义由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。应用 Console Access、External Provider Envelope 与公告流程由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有；Configuration 生命周期和 Promotion 由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。数据服务恢复由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；环境、Cluster 和运维基线由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)拥有。
 
@@ -21,9 +21,13 @@ Human / Workload Identity
 ```
 
 - 认证材料、Secret、Private Key、短期访问材料、Prompt 与源码正文不得进入 Frontend、日志、Trace、Metric Label 或 Audit 正文。
+- 本地账号 Password/Argon2id、TOTP、Session 保护和服务端实时授权是人员访问底线。
 - Secret 只按工作负载、环境和用途最小化分发；业务代码、镜像、Git、Artifact、普通环境变量和持久卷不是 Secret 载体。
+- Workload Identity、TLS/mTLS、数据静态加密、供应链来源/SBOM/签名/扫描、追加式 Audit 和经演练的 Backup/Restore 是所有已启用 Capability 的共同底线。
 - 所有安全例外、恢复操作、Provider 信任材料变化和高权限动作都产生独立、追加式 Audit。
 - 安全控制失去可信前提时，受保护操作 Fail Closed；诊断可见性不会被当作安全或业务事实。
+
+Security Floor 与 HA/Hardened Target 相互独立：Launch Profile 可以减少 OpenBao、Scanner 或 PKI Publication 的 Replica，并允许单点故障时受影响能力安全停止；OpenBao 多 Voting Server、完整 PKI 轮换自动化、Scanner 多副本和更高 DR 频率属于 Hardened Target。任何已启用能力都不能因为采用 Launch Profile 而降低认证、Secret、Identity、TLS、Audit、供应链、安全判定或恢复验证。
 
 ## 控制域
 
@@ -56,3 +60,4 @@ Provider 可观测状态和 Console 访问仅经受控 Contract 接入。Provide
 3. OpenBao Root、Break-glass、审计双写和加密恢复均以 Fail Closed 保护，不以便利性降低安全边界。
 4. Audit 是独立追加式不可篡改事实；其 WORM 保存策略不由业务归档或对象逻辑删除替代。
 5. Provider 信任材料与回放证据在灾难恢复后必须恢复并重新验证，不能重置为未知或空状态后继续接收数据。
+6. Profile 只改变可用性、冗余和恢复频率，不改变任何已启用 Capability 的 Security Floor 或 Fail Closed 判定。

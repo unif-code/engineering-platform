@@ -7,7 +7,9 @@
 
 本主题定义平台通用 Typed Configuration 的分类、生命周期、Effective Snapshot、兼容演进与 DEV→PROD Promotion。Configuration 位于 `backend/control_plane/app/modules/configuration/`，是 Python Control Plane 模块化单体中的独立领域模块，不是独立 Deployable 或既有微服务。
 
-各领域模块拥有自己的 Namespace、Typed Schema、Policy 数据、默认值、约束、Reader/Migrator、解析器和业务解释；Configuration Governance 统一约束 Draft、Publish、Rollback、Rebase、Snapshot、Promotion、Lineage 与 Divergence 协议，禁止各模块建立平行配置工作流。
+本文描述完整 Target Architecture，不记录 Release 版本、实施状态、环境 Promotion 状态或 Capacity Profile 选择；这些事实只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)。
+
+各领域模块拥有自己的 Namespace、Typed Schema、已发布 Policy 数据、默认值、约束、Reader/Migrator、解析器和业务解释；Configuration Governance 统一拥有 Draft、Publish、Rollback、Effective Snapshot 与增强治理协议，禁止各模块建立平行配置工作流。
 
 Super Admin、配置管理资格、TOTP Challenge 和恢复授权由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有；Web、Control Plane 装配、Port/Adapter 与管理入口由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。
 
@@ -34,6 +36,8 @@ Base 过期 → Stale → Schema-aware Three-way Rebase
 Rollback → 从历史 Snapshot 创建新 Draft → 重新发布更高版本
 ```
 
+Typed Schema、仅 Super Admin 管理、服务端 Validation、Publish、不可变 Effective Snapshot、Audit 与 Rollback 构成基础生命周期。Draft Takeover、Schema-aware Three-way Rebase、DEV→PROD Bundle Promotion、Lineage High-water 与 Divergence Review 是增强 Contract；未启用增强能力时不得以简化实现绕过基础生命周期。
+
 Draft 不参与运行时解析；Published Version、Policy Snapshot 与历史来源不可原地修改。发布、回滚和跨环境导入始终重新校验当前权限、Schema、依赖、并发条件、安全下限与 Content Hash。
 
 ## Effective Snapshot 与消费关系
@@ -42,7 +46,7 @@ Draft 不参与运行时解析；Published Version、Policy Snapshot 与历史�
 
 Configuration 模块拥有 Catalog、跨模块治理数据与公开 Configuration Facade，并通过注册的 Port 编排 Namespace owner；领域模块在自己的 Schema 与事务中拥有 Draft、Published Version、Active Pointer 和 Policy Snapshot，执行校验、发布与解析。运行时通过稳定 Contract 取得 Effective Policy；Configuration 不直写其他模块表，也不能绕过领域 Guard、Capability、Assignment、Human Gate、GitOps 或 `SYSTEM_INVARIANT`。
 
-## DEV→PROD Promotion
+## 增强 Contract：DEV→PROD Promotion
 
 DEV→PROD 只传递来自不可变 Published ChangeSet 的签名 Typed Change Intent。Bundle 不复制数据库、Draft、运行缓存、业务数据或 Secret，也不建立跨环境数据库连接、内部写 API、共享凭据、运行时读取或自动同步。
 
@@ -56,3 +60,4 @@ PROD 主动导入并重新完成验签、Schema、Scope/Reference Mapping、安�
 4. DEV 与 PROD 不共享运行状态；Promotion 不是同步、复制或回滚通道。
 5. 各领域拥有 Namespace 的 Policy 数据与业务语义；Configuration Governance 拥有通用治理协议，不建立集中式跨模块事务。
 6. Configuration 是模块化单体中的领域模块，不形成独立 Deployable 或微服务。
+7. 12 只选择 Capacity Profile；10 拥有已发布 Policy 的有效值与生命周期；09 只校验配置影响是否越过物理 Ceiling，三者不得形成平行配置事实源。
