@@ -167,7 +167,7 @@ Secret 仍按 08 注入，Prompt、测试输入和模型输出只进入按数据
 
 高级 Child 路径增加 `RUNNING → WAITING_CHILD → QUEUED` 转换；`WAITING_CHILD` 表示 Parent 已完成 Handoff，正在等待独立 Child 的持久化结果。
 
-当前已启用的 Child Type 是 Image Build。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
+本 Target Contract 定义的 Child Type 范围包含 Image Build；新增 Child Type 必须独立定义状态机、Binding、资源、权限、结果与恢复 Contract，不能复用 Image Build 的隐含假设。具体 Child Type 的实施阶段、激活状态与 Release 验收只由 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)记录，本领域不保存当前启用或部署事实。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
 
 Child Build Execution 使用独立状态机，不能复用 Parent Attempt 状态；状态集合固定为：
 

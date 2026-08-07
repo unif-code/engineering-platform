@@ -31,7 +31,7 @@
 
 | Gate | 必须证明的 Contract |
 | --- | --- |
-| 专用 Host 与 KVM/Kata | 使用专用 `sandbox-worker` Host、通过 KVM/Node Gate，并以独立 Kata Guest 运行；同机联调只能标记为 `LAB_ONLY`。 |
+| 独立物理 Host 与 KVM/Kata | 使用独立物理 Sandbox Host/服务器作为专用 `sandbox-worker`，不承载 Platform、Storage 或 Control Plane 工作负载；通过 KVM/Node Gate，并以独立 Kata Guest 运行。共享物理 Host 上的独立 Kubernetes Node 或 VM 仍是同机联调，只能标记为 `LAB_ONLY`。 |
 | Resource 与 Capacity | CPU、Memory、Ephemeral Storage 的 Request/Limit、Pod Overhead、Capacity Ledger 与当前有效 Capacity Profile 的物理 Ceiling 全部可验证。 |
 | Deadline 与 Fencing | Binding Deadline 有效；Lease、Generation、Fencing Token、取消、超时和旧实例副作用能够安全收敛。 |
 | Repository、Network 与 Secret | 只挂载绑定分支，Network default-deny 后按 Binding 放行，短期 Secret 只注入 `tmpfs` 且可吊销。 |
@@ -41,7 +41,7 @@ Release Gate 不替代本 Gate，路线图选中 Agent Capability 也不表示�
 
 ## 2. KVM、Kata 与 Node Gate
 
-正式 Sandbox 在当前 Platform Environment 的独立 Kubernetes Cluster 中使用专用 `sandbox-worker` Host/Pool。Pool 与平台、存储和 Control Plane 工作负载隔离，使用专用 Label、Taint、Admission 与 RuntimeClass 调度；Sandbox 绝不调度到其他 Node Role。同机实验只可用于标记为 `LAB_ONLY` 的功能联调，不得成为正式 Agent Activation Gate 或 Release 验收证据。
+正式 Sandbox 在当前 Platform Environment 的独立 Kubernetes Cluster 中使用专用 `sandbox-worker` Pool；每个可调度 `sandbox-worker` Node 必须映射到独立物理 Sandbox Host/服务器。该物理服务器可以承载多个 Kata Guest，但不得同时承载 Platform、Storage 或 Control Plane 工作负载。Pool 继续使用专用 Label、Taint、Admission 与 RuntimeClass 防止跨 Node Role 调度，但这些逻辑隔离不能替代物理服务器边界：在共享物理 Host 上划分独立 Kubernetes Node 或 VM 仍只能标记为 `LAB_ONLY`，不得成为正式 Agent Activation Gate 或 Release 验收证据。具体 Release 是否选择并验收正式 Sandbox 只由 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)记录。
 
 正式 Runtime 为社区 Kata Containers、`runtime-rs`、`containerd-shim-kata-v2`、QEMU/KVM 与独立 Guest Kernel。每个 Sandbox Pod 必须使用独立 Kata Guest，且 Kata Runtime 启动失败时不得回退至 `runc`、ACK `runV` 或其他普通容器/VMM Runtime。
 

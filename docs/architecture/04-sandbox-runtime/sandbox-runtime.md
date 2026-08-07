@@ -25,13 +25,13 @@ Requirement Sandbox Environment
 
 ## 正式 Agent Capability Activation Gate
 
-正式 Agent 只允许在专用 `sandbox-worker` Host 上激活；同机 Sandbox 只能标记为 `LAB_ONLY`，不能通过正式安全验收。每次激活和物化必须同时满足 KVM/Kata、不可变 Runtime、CPU/Memory/Ephemeral Request/Limit、当前有效 Capacity Profile、Binding Deadline、Fencing、Repository、default-deny Network、短期 Secret 与清理恢复 Gate。任一条件未知或不满足时 Fail Closed，Capability 保持关闭或执行保持不可运行。
+正式 Agent 只允许在独立物理 Sandbox Host/服务器上激活；该物理服务器作为专用 `sandbox-worker`，不得同时承载 Platform、Storage 或 Control Plane 工作负载。仅在共享物理 Host 上划分独立 Kubernetes Node、VM、Taint 或 RuntimeClass 仍属于同机 Sandbox，只能标记为 `LAB_ONLY`，不能通过正式 Agent 安全或 Release 验收。每次激活和物化必须同时满足 KVM/Kata、不可变 Runtime、CPU/Memory/Ephemeral Request/Limit、当前有效 Capacity Profile、Binding Deadline、Fencing、Repository、default-deny Network、短期 Secret 与清理恢复 Gate。任一条件未知或不满足时 Fail Closed，Capability 保持关闭或执行保持不可运行。
 
 Launch Profile 的容量与可靠性选择来自 [12 的有效 Capacity Profile](../12-implementation-roadmap/implementation-roadmap-detail.md)，不在本领域固定环境服务器数或并发 Ceiling。Sandbox N+1 属于 Hardened Target Profile；无论当前选中哪个 Profile，都不得绕过已验证的物理 Ceiling、资源硬上限或隔离 Gate。
 
 ## 隔离、容量与生命周期
 
-正式 Sandbox 使用社区 Kata Containers 的 `runtime-rs` 和 QEMU/KVM；一个 Pod 对应一个独立 Guest，Kata 启动失败绝不降级为普通容器 Runtime。
+每台独立物理 Sandbox Host 可以按有效 Capacity Profile 承载多个 Kata Guest，但不能与平台工作负载共享物理机。正式 Sandbox 使用社区 Kata Containers 的 `runtime-rs` 和 QEMU/KVM；一个 Pod 对应一个独立 Guest，Kata 启动失败绝不降级为普通容器 Runtime。
 
 Execution Binding 固定 Resource Profile、Runtime、Network、Secret、Repository Branch 与权限。Sandbox Controller 接收 Agent owner 发出的已授权物化请求，原子申请带 Fencing Token 的 Capacity Lease，并返回 `MaterializationReady`、结构化 `MaterializationBlocked` 或 `MaterializationFailed`；它不决定 Attempt 如何排队或转换。收到挂起、Child Handoff、结束或取消的物理清理命令时，Controller 固化事实、Fence 副作用、吊销凭据、释放 Lease 并销毁 Materialization。
 
