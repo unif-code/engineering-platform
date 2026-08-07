@@ -22,7 +22,7 @@ DEV 与 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibilit
 ## Gate 分类
 
 - **Release Gate**：判断路线图选定的 Release Scope 能否形成可发布候选或完成环境 Promotion。
-- **Capability Activation Gate**：判断某项已实施 Capability 是否可在指定 Environment、Scope 和配置下开启。
+- **Capability Activation Gate**：判断某项已实施 Capability 是否可在指定 Environment、Scope 和配置下开启；通过后形成环境本地 `CapabilityActivationRecord`，作为运行时已激活的唯一权威事实。
 - **Evolution Trigger**：由业务、容量、可靠性或运维证据触发新的演进候选评估，不直接批准实现、启用或部署。
 
 被路线图选入当前 Release 的能力必须满足其目标 Contract，未选能力保持关闭。任何 Gate 都不能通过缩减安全边界、以半成品启用目标能力或用路线图状态替代环境证据来通过；详细分类与跨模块验证维度见[架构基线详细说明](./architecture-baseline-detail.md)。

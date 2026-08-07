@@ -43,7 +43,7 @@ Configuration 受控任务以 Workload Identity 执行幂等归档，并以 Draf
 
 `Configuration ChangeSet` 是 `PLATFORM_POLICY` 的最小发布原子单位，只属于一个模块 Namespace 和一个 Scope，可包含多个已注册且允许用于该 Scope 的 Key。模块以当前 Active Policy 和 Scope 继承结果组装完整 Candidate，对跨字段约束统一校验；任一 Key 失败则整个 ChangeSet 不生效。跨模块或跨 Scope 使用独立 ChangeSet、版本与补偿结果，只可关联到同一运维记录，不形成全局事务。
 
-所属模块必须执行服务端校验，至少覆盖类型、范围、Enum/Allowlist、Min/Max、跨字段依赖、Scope 继承、当前授权、Security Floor、Effect Semantics、Schema Compatibility 与基础设施 Envelope；Frontend 校验不是门禁。成功 Validation 绑定整个 ChangeSet 的 Draft Content Hash、Schema Revision、模块 + Scope Active Policy Version、上级 Scope/外部 Envelope 等依赖版本及结果；Candidate、Schema、Base 或依赖版本任一变化，Validation、Impact Preview、Divergence Review Decision 和待发布 Hash Binding 立即失效。Impact Preview 必须展示前后值、影响 Scope、继承与当前 Effective Value、受影响的后续对象/调度、运行中对象影响、缓存失效、传播范围及不可逆或额外处置，不得只给未解释 JSON Diff。
+所属模块必须执行服务端校验，至少覆盖类型、范围、Enum/Allowlist、Min/Max、跨字段依赖、Scope 继承、当前授权、Security Floor、Effect Semantics、Schema Compatibility 与基础设施 Envelope；控制 Capability 启用边界的 Feature Toggle 还必须核验其引用的当前有效 `CapabilityActivationRecord`（见[架构基线详细说明](../11-architecture-baseline/architecture-baseline-detail.md#62-capability-activation-gate)），Record 缺失或失效时发布失败；Frontend 校验不是门禁。成功 Validation 绑定整个 ChangeSet 的 Draft Content Hash、Schema Revision、模块 + Scope Active Policy Version、上级 Scope/外部 Envelope 等依赖版本及结果；Candidate、Schema、Base 或依赖版本任一变化，Validation、Impact Preview、Divergence Review Decision 和待发布 Hash Binding 立即失效。Impact Preview 必须展示前后值、影响 Scope、继承与当前 Effective Value、受影响的后续对象/调度、运行中对象影响、缓存失效、传播范围及不可逆或额外处置，不得只给未解释 JSON Diff。
 
 Publish 是独立的单人受控命令。每次 Publish 或 Rollback 都重新检查当前 Super Admin、`platform.configuration.manage`、Platform Scope、账号状态、Base/依赖版本和并发条件，要求填写原因并完成全新的 TOTP Challenge；当前 Session 的既往 MFA 不可复用，Audit 只保存再认证结果、时间与强度。发布不使用管理员自标记的风险等级，也不要求第二人批准。
 

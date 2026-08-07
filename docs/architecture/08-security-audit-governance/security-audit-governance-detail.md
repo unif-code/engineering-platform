@@ -121,7 +121,7 @@ Frontend 固定启用 `claimMapper=default` 与 `authorizer=default`，禁止 `n
 
 ## 6. Kubernetes API Secretbox Data-at-rest Encryption
 
-每个环境使用独立 CSPRNG 生成的 32-byte `secretbox` key，仅在 `EncryptionConfiguration.secret` 字段以 Base64 表示。EncryptionConfiguration Schema 固定为 `apiserver.config.k8s.io/v1`；三个 API Server 的有序 Keyring、Resource Catalog、Provider 顺序和内容哈希必须一致。启动前 Pre-start Gate 验证 `--encryption-provider-config`、Schema、Catalog、Keyring、配置哈希、generation、文件权限和恢复材料完整性。全新 Cluster 完全不配置任何 identity provider。
+每个环境使用独立 CSPRNG 生成的 32-byte `secretbox` key，仅在 `EncryptionConfiguration.secret` 字段以 Base64 表示。EncryptionConfiguration Schema 固定为 `apiserver.config.k8s.io/v1`；全部当前 Active API Server（成员数由当前 Reliability/Capacity Profile 决定，单实例 Control Plane 即该实例自身）的有序 Keyring、Resource Catalog、Provider 顺序和内容哈希必须一致。启动前 Pre-start Gate 验证 `--encryption-provider-config`、Schema、Catalog、Keyring、配置哈希、generation、文件权限和恢复材料完整性；成员扩容或替换时，新 API Server 必须先通过同一 Pre-start Gate 并与现有成员达成一致后才可加入服务。全新 Cluster 完全不配置任何 identity provider。
 
 `Sensitive API Resource Catalog` 至少包含 `secrets` 与 `configmaps`，并只在经过数据分类、API Discovery 与资源标识校验后加入确实承载敏感 Payload 的 CRD。Catalog 使用官方精确小写复数 `resource` 或 `resource.group` 标识，例如 `widgets.example.io`，不使用 Kind、API Version、模糊业务名称或 `*.*` Wildcard。Catalog、CRD 或 Provider 的改变属于新的 PCS/GitOps 变更，不能由平台后台动态修改。
 
@@ -134,9 +134,9 @@ Frontend 固定启用 `claimMapper=default` 与 `authorizer=default`，禁止 `n
 1. API read 与 canary write/read 成功；
 2. 预期对象数量与重写计数一致；
 3. 不输出 Payload 的原始 etcd 抽样验证 Envelope 前缀为 `k8s:enc:secretbox:v1:<keyName>:`；
-4. 三个 API Server 的 Config Hash、Generation 和 Keyring 顺序一致。
+4. 全部当前 Active API Server 的 Config Hash、Generation 和 Keyring 顺序一致。
 
-只有全量 rewrite、对象计数、API canary、raw etcd Envelope 和三节点一致性全部通过，才允许结束该轮迁移。临时 `identity` fallback 必须在这些验证完成后从 Live Configuration 移除；旧 read key 也只能在证明当前 Catalog 已全部由新 writer 重写后从 Live Keyring 移除。只要任一保留 Snapshot/Object Version 仍依赖旧 key，其 Key Material 就必须继续封存在该 Snapshot 精确绑定的不可变 Recovery Bundle 与离线 Recovery Kit 中，并由 Restore Drill 证明可读，不能依据当前 Live Keyring 删除历史恢复能力。
+只有全量 rewrite、对象计数、API canary、raw etcd Envelope 和全部 Active API Server 一致性全部通过，才允许结束该轮迁移。临时 `identity` fallback 必须在这些验证完成后从 Live Configuration 移除；旧 read key 也只能在证明当前 Catalog 已全部由新 writer 重写后从 Live Keyring 移除。只要任一保留 Snapshot/Object Version 仍依赖旧 key，其 Key Material 就必须继续封存在该 Snapshot 精确绑定的不可变 Recovery Bundle 与离线 Recovery Kit 中，并由 Restore Drill 证明可读，不能依据当前 Live Keyring 删除历史恢复能力。
 
 etcd snapshot 与 Recovery Bundle 必须绑定 Config Hash、Generation 和该 Snapshot 所需的完整 Keyring。恢复时先恢复并验证 Keyring 与 EncryptionConfiguration，再接触 etcd 数据；缺少任一历史 Key 或配置证据时，不得启动 API Server 读取 Secret。
 

@@ -161,7 +161,7 @@ Bucket Class 的对象保护矩阵固定为：
 
 Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体。附件或 Agent Artifact 的归档、逻辑删除、Requirement 恢复状态变化都不释放对象容量；仅在其领域 owner 明确的引用、状态和保留条件满足后才可能改变存储引用。上传和下载仅能由应用授权签发短期、精确版本的 Presigned Request。文件检查由应用 `FileSecurityPort` 处理：需要扫描的对象只有合格 Verdict 才可用；由 02/08 的版本化 Source/Media Policy 合法跳过扫描的受信内部纯文本可在完整性验证后不带 Verdict 进入 `AVAILABLE`。本模块不决定扫描分支、Verdict 或 Artifact 业务状态。
 
-Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 和 Environment Bucket-Class Capacity Ledger；任何一侧失败都不形成可用预占。物理 RGW native quota 只作为最后后备保护，不能替代双账本准入。达到产品额度返回 `ARTIFACT_QUOTA`；达到 Bucket Class 或 Raw Capacity 边界返回 `STORAGE_CAPACITY` 并创建 Operations Incident。提高产品配额不能突破 Environment Capacity、08 Security Contract 或 File Security Scanner Envelope。
+Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 和 Environment Bucket-Class Capacity Ledger；任何一侧失败都不形成可用预占。两本账本由同一个存储准入 owner 模块在其自有 Schema 内持久化，双账本预占因此是该模块的单模块本地事务，不违反[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)的单模块事务边界；Product Quota 额度值与 Bucket-Class 容量参数仍分别按其 Policy owner 的 Effective Snapshot 与容量 Contract 只读解析，预占事务不改写其他模块拥有的数据。物理 RGW native quota 只作为最后后备保护，不能替代双账本准入。达到产品额度返回 `ARTIFACT_QUOTA`；达到 Bucket Class 或 Raw Capacity 边界返回 `STORAGE_CAPACITY` 并创建 Operations Incident。提高产品配额不能突破 Environment Capacity、08 Security Contract 或 File Security Scanner Envelope。
 
 ## 7. Backup、Retention 与 Reconciler
 

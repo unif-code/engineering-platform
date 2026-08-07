@@ -44,6 +44,7 @@ PCS 是平台组件版本、Chart/Manifest、Image 与兼容关系的唯一注�
 | Workflow | Temporal | Server 1.31 | Chart 1.6.0；Server/Admin Tools 1.31.2；UI 2.52.0；Python SDK 1.30.0 |
 | Security | OpenBao | 2.6 | Server 2.6.1；Chart 0.28.6 |
 | Security | ClamAV | 1.5 | 1.5.3 |
+| Security | Trivy | 0.73.x | v0.73.0；Vulnerability/Java DB 与 Checks 由独立 `trivy-data-sync` 按 08 的 Freshness Gate 更新 |
 | Security Tooling | OSV-Scanner | 2.3.x | v2.3.8 |
 | Evaluation Tooling | promptfoo | 0.121.x | 0.121.15 |
 | Evaluation Tooling | EvalScope | 1.9.x | v1.9.1 |

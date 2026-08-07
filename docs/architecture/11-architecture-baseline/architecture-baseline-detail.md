@@ -102,6 +102,8 @@ Capability Activation Gate 在 Capability 已实施后、首次或变更启用�
 - 启用范围、关闭路径、回退条件、Observability 与责任人明确；
 - 环境本地证据能够证明启用结果，不以 UI、Read Model freshness 或路线图状态替代运行事实。
 
+Activation Gate 通过后必须形成环境本地、不可变的 `CapabilityActivationRecord`，至少绑定 Capability 标识、目标 Environment、适用 Scope、Gate 证据引用、批准 Principal、批准时间与生效配置版本；Record 及其失效与替换历史由 Configuration 模块作为跨模块治理数据按[Configuration Governance 详细说明](../10-configuration-governance/configuration-governance-detail.md)的生命周期持久化，是该 Capability 在指定 Environment 与 Scope 内已通过激活的唯一运行时权威事实。启用该 Capability 的 Feature Toggle 发布、其专属 Deployable 的 Desired State 变更以及消费该 Capability 的 Execution Binding、Run 与 Sandbox 物化必须引用当前有效 Record；Record 缺失、失效或不可解析时 Fail Closed，Capability 保持或恢复关闭。Record 不替代 Deployed State 证据，Release Gate 与路线图状态也不替代 Record。
+
 一次 Release Gate 通过不自动打开全部入选 Capability；需要运行时开关或受控 Scope 的能力仍须分别完成 Capability Activation Gate。一次 Capability Activation Gate 通过也不构成后续 Release 或跨环境 Promotion 的批准。
 
 ### 6.3 Evolution Trigger
