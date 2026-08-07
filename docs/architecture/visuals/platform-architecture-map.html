@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN" data-theme="system">
+<html lang="zh-CN" data-theme="system" data-profile="target">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -76,9 +76,9 @@
     h1 { margin-bottom: 6px; font-size: clamp(1.6rem, 3vw, 2.45rem); line-height: 1.2; }
     .meta, .notice, .view-intro, .node small, .node em { color: var(--muted); }
     .notice { max-width: 820px; margin: 0 0 20px; }
-    .toolbar, #view-switcher { display: flex; flex-wrap: wrap; gap: 8px; }
+    .toolbar, #view-switcher, #profile-switcher { display: flex; flex-wrap: wrap; gap: 8px; }
     .toolbar { justify-content: flex-end; margin: 0; padding: 0; border: 0; min-inline-size: 0; }
-    .control, [role="tab"] {
+    .control, [role="tab"], .profile-control {
       min-height: 44px;
       border: 1px solid var(--line);
       border-radius: 10px;
@@ -86,7 +86,7 @@
       color: var(--ink);
       background: var(--surface);
     }
-    .control[aria-pressed="true"], [role="tab"][aria-selected="true"] {
+    .control[aria-pressed="true"], [role="tab"][aria-selected="true"], .profile-control[aria-checked="true"] {
       border-color: var(--accent);
       color: var(--accent);
       background: var(--accent-soft);
@@ -94,6 +94,40 @@
     }
     main { padding: 24px 0 36px; }
     #view-switcher { margin-bottom: 16px; }
+    #profile-switcher { margin: 0; padding: 0; border: 0; min-inline-size: 0; }
+    .profile-picker {
+      margin-bottom: 18px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .profile-picker legend { padding: 0 6px; font-weight: 700; }
+    .profile-summary { margin-top: 12px; padding: 12px 14px; border-left: 4px solid var(--accent); border-radius: 8px; background: var(--surface-soft); }
+    .profile-summary h2 { margin-bottom: 3px; font-size: 1rem; }
+    .profile-summary p { margin-bottom: 6px; }
+    .profile-summary a { font-size: .92rem; }
+    .profile-copy { display: none; }
+    :root[data-profile="target"] [data-profile-copy="target"],
+    :root[data-profile="launch"] [data-profile-copy="launch"],
+    :root[data-profile="evolution"] [data-profile-copy="evolution"] { display: block; }
+    :root[data-profile="target"] .cluster .roles[data-profile-copy="target"],
+    :root[data-profile="launch"] .cluster .roles[data-profile-copy="launch"],
+    :root[data-profile="evolution"] .cluster .roles[data-profile-copy="evolution"] { display: grid; }
+    :root[data-profile="launch"] [data-profile-scope="hardened"] { opacity: .38; filter: grayscale(.7); border-style: dashed; }
+    :root[data-profile="evolution"] [data-profile-scope="launch"] { opacity: .55; filter: grayscale(.45); }
+    :root[data-profile="evolution"] .business-graph .node,
+    :root[data-profile="evolution"] .logical-graph .node { opacity: .55; filter: grayscale(.45); }
+    :root[data-profile="evolution"] [data-profile-scope="hardened"] { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+    [data-profile-scope]::after {
+      content: attr(data-profile-label);
+      display: block;
+      margin-top: 5px;
+      color: var(--muted);
+      font-size: .66rem;
+      line-height: 1.2;
+    }
     [role="tabpanel"] { display: none; }
     [role="tabpanel"].is-active { display: block; }
     .view-heading { display: flex; justify-content: space-between; gap: 20px; align-items: baseline; }
@@ -121,6 +155,7 @@
     #detail-panel h2, .detail-panel h2 { font-size: 1.2rem; }
     #detail-panel h3, .detail-panel h3 { margin: 18px 0 4px; font-size: .9rem; color: var(--muted); }
     #detail-panel p, .detail-panel p { margin-bottom: 0; }
+    .detail-baseline { margin-bottom: 12px !important; color: var(--muted); font-size: .82rem; }
     #detail-doc-link, .detail-doc-link { display: inline-block; margin-top: 20px; }
     #map-status { min-height: 1.5em; margin-top: 12px; color: var(--muted); font-size: .92rem; }
 
@@ -156,7 +191,7 @@
     .node strong { line-height: 1.25; }
     .node small { margin-top: 4px; font-size: .78rem; line-height: 1.3; }
     .node em { display: block; margin-top: 5px; font-size: .73rem; font-style: normal; }
-    .node.is-selected { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow); transform: translateY(-3px); }
+    .node.is-selected { opacity: 1 !important; filter: none !important; border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft), var(--shadow); transform: translateY(-3px); }
     .node.is-upstream { border-style: dashed; border-color: var(--good); }
     .node.is-downstream { border-color: var(--warning); }
     .graph.has-selection .node.is-muted { opacity: .4; filter: grayscale(.65); }
@@ -221,7 +256,7 @@
     .environment .env-ops small, .environment .env-backup small, .environment .env-watchdog small, .environment .env-bindings small { font-size: .65rem; }
     .dev .account, .dev .vpc, .dev .cluster, .dev .gateway-node { left: 120px; }
     .prod .account, .prod .vpc, .prod .cluster, .prod .gateway-node { left: 120px; }
-    .cluster .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
+    .cluster .roles { grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 10px; }
     .cluster .role { padding: 6px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); font-size: .72rem; }
     .external-boundary { position: absolute; top: 720px; width: 420px; height: 125px; border: 1px dashed var(--warning); border-radius: 14px; padding: 8px 12px; color: var(--muted); font-size: .76rem; }
     .external-boundary.dev { left: 15px; }
@@ -245,6 +280,8 @@
       .layout { grid-template-columns: 1fr; }
       #detail-panel, .detail-panel { position: static; }
       #architecture-map, .architecture-map { padding: 16px; }
+      #profile-switcher { display: grid; grid-template-columns: 1fr; }
+      .profile-control { width: 100%; text-align: left; }
     }
     @media (prefers-reduced-motion: reduce) {
       *, *::before, *::after { scroll-behavior: auto; transition-duration: .01ms; animation-duration: .01ms; animation-iteration-count: 1; }
@@ -252,7 +289,7 @@
     @page { size: A3 landscape; margin: 12mm; }
     @media print {
       body { background: #fff; color: #000; font-size: 10pt; }
-      header .toolbar, #view-switcher, #map-status { display: none; }
+      header .toolbar, #view-switcher, #profile-switcher, #map-status { display: none; }
       .shell { width: 100%; }
       [role="tabpanel"] { display: block; break-after: page; break-inside: avoid-page; page-break-after: always; page-break-inside: avoid; }
       [role="tabpanel"]:last-of-type { break-after: auto; page-break-after: auto; }
@@ -273,7 +310,7 @@
     <div class="shell masthead">
       <div>
         <h1>内部研发平台架构地图</h1>
-        <p class="meta">架构基线：<strong>2026-08-06.173</strong> · 当前为 DEV Platform Environment · 未来 PROD 独立实例化</p>
+        <p class="meta">架构基线：<strong>2026-08-06.175</strong> · Target Architecture / Implementation Roadmap / Deployed State 分层</p>
         <p class="notice">这是离线导航与摘要图，不替代 Markdown 的规范 Contract；点击任一节点可查看职责、事实边界、关系和唯一事实源。</p>
       </div>
       <fieldset class="toolbar" aria-label="地图控制">
@@ -285,6 +322,21 @@
   </header>
 
   <main class="shell">
+    <fieldset class="profile-picker">
+      <legend>语义 Profile</legend>
+      <div id="profile-switcher" role="radiogroup" aria-label="架构语义 Profile">
+        <button class="profile-control" type="button" role="radio" aria-checked="true" aria-controls="profile-summary" data-profile-value="target">Target Architecture</button>
+        <button class="profile-control" type="button" role="radio" aria-checked="false" aria-controls="profile-summary" data-profile-value="launch" tabindex="-1">V1.0 Launch Scope / Launch Profile</button>
+        <button class="profile-control" type="button" role="radio" aria-checked="false" aria-controls="profile-summary" data-profile-value="evolution" tabindex="-1">Triggered Evolution / Hardened Target</button>
+      </div>
+      <div id="profile-summary" class="profile-summary" aria-live="polite">
+        <section class="profile-copy" data-profile-copy="target"><h2>完整 Target Architecture</h2><p>显示 00～11 的完整逻辑 Contract，以及 Compact Launch 和 Hardened Target 的全部目标边界；这不声明任何环境已经部署。</p></section>
+        <section class="profile-copy" data-profile-copy="launch"><h2>V1.0 Launch Scope / Launch Profile</h2><p>强调首次正式发布所需链路与每环境 <strong>3 × core + 1 × sandbox-worker</strong>；淡化项仍保留完整 Contract，未选或未通过 Capability Activation Gate 的能力保持关闭。</p></section>
+        <section class="profile-copy" data-profile-copy="evolution"><h2>Triggered Evolution / Hardened Target</h2><p>强调 Evolution Trigger 成立后评估的四类专用 Node Pool、DEV 12 / PROD 15 Node、N+1、完整 Observability 与增强 DR；Trigger 不自动采购、启用或部署。</p></section>
+        <a href="../12-implementation-roadmap/implementation-roadmap.md">打开 12 实施路线图</a>
+      </div>
+    </fieldset>
+
     <div id="view-switcher" role="tablist" aria-label="架构视图">
       <button id="business-tab" role="tab" type="button" aria-selected="true" aria-controls="business-view">业务交付链</button>
       <button id="logical-tab" role="tab" type="button" aria-selected="false" aria-controls="logical-view" tabindex="-1">逻辑架构</button>
@@ -312,7 +364,7 @@
             <button class="node n9" type="button" data-node-id="business-main" data-doc-href="../05-source-control-delivery/source-control-delivery-detail.md" aria-label="protected main，打开详情" aria-controls="detail-panel"><strong>protected main</strong><small>仅 Formal MR 合并</small><em>禁止 direct push</em></button>
           </div>
         </section>
-        <aside id="detail-panel" class="detail-panel" aria-label="节点详情"><h2 id="detail-title" class="detail-title">选择一个节点</h2><p id="detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
+        <aside id="detail-panel" class="detail-panel" aria-label="节点详情"><p class="detail-baseline">摘要基线：<strong>2026-08-06.175</strong></p><h2 id="detail-title" class="detail-title">选择一个节点</h2><p id="detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>Owner / 事实边界</h3><p id="detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
 
@@ -327,7 +379,7 @@
             </svg>
             <button class="node actors" type="button" data-node-id="logical-users" data-doc-href="../00-platform-overview/platform-overview-detail.md" aria-label="Browser users，打开详情" aria-controls="logical-detail-panel"><strong>Browser users</strong><small>用户与管理入口</small></button>
             <button class="node gateway" type="button" data-node-id="logical-gateway" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="platform gateway，打开详情" aria-controls="logical-detail-panel"><strong>platform-gateway</strong><small>唯一北向公开入口</small></button>
-            <button class="node web" type="button" data-node-id="logical-web" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="Umi Web，打开详情" aria-controls="logical-detail-panel"><strong>Umi Web</strong><small>用户端与管理入口</small></button>
+            <button class="node web" type="button" data-node-id="logical-web" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="Umi Web，打开详情" aria-controls="logical-detail-panel"><strong>Umi Web</strong><small>用户端 / 管理入口 / Ant Design X</small></button>
             <button class="node control" type="button" data-node-id="logical-control" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="Python Control Plane 模块化单体，打开详情" aria-controls="logical-detail-panel"><strong>Python Control Plane</strong><small>模块化单体；按 Contract 可独立部署</small><span class="module-list"><span>Identity</span><span>Organization</span><span>Workspace</span><span>Authorization</span><span>Requirement</span><span>Agent</span><span>Audit</span><span>Configuration</span></span></button>
             <button class="node orchestrator" type="button" data-node-id="logical-orchestrator" data-doc-href="../03-agent-skill-model/agent-skill-model-detail.md" aria-label="Temporal 与 Orchestrator，打开详情" aria-controls="logical-detail-panel"><strong>Temporal + Orchestrator</strong><small>异步编排与恢复</small></button>
             <button class="node model" type="button" data-node-id="logical-model" data-doc-href="../03-agent-skill-model/agent-skill-model-detail.md" aria-label="Model Gateway 与 Provider，打开详情" aria-controls="logical-detail-panel"><strong>Model Gateway → Provider</strong><small>能力路由 Adapter</small></button>
@@ -345,12 +397,12 @@
             <button class="node obs" type="button" data-node-id="logical-observability" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="Observability，打开详情" aria-controls="logical-detail-panel"><strong>Observability</strong><small>诊断，不反写业务事实</small></button>
           </div>
         </section>
-        <aside id="logical-detail-panel" class="detail-panel" aria-label="逻辑架构节点详情"><h2 id="logical-detail-title" class="detail-title">选择一个节点</h2><p id="logical-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="logical-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="logical-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="logical-detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
+        <aside id="logical-detail-panel" class="detail-panel" aria-label="逻辑架构节点详情"><p class="detail-baseline">摘要基线：<strong>2026-08-06.175</strong></p><h2 id="logical-detail-title" class="detail-title">选择一个节点</h2><p id="logical-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>Owner / 事实边界</h3><p id="logical-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="logical-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="logical-detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
 
     <section id="deployment-view" role="tabpanel" aria-labelledby="deployment-tab">
-      <div class="view-heading"><div><h2>部署隔离</h2><p class="view-intro">每个 Platform Environment 都是独立的 Account、VPC、Cluster 与运行边界；无运行时共享线。</p></div></div>
+      <div class="view-heading"><div><h2>部署隔离与 Reliability/Capacity Profile</h2><p class="view-intro">DEV/PROD 由相同组件模板独立实例化，不共享 Gateway、Flux、Cluster、数据、Secret、Backup 或任何运行时资源；本图表达 Target Contract，不表达 Deployed State。</p></div></div>
       <fieldset class="legend" aria-label="图例"><span class="legend-item"><span class="legend-line"></span> 环境内受控边界</span><span class="legend-item"><span class="legend-line dashed"></span> Cluster 外独立运维组件</span><span class="legend-item"><span class="legend-arrow">→</span> 环境本地外部绑定</span></fieldset>
       <div class="layout">
         <section class="architecture-map" aria-label="部署架构图">
@@ -360,25 +412,25 @@
               <line data-from="deploy-prod-account" data-to="deploy-prod-vpc" x1="670" y1="169" x2="670" y2="185"></line><line data-from="deploy-prod-vpc" data-to="deploy-prod-cluster" x1="670" y1="269" x2="670" y2="285"></line><line data-from="deploy-prod-cluster" data-to="deploy-prod-gateway" x1="670" y1="435" x2="670" y2="455"></line><line data-from="deploy-prod-cluster" data-to="deploy-prod-collector" class="manual" x1="625" y1="435" x2="520" y2="590"></line><line data-from="deploy-prod-cluster" data-to="deploy-prod-backup" class="manual" x1="645" y1="435" x2="621" y2="590"></line><line data-from="deploy-prod-cluster" data-to="deploy-prod-watchdog" class="manual" x1="695" y1="435" x2="722" y2="590"></line><line data-from="deploy-prod-gateway" data-to="deploy-prod-bindings" x1="730" y1="539" x2="823" y2="590"></line>
               <line data-from="deploy-dev-bindings" data-to="deploy-dev-gitlab" x1="373" y1="672" x2="120" y2="755"></line><line data-from="deploy-dev-bindings" data-to="deploy-dev-model-provider" x1="373" y1="672" x2="325" y2="755"></line><line data-from="deploy-prod-bindings" data-to="deploy-prod-gitlab" x1="823" y1="672" x2="570" y2="755"></line><line data-from="deploy-prod-bindings" data-to="deploy-prod-model-provider" x1="823" y1="672" x2="775" y2="755"></line>
             </svg>
-            <div class="deployment-note auxiliary-layer">同源代码 / Contract / GitOps 模板 / PCS 是发布输入，不是 DEV 与 PROD 的运行时连接。</div>
-            <div class="environment dev"><h3>当前 DEV Platform Environment</h3><div class="boundary" style="left:52px;top:240px;width:316px;height:285px;">Kubernetes Cluster</div>
+            <div class="deployment-note auxiliary-layer">同源代码 / Contract / GitOps 模板 / PCS 是发布输入，不是 DEV 与 PROD 的运行时连接；各环境由本地 Flux 独立 Reconcile。</div>
+            <div class="environment dev"><h3>DEV Platform Environment</h3><div class="boundary" style="left:52px;top:240px;width:316px;height:285px;">Kubernetes Cluster</div>
               <button class="node account" type="button" data-node-id="deploy-dev-account" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV Resource Account，打开详情" aria-controls="deployment-detail-panel"><strong>Resource Account</strong><small>DEV 独立账号</small></button>
               <button class="node vpc" type="button" data-node-id="deploy-dev-vpc" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV VPC，打开详情" aria-controls="deployment-detail-panel"><strong>VPC</strong><small>DEV 独立网络</small></button>
-              <button class="node cluster" type="button" data-node-id="deploy-dev-cluster" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV Kubernetes Cluster，打开详情" aria-controls="deployment-detail-panel"><strong>Kubernetes Cluster</strong><small>DEV 独立运行面</small><span class="roles"><span class="role">k8s-control-plane</span><span class="role">platform-worker</span><span class="role">sandbox-worker</span><span class="role">storage-worker</span></span></button>
+              <button class="node cluster" type="button" data-node-id="deploy-dev-cluster" data-doc-href="../12-implementation-roadmap/environment-capacity-plan.md" aria-label="DEV Kubernetes Cluster 与 Profile，打开详情" aria-controls="deployment-detail-panel"><strong>Kubernetes Cluster + Flux</strong><small>DEV 独立实例</small><span class="roles profile-copy" data-profile-copy="target"><span class="role">Launch: 3 × core + 1 × sandbox-worker</span><span class="role">Hardened: 4 类专用 Node Pool</span></span><em class="profile-copy" data-profile-copy="target">Sandbox 独立物理服务器；共享 Host 仅 LAB_ONLY</em><span class="roles profile-copy" data-profile-copy="launch"><span class="role">3 × core</span><span class="role">1 × sandbox-worker</span></span><em class="profile-copy" data-profile-copy="launch">Sandbox 独立物理服务器；共享 Host 仅 LAB_ONLY</em><span class="roles profile-copy" data-profile-copy="evolution"><span class="role">k8s-control-plane</span><span class="role">platform-worker</span><span class="role">sandbox-worker</span><span class="role">storage-worker</span></span><em class="profile-copy" data-profile-copy="evolution">Hardened Target：DEV 12 Node</em></button>
               <button class="node gateway-node" type="button" data-node-id="deploy-dev-gateway" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="DEV platform gateway，打开详情" aria-controls="deployment-detail-panel"><strong>platform-gateway</strong><small>DEV 环境入口</small></button>
-              <button class="node env-ops" type="button" data-node-id="deploy-dev-collector" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV Operations Collector，打开详情" aria-controls="deployment-detail-panel"><strong>Operations Collector</strong><small>DEV Cluster 外</small></button>
+              <button class="node env-ops" type="button" data-node-id="deploy-dev-collector" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV Operations Collector，打开详情" aria-controls="deployment-detail-panel" data-profile-scope="hardened" data-profile-label="Hardened Target"><strong>Operations Collector</strong><small>DEV Cluster 外</small></button>
               <button class="node env-backup" type="button" data-node-id="deploy-dev-backup" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV Backup Recovery Repository，打开详情" aria-controls="deployment-detail-panel"><strong>Backup / Recovery</strong><small>DEV Cluster 外</small></button>
-              <button class="node env-watchdog" type="button" data-node-id="deploy-dev-watchdog" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV External Watchdog，打开详情" aria-controls="deployment-detail-panel"><strong>External Watchdog</strong><small>DEV Cluster 外</small></button>
+              <button class="node env-watchdog" type="button" data-node-id="deploy-dev-watchdog" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="DEV External Watchdog，打开详情" aria-controls="deployment-detail-panel" data-profile-scope="hardened" data-profile-label="Hardened Target"><strong>External Watchdog</strong><small>DEV Cluster 外</small></button>
               <button class="node env-bindings" type="button" data-node-id="deploy-dev-bindings" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="DEV 外部系统绑定，打开详情" aria-controls="deployment-detail-panel"><strong>Environment Binding</strong><small>DEV 独立身份与策略</small></button>
             </div>
-            <div class="environment prod"><h3>未来独立 PROD Platform Environment</h3><div class="boundary" style="left:52px;top:240px;width:316px;height:285px;">Kubernetes Cluster</div>
+            <div class="environment prod"><h3>PROD Platform Environment</h3><div class="boundary" style="left:52px;top:240px;width:316px;height:285px;">Kubernetes Cluster</div>
               <button class="node account" type="button" data-node-id="deploy-prod-account" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD Resource Account，打开详情" aria-controls="deployment-detail-panel"><strong>Resource Account</strong><small>PROD 独立账号</small></button>
               <button class="node vpc" type="button" data-node-id="deploy-prod-vpc" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD VPC，打开详情" aria-controls="deployment-detail-panel"><strong>VPC</strong><small>PROD 独立网络</small></button>
-              <button class="node cluster" type="button" data-node-id="deploy-prod-cluster" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD Kubernetes Cluster，打开详情" aria-controls="deployment-detail-panel"><strong>Kubernetes Cluster</strong><small>未来独立运行面</small><span class="roles"><span class="role">k8s-control-plane</span><span class="role">platform-worker</span><span class="role">sandbox-worker</span><span class="role">storage-worker</span></span></button>
+              <button class="node cluster" type="button" data-node-id="deploy-prod-cluster" data-doc-href="../12-implementation-roadmap/environment-capacity-plan.md" aria-label="PROD Kubernetes Cluster 与 Profile，打开详情" aria-controls="deployment-detail-panel"><strong>Kubernetes Cluster + Flux</strong><small>PROD 独立实例</small><span class="roles profile-copy" data-profile-copy="target"><span class="role">Launch: 3 × core + 1 × sandbox-worker</span><span class="role">Hardened: 4 类专用 Node Pool</span></span><em class="profile-copy" data-profile-copy="target">Sandbox 独立物理服务器；共享 Host 仅 LAB_ONLY</em><span class="roles profile-copy" data-profile-copy="launch"><span class="role">3 × core</span><span class="role">1 × sandbox-worker</span></span><em class="profile-copy" data-profile-copy="launch">Sandbox 独立物理服务器；共享 Host 仅 LAB_ONLY</em><span class="roles profile-copy" data-profile-copy="evolution"><span class="role">k8s-control-plane</span><span class="role">platform-worker</span><span class="role">sandbox-worker</span><span class="role">storage-worker</span></span><em class="profile-copy" data-profile-copy="evolution">Hardened Target：PROD 15 Node</em></button>
               <button class="node gateway-node" type="button" data-node-id="deploy-prod-gateway" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="PROD platform gateway，打开详情" aria-controls="deployment-detail-panel"><strong>platform-gateway</strong><small>PROD 环境入口</small></button>
-              <button class="node env-ops" type="button" data-node-id="deploy-prod-collector" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD Operations Collector，打开详情" aria-controls="deployment-detail-panel"><strong>Operations Collector</strong><small>PROD Cluster 外</small></button>
+              <button class="node env-ops" type="button" data-node-id="deploy-prod-collector" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD Operations Collector，打开详情" aria-controls="deployment-detail-panel" data-profile-scope="hardened" data-profile-label="Hardened Target"><strong>Operations Collector</strong><small>PROD Cluster 外</small></button>
               <button class="node env-backup" type="button" data-node-id="deploy-prod-backup" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD Backup Recovery Repository，打开详情" aria-controls="deployment-detail-panel"><strong>Backup / Recovery</strong><small>PROD Cluster 外</small></button>
-              <button class="node env-watchdog" type="button" data-node-id="deploy-prod-watchdog" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD External Watchdog，打开详情" aria-controls="deployment-detail-panel"><strong>External Watchdog</strong><small>PROD Cluster 外</small></button>
+              <button class="node env-watchdog" type="button" data-node-id="deploy-prod-watchdog" data-doc-href="../09-infrastructure-operations/infrastructure-operations-detail.md" aria-label="PROD External Watchdog，打开详情" aria-controls="deployment-detail-panel" data-profile-scope="hardened" data-profile-label="Hardened Target"><strong>External Watchdog</strong><small>PROD Cluster 外</small></button>
               <button class="node env-bindings" type="button" data-node-id="deploy-prod-bindings" data-doc-href="../06-platform-application-integration/platform-application-integration-detail.md" aria-label="PROD 外部系统绑定，打开详情" aria-controls="deployment-detail-panel"><strong>Environment Binding</strong><small>PROD 独立身份与策略</small></button>
             </div>
             <div class="external-boundary dev">DEV Business Edge / 外部系统信任边界</div>
@@ -390,7 +442,7 @@
             <p class="jenkins-note auxiliary-layer">Jenkins 独立于平台环境；用户手工验证，平台不调用、不读状态、无 Webhook。</p>
           </div>
         </section>
-        <aside id="deployment-detail-panel" class="detail-panel" aria-label="部署架构节点详情"><h2 id="deployment-detail-title" class="detail-title">选择一个节点</h2><p id="deployment-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>事实边界</h3><p id="deployment-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="deployment-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="deployment-detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
+        <aside id="deployment-detail-panel" class="detail-panel" aria-label="部署架构节点详情"><p class="detail-baseline">摘要基线：<strong>2026-08-06.175</strong></p><h2 id="deployment-detail-title" class="detail-title">选择一个节点</h2><p id="deployment-detail-summary" class="detail-summary">点击、按 Enter 或 Space 打开节点摘要。</p><h3>Owner / 事实边界</h3><p id="deployment-detail-boundary" class="detail-boundary">地图不拥有规范事实。</p><h3>主要关系</h3><p id="deployment-detail-dependencies" class="detail-dependencies">选择节点后显示其上游与下游。</p><a id="deployment-detail-doc-link" class="detail-doc-link" href="../11-architecture-baseline/architecture-baseline-detail.md">打开规范文档</a></aside>
       </div>
     </section>
 
@@ -411,6 +463,9 @@
         <li><a href="../09-infrastructure-operations/infrastructure-operations-detail.md">09 基础设施与运维详细说明</a></li>
         <li><a href="../10-configuration-governance/configuration-governance-detail.md">10 Configuration Governance 详细说明</a></li>
         <li><a href="../11-architecture-baseline/architecture-baseline-detail.md">11 架构基线详细说明</a></li>
+        <li><a href="../12-implementation-roadmap/implementation-roadmap.md">12 实施路线图</a></li>
+        <li><a href="../12-implementation-roadmap/implementation-roadmap-detail.md">12 实施路线图详细说明</a></li>
+        <li><a href="../12-implementation-roadmap/environment-capacity-plan.md">12 环境容量与服务器规划</a></li>
       </ul>
     </nav>
   </main>
@@ -432,7 +487,7 @@
         'business-main': ['protected main', '正式交付经 Formal MR 合并到受保护主分支。', '直接 push 不属于允许的交付路径。', '上游：Formal MR。'],
         'logical-users': ['Browser users', '人员通过浏览器使用用户工作台和管理入口。', 'Browser 不直连数据服务、Kubernetes、OpenBao、Model 或 RGW 管理面。', '下游：platform-gateway。'],
         'logical-gateway': ['platform-gateway', '平台北向公开入口，承载公开 API 的受控边界。', '它不拥有领域状态、数据或授权结论。', '上游：Browser users；下游：Umi Web、Python Control Plane。'],
-        'logical-web': ['Umi Web', '用户端与管理入口只呈现服务端返回的受控信息。', 'UI 可见性不是授权边界。', '上游：platform-gateway；下游：公开 API。'],
+        'logical-web': ['Umi Web', '用户端与管理入口只呈现服务端返回的受控信息；对话交互复用 Ant Design X 组件。', 'UI 可见性不是授权边界；组件库不拥有登录、权限、对话或 Model Route 事实。', '上游：platform-gateway；下游：公开 API。'],
         'logical-control': ['Python Control Plane', '模块化单体协调业务事实、公共 API、Port 与 Adapter。', '内部模块不是既有微服务；领域语义不依赖 Provider 实现。', '上游：platform-gateway；下游：Configuration、编排、数据服务与 Adapter。'],
         'logical-configuration': ['Configuration module', '拥有 Catalog、通用配置治理协议与跨环境治理，并通过注册 Port 编排 Namespace owner。', '它位于 Python Control Plane 模块化单体内，不是独立 Deployable 或微服务；各领域仍拥有自己的 Typed Schema、Policy 数据与业务解释。', '上游：Python Control Plane；下游：领域 Namespace owner 与 Effective Configuration 消费者。'],
         'logical-orchestrator': ['Temporal + Orchestrator', '编排异步业务步骤并支持受控恢复。', '它不替代 Requirement 责任、Gate 或人工决定。', '上游：Control Plane；下游：Temporal persistence。'],
@@ -448,26 +503,26 @@
         'logical-rgw': ['Ceph RGW', '提供对象存储承载。', '对象版本、Retention 和访问结果以数据与安全 Contract 为准。', '上游：File Security。'],
         'logical-bao': ['OpenBao', '提供 Secret 与 Trust 支撑。', '浏览器、Agent 与常规业务模块不直连其管理能力。', '上游：Control Plane。'],
         'logical-observability': ['Observability', '汇集用于诊断的遥测和告警。', '遥测不能改写业务、授权、Audit、配置或恢复事实。', '上游：Operations Read Model。'],
-        'deploy-dev-account': ['DEV Resource Account', '当前 DEV 环境使用独立资源账号。', '与未来 PROD 没有运行时共享身份、数据、密钥或故障域。', '下游：DEV VPC。'],
+        'deploy-dev-account': ['DEV Resource Account', 'DEV Platform Environment 使用自己的资源账号。', '资源账号边界由 Infrastructure Operations 拥有；不与 PROD 共享身份、数据、密钥或故障域。', '下游：DEV VPC。'],
         'deploy-dev-vpc': ['DEV VPC', 'DEV 的独立网络边界。', '环境隔离不依赖应用层跨环境开关。', '上游：DEV Resource Account；下游：DEV Kubernetes Cluster。'],
-        'deploy-dev-cluster': ['DEV Kubernetes Cluster', '承载当前 DEV 的受控平台、Sandbox 与存储工作负载。', 'Node Role、容量和恢复要求以基础设施 detail 为准。', '上游：DEV VPC；下游：DEV platform-gateway。'],
-        'deploy-dev-gateway': ['DEV platform-gateway', '仅服务 DEV Platform Environment 的北向入口。', '不与 PROD 共享 Gateway、Session 或外部连接上下文。', '上游：DEV Kubernetes Cluster。'],
-        'deploy-prod-account': ['PROD Resource Account', '未来 PROD 从独立资源账号重新实例化。', '它不是 DEV standby，也不与 DEV 共享运行时资源。', '下游：PROD VPC。'],
-        'deploy-prod-vpc': ['PROD VPC', '未来 PROD 的独立网络边界。', '与 DEV 没有运行时共享路径。', '上游：PROD Resource Account；下游：PROD Kubernetes Cluster。'],
-        'deploy-prod-cluster': ['PROD Kubernetes Cluster', '未来独立运行 PROD 工作负载。', '实际实例化以前，此节点仅表达目标 Contract。', '上游：PROD VPC；下游：PROD platform-gateway。'],
-        'deploy-prod-gateway': ['PROD platform-gateway', '未来仅服务 PROD 的北向入口。', '不共享 DEV 的 Gateway、Session、Secret 或数据库。', '上游：PROD Kubernetes Cluster。'],
+        'deploy-dev-cluster': ['DEV Kubernetes Cluster + Flux', 'Compact Launch 使用 3 × core + 1 × 独立物理 sandbox-worker；Hardened Target 拆为 DEV 12 Node 的四类专用 Node Pool。', '容量数字由 12 Capacity Plan 拥有；Flux 只从 DEV Git 路径 Reconcile，Target 图不声明已部署状态。', '上游：DEV VPC；下游：DEV platform-gateway、Backup；Triggered Evolution 可增加 Collector 与 Watchdog。'],
+        'deploy-dev-gateway': ['DEV platform-gateway', '只服务 DEV Platform Environment 的北向入口。', 'Gateway 边界由 Platform Application Integration 拥有；不与 PROD 共享 Gateway、Session 或外部连接上下文。', '上游：DEV Kubernetes Cluster。'],
+        'deploy-prod-account': ['PROD Resource Account', 'PROD Platform Environment 使用自己的资源账号。', '资源账号边界由 Infrastructure Operations 拥有；PROD 不是 DEV standby，也不与 DEV 共享运行时资源。', '下游：PROD VPC。'],
+        'deploy-prod-vpc': ['PROD VPC', 'PROD 的独立网络边界。', '网络边界由 Infrastructure Operations 拥有；与 DEV 没有运行时共享路径。', '上游：PROD Resource Account；下游：PROD Kubernetes Cluster。'],
+        'deploy-prod-cluster': ['PROD Kubernetes Cluster + Flux', 'Compact Launch 使用 3 × core + 1 × 独立物理 sandbox-worker；Hardened Target 拆为 PROD 15 Node 的四类专用 Node Pool。', '容量数字由 12 Capacity Plan 拥有；Flux 只从 PROD Git 路径 Reconcile，Target 图不声明已部署状态。', '上游：PROD VPC；下游：PROD platform-gateway、Backup；Triggered Evolution 可增加 Collector 与 Watchdog。'],
+        'deploy-prod-gateway': ['PROD platform-gateway', '只服务 PROD Platform Environment 的北向入口。', 'Gateway 边界由 Platform Application Integration 拥有；不共享 DEV 的 Gateway、Session、Secret 或数据库。', '上游：PROD Kubernetes Cluster。'],
         'deploy-dev-collector': ['DEV Operations Collector', 'DEV 的 Cluster 外独立状态采集实例。', '它只提供可见性，Collector 不可用不能阻断独立业务控制循环。', '上游：DEV Kubernetes Cluster。'],
         'deploy-dev-backup': ['DEV Backup / Recovery Repository', 'DEV 的 Cluster 外独立恢复仓库。', '恢复责任、演练和环境边界由基础设施与安全 Contract 共同约束。', '上游：DEV Kubernetes Cluster。'],
         'deploy-dev-watchdog': ['DEV External Watchdog', 'DEV 的独立外部告警观察点。', '它不持有 Cluster Admin Credential，也不替代平台运行事实。', '上游：DEV Kubernetes Cluster。'],
         'deploy-dev-bindings': ['DEV Environment Binding', 'DEV 使用独立 Adapter Identity、Credential 与 Policy 绑定外部系统。', '外部 Provider 不获得平台领域写权限，也不与 PROD 共享连接上下文。', '上游：DEV platform-gateway；下游：DEV GitLab、DEV Model Provider。'],
         'deploy-dev-gitlab': ['DEV GitLab', 'DEV 绑定的外部 Source Control 系统。', 'GitLab 位于 DEV Platform Environment 之外；Project、Credential 与 Webhook Binding 按环境隔离。', '上游：DEV Environment Binding。'],
         'deploy-dev-model-provider': ['DEV Model Provider', 'DEV 绑定的外部模型服务。', 'Provider 位于 DEV Platform Environment 之外；Deployment、Credential 与能力策略按环境隔离。', '上游：DEV Environment Binding。'],
-        'deploy-prod-collector': ['PROD Operations Collector', '未来 PROD 的 Cluster 外独立状态采集实例。', '它只提供可见性，Collector 不可用不能阻断独立业务控制循环。', '上游：PROD Kubernetes Cluster。'],
-        'deploy-prod-backup': ['PROD Backup / Recovery Repository', '未来 PROD 的 Cluster 外独立恢复仓库。', '恢复责任、演练和环境边界由基础设施与安全 Contract 共同约束。', '上游：PROD Kubernetes Cluster。'],
-        'deploy-prod-watchdog': ['PROD External Watchdog', '未来 PROD 的独立外部告警观察点。', '它不持有 Cluster Admin Credential，也不替代平台运行事实。', '上游：PROD Kubernetes Cluster。'],
-        'deploy-prod-bindings': ['PROD Environment Binding', '未来 PROD 使用独立 Adapter Identity、Credential 与 Policy 绑定外部系统。', '外部 Provider 不获得平台领域写权限，也不与 DEV 共享连接上下文。', '上游：PROD platform-gateway；下游：PROD GitLab、PROD Model Provider。'],
-        'deploy-prod-gitlab': ['PROD GitLab', '未来 PROD 绑定的外部 Source Control 系统。', 'GitLab 位于 PROD Platform Environment 之外；Project、Credential 与 Webhook Binding 按环境隔离。', '上游：PROD Environment Binding。'],
-        'deploy-prod-model-provider': ['PROD Model Provider', '未来 PROD 绑定的外部模型服务。', 'Provider 位于 PROD Platform Environment 之外；Deployment、Credential 与能力策略按环境隔离。', '上游：PROD Environment Binding。']
+        'deploy-prod-collector': ['PROD Operations Collector', 'PROD 的 Cluster 外独立状态采集实例。', '该 Hardened Target 边界由 Infrastructure Operations 拥有；Collector 只提供可见性，不可用时不能阻断独立业务控制循环。', '上游：PROD Kubernetes Cluster。'],
+        'deploy-prod-backup': ['PROD Backup / Recovery Repository', 'PROD 的 Cluster 外独立恢复仓库。', '恢复责任、演练和环境边界由基础设施与安全 Contract 共同约束。', '上游：PROD Kubernetes Cluster。'],
+        'deploy-prod-watchdog': ['PROD External Watchdog', 'PROD 的独立外部告警观察点。', '该 Hardened Target 边界由 Infrastructure Operations 拥有；它不持有 Cluster Admin Credential，也不替代平台运行事实。', '上游：PROD Kubernetes Cluster。'],
+        'deploy-prod-bindings': ['PROD Environment Binding', 'PROD 使用独立 Adapter Identity、Credential 与 Policy 绑定外部系统。', '绑定 Contract 由 Platform Application Integration 拥有；外部 Provider 不获得平台领域写权限，也不与 DEV 共享连接上下文。', '上游：PROD platform-gateway；下游：PROD GitLab、PROD Model Provider。'],
+        'deploy-prod-gitlab': ['PROD GitLab', 'PROD 绑定的外部 Source Control 系统。', 'Source Control Delivery 拥有绑定事实；GitLab 位于 PROD Platform Environment 之外，Project、Credential 与 Webhook Binding 按环境隔离。', '上游：PROD Environment Binding。'],
+        'deploy-prod-model-provider': ['PROD Model Provider', 'PROD 绑定的外部模型服务。', 'Agent、Skill 与 Model 拥有绑定 Contract；Provider 位于 PROD Platform Environment 之外，Deployment、Credential 与能力策略按环境隔离。', '上游：PROD Environment Binding。']
       };
       const tabs = Array.from(document.querySelectorAll('[role="tab"]'));
       const panels = Array.from(document.querySelectorAll('[role="tabpanel"]'));
@@ -480,6 +535,7 @@
       const mapEls = Array.from(document.querySelectorAll('#architecture-map, .architecture-map'));
       const edgeEls = Array.from(document.querySelectorAll('[data-from][data-to]'));
       const nodes = Array.from(document.querySelectorAll('[data-node-id]'));
+      const profileControls = Array.from(document.querySelectorAll('.profile-control'));
       function setText(elements, value) { elements.forEach((element) => { element.textContent = value; }); }
       function clearSelection(announce) {
         nodes.forEach((node) => { node.classList.remove('is-selected', 'is-upstream', 'is-downstream', 'is-muted'); });
@@ -543,6 +599,17 @@
         status.textContent = `已切换到 ${tab.textContent}。`;
         if (focus) tab.focus();
       }
+      function activateProfile(control, focus) {
+        profileControls.forEach((item) => {
+          const selected = item === control;
+          item.setAttribute('aria-checked', String(selected));
+          item.tabIndex = selected ? 0 : -1;
+        });
+        document.documentElement.dataset.profile = control.dataset.profileValue;
+        clearSelection(false);
+        status.textContent = `已切换到 ${control.textContent}；完整 Target Contract 仍保留，当前 Profile 只改变强调与说明。`;
+        if (focus) control.focus();
+      }
       tabs.forEach((tab, index) => {
         tab.addEventListener('click', () => activateView(tab, false));
         tab.addEventListener('keydown', (event) => {
@@ -554,6 +621,19 @@
           if (event.key === 'Home') target = 0;
           if (event.key === 'End') target = tabs.length - 1;
           activateView(tabs[target], true);
+        });
+      });
+      profileControls.forEach((control, index) => {
+        control.addEventListener('click', () => activateProfile(control, false));
+        control.addEventListener('keydown', (event) => {
+          if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+          event.preventDefault();
+          let target = index;
+          if (event.key === 'ArrowRight' || event.key === 'ArrowDown') target = (index + 1) % profileControls.length;
+          if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') target = (index - 1 + profileControls.length) % profileControls.length;
+          if (event.key === 'Home') target = 0;
+          if (event.key === 'End') target = profileControls.length - 1;
+          activateProfile(profileControls[target], true);
         });
       });
       nodes.forEach((node) => {
