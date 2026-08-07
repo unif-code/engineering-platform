@@ -5,46 +5,56 @@
 
 ## 目标与边界
 
-本视图定义平台的 Cloud Environment、Kubernetes、Node、网络、存储拓扑、可观测性、Cluster DR、容量和 TCO Contract。它不拥有业务状态、Secret、加密、Audit、Artifact、数据服务恢复算法或外部状态导入算法。
+本视图定义完整 Target Architecture 中的 Platform Environment、Cloud Boundary、Kubernetes、逻辑 Node Role、物理放置、网络、存储拓扑、Observability、Cluster DR、容量准入与 TCO Contract。它不记录环境已部署状态，也不拥有业务状态、Secret、加密、Audit、Artifact、数据服务恢复算法、Release 版本、Environment Promotion、Profile 选择或人数容量矩阵。
 
-DEV 是当前唯一实例化的 Platform Environment，当前仓库仍是 Umi Max 前端模板。Python Control Plane、数据服务、基础设施和 PROD 都是批准的目标架构，不表示已有对应运行实例。未来 PROD 从同源代码、Contract、GitOps 和 PCS 在独立 Account、VPC、Cluster 中重新实例化；DEV 与 PROD 不共享运行实例、Session、数据、凭据、密钥或故障域。
+[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)唯一拥有 Release 版本、实施状态、Environment Promotion 和 Profile 选择；[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)唯一拥有分阶段采购、CPU/RAM/Disk 与人数服务器矩阵。环境实际 Deployed State 只能由本环境的 GitOps Desired State、PCS 与 Operations Read Model 证据证明，不能由本文推断。
 
-安全、PKI、Secret、加密和 Audit 由[安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)拥有；数据服务及组件恢复由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；运行状态投影、Console 和外部 Feed 由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。`GITOPS_CONFIG` 的基础设施事实仍由本文拥有，`PLATFORM_POLICY` 生命周期则由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。
+安全、PKI、Secret、加密和 Audit 由[安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)拥有；组件数据和恢复语义由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；运行状态投影、Console 和外部 Feed 由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。12 选择 Capacity Profile，[Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有已发布 `PLATFORM_POLICY` 的 Effective Value 与生命周期，本文只验证 Aggregate Physical Ceiling、调度放置、Headroom 与 Provisioning Gate。
 
-## 环境隔离
+## 环境与实例隔离
 
 ```text
-DEV Environment                         Future PROD Environment
-独立 Account / VPC / Cluster            独立 Account / VPC / Cluster
-独立 GitOps/IaC State                   独立 GitOps/IaC State
-独立入口、数据、密钥与备份               独立入口、数据、密钥与备份
-          同源代码、Contract、GitOps 模板与 PCS
+DEV Platform Environment                 PROD Platform Environment
+独立 Account / VPC / Cluster             独立 Account / VPC / Cluster
+独立 Gateway / Flux / GitOps State       独立 Gateway / Flux / GitOps State
+独立数据、Secret、备份与运行资源           独立数据、Secret、备份与运行资源
+             同一组件模板、Contract 与 PCS 兼容基线
 ```
 
-每个环境绑定不可变 `CloudEnvironmentBinding` Generation。Management Account 只承载治理，不承载平台运行资源、平台数据或恢复材料；环境间无默认网络互通。治理面异常不是已运行请求的同步依赖。
+DEV 与 PROD 使用同一组件模板独立实例化，分别绑定服务器、Cluster、域名、配置、Credential 和恢复材料。“同一个组件”只表示同源模板与兼容 Contract，不表示共享同一个 Gateway、Flux、数据服务、Secret 或任何运行实例。每个环境绑定不可变 `CloudEnvironmentBinding` Generation；环境间无默认网络互通，Management Account 不承载平台运行资源或恢复材料。
 
-## Cluster 平台基线
+## 逻辑 Role 与物理 Profile
 
-每个环境使用自管 Kubernetes 和四类专用 Node Role：`k8s-control-plane`、`platform-worker`、`sandbox-worker` 与 `storage-worker`。Control Plane、数据服务、Sandbox、存储与观测工作负载通过 Taint、Affinity、PDB、Topology 和 NetworkPolicy 保持隔离。
+Control Plane、Platform、Sandbox 与 Storage 始终是不同逻辑 Role 和隔离边界。Profile 只改变这些 Role 的物理放置和冗余，不合并其权限、Namespace、身份、网络、数据或容量账本。
 
-平台北向入口使用 Gateway API；Kubernetes API 使用 Cluster 外 Private L4 NLB TCP 6443 passthrough，并由 API Server 自己提供 TLS。Sandbox 使用不可变的 Kata/KVM 专用节点，不能回退到不满足隔离要求的 Runtime。
+- **Compact Launch Profile**：允许 Control Plane、Platform 与 Storage 逻辑 Role 融合放置到 `core` Node；允许 `NON_HA` 或较少 Replica，但已启用能力仍必须可观测、可备份恢复，并在故障时 Fail Closed。正式 Agent 验收起，Sandbox 必须使用独立物理 `sandbox-worker` 服务器；与 Platform、Storage 或 Control Plane 共享物理 Host 的 Sandbox 一律为 `LAB_ONLY`。
+- **Hardened Target Profile**：将四个逻辑 Role 物理拆为 `k8s-control-plane`、`platform-worker`、`sandbox-worker`、`storage-worker` 专用 Node Pool，并增加 Sandbox N+1、组件 HA、完整 Observability 和更强 Cluster DR。目标拓扑为 DEV 12 Node、PROD 15 Node；它不是首次发布的默认 Release Gate。
 
-## 运维与可观测性
+阶段对应的服务器规格、人数与容量数值只见[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)。09 detail 仅提供部署 Profile Contract 的便捷索引；如与 12 冲突，以 12 为准。
 
-OpenTelemetry 是统一遥测协议。Prometheus/Thanos Query、Alertmanager、Grafana、Loki、Tempo、Hubble 与 Operations Adapter 形成精简高可用后端；它们只产生诊断事实，不修改业务、授权、Audit、配置或恢复事实。
+## GitOps、运维与可观测性
 
-平台管理后台只读展示当前环境的 Baseline、有效配置、Health、容量、告警、Gap、Drift、Backup/Restore 和 Runbook。复杂查询通过 06 的受控新标签页 Console Access 打开，后台不提供恢复写操作、敏感材料或基础设施通用控制面。
+每个 Platform Environment 在自己的 Cluster 内独立运行一套 Flux，只将本环境已 Review 的 Git Desired State 收敛到本 Cluster。Flux 不跨 DEV/PROD Reconcile，不提供平台业务写入口或独立 Console；Condition、Inventory 与 Drift 经 Operations Adapter 只读展示。Controller 不可用时暂停新 Reconcile 并告警，已运行工作负载不依赖 Flux 同步可用。
 
-## 高可用、DR 与容量
+Launch Profile 提供最小 Metrics、Logs、Alert、Backup/Restore 和只读 Operations Health。Prometheus、Alertmanager、Loki 的完整 Replica 拓扑、Thanos、外部 Operations Collector、External Watchdog、完整故障余量与高级 DR 属于 Hardened Target。两类 Profile 的 Telemetry 都只产生诊断事实，不能修改业务、授权、Audit、配置或恢复事实。
 
-当前承诺为单站点 Cluster HA 与 Cluster DR，不承诺 Zone、Region、Account 或 Site DR；DEV 不是 PROD Standby。组件数据恢复以 07 为准，信任与解密恢复顺序以 08 为准。
+平台管理端只读展示当前环境的 Baseline、Effective Configuration、Health、容量、告警、Gap、Drift、Backup/Restore、TCO 和 Runbook，不在该界面编辑任何运维参数，也不提供 Cloud、Kubernetes、Flux、Secret 或 Restore 通用写操作。`GITOPS_CONFIG` 仍通过环境独立的受保护 Git Review 管理；可动态发布的 `PLATFORM_POLICY` 只由具备当前有效资格的 Super Admin 按 10 的生命周期管理。
 
-环境容量 Contract 为 DEV 与未来 PROD 分别定义 Node Role、数量、资源、存储与 Sandbox N+1 余量；完整数值只由[详细说明](./infrastructure-operations-detail.md)拥有。精确 Region、Zone、SKU、价格和折扣都是部署输入；它们在通过 PCS 与 Provisioning Gate 后才进入只读 TCO Snapshot。
+## 一次性 Tool Job
+
+promptfoo、EvalScope 与 OSV-Scanner 只在对应 Capability 已被 12 选择且通过 Capability Activation Gate 与 Release Gate 时，以版本锁定、受限、无 PVC 的一次性 Kubernetes Job 运行；能力未激活时不部署，也不常驻。Job 固定 CPU、Memory、Scratch、Deadline、并发和模型 Token/成本 Ceiling，并遵守 Network、Secret、Artifact 与容量准入；“非驻留”不表示可以绕过任何 Gate。
+
+## 容量、Evolution Trigger 与 Release Blocker
+
+12 选择的 Capacity Profile 与 10 提供的 Effective Policy 一起进入 09 的物理验证。Provisioning Gate 必须证明目标 Binding、PCS、物理 Ceiling、调度放置、PDB、Rollout/Fault Headroom、Backup/Restore 和恢复条件可行；不能通过页面编辑、放宽 Policy 或临时超卖绕过。
+
+Evolution Trigger 使用持续窗口和可关联证据评估 Agent Queue、`CAPACITY_UNAVAILABLE`、Sandbox/Storage p95、平台 SLO、维护窗口、Recovery 与 TCO。单个瞬时指标或孤立告警只触发调查，不能直接触发迁移。Trigger 未达到时不要求物理拆分；若在发布前已按 Published Policy 达到 Trigger，则对应的拆分、N+1、HA、Observability 或 DR 增强自动成为 Release Blocker，直到新的 Capacity Candidate 完成兼容、迁移、回退、安全、恢复与 Provisioning Gate。Trigger 本身不自动采购或部署。
 
 ## 不变量
 
-1. 环境间不共享 Account、VPC、Cluster、IaC State、入口、数据、Session、凭据、密钥、备份或故障域。
-2. 任何环境实施都以 `CloudEnvironmentBinding + PCS + Capacity Profile` 的可验证组合为准，不以页面或手工参数替代。
-3. Cluster DR 是当前恢复边界；组件级数据、信任材料和 Cluster 级恢复分别遵循 07、08 与本文的 Contract。
-4. 可观测性与管理看板是只读诊断面，不能反写业务事实、IaC Desired State、Secret 或恢复流程。
-5. Region、Zone、SKU、价格和折扣是部署输入，不能被描述为已固化的业务架构事实。
+1. DEV 与 PROD 使用同一组件模板的独立实例，不共享 Account、VPC、Cluster、Gateway、Flux、IaC State、数据、Session、Secret、备份或运行资源。
+2. 逻辑 Control Plane、Platform、Sandbox、Storage 边界不随物理融合而消失；正式 Agent Sandbox 必须位于独立物理 `sandbox-worker`，共享 Host 仅为 `LAB_ONLY`。
+3. Launch Profile 可以 `NON_HA` 或减少 Replica，但任何故障都必须可观测、Fail Closed、保留证据并可按已验证 Runbook 恢复。
+4. Hardened Target 保留四类专用 Node Pool、Rook-Ceph、Kata/KVM、Sandbox N+1、HA、完整 Observability 与高级 DR；未达到 Trigger 时不把它们作为首次发布的无条件采购清单。
+5. `CloudEnvironmentBinding + PCS + Capacity Profile + Provisioning Gate` 共同约束部署；09 不创建 Policy Effective Value，也不保存 12 拥有的状态或容量矩阵。
+6. 所有运维参数在管理端只读；配置变更分别遵循 10 的 `PLATFORM_POLICY` 生命周期或环境独立的 GitOps Review。
