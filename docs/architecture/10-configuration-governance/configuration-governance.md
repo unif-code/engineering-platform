@@ -54,5 +54,5 @@ PROD 主动导入并重新完成验签、Schema、Scope/Reference Mapping、安�
 2. Published Version 与 Effective Snapshot 始终不可变、可追溯并绑定准确版本与 Hash。
 3. Frontend、脚本、旧缓存或 Projection 不能自行决定当前有效配置。
 4. DEV 与 PROD 不共享运行状态；Promotion 不是同步、复制或回滚通道。
-5. 各领域拥有 Namespace 的 Policy 数据与业务语义；新 10 拥有通用治理协议，不建立集中式跨模块事务。
-6. Configuration 仍是模块化单体中的领域模块，文档拆分不产生独立微服务。
+5. 各领域拥有 Namespace 的 Policy 数据与业务语义；Configuration Governance 拥有通用治理协议，不建立集中式跨模块事务。
+6. Configuration 是模块化单体中的领域模块，不形成独立 Deployable 或微服务。

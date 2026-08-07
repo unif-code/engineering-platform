@@ -57,4 +57,4 @@ GitLab Connector、File Security Worker、Operations Adapter
 4. 领域事务、Audit 与待发布消息原子写入；消息传输至少一次，业务效果由 Inbox/Effect Ledger 幂等化。
 5. External Provider Contract 只导入可验证的只读状态，平台不以 Dashboard 或投影反写 IaC、Provider Desired State 或恢复事实。
 6. 外部状态 Feed 只影响可见性；其 `STALE/UNKNOWN` 不等于真实依赖故障，也不阻塞没有同步依赖该 Feed 的既有业务运行。
-7. Configuration 是 Control Plane 内独立领域模块；06 只消费其公开 Contract，文档拆分不产生新的 Deployable 或微服务。
+7. Configuration 是 Control Plane 内独立领域模块；Platform Application and Integration 只消费其公开 Contract，Configuration 不形成独立 Deployable 或微服务。

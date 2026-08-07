@@ -135,4 +135,4 @@ Audit 不得包含 Secret、Token、密码、Access Key、TOTP Secret、Private 
 4. Publish、Rollback、Rebase、Promotion、Rebind 与 Divergence 均使用服务端权限、版本、并发、Hash 和安全门禁，Frontend 不能形成权威结论。
 5. DEV 与 PROD 不建立运行时配置同步、共享数据库、共享凭据或反向写入；Promotion 只传递签名、Typed、可验证的 Change Intent。
 6. Source Lineage、High-water Mark、Signing Key 与 Divergence 历史不能因恢复、轮换、回滚或重新导入而静默重置或改写。
-7. Configuration 始终是模块化单体中的独立领域模块；文档 owner 拆分不产生新的 Deployable 或微服务。
+7. Configuration 始终是模块化单体中的独立领域模块，不形成独立 Deployable 或微服务。

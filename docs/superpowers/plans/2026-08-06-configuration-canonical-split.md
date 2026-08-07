@@ -342,7 +342,8 @@ const errors = [];
 for (const file of files.filter((item) => item.endsWith('.md'))) {
   const text = fs.readFileSync(file, 'utf8');
   if ((text.match(/^(?:\x60){3}/gm) || []).length % 2 !== 0) errors.push(`unclosed fence ${file}`);
-  for (const match of text.matchAll(/!?\[[^\]]*\]\(([^)]+)\)/g)) {
+  const prose = text.replace(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm, '');
+  for (const match of prose.matchAll(/!?\[[^\]]*\]\(([^)]+)\)/g)) {
     const target = match[1].trim().replace(/^<|>$/g, '').split('#')[0];
     if (!target || /^(?:https?:|mailto:|#)/.test(target)) continue;
     if (!fs.existsSync(path.resolve(path.dirname(file), decodeURIComponent(target)))) errors.push(`broken link ${file} -> ${target}`);
@@ -361,7 +362,7 @@ Expected: `errors=0`；`git diff --check` 无输出。
 Run:
 
 ```bash
-rg -n '方案[[:space:]]*[A-C]|之前|本次讨论|用户确认|审查发现|待实施|首版|首发|TO[D]O|TB[D]|FIX[M]E|rolling-architecture' docs/architecture --glob '*.md'
+rg -n '方案[[:space:]]*[A-C]|之前|本次讨论|用户确认|审查发现|待实施|首版|首发|TO[D]O|TB[D]|FIX[M]E|rolling-architecture|新[[:space:]]*10|文档.*拆分' docs/architecture --glob '*.md'
 ```
 
 Expected: 无返回。
