@@ -19,7 +19,7 @@ Release 版本、Capability Scope、实现状态、Environment Promotion 与 Rel
 
 DEV 与 PROD 使用同一组件模板、Contract、GitOps 模板与 PCS 兼容基线，各自在不同服务器、Cluster、域名和配置上部署独立实例。两者不共享 Gateway、Flux Controller、Git Credential、IaC State、数据库、对象、Session、Secret、Key、Backup、Provider Trust 或运行时资源；一个环境的资格、路径、MR 或 ServiceAccount 不能操作另一环境。Management Account 只承载治理，不承载平台工作负载、数据或恢复材料；治理面或 TCO 读取故障不是已运行请求的同步依赖。
 
-Region、Zone、vSwitch、CIDR、精确资源 ID、SKU、价格和折扣是 Binding 与部署输入，不是本文声明的已部署事实。环境 Deployed State 只由该环境的 GitOps Desired State、PCS、Capacity Profile 和 Operations Read Model 证据证明。
+Region、Zone、vSwitch、CIDR、精确资源 ID、SKU、价格和折扣是 Binding 与部署输入，不是本文声明的已部署事实。环境 Deployed State 只由该环境的 GitOps Desired State、PCS 和 Operations Read Model 运行证据证明；路线图选择的 Capacity Profile 不能替代这些证据。
 
 ## 3. Platform Compatibility Set 与 Provisioning Gate
 
@@ -98,17 +98,14 @@ Flux 只允许读取当前环境批准的 Git/OCI/Helm 来源并访问本 Cluste
 
 三个 Profile、并发、Deadline、TTL 和 Evaluation Ceiling 均是版本化 `GITOPS_CONFIG`/Capacity Profile；业务 Policy 只能在 Ceiling 内收紧。Job 调度还必须满足当前有效 Capacity Profile 的 Rollout/Fault Headroom、Model Provider Quota 与本环境成本预算，不能挤占数据库、消息、Audit、Flux 或 Observability 的保留资源；Hardened Target 还必须满足 `platform-worker` N+1。扩大 Profile 或并发必须以实测 p95、峰值 Scratch、Provider 限流、Token/成本和 Node 故障证据建立新 Capacity Candidate。
 
-## 4. 部署 Profile Contract 与阶段索引
+## 4. 部署 Profile Contract
 
-本节只提供物理拓扑的便捷索引，不声明版本实现、验收、环境 Promotion 或 Deployed State，也不复制 CPU/RAM/Disk 与人数矩阵。版本状态、Profile 选择和完整容量数值由 12 owner；如果本索引与 12 冲突，以[实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)和[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)为准。
+本文只定义物理拓扑必须遵守的 Target Contract，不建立版本或阶段索引，也不声明实现、验收、Environment Promotion 或 Deployed State。精确 Release 到 Profile 的映射与选择只见[实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)，分阶段服务器数量、CPU/RAM/Disk 和人数容量场景只见[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)。
 
-| 阶段索引 | 部署 Profile Contract | 可靠性边界 |
+| 部署 Profile Contract | 通用物理拓扑 | 可靠性边界 |
 | --- | --- | --- |
-| V0.1～V0.3 DEV | `1 × core` | `NON_HA`；不承载正式 Agent Sandbox |
-| V0.4 验收 | `1 × core + 1 × sandbox-worker` | 正式 Sandbox 必须使用独立物理服务器；同机仅 `LAB_ONLY` |
-| V0.5 DEV Candidate | `3 × core + 1 × sandbox-worker` | Compact Launch 的多 Node 候选验证 |
-| V1.0 PROD Launch | `3 × core + 1 × sandbox-worker` | 独立 PROD Environment 的 Compact Launch |
-| Hardened Target | DEV 12 Node / PROD 15 Node | 四类专用 Node Pool、Sandbox N+1、HA、完整 Observability 与增强 DR |
+| Compact Launch Profile | Control Plane、Platform 与 Storage 逻辑 Role 可融合放置到 `core` Node；正式 Agent Capability 激活时，Sandbox 必须放置到独立物理 `sandbox-worker` | 允许 `NON_HA` 或减少非关键 Replica；故障时安全停止、形成证据并从 Cluster 外 Backup 恢复 |
+| Hardened Target Profile | Control Plane、Platform、Sandbox 与 Storage 分别使用四类专用 Node Pool | Sandbox N+1、组件 HA、完整 Observability 与增强 DR；具体节点数量与容量数值由 12 拥有 |
 
 ### 4.1 逻辑 Role 不变量
 
@@ -131,12 +128,14 @@ Compact Launch 可把 Control Plane、Platform 与 Storage 的 Pod/Daemon 融合
 
 Hardened Target 将四个逻辑 Role 拆为四类专用 Node Pool：
 
-- DEV 12 Node：3 `k8s-control-plane`、4 `platform-worker`、2 `sandbox-worker`、3 `storage-worker`；
-- PROD 15 Node：3 `k8s-control-plane`、6 `platform-worker`、2 `sandbox-worker`、4 `storage-worker`。
+- `k8s-control-plane` 承载 Kubernetes API、Scheduler、Controller 与 etcd；
+- `platform-worker` 承载平台应用、数据服务、Operator、GitOps 与 Observability；
+- `sandbox-worker` 承载 Kata/KVM Guest 与受控代码执行，并保持独立物理边界；
+- `storage-worker` 承载 RWO 存储物理实现、Rook-Ceph 与恢复流量。
 
-Control Plane 使用三个专用 Node、stacked etcd 与 quorum 2。Sandbox Pool 使用 Kata/KVM 并保留 N+1；Storage Pool 使用 Rook-Ceph 和 Host 故障域；Platform、数据、Secret 与 Observability 按各 owner 的 HA Contract 跨 Node 分散。精确服务器规格、磁盘和 Capacity Ceiling 不在本文重复，统一链接[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)。
+Control Plane 保持专用 Node、stacked etcd 与 quorum；Sandbox Pool 使用 Kata/KVM 并保留 N+1；Storage Pool 使用 Rook-Ceph 和 Host 故障域；Platform、数据、Secret 与 Observability 按各 owner 的 HA Contract 跨 Node 分散。精确节点数量、服务器规格、磁盘和 Capacity Ceiling 不在本文重复，统一链接[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)。
 
-Hardened Target 是稳定目标，不是 V1.0 Launch 的默认 Release Gate。未达到 Evolution Trigger 时，不能仅因目标存在就要求提前物理拆分；若 Trigger 在发布前成立，相应增强按第 10 节成为 Release Blocker。
+Hardened Target 是稳定目标，不是首次正式 Launch 的默认 Release Gate。未达到 Evolution Trigger 时，不能仅因目标存在就要求提前物理拆分；若 Trigger 在发布前成立，相应增强按第 10 节成为 Release Blocker。
 
 ## 5. Sandbox Worker 交付 Gate
 

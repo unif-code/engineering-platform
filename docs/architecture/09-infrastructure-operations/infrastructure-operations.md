@@ -28,9 +28,9 @@ DEV 与 PROD 使用同一组件模板独立实例化，分别绑定服务器、C
 Control Plane、Platform、Sandbox 与 Storage 始终是不同逻辑 Role 和隔离边界。Profile 只改变这些 Role 的物理放置和冗余，不合并其权限、Namespace、身份、网络、数据或容量账本。
 
 - **Compact Launch Profile**：允许 Control Plane、Platform 与 Storage 逻辑 Role 融合放置到 `core` Node；允许 `NON_HA` 或较少 Replica，但已启用能力仍必须可观测、可备份恢复，并在故障时 Fail Closed。正式 Agent 验收起，Sandbox 必须使用独立物理 `sandbox-worker` 服务器；与 Platform、Storage 或 Control Plane 共享物理 Host 的 Sandbox 一律为 `LAB_ONLY`。
-- **Hardened Target Profile**：将四个逻辑 Role 物理拆为 `k8s-control-plane`、`platform-worker`、`sandbox-worker`、`storage-worker` 专用 Node Pool，并增加 Sandbox N+1、组件 HA、完整 Observability 和更强 Cluster DR。目标拓扑为 DEV 12 Node、PROD 15 Node；它不是首次发布的默认 Release Gate。
+- **Hardened Target Profile**：将四个逻辑 Role 物理拆为 `k8s-control-plane`、`platform-worker`、`sandbox-worker`、`storage-worker` 专用 Node Pool，并增加 Sandbox N+1、组件 HA、完整 Observability 和更强 Cluster DR；它不是首次发布的默认 Release Gate。
 
-阶段对应的服务器规格、人数与容量数值只见[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)。09 detail 仅提供部署 Profile Contract 的便捷索引；如与 12 冲突，以 12 为准。
+精确阶段到 Profile 的映射与选择只见[实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)，阶段对应的服务器数量、规格、人数与容量数值只见[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)。09 detail 只定义 Compact Launch/Hardened Target 的通用物理拓扑与准入 Contract，不建立阶段索引。
 
 ## GitOps、运维与可观测性
 

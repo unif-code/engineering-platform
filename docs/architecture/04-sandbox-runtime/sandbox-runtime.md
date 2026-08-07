@@ -35,7 +35,7 @@ Launch Profile 的容量与可靠性选择来自 [12 的有效 Capacity Profile]
 
 Execution Binding 固定 Resource Profile、Runtime、Network、Secret、Repository Branch 与权限。Sandbox Controller 接收 Agent owner 发出的已授权物化请求，原子申请带 Fencing Token 的 Capacity Lease，并返回 `MaterializationReady`、结构化 `MaterializationBlocked` 或 `MaterializationFailed`；它不决定 Attempt 如何排队或转换。收到挂起、Child Handoff、结束或取消的物理清理命令时，Controller 固化事实、Fence 副作用、吊销凭据、释放 Lease 并销毁 Materialization。
 
-Agent 与 Build 共享同一 Capacity Ledger，并分别受独立的版本化 Platform Policy 准入；Resource Profile、Capacity Unit、Policy Gate 与 `ParentContinuationReservation` 的物理账本 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。当前有效 Profile 的选择见 12；具体 Node、Ceiling 与基础设施容量 Contract 由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
+Agent 与 Build 共享同一 Capacity Ledger，并分别受独立的版本化 Platform Policy 准入；Resource Profile、Capacity Unit、Policy Gate 与 `ParentContinuationReservation` 的物理账本 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。当前有效 Profile 的选择见 12；Node 数、Ceiling 与容量数值见[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)，通用物理拓扑与基础设施准入 Contract 由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
 
 ## 网络、Secret、Preview 与镜像构建
 
