@@ -4,10 +4,11 @@
 
 本文定义平台从 V0.1 开发起步到 V1.0 正式上线的渐进式服务器规划，并给出 10、20、30、40、50 名活跃研发用户的容量场景。目标是在不削弱身份、授权、Audit、Secret、Sandbox 隔离、容量准入和 Backup/Restore 底线的前提下，避免在开发初期一次性部署 Hardened Target Profile。
 
-本文是实施与采购规划，不是运行状态事实源：
+本文只拥有容量场景、Profile 数值和分阶段采购计划，不拥有版本 Capability Scope、实施状态或环境运行状态：
 
-- [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)拥有 Node Role、资源隔离、容量 Gate、存储和 Hardened Target Profile；
-- 本文拥有版本阶段对应的 Launch Profile 和人数场景；
+- [实施路线图](./implementation-roadmap.md)提供三轴导航；[实施路线图详细说明](./implementation-roadmap-detail.md)唯一拥有版本 Contract、实现状态、Environment Promotion 状态和 Profile 选择，并只链接本文的选定 Profile，不复制服务器表；
+- [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)只拥有容量不变量、准入方法和 Hardened Target Profile 的目标拓扑；
+- 本文拥有人数容量场景、Profile 服务器数值、容量计算与版本阶段对应的采购计划；其中版本标签只是采购触发条件，不声明该版本已实现、已验收或已部署；
 - GitOps、Platform Configuration Snapshot（PCS）和 Operations Read Model 证明某个环境实际部署的版本、拓扑和有效容量；
 - DEV 与 PROD 是两个独立 Platform Environment，不能共享 Kubernetes Node、数据、凭据、Secret 或恢复材料。
 
