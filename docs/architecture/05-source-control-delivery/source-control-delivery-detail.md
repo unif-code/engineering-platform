@@ -75,7 +75,7 @@ Jenkins 是独立外部平台，用户手工触发、查看和处置构建/测�
 
 平台为每个 WorkItem 保存 Route 所要求的 Commit Checkpoint。02 owner 先提供不可变的 `RequirementDeliverySnapshot`，至少包含 `requirementId`、生成时 `requirementVersion`、`requiredWorkItemSetVersion/hash` 以及按稳定 WorkItem ID 排序的全部必需 WorkItem 集合。05 owner 只能针对该快照采集证据，不得自行推断哪些 WorkItem 是必需项。
 
-`IntegrationBaselineEvidence` 至少保存 `integrationBaselineId/hash`、`requirementId`、生成时 `requirementVersion`、`requiredWorkItemSetVersion/hash`、生成时间，以及每个必需 WorkItem 的 Repository、任务分支 Commit、Integration MR/结果、Artifact Hash、Attempt 引用与验证证据。Evidence 的 WorkItem 集合必须与输入快照一一对应、无缺失、无重复，且不能引用持续移动的分支 HEAD；快照、逐项证据和规范化序列共同进入 Evidence Hash。Evidence 是不可变证据版本；02 owner 决定 Requirement 何时选定并冻结对它的引用。
+`IntegrationBaselineEvidence` 至少保存 `integrationBaselineId/hash`、`requirementId`、生成时 `requirementVersion`、`requiredWorkItemSetVersion/hash`、生成时间，以及每个必需 WorkItem 的 Repository、任务分支 Commit、Integration MR/结果、Artifact Hash、执行来源与验证证据；执行来源按 02 owner 的 `executorType` 判别，`HUMAN` 交付绑定人员 executor 标识，`AGENT` 交付必须绑定 Attempt 引用，不允许两者皆无或以占位充数。Evidence 的 WorkItem 集合必须与输入快照一一对应、无缺失、无重复，且不能引用持续移动的分支 HEAD；快照、逐项证据和规范化序列共同进入 Evidence Hash。Evidence 是不可变证据版本；02 owner 决定 Requirement 何时选定并冻结对它的引用。
 
 任何相关 Git/MR 证据的 `headSha`、Artifact、Contract 或必需 WorkItem 集合变化，都必须产生新的 `IntegrationBaselineEvidence` 或 `IntegrationBaselineEvidenceChanged` 事件，旧 Evidence 保留为历史事实。生成过程中发现 Requirement/必需集合版本已变化时，本次生成以 `REQUIREMENT_SNAPSHOT_CONFLICT` 失败并重新获取快照，不能发布部分覆盖或混合版本的 Evidence。本文只发布该变化与当前证据结果；02 owner 决定当前 `RequirementIntegrationBaselineSelection`、Acceptance Decision 对 `integrationBaselineId/hash` 的绑定与失效以及任何 Requirement/WorkItem 业务动作。
 
@@ -103,7 +103,7 @@ Reviewer 必须同时是当前 Assignment assignee，且实时具备 `merge_requ
 
 本节在前文已经定义 GitLab Project/Repository、Branch、Integration MR、人工 Jenkins Evidence、Acceptance、Formal MR 与 Review Contract 后，只扩展任务分支 Commit/Push 的受控来源，不改变实际交付时序。Agent Commit 仍发生在 Integration MR 之前；Agent 场景除通用账号、Membership、Capability、Scope、Repository Binding 与 GitLab 保护校验外，还必须满足不可变 Execution Binding 和 Tool Policy。
 
-Agent Credential 必须绑定 Platform Environment、Attempt、Project、任务分支与 TTL，只允许读取 Binding 固定的 Repository/Commit 并写当前任务分支。Agent 产生的有效代码必须先形成可核验 Commit，再通过 Connector 幂等 Push；远端确认的 Commit SHA、Push Effect、实际 Agent、发起人员和 Binding 引用共同进入交付证据。未知或失败的 Push 只通过 Effect Ledger 与 Reconciliation 收敛，不能被解释为已交付。
+Agent Credential 必须绑定 Platform Environment、Attempt、Project、任务分支与 TTL，只允许读取 Binding 固定的 Repository/Commit 并写当前任务分支；TTL 是任务分支 Push 窗口的硬上限，Attempt 进入 Fence 或清理时凭据按[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)的清理 Contract 即刻吊销。Agent 产生的有效代码必须先在 Sandbox 内形成可核验 Commit，再以该凭据直接 Push 当前任务分支；Connector 不代理该 Push，只以幂等方式核验远端 `headSha`、将 Push Effect 记入 `SourceControlEffect` Ledger 并收敛未知结果。远端确认的 Commit SHA、Push Effect、实际 Agent、发起人员和 Binding 引用共同进入交付证据；Fence 生效后到达远端的 Push 不进入该 Attempt 的交付证据，Reconciler 发现此类 Push 时冻结该任务分支并发布带新旧 hash 的证据变化事件，由 02 owner 决定业务处置。未知或失败的 Push 只通过 Effect Ledger 与 Reconciliation 收敛，不能被解释为已交付。
 
 Agent 不能直接 Push `dev` 或 `main`，不能扩大 Repository Scope、Force Push、选择 Reviewer、形成 Human Decision、代替 Acceptance/Formal Review 或执行 Merge。Agent 自动化只改变任务分支 Commit 的来源，不改变前述人工交付顺序、证据绑定和责任链。
 

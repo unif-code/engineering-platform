@@ -8,7 +8,7 @@
 
 本文是 V0.1～V1.0 Capability Release、环境推广与 Launch Profile 的统一导航。00～11 定义稳定的目标架构 Contract；本文及对应 detail 只决定哪些能力进入哪个 Release、当前实施状态以及候选制品走到哪个 Promotion 阶段，不改变领域 owner 的业务、安全或运行规则。
 
-GitOps Desired State、Platform Configuration Snapshot（PCS）和 Operations Read Model 共同证明各 Platform Environment 的实际部署状态。路线图状态不能替代这些运行证据。
+GitOps Desired State、Platform Compatibility Set（PCS）和 Operations Read Model 共同证明各 Platform Environment 的实际部署状态。路线图状态不能替代这些运行证据。
 
 ## 三条正交轴
 

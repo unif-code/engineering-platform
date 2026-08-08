@@ -124,7 +124,10 @@ CREATED → BINDING → QUEUED → PROVISIONING → RUNNING → FINALIZING → S
 
 RUNNING → WAITING_INPUT → QUEUED
 任意活动状态 → CANCELING → CANCELED | TIMED_OUT
-其他终态：FAILED
+
+失败路径：BINDING → FAILED；PROVISIONING → FAILED
+RUNNING →（执行失败，仍先固化证据）FINALIZING → FAILED
+FINALIZING →（固化失败，记录证据缺口）FAILED
 ```
 
 | 状态 | 语义 |
@@ -139,7 +142,7 @@ RUNNING → WAITING_INPUT → QUEUED
 | `CANCELING` | 幂等终止 Parent/Child、Fence 副作用并回收资源 |
 | `SUCCEEDED`、`CANCELED`、`FAILED`、`TIMED_OUT` | 不可逆终态 |
 
-`CREATED → BINDING` 需关联 Run、WorkItem 与有效 Assignment；`BINDING → QUEUED` 需完整持久化 Binding、校验和审计，失败进入 `FAILED`。`QUEUED → PROVISIONING` 只在获得唯一 Fencing 保护 Lease 后进行，`PROVISIONING → RUNNING` 需确认绑定代码、网络 Policy 与短期凭据准备就绪。正常完成一定经过 `FINALIZING`；取消和超时一定经过 `CANCELING`。
+`CREATED → BINDING` 需关联 Run、WorkItem 与有效 Assignment；`BINDING → QUEUED` 需完整持久化 Binding、校验和审计，失败进入 `FAILED`。`QUEUED → PROVISIONING` 只在获得唯一 Fencing 保护 Lease 后进行，`PROVISIONING → RUNNING` 需确认绑定代码、网络 Policy 与短期凭据准备就绪。正常完成与执行失败都必须经过 `FINALIZING` 固化证据后进入终态，`FINALIZING` 自身失败时直接进入 `FAILED` 并记录证据缺口；取消和超时一定经过 `CANCELING`。
 
 终态不可复活。Temporal Activity 可在同一 Binding 中有限重试瞬时基础设施错误，不能变更 Binding。Attempt 失败、取消或超时不自动终结 WorkItem/Requirement；上层 Workflow 决定阻塞、重试、取消或继续。
 
@@ -169,11 +172,16 @@ Secret 仍按 08 注入，Prompt、测试输入和模型输出只进入按数据
 
 本 Target Contract 定义的 Child Type 范围包含 Image Build；新增 Child Type 必须独立定义状态机、Binding、资源、权限、结果与恢复 Contract，不能复用 Image Build 的隐含假设。具体 Child Type 的实施阶段、激活状态与 Release 验收只由 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)记录，本领域不保存当前启用或部署事实。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
 
-Child Build Execution 使用独立状态机，不能复用 Parent Attempt 状态；状态集合固定为：
+Child Build Execution 使用独立状态机，不能复用 Parent Attempt 状态；状态集合与转换固定为：
 
 ```text
-CREATED | QUEUED | PROVISIONING | RUNNING | FINALIZING | SUCCEEDED
-| CANCELING | CANCELED | FAILED | TIMED_OUT
+CREATED → QUEUED → PROVISIONING → RUNNING → FINALIZING → SUCCEEDED
+
+失败路径：PROVISIONING → FAILED
+RUNNING →（仍先固化证据）FINALIZING → FAILED
+FINALIZING →（固化失败，记录证据缺口）FAILED
+任意活动状态 → CANCELING → CANCELED | TIMED_OUT
+Handoff 后 `active_build_limit=0`：QUEUED → CANCELING → CANCELED（原因码 POLICY_DISABLED）
 ```
 
 `SUCCEEDED`、`CANCELED`、`FAILED`、`TIMED_OUT` 是供 Parent 消费的结构化终态结果。`WAITING_INPUT` 与 `WAITING_CHILD` 只属于 Parent Attempt，不能写入 Child Build Execution。
@@ -225,7 +233,7 @@ SandboxPort
 ```text
 AgentRunRequested / ExecutionBound / AgentAttemptQueued / AgentAttemptStarted
 AgentWaitingInput / AgentWaitingChild / AgentAttemptFinalizing
-AgentAttemptSucceeded / AgentAttemptFailed / AgentAttemptCanceled
+AgentAttemptSucceeded / AgentAttemptFailed / AgentAttemptCanceled / AgentAttemptTimedOut
 ModelDeploymentHealthChanged / ModelFallbackRequested / RuntimePermissionRevoked
 ```
 

@@ -46,6 +46,8 @@ ReleaseCandidatePromotion
 
 Record 创建时绑定已存在且稳定的 source DEV Acceptance Case/Gate ID，不预填尚未形成的通过决定。`candidateId`、两个 Digest、兼容配置/PCS 引用、`sourceDevAcceptanceGateRef` 与 target PROD 在创建后不可原地改写；`NOT_DEPLOYED → DEV_ACCEPTED` 时把最终 `devAcceptanceDecisionRef` 及其 Evidence 追加到证据链。状态只能以预期 `stateVersion` 推进并形成 Audit。若任一不可变绑定改变，必须创建新 `ReleaseCandidatePromotion` 并重新从 DEV Acceptance 开始。
 
+`ReleaseCandidatePromotion` 是路线图治理事实：Record 及其状态历史持久化于受保护 Git 路径，版本化并经 Review 合并推进；它不存放在 DEV 或 PROD 的运行数据库中，任何 Platform Environment 只读引用其当前状态，DEV 与 PROD 的运行隔离不因 Promotion 治理而联通。`targetEnvironmentId` 随目标 PROD 的 `CloudEnvironmentBinding` 声明铸造，可先于物理 Provisioning 存在；创建 Record 前该标识必须已声明，标识改变按前述不可变绑定规则处理。
+
 | 状态 | 含义 |
 | --- | --- |
 | `NOT_DEPLOYED` | 候选 Record 尚未通过其绑定的 source DEV acceptance。 |
@@ -58,6 +60,8 @@ Record 创建时绑定已存在且稳定的 source DEV Acceptance Case/Gate ID�
 | `NOT_DEPLOYED → DEV_ACCEPTED` | V0.5 Release Gate 对该 Record 绑定的 source DEV acceptance 作出通过决定。 |
 | `DEV_ACCEPTED → PROD_CANDIDATE` | 独立 Production Promotion Approval 批准同一 Record 进入 PROD 发布流程。 |
 | `PROD_CANDIDATE → PROD_RELEASED` | V1.0 PROD Release Gate 验证同一 Record 后通过。 |
+
+Production Promotion Approval 是独立人工决定：审批资格由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)的 Capability 与 Scope Contract 判定；审批人宜与同一 Record 的 source DEV Acceptance 通过决定人为不同 Principal，无法满足时必须按治理例外记录原因。Approval 绑定 `candidateId`、`imageDigest`、`bundleDigest`、`pcsCompatibilityRef` 与预期 `stateVersion`，记录审批 Principal、时间与原因并进入 Audit；任一绑定或 `stateVersion` 变化即失效并须重新批准。
 
 状态转换不得跳级、回退或由版本实现状态推导。Promotion 只能推进同一候选制品，不能在 V1.0 重新构建。DEV 与 PROD 的数据、Secret、凭据和环境本地配置值保持独立；配置 Promotion 传递受控版本谱系与兼容性，不复制环境 Secret。
 
@@ -74,7 +78,7 @@ Record 创建时绑定已存在且稳定的 source DEV Acceptance Case/Gate ID�
 | V0.5 | `NOT_STARTED` | [V1.0 Compact Launch Profile](./environment-capacity-plan.md#6-v10-compact-launch-profile) |
 | V1.0 | `NOT_STARTED` | [首批 10 人配置](./environment-capacity-plan.md#63-首批-10-人配置) |
 
-V0.1 的 `IN_PROGRESS` 只表示仓库已有 Umi Max 前端基础并已开始形成目标架构文档，不构成 Release Gate 或部署通过证据。其余版本在前置版本 `ACCEPTED` 前保持 `NOT_STARTED`；若出现明确阻断条件，再基于证据改为 `BLOCKED`。
+V0.1 的 `IN_PROGRESS` 表示仓库已有 Umi Max 前端基础，且 00～11 目标 Contract 已形成批准基线（见[架构基线](../11-architecture-baseline/architecture-baseline.md)）；该状态不构成 Release Gate 或部署通过证据。其余版本在前置版本 `ACCEPTED` 前保持 `NOT_STARTED`；若出现明确阻断条件，再基于证据改为 `BLOCKED`。
 
 Environment Promotion 当前状态单独记录为共享投影：
 

@@ -5,7 +5,7 @@
 
 ## 目标与边界
 
-本视图定义平台应用的完整 Target Architecture、组件边界、集成 Contract 与运行时关系，不声明任何 Platform Environment 的实际部署状态。环境中的 Image、Bundle、拓扑与健康状态由 GitOps Desired State、Platform Configuration Snapshot（PCS）和运行证据证明；实施阶段、Capability 激活状态与 Release 验收只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)。
+本视图定义平台应用的完整 Target Architecture、组件边界、集成 Contract 与运行时关系，不声明任何 Platform Environment 的实际部署状态。环境中的 Image、Bundle、拓扑与健康状态由 GitOps Desired State、Platform Compatibility Set（PCS）和运行证据证明；实施阶段、Capability 激活状态与 Release 验收只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)。
 
 目标 Control Plane 交付为一个 Python 项目中的**模块化单体**；模块保有自己的领域模型、Application Service、数据和迁移，并以公开 Port/DTO/事件协作。模块可在未来提取为独立服务，但可提取性不表示当前已有领域微服务。
 

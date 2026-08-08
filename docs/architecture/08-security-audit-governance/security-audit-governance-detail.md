@@ -188,7 +188,9 @@ PENDING_SCAN → PASSED | BLOCKED | ERROR | EXPIRED
 
 ## 9. Audit、WORM 与 Break-glass
 
-Audit 是独立的追加式不可篡改事实。任何需要 Audit 的受保护状态变更，只有在 Audit 与对应持久证据可靠提交后才能成功；Audit 容量无法覆盖扩容 Lead Time 时相关写操作 Fail Closed。Coverage 至少包括 Identity/认证因子重置、授权/配置、Requirement/Workflow/MR/Attempt、Secret/PKI、Archive/Restore/Delete、DLQ/Replay、Provider Feed、Break-glass、加密轮换、文件/镜像判定、工作负载安全异常和治理操作。平台、OpenBao、Provider 与 Kubernetes Audit 独立保存并可按 Correlation ID、环境和对象关联；任一来源都不能替代其他来源。
+Audit 是独立的追加式不可篡改事实。任何需要 Audit 的受保护状态变更，只有在 Audit 与对应持久证据可靠提交后才能成功；平台 Audit 的可靠提交点是与领域事实同一 PostgreSQL 事务的持久化提交（见[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)的单事务写入），OpenBao 等独立来源以其自身 Audit Device 成功记录为准，WORM 归档不是业务成功的同步前置。Audit 容量无法覆盖扩容 Lead Time 时相关写操作 Fail Closed。Coverage 至少包括 Identity/认证因子重置、授权/配置、Requirement/Workflow/MR/Attempt、Secret/PKI、Archive/Restore/Delete、DLQ/Replay、Provider Feed、Break-glass、加密轮换、文件/镜像判定、工作负载安全异常和治理操作。平台、OpenBao、Provider 与 Kubernetes Audit 独立保存并可按 Correlation ID、环境和对象关联；任一来源都不能替代其他来源。
+
+各 Audit 来源（平台 PostgreSQL 事务事实、OpenBao Audit Device 缓冲等）到 `audit-worm` 的归档由独立 `audit-archiver` 以 at-least-once 语义异步执行：对象键由 Audit 事实唯一 ID 与内容哈希构成，重试与重放收敛为同一 WORM 对象，不产生重复证据；`audit-archiver` 只追加，不修改或删除既有对象，并维护可观测的归档 Watermark 与积压深度。归档积压、来源缓冲余量或 `audit-worm` 容量任一按当前扩容 Lead Time 无法覆盖时进入 Critical 告警并触发前述容量 Fail Closed 判定；归档失败不回滚已提交的业务事务，只阻止后续受保护写入。归档链随 `audit-worm` 所属 Object Storage Capability 激活启用；激活前，权威 Audit 事实由 PostgreSQL 事实及其 Backup 链保留。
 
 `audit-worm` 默认使用 365 天 `COMPLIANCE` Object Lock。本文唯一拥有 Audit Retention 期限、Legal Hold/调查冻结、策略级删除资格与不可缩短 Security Floor；任何身份都不能在 Retention 到期前删除、缩短或绕过锁定。Audit 正文不保存 Secret、密码、TOTP、Token、Private Key、完整 Presigned URL、Prompt 或源码。07 只拥有 Object Version、容量计入、精确删除执行与 Reconciler 机制，并且必须消费本文产生的资格，不能另行解释 Audit Retention 或 Legal Hold。
 

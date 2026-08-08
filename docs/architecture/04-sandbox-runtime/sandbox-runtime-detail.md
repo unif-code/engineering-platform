@@ -118,7 +118,7 @@ OpenBao 保存 Secret 与 Lease 事实；Agent Injector 将当前执行的短期
 
 Preview 是受保护的稳定访问引用，而不是 Pod 地址。浏览器应用使用 URL Preview；其他运行形态可由受控 Adapter 产出构建 Artifact、二维码或远程设备入口。Preview Gateway 在每次访问校验当前平台 Session、Capability、Scope、Workspace Membership 与 Requirement 访问权，并支持到期、撤销和审计。
 
-Image Build 不是普通 Agent Container 内的 Privileged 操作。Parent 通过稳定 Idempotency Key 创建独立 Child Build Execution，且必须先固化 Checkpoint、日志和 Artifact，销毁自己的 Materialization、吊销 Secret 并释放 Agent Lease。只有能够证明 Parent Lease 已释放时，Child 才能取得自己的 Build Lease。
+Image Build 不是普通 Agent Container 内的 Privileged 操作。Parent 通过稳定 Idempotency Key 创建独立 Child Build Execution，且必须按统一清理顺序先固化 Checkpoint、日志和 Artifact，Fence 并吊销 Secret，再销毁自己的 Materialization 并释放 Agent Lease。只有能够证明 Parent Lease 已释放时，Child 才能取得自己的 Build Lease。
 
 Child 使用独立 Kata Materialization、Rootless BuildKit、Binding、Credential、Workspace 和 Fencing Token；收到其结束或取消清理命令时，先固化 Image Digest、SBOM、Provenance、扫描结果、日志与结构化结果，再释放资源。Child Handoff 成功后 Parent 不持有 Unit、不共享本地目录或凭据；同一 Parent 同时最多一个活动 Child，故障恢复前必须 Fence 旧 Builder。Parent/Child 的状态与后续调度由 Agent owner 定义。
 

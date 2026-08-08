@@ -119,7 +119,7 @@ GatePolicy
 | `REQUIREMENT_ACCEPTANCE` | 冻结的 `RequirementIntegrationBaselineSelection` | 最终验收 |
 | `FORMAL_MR_REVIEW` | Formal MR 的精确 `headSha` | 人工代码 Review |
 
-Decision 使用 `APPROVED`、`CHANGES_REQUESTED`、`REJECTED` 等稳定结果；岗位不能编码进 Gate Type 或结果。Formal MR 的默认路由、Review Assignment 与 `headSha` 失效由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)唯一规定。
+Decision 结果枚举固定为 `APPROVED`、`CHANGES_REQUESTED`、`REJECTED`，新增结果属于 Contract 变更；岗位不能编码进 Gate Type 或结果。Formal MR 的默认路由、Review Assignment 与 `headSha` 失效由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)唯一规定。
 
 ### 5.1 SDD 审核人
 
@@ -133,7 +133,7 @@ Decision 使用 `APPROVED`、`CHANGES_REQUESTED`、`REJECTED` 等稳定结果；
 
 最终验收默认责任人为 Requirement 创建人，可按同一 Assignment 语义异步改派。只有 Current Acceptance Assignment 的 assignee，且具备所需 Capability、Scope 与 Membership，才可提交验收 Decision；创建人不具资格时必须改派给合格候选人。SDD 确认、WorkItem 实现、最终验收、MR Review 与 Merge 是相互独立的责任。
 
-Acceptance Decision Snapshot 必须明确绑定 `requirementVersion`、`acceptanceCriteriaVersion/hash` 与当前 Selection 中的 `integrationBaselineId/hash`，并保存 Current Acceptance Assignment 及决策时资格快照。Requirement 版本、验收标准、当前 `RequirementIntegrationBaselineSelection` 或其引用的 Evidence 任一变化，都会使旧 Acceptance Decision 失效；旧结论及其快照完整保留，新验收必须针对当前三项版本重新作出。
+Acceptance Decision Snapshot 必须明确绑定 `requirementVersion`、`acceptanceCriteriaVersion/hash` 与当前 Selection 中的 `integrationBaselineId/hash`，并保存 Current Acceptance Assignment 及决策时资格快照。Requirement 版本、验收标准、当前 `RequirementIntegrationBaselineSelection` 或其引用的 Evidence 任一变化，都会使旧 Acceptance Decision 失效；旧结论及其快照完整保留，新验收必须针对当前三项版本重新作出。`requirementVersion` 是交付语义版本，只随验收标准、必需 WorkItem 集合、Route/基线与 Selection 等交付输入的变化递增；主状态转换与记录级并发使用独立的 Revision/ETag（见第 10 节），不递增 `requirementVersion`，因此验收通过后的 `AWAITING_MERGE` 与 `COMPLETED` 推进不会使当前有效 Acceptance Decision 失效。
 
 ## 6. 业务状态机
 
@@ -143,7 +143,12 @@ Requirement 主状态：
 CREATED → PREPARING → AWAITING_CONFIRMATION → READY → IN_PROGRESS
 → VERIFYING → AWAITING_ACCEPTANCE → AWAITING_MERGE → COMPLETED
 
-终止状态：CANCELED
+逆向转换：
+AWAITING_ACCEPTANCE →（验收拒绝）IN_PROGRESS
+VERIFYING | AWAITING_ACCEPTANCE | AWAITING_MERGE
+  →（基线或交付输入变化，按影响）IN_PROGRESS | VERIFYING
+
+受控取消：除 COMPLETED 外任意状态 → CANCELED
 ```
 
 | 状态 | 含义 |
@@ -228,6 +233,6 @@ ACTIVE | ARCHIVED | DELETED
 
 ## 10. 并发、外部事实与审计
 
-Assignment、Repository Binding、Gate Assignment/Decision、主状态、归档/恢复/删除及 Artifact 完成确认/Reservation 都必须使用 Revision/ETag 或等价乐观并发。冲突返回明确结果，调用方读取最新状态后重试，不得以后写覆盖先写。
+Assignment、Repository Binding、Gate Assignment/Decision、主状态、归档/恢复/删除及 Artifact 完成确认/Reservation 都必须使用 Revision/ETag 或等价乐观并发。冲突返回明确结果，调用方读取最新状态后重试，不得以后写覆盖先写。Revision/ETag 与 `requirementVersion` 是相互独立的版本流：前者保护并发写入，后者只表达交付语义输入的变化，二者不得互相替代或互相推导。
 
 对 GitLab、Agent Orchestrator、Object Storage 与 File Security 的调用用稳定 Idempotency Key、Outbox/Inbox、外部 ID 与 Reconciliation 收敛。“已发请求”不是“外部已成功”；未知事实必须显示 `UNKNOWN`、阻塞或待对账状态。状态转换、Guard 失败、分配、改派、Decision、外部验证、Artifact、Attempt、恢复与 recordState 变化全部追加审计，并贯穿 Correlation ID。

@@ -24,7 +24,7 @@ src/
   models/ hooks/ types/ utils/
 ```
 
-依赖方向为 `pages → features → services/generated`；共享组件不得依赖具体业务 service，Feature 间只能使用公开入口。OpenAPI 生成客户端位于 `services/generated` 且不得手改；transport 将服务端错误归一为 Problem Details，页面不得依赖底层 HTTP 客户端异常。
+依赖方向为 `pages → features → services/generated`；共享组件不得依赖具体业务 service，Feature 间只能使用公开入口。OpenAPI 生成客户端位于 `services/generated` 且不得手改，其生成输入只来自后端仓发布的版本化 OpenAPI Artifact；transport 将服务端错误归一为 Problem Details，页面不得依赖底层 HTTP 客户端异常。
 
 状态边界如下：路由、筛选与对象标识使用 URL；服务端数据由 React Query 管理；当前用户、当前 Workspace 与轻量 UI 偏好使用 Umi Initial State/Model；表单使用 ProForm 或 Ant Design Form；对话界面的 `Bubble`、`Conversations`、`Sender`、`Attachments` 与 `ThoughtChain` 复用已锁定的 `@ant-design/x` 组件；临时交互状态保留在组件；SSE/WebSocket 更新必须携带实体版本，旧事件不得覆盖新状态。`@ant-design/x` 只是同一 Umi Web 内的 UI 组件库，不拥有登录、权限、对话事实、Model Route 或独立服务端。
 
@@ -42,10 +42,10 @@ Secure + HttpOnly + SameSite Cookie
 
 ## 3. Python Control Plane 与模块边界
 
-目标 Control Plane 使用 Python 3.12、FastAPI、Pydantic 2、SQLAlchemy 2 与 Alembic；依赖及 PostgreSQL Driver 版本由锁文件固定。它是一个 Python 项目和一个业务部署单元的**模块化单体**，不是预先拆分的微服务。
+目标 Control Plane 使用 Python 3.12、FastAPI、Pydantic 2、SQLAlchemy 2 与 Alembic；依赖及 PostgreSQL Driver 版本由锁文件固定。它是一个 Python 项目和一个业务部署单元的**模块化单体**，不是预先拆分的微服务。前端 Umi Web 与 Control Plane 分属两个仓库：`engineering-platform`（Web）与 `engineering-platform-backend`（Control Plane）。跨仓契约以版本化 OpenAPI Artifact 传递：后端仓每次发布生成带版本与 Digest 的 OpenAPI 描述，前端 `services/generated` 只从已发布 Artifact 生成，双仓 CI 各自校验兼容性；两仓不共享代码内部结构，也不以相对路径互相引用。
 
 ```text
-backend/control_plane/app/
+control_plane/app/（位于独立仓库 engineering-platform-backend）
   bootstrap/
   modules/{identity,organization,workspace,authorization,configuration,
            requirement_workflow,agent_run,audit}/

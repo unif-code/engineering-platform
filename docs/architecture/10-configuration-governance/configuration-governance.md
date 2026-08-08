@@ -5,7 +5,7 @@
 
 ## 目标与边界
 
-本主题定义平台通用 Typed Configuration 的分类、生命周期、Effective Snapshot、兼容演进与 DEV→PROD Promotion。Configuration 位于 `backend/control_plane/app/modules/configuration/`，是 Python Control Plane 模块化单体中的独立领域模块，不是独立 Deployable 或既有微服务。
+本主题定义平台通用 Typed Configuration 的分类、生命周期、Effective Snapshot、兼容演进与 DEV→PROD Promotion。Configuration 位于 Control Plane 仓库（`engineering-platform-backend`）的 `control_plane/app/modules/configuration/`，是 Python Control Plane 模块化单体中的独立领域模块，不是独立 Deployable 或既有微服务。
 
 本文描述完整 Target Architecture，不记录 Release 版本、实施状态、环境 Promotion 状态或 Capacity Profile 选择；这些事实只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)。
 

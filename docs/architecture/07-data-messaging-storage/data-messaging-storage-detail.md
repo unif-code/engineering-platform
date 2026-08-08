@@ -125,7 +125,7 @@ Temporal 的 Hardened Target Component Envelope：
 
 ## 6. Object Storage、Bucket Class 与 Artifact
 
-Object Storage 只在附件、Artifact、WORM Audit、组件 Backup 或 Observability Object 被对应 Capability Package 首次消费时激活。无论 Launch 选择最小实现还是 Hardened Target 选择 Rook-Ceph RGW，S3-compatible API、版本化精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变；实现和拓扑不得降低已启用能力的证据判定。
+Object Storage 只在附件、Artifact、WORM Audit、组件 Backup 或 Observability Object 被对应 Capability Package 首次消费时激活。环境内 Object Storage 的目标实现即 Rook-Ceph RGW，Launch 与 Hardened Target 只在拓扑、副本与容量上不同；在 Rook-Ceph 尚未激活的早期单节点阶段，仅组件 Backup 允许使用 Cluster 外 OSS/S3-compatible Repository 作为过渡通道（阶段选择见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)及其容量规划），该过渡通道不承载附件、Artifact、WORM Audit 或 Observability Object。Rook-Ceph 激活后新对象一律写入环境内 RGW；过渡 Repository 中的既有 Backup 按其保留策略继续可用于恢复，不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、版本化精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变；实现和拓扑不得降低已启用能力的证据判定。
 
 Rook-Ceph RGW 是每环境的 S3-compatible Object Storage，职责仅限 Object Storage；它不为 PostgreSQL、Valkey、NATS、Temporal 或其他实时 Stateful Workload 提供 RBD/CephFS。实时 PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 和容量由 [09](../09-infrastructure-operations/infrastructure-operations-detail.md)拥有。
 

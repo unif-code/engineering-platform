@@ -9,7 +9,7 @@
 - [实施路线图](./implementation-roadmap.md)提供三轴导航；[实施路线图详细说明](./implementation-roadmap-detail.md)唯一拥有版本 Contract、实现状态、Environment Promotion 状态和 Profile 选择，并只链接本文的选定 Profile，不复制服务器表；
 - [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)只拥有容量不变量、准入方法和 Hardened Target Profile 的目标拓扑；
 - 本文拥有人数容量场景、Profile 服务器数值、容量计算与版本阶段对应的采购计划；其中版本标签只是采购触发条件，不声明该版本已实现、已验收或已部署；
-- GitOps、Platform Configuration Snapshot（PCS）和 Operations Read Model 证明某个环境实际部署的版本、拓扑和有效容量；
+- GitOps、Platform Compatibility Set（PCS）和 Operations Read Model 证明某个环境实际部署的版本、拓扑和有效容量；
 - DEV 与 PROD 是两个独立 Platform Environment，不能共享 Kubernetes Node、数据、凭据、Secret 或恢复材料。
 
 ## 2. 人员与负载口径
