@@ -1,7 +1,5 @@
-# Requirement Workflow 详细说明
+# Requirement Workflow
 
-> 文档层级：L2 规范事实源
-> 对应主文：[Requirement Workflow](./requirement-workflow.md)
 > 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 责任边界与治理
@@ -21,6 +19,10 @@ System Invariant / Security Floor
 ```
 
 System Invariant 不可由 Policy 关闭。Platform Policy 与允许的 Workspace Scope Override 均由 Super Admin 发布；Requirement 本身不建立 Policy，Workspace 成员也不能发布 Gate Policy。对象保存解析结果与 Policy Version，后续变更只作用于尚未形成快照的事实。
+
+### 目标与边界
+
+Requirement Workflow 将一项业务交付从创建、基线确认、实现、验证、验收直到合并完成串为可追溯流程。它拥有 Requirement、WorkItem、Route、Gate、Decision、Artifact 与 `RequirementIntegrationBaselineSelection` 的业务语义；不拥有人员资格、Agent 执行实现、Sandbox 物理形态、GitLab 协议细节或 `IntegrationBaselineEvidence` 的证据结构。
 
 ## 2. 领域对象与版本
 
@@ -51,6 +53,26 @@ Requirement Aggregate 为必需 WorkItem 集合维护单调递增的 `requiredWo
 Artifact Version、Commit、交付 head SHA、Route Bundle、必需 WorkItem 集合或其他被确认输入变化时，当前 Selection 与旧 Acceptance 失效而历史保留。仅与交付快照无关的展示变化不能伪造集合变化；是否影响 Selection 必须由 Requirement 领域命令显式判定。
 
 完成的 Decision、Attempt、Artifact 与 Audit 始终保存原 actor，不因组织、授权或 Assignment 后续变化而重写。外部交付的准确 Commit、分支与 MR 事实由[Source Control Delivery](./05-source-control-delivery.md)提供，本领域只保存稳定引用。
+
+### 对象地图
+
+```text
+Requirement
+├── Route Snapshot
+├── Gate Instance → Assignment → Decision
+├── WorkItem × 1..n
+│   ├── Human Assignment / Repository Branch Binding
+│   ├── Route / test / external-validation Artifact
+│   ├── delivery reference
+│   └── Run → Attempt × 1..n（受控执行扩展）
+├── RequirementIntegrationBaselineSelection → IntegrationBaselineEvidence reference
+└── recordState
+```
+
+- `Requirement` 是整体交付与验收聚合。
+- `WorkItem` 是一个仓库中的可交付责任；一个 WorkItem 最终只对应一个仓库与任务分支。
+- `Run` 表示执行目标，`Attempt` 表示一次固定执行输入的尝试；其运行语义由[Agent、Skill 与 Model](./03-agent-skill-model.md)拥有。
+- `Artifact` 是可准确版本绑定的流程证据，而不是源码或持续变化分支的替代品。
 
 ## 3. 创建、分配与仓库选择
 
@@ -185,6 +207,20 @@ blockedReasons[] / Attempt.status / ChildExecution.status / delivery status
 
 Attempt、Model、Adapter 或 Sandbox 的失败只产生可处置阻塞，不把 Requirement 或 WorkItem 直接标为失败。验收拒绝返回 `IN_PROGRESS`；基线或交付代码变化按影响回到 `IN_PROGRESS` 或 `VERIFYING`；多仓库仅部分合并时 Requirement 留在 `AWAITING_MERGE`。
 
+### 主流程
+
+```text
+创建 Requirement 与初始仓库
+→ 按 Route 形成基线与 Artifact
+→ Human Gate 确认
+→ 拆分、分配并启动 WorkItem
+→ 实现与验证
+→ 选定并冻结 IntegrationBaselineEvidence 引用
+→ 最终验收
+→ Formal MR 合并
+→ COMPLETED
+```
+
 ## 7. 集成、外部验证与验收
 
 WorkItem 交付按 Source Control 的任务分支、`dev` 集成、外部人工验证、选定 Evidence、验收与 Formal MR 顺序进行。Jenkins 是独立平台：用户手动运行和查看，平台不调用、不读取其状态，也不将其当作自动 Gate；用户可提交带提交人、时间、目标 Commit、引用和说明的外部验证证据。
@@ -216,6 +252,8 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 扫描投递按 Artifact Version、SHA-256 与 Scan Policy Version 幂等。Engine 不可用、Signature 过期、Timeout 或解析失败时保持不可用并按可配置的有界退避重试；超过上限进入 `SCAN_FAILED`、告警，Engine 恢复后只能通过受控命令重新入队。`MALICIOUS/SUSPICIOUS` 进入 `QUARANTINED`，不能人工放行或绕过，只能在 Signature/Policy 更新后重新扫描得到 `CLEAN`，或由用户重新上传。只有 `AVAILABLE` Artifact 能下载或进入 Workflow Gate。Presigned Request 默认 `5min`、只对应单一 Object Version，不持久化也不写入日志。文件类型、扫描、Object Lock、技术垃圾清理和存储/安全实现分别由[Data/Messaging/Storage](./07-data-messaging-storage.md)与[Security/Audit/Governance](./08-security-audit-governance.md)拥有；本领域依赖其状态而不复制实现。
 
 多仓 Requirement 与 Agent/Child Execution 产生的 Artifact 都只能扩展协作范围，不能绕过已经成立的 Requirement、SDD、人工 Assignment、Gate、Decision、Evidence Selection 与 Acceptance 责任链。多仓部分合并保留已发生事实并进入受控处置，不伪造跨仓原子性。
+
+多仓 Requirement、Agent/Child Execution 与高级 Artifact 配额、扫描和恢复属于核心 Requirement/SDD/人工责任链之上的受控协作能力。它们只能消费已经成立的 Assignment、Gate、Decision 与 Acceptance Contract，不能反向替代人工责任或改变 Requirement 的业务语义。
 
 ## 9. 归档、删除与恢复
 

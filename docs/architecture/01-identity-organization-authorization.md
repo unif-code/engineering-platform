@@ -1,7 +1,5 @@
-# 身份、组织与授权详细说明
+# 身份、组织与授权
 
-> 文档层级：L2 规范事实源
-> 对应主文：[身份、组织与授权](./identity-organization-authorization.md)
 > 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 目的与边界
@@ -9,6 +7,12 @@
 本文是平台本地身份、组织、Workspace Membership、授权、Super Admin、配置授权与 Identity 恢复语义的唯一规范事实源。Configuration Catalog、Draft、Publish、Rollback、Effective Snapshot 与 Promotion 生命周期由 [Configuration Governance](./10-configuration-governance.md)拥有；本文只判定谁可以发起受保护配置命令。本文只拥有 Identity/Organization/Authorization 领域的 Audit Trigger 与业务摘要；通用 Audit Envelope、可靠提交、脱敏、WORM、Retention 和恢复 Contract 由 [08](./08-security-audit-governance.md)唯一拥有。
 
 本文不定义 Requirement 状态、WorkItem 流程、人工 Gate 规则、外部交付语义或基础设施认证细节；这些事实由各自主题拥有。本文也不将岗位、外部系统角色或前端显示状态作为授权事实。
+
+### 模块目标
+
+本主题为平台提供本地人员身份、组织关系、Workspace 人员边界和动作授权。它回答“谁是谁、属于哪里、能访问什么、当前由谁负责”，而不定义 Requirement 状态、交付流程或基础设施认证实现。
+
+授权结论来自当前的身份状态、资源关系和 `Capability + Scope + Assignment`，不来自岗位名称、菜单可见性或外部系统角色。
 
 ## 2. 本地身份与 Session
 
@@ -76,6 +80,8 @@ Session 失效或人员权限变化不会终止已经启动的 Agent Attempt；A
 组织变更必须验证目标账号状态、目标层级和无环关系。变更后更新组织事实，失效受影响的成员与授权投影，并记录影响和 Audit。组织、岗位或模板变化不得静默新增、撤销或替换实际 Grant，也不得静默替换未完成 Assignment。
 
 ## 4. Workspace Membership
+
+成员资格只解决“是否进入资源边界”，不单独赋予创建、确认、验收、审核或合并等动作权限。这些动作的规则由[Requirement Workflow](./02-requirement-workflow.md)和[Source Control 与交付](./05-source-control-delivery.md)拥有。
 
 ### 4.1 Owner 与受邀 Leader
 
@@ -186,6 +192,10 @@ Passkey 作为未来抗钓鱼替代登录路径时，一次满足策略的 Passk
 
 注册新 Passkey 必须在正式密码与 TOTP 初始化完成后再次验证当前密码和 TOTP。遗失认证器只能通过专用 Identity Override Capability、有效 Scope、人工身份核验、Session 撤销与安全 Audit 获得短期受限恢复资格；实际注册仍由用户设备完成，管理员与平台不得接触 Private Key 或把流程实现为隐式恢复码。TOTP 在迁移期继续作为回退路径，绑定 Passkey 不自动停用 TOTP，也不代表全部登录路径都具备抗钓鱼能力；是否允许停用只能由未来独立认证 Policy 决定。Session 与 Audit 必须记录实际认证方式和认证强度。
 
+### 认证演进边界
+
+Passkey/WebAuthn 是本地密码、强制 TOTP、可撤销 Session、Organization、Workspace 与服务端授权 Contract 稳定后的独立演进路径。它通过认证器无关的 Port 接入，不改变 Capability、Scope、Assignment 或业务 Workflow 语义；未完成完整注册、验证、恢复与 Audit Contract 前保持关闭。
+
 ## 9. 不变量
 
 1. 员工编号始终是可含前导 `0` 的 8 位字符串。
@@ -198,3 +208,12 @@ Passkey 作为未来抗钓鱼替代登录路径时，一次满足策略的 Passk
 8. Super Admin 仅拥有其保留的配置和 Super Admin 管理能力，不自动拥有业务能力或越过安全边界。
 9. 平台始终至少保留一个有效 Super Admin；恢复路径受限、一次性且可审计。
 10. 受保护 API 始终以服务端当前身份、授权、成员、责任和资源事实作出判定。
+11. 本地身份、组织、Workspace、授权和 Audit 都是当前 Platform Environment 的本地事实。
+
+## 阅读导航
+
+- 身份、组织与授权详细说明：本主题的规范事实源。
+- [平台总览](./00-platform-overview.md)：平台边界与依赖方向。
+- [Requirement Workflow](./02-requirement-workflow.md)：责任、人工 Gate 与业务状态。
+- [安全、审计与治理](./08-security-audit-governance.md)：安全事件与 Audit。
+- [基础设施与运维](./09-infrastructure-operations.md)：专业控制台访问边界。

@@ -1,7 +1,5 @@
-# Agent、Skill 与 Model 详细说明
+# Agent、Skill 与 Model
 
-> 文档层级：L2 规范事实源
-> 对应主文：[Agent、Skill 与 Model](./agent-skill-model.md)
 > 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 责任边界
@@ -11,6 +9,10 @@
 Requirement、WorkItem、Route、Gate、人工 Assignment 与 Decision 的业务语义由[Requirement Workflow](./02-requirement-workflow.md)拥有。人员资格由[身份、组织与授权](./01-identity-organization-authorization.md)拥有。Sandbox 的 KVM/Kata、Materialization、Secret 注入、Lease 物理实现和容量 BOM 由[Sandbox Runtime](./04-sandbox-runtime.md)拥有；本文只约束其通过 Port 提供的逻辑契约。
 
 Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human Gate Decision。Prompt、UI 开关和 Model 输出都不是授权事实。Runtime 以随镜像发布的版本化 Superpowers Runtime Bundle 与 Loaded Skill Contract 执行；Workflow 不保存 Provider 专有参数或具体 Model 名称。
+
+### 目标与边界
+
+本领域负责 Agent Definition、Superpowers Runtime Bundle、Model Catalog 与 Route、Run/Attempt、不可变 Execution Binding、模型评测工具链、执行等待与运行审计。它不拥有 Requirement 主状态、人工 Gate、人员资格、GitLab 交付协议或 Sandbox 的物理实现。
 
 ## 2. 概念与 Definition
 
@@ -50,6 +52,23 @@ Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human G
 → Execution Binding 固化实际输入
 → Agent 仅在 Binding 内运行
 ```
+
+### 概念地图
+
+```text
+Agent Definition + Superpowers Runtime Bundle
+             + Model Route + Execution Policy
+                           ↓
+Agent Run → Agent Attempt → immutable Execution Binding
+                              ├── Model / Skill / Runtime
+                              ├── Context / Tool / Network permissions
+                              └── repository branch / resource constraints
+```
+
+- `Agent Definition` 描述职责、输入输出、所需逻辑能力与权限模板。
+- Runtime Bundle 是随 Runtime 镜像发布的 Skill 集合；当前架构基线使用 Superpowers。
+- `Chat Model` 服务于用户对话，`Execution Model` 服务于 Agent；二者独立治理，不能相互隐式继承。
+- Run 是业务目标，Attempt 是一次可复现执行；重试或变更输入创建新 Attempt。
 
 ## 3. Superpowers Runtime Bundle
 
@@ -197,6 +216,8 @@ Parent 随后进入 Agent Continuation Queue，优先使用自己的 Reservation
 `ParentContinuationReservation` 必须绑定 Parent、原 Binding、Generation/Fencing Token、版本化 TTL 与 Policy Version，并通过 Reconciliation 收敛。Parent 失效、取消、归档、删除或超时，恢复 Gate 失败，或 TTL 到期时，Reservation 必须立即释放，不能永久占用容量。本领域拥有 Parent/Child 生命周期和优先恢复语义；Sandbox Runtime 拥有 Reservation 对 Capacity Ledger/Lease 的原子物化与释放。
 
 Parent 取消、Requirement 归档/删除或 Deadline 到期时，须级联安全终止非终态 Child；迟到 Child 结果只可审计，不得复活 Parent。Parent/Child 的队列、执行和总 Deadline 分别保存，不可用 `WAITING_INPUT` 默认期限重置。Lease、资源向量与物理调度仅通过[Sandbox Runtime](./04-sandbox-runtime.md)契约处理。
+
+`WAITING_CHILD`、Child Execution、Continuation Reservation 和高级恢复建立在 Run/Attempt 与不可变 Execution Binding 之上。它们不改变原 Binding，也不以恢复、回退或评测结果绕过 Runtime、Model、权限、资源和人工 Gate Contract。
 
 ## 9. Context、Tool、Network 与权限
 
