@@ -310,7 +310,7 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 | NATS | 每日 `04:00 Asia/Shanghai` 应用一致性 Account Backup | Backup Retention DEV `3` 天、PROD `7` 天；已发布 Outbox 至少保留 `30` 天 | `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
 | OpenBao | 应用一致性 Raft Snapshot：DEV 每 `6` 小时、PROD 每 `1` 小时；升级与高风险变更前另生成按需 Snapshot | DEV 保留 `7` 天；PROD 保留 `48` 小时周期点与 `30` 天每日点 | DEV `RPO ≤ 6h`、PROD `RPO ≤ 1h`，两者 `RTO ≤ 60min` | DEV 每月、PROD 每季度在隔离环境完整恢复 |
 
-`postgres-backup` 的近期 Backup Object 与 `nats-backup`、`openbao-recovery` 对象默认使用 `7` 天 `GOVERNANCE` Object Lock；`audit-worm` 的 Retention 期限由 [08 安全、审计与治理](./08-security-audit-governance.md)作为 Security Floor 拥有，不在本节调整。每日 Backup 周期不是消息 RPO。
+`postgres-backup` 的近期 Backup Object 与 `openbao-recovery` 对象默认使用 `7` 天 `GOVERNANCE` Object Lock；`nats-backup` 不使用统一默认值，其 `GOVERNANCE` Lock 覆盖所在环境的有效 Backup Retention（DEV `3` 天、PROD `7` 天），以便 Retention 到期时锁也已到期；`audit-worm` 的 Retention 期限由 [08 安全、审计与治理](./08-security-audit-governance.md)作为 Security Floor 拥有，不在本节调整。每日 Backup 周期不是消息 RPO。
 
 #### Bucket Class 容量账本参数
 

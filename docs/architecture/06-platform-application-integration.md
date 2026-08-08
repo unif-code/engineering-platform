@@ -143,7 +143,7 @@ External Provider Contract 只治理平台外的 Cloud/Operations Plane Binding�
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | `SandboxPort` 契约与 Preview Gateway 的访问校验要求 | Sandbox Controller 的 Deployable 边界与平台应用入口 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | `SourceControlPort` 的业务语义与 GitLab 外部效果收敛结果 | GitLab Connector 的 Deployable 边界、Webhook 验签与幂等一致性 Contract |
 | [07 数据、消息与存储](./07-data-messaging-storage.md) | PostgreSQL、Valkey、NATS、Temporal 与 Object Storage 的运行与恢复事实、Outbox/Inbox 持久化基线 | 应用侧的单模块事务、Outbox/Inbox/Effect Ledger 一致性 Contract 与 Object Reference 传递约束 |
-| [08 安全、审计与治理](./08-security-audit-governance.md) | Secret、加密、Trust 材料、供应链与文件扫描机制、Audit Envelope 与保留规则 | Console Access、Feed Ingest 与安全公告的 Audit Trigger 及非敏感标识边界 |
+| [08 安全、审计与治理](./08-security-audit-governance.md) | Secret、加密、Trust 材料、供应链与文件扫描机制、Audit Envelope 与保留规则、`ExternalProviderBinding` 只能保存非敏感标识的边界 | Console Access、Feed Ingest 与安全公告的 Audit Trigger |
 | [09 基础设施与运维](./09-infrastructure-operations.md) | Cluster、Node、组件版本、PCS、GitOps Desired State、可观测性与总容量事实 | Operations Read Model 的只读投影边界、Flux 单向 Reconcile 约束与告警关联 |
 | [10 Configuration Governance](./10-configuration-governance.md) | Catalog、Draft、Publish、Rollback、Effective Snapshot、Schema 演进与 Promotion 生命周期 | Control Plane 内 Configuration 模块的装配边界与 Effective Configuration 的消费方式 |
 | [12 实施路线图](./12-implementation-roadmap.md) | 实施阶段、Capability 激活状态、Release 验收与 Profile 选择 | Capability Activation Gate 必须证明的应用与集成 Contract |

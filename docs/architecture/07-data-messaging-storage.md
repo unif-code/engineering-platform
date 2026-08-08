@@ -110,7 +110,7 @@ Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-co
 - NATS 的权威恢复是应用一致性 Account Backup 及其绑定 Outbox Watermark 的 Manifest，而不是多个 PVC/CSI Snapshot；补发使用安全重叠窗并保留原 Envelope ID——只有幂等去重成立时重叠补发才是安全的。
 - 前次 Backup 未完成、完整性检查失败、空间不足或 Stream 配置正在变化时不得启动重叠 Backup 任务；每日 Backup 周期不是消息 RPO——半份备份与错误的 RPO 假设都会在真实恢复时失败。
 - 每个 Deployable Unit 只按 Publish/Subscribe Subject Allowlist 获得最小消息访问，平台与系统账号隔离，Sandbox 不获得 NATS 访问（Contract 属 [08](./08-security-audit-governance.md)）——最小主题范围是消息面越权的唯一有效边界。
-- Temporal 的 Default 与 Visibility Store 使用同环境 PostgreSQL 中隔离的数据库，Runtime Role 只做 DML 而 Schema 由短生命周期 DDL Job 管理——编排存储不额外引入第二套持久化技术与权限模型。
+- Temporal 的 Default 与 Visibility Store 使用同环境 PostgreSQL 中隔离的 `temporal` 与 `temporal_visibility` 数据库，Runtime Role 只做 DML 而 Schema 由短生命周期 DDL Job 管理——编排存储不额外引入第二套持久化技术与权限模型。
 - Temporal History 只保存 Workflow 的非敏感控制元数据，禁止写入源码、Prompt、Secret 或完整附件，Durable History 只解释编排推进而领域状态仍以其 owner 为准——编排历史不是业务事实的第二来源，也不是敏感内容的容器。
 - Worker Build ID 与不可变应用镜像/Workflow Code 绑定，活动 Workflow 的版本演进只经显式兼容策略完成，不在发布期间静默替换——静默替换会让运行中的编排语义漂移。
 - 组件恢复必须按上述恢复链执行，Persistence Database 的 RTO 不等于端到端 Workflow RTO，端到端恢复必须包含 Workflow/Visibility/Build ID/外部效果验证并通过完整 Restore Drill 形成实测结果——未对账就重新开放 Worker 会重复执行外部副作用。
@@ -121,7 +121,7 @@ Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-co
 - 容量维度失败与产品配额维度失败是两个不同错误码：容量失败保留失败 Gate、Class、Effective Revision 与 Reservation ID 并触发 Operations Incident，提高产品配额也不能突破 Environment Capacity、[08](./08-security-audit-governance.md) 的 Security Contract 或 File Security Scanner Envelope——把容量问题当作配额问题会让扩容决策失去依据。
 - Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 与 Environment Bucket-Class Capacity Ledger，任何一侧失败都不形成可用预占；两本账本由同一个存储准入 owner 在其自有 Schema 内持久化，因此该双账本预占是单模块本地事务而不违反[平台应用与集成](./06-platform-application-integration.md)的事务边界，额度与容量参数仍分别按其 Policy owner 的 Effective Snapshot 只读解析；物理 RGW native quota 只作为最后后备保护，不能替代双账本准入——两本账同时成立才能既守住产品承诺又守住物理容量，同 owner 持久化让它无需分布式事务，而后备保护无法产生可解释、可审计的业务拒绝原因。
 - Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体；上传与下载只能由应用授权签发绑定精确版本的短期 Presigned Request——对象访问必须由业务授权判定，而不是由谁持有 URL 决定。
-- 需要扫描的对象只有合格 Verdict 才可用，由 [02](./02-requirement-workflow.md)/[08](./08-security-audit-governance.md) 的版本化 Source/Media Policy 合法跳过扫描的受信内部纯文本可在完整性验证后不带 Verdict 进入可用状态；本模块不决定扫描分支、Verdict 或 Artifact 业务状态——存储执行与业务判定必须分属不同 owner。
+- 文件检查由应用 `FileSecurityPort` 处理，需要扫描的对象只有合格 Verdict 才可用，由 [02](./02-requirement-workflow.md)/[08](./08-security-audit-governance.md) 的版本化 Source/Media Policy 合法跳过扫描的受信内部纯文本可在完整性验证后不带 Verdict 进入可用状态；本模块不决定扫描分支、Verdict 或 Artifact 业务状态——存储执行与业务判定必须分属不同 owner。
 - 归档、逻辑删除与 Requirement 恢复都不释放 Object Storage 容量，已被业务接受的附件与 Agent Artifact 不进入业务数据物理清理，只有未完成 Multipart Abort 与无业务引用的 `ORPHANED` 技术垃圾可按精确 Object Version 受控清理——逻辑状态变化不等于物理释放。
 - `Object Retention Reconciler` 只清理 Audit 与 Backup 类 Bucket 中超过各自权威保留期的精确 Object Version：`audit-worm` 的策略级资格由 [08](./08-security-audit-governance.md) 产生且不得被重新解释或缩短，对象执行还须证明 Object Lock 已到期且无恢复/业务引用，Backup 类还须证明存在满足 Recovery Window 与恢复链的更新有效副本；Reconciler 使用专用最小权限身份，不具备 Retention Bypass、跨 Bucket 或通配 Prefix 删除能力；`GOVERNANCE` Lock 不授予普通服务 Retention Bypass，`COMPLIANCE` Lock 也不可由 Super Admin、Reconciler 或普通运维缩短——删除权限必须小于它可能造成的损失，可被绕过的保留期不是保留期。
 - 无法完整证明资格、Manifest/索引不一致、删除失败或 GC 未验证时，对象继续计入容量并告警，不能仅因逻辑 Retention 到期扣减——账面释放会让容量 Gate 基于虚假余量放行。
