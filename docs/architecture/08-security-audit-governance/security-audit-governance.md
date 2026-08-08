@@ -7,9 +7,9 @@
 
 本视图定义平台的安全 Trust Boundary、Secret、加密、PKI、供应链保护、不可篡改 Audit 与受限恢复控制。它为各业务模块和基础设施提供统一的安全 Contract，却不拥有人员、权限、Requirement、Agent、Sandbox、GitLab 或数据服务的领域状态。
 
-本文描述完整 Target Architecture，不声明任何环境的实际部署状态。实施阶段、Capability 激活状态、Release 验收与 Reliability/Capacity Profile 只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)；DEV 与 PROD 使用同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC 和 Cluster 中实例化，不共享运行实例、Session、数据、凭据、密钥或故障域。
+本文描述完整 Target Architecture，不声明任何环境的实际部署状态。实施阶段、Capability 激活状态、Release 验收与 Reliability/Capacity Profile 只见[实施路线图](./12-implementation-roadmap.md)；DEV 与 PROD 使用同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC 和 Cluster 中实例化，不共享运行实例、Session、数据、凭据、密钥或故障域。
 
-身份、组织、Session、Capability 与 Super Admin 的业务语义由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。应用 Console Access、External Provider Envelope 与公告流程由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有；Configuration 生命周期和 Promotion 由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。数据服务恢复由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；环境、Cluster 和运维基线由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)拥有。
+身份、组织、Session、Capability 与 Super Admin 的业务语义由[身份、组织与授权](./01-identity-organization-authorization.md)拥有。应用 Console Access、External Provider Envelope 与公告流程由[平台应用与集成](./06-platform-application-integration.md)拥有；Configuration 生命周期和 Promotion 由 [Configuration Governance](./10-configuration-governance.md)拥有。数据服务恢复由[数据、消息与存储](./07-data-messaging-storage.md)拥有；环境、Cluster 和运维基线由[基础设施与运维](./09-infrastructure-operations.md)拥有。
 
 ## Security Floor
 
@@ -33,19 +33,19 @@ Security Floor 与 HA/Hardened Target 相互独立：Launch Profile 可以减少
 
 | 控制域 | 目标能力 | 唯一事实源 |
 | --- | --- | --- |
-| 身份保护 | 密码验证材料、TOTP、Session 敏感值保护 | [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md) 与本文 detail |
+| 身份保护 | 密码验证材料、TOTP、Session 敏感值保护 | [01](./01-identity-organization-authorization.md) 与本文 detail |
 | Secret 与 Workload Identity | OpenBao、Kubernetes Auth、Agent Injector、最小 Policy | 本文 detail |
 | PKI 与传输信任 | 环境证书链、CRL、OCSP、Trust Bundle | 本文 detail |
 | 数据服务访问 | PostgreSQL/PgBouncer、Valkey、NATS、Temporal 的传输、服务身份与最小访问 | 本文 detail |
 | 数据静态加密 | Kubernetes Secret、Volume、Ceph/RGW Object 加密 | 本文 detail |
 | 审计与供应链 | WORM Audit、文件扫描、镜像来源与签名 | 本文 detail |
-| 环境与恢复 | Cluster、PCS、DR、容量和运维观测 | [09](../09-infrastructure-operations/infrastructure-operations-detail.md) |
+| 环境与恢复 | Cluster、PCS、DR、容量和运维观测 | [09](./09-infrastructure-operations.md) |
 
 ## Audit 与治理
 
 Audit 是独立于业务投影和 Telemetry 的追加式事实。它关联身份、时间、环境、目标、动作、结果、原因、版本与 Correlation ID，保留可验证的治理证据；它不承载可重放的认证材料或业务内容。
 
-平台只读展示安全、配置、轮换、过期和恢复证据。Super Admin 的配置权限与带外恢复资格由 01 的授权 Contract 判定，Policy 发布过程由 [10](../10-configuration-governance/configuration-governance-detail.md)约束；平台管理后台不提供云资源、Kubernetes、Secret 或恢复材料的通用写入口。
+平台只读展示安全、配置、轮换、过期和恢复证据。Super Admin 的配置权限与带外恢复资格由 01 的授权 Contract 判定，Policy 发布过程由 [10](./10-configuration-governance.md)约束；平台管理后台不提供云资源、Kubernetes、Secret 或恢复材料的通用写入口。
 
 ## 信任与恢复顺序
 

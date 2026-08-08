@@ -7,7 +7,7 @@
 
 本文是安全、Secret、PKI、加密、Audit、供应链、Provider 信任材料与 Break-glass 的唯一规范事实源。它消费 01 的本地身份、Session、Capability、Super Admin 和 Recovery Port 语义，却不复制这些业务状态或授权判定；它消费 06 的 Console Access 与 External Provider Contract，却不复制其链接、Envelope 或 Ingest 算法；它消费 07 的数据服务恢复链和 09 的环境、Cluster、网络、容量与 DR 语义。
 
-本文描述完整 Target Architecture，不声明任何 Environment 已经部署哪些安全组件。实施阶段、Capability 激活状态、Release 验收与 Reliability/Capacity Profile 只见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)；实际 Trust、Image、配置、拓扑和恢复证据由环境 GitOps Desired State、PCS、Audit 与 Restore Drill 证明。
+本文描述完整 Target Architecture，不声明任何 Environment 已经部署哪些安全组件。实施阶段、Capability 激活状态、Release 验收与 Reliability/Capacity Profile 只见[实施路线图](./12-implementation-roadmap.md)；实际 Trust、Image、配置、拓扑和恢复证据由环境 GitOps Desired State、PCS、Audit 与 Restore Drill 证明。
 
 ### 1.1 Security Floor
 
@@ -26,7 +26,7 @@ Launch Profile 可以对 OpenBao、PKI Publication、File/Image Scanner 采用�
 
 ## 2. 身份材料保护
 
-账号、密码生命周期、TOTP Enrollment、Session 失效与授权语义以[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)为准。密码验证使用 Argon2id、每个密码独立 salt 和由 OpenBao 提供的 pepper；平台只保存受保护的派生验证结果。
+账号、密码生命周期、TOTP Enrollment、Session 失效与授权语义以[身份、组织与授权](./01-identity-organization-authorization.md)为准。密码验证使用 Argon2id、每个密码独立 salt 和由 OpenBao 提供的 pepper；平台只保存受保护的派生验证结果。
 
 密码、临时密码、TOTP Code、TOTP Secret、Session Cookie、Access Token、Refresh Token、Private Key、完整 Presigned URL、Prompt、源码正文及可直接重放的凭据禁止出现在：
 
@@ -42,7 +42,7 @@ Audit 和 Telemetry 只允许记录不可逆引用、受限摘要、结果、版
 
 Launch Profile 可使用一个 OpenBao Voting Server 与一个 Agent Injector Replica，但 Integrated Storage、TLS、Kubernetes Auth、最小 Policy、`tmpfs` 注入、双 Audit Device、应用一致性 Raft Snapshot、Cluster 外 `openbao-recovery`、离线 OpenPGP 和 Restore Drill 均不可省略。单实例不可用时依赖新 Secret 或续租的动作安全停止，不能回退到普通 Environment Variable、长期共享 Token 或明文 Listener。
 
-OpenBao Server、官方 Helm Chart、Agent Injector 和附属镜像的精确版本/digest 只由 [09 的 PCS](../09-infrastructure-operations/infrastructure-operations-detail.md)锁定；不得使用浮动 Tag。OpenBao 使用 Integrated Storage（Raft），不以 PostgreSQL 或业务数据服务作为 Storage Backend。Hardened Target 中 DEV 使用 3 个 Voting Server、quorum 2，PROD 使用 5 个 Voting Server、quorum 3。每个 Server 使用独立 10 GiB SSD RWO Data PVC，并通过 Anti-Affinity 与 Topology Spread 分散；同一时刻只有一个 Active，其他满足 quorum 的 Voting Server 为同步 Standby。
+OpenBao Server、官方 Helm Chart、Agent Injector 和附属镜像的精确版本/digest 只由 [09 的 PCS](./09-infrastructure-operations.md)锁定；不得使用浮动 Tag。OpenBao 使用 Integrated Storage（Raft），不以 PostgreSQL 或业务数据服务作为 Storage Backend。Hardened Target 中 DEV 使用 3 个 Voting Server、quorum 2，PROD 使用 5 个 Voting Server、quorum 3。每个 Server 使用独立 10 GiB SSD RWO Data PVC，并通过 Anti-Affinity 与 Topology Spread 分散；同一时刻只有一个 Active，其他满足 quorum 的 Voting Server 为同步 Standby。
 
 | 环境 | Voting Server | 单 Server Request | 单 Server Limit | 单 Server Data PVC |
 | --- | ---: | --- | --- | ---: |
@@ -61,7 +61,7 @@ Agent Injector 只将 Secret 写入 Pod `tmpfs` 内存文件，并用文件权�
 
 每个环境采用 Shamir `5/3` 初始化：共五个分片，任意三个可完成解封。没有外部 Seal KMS/HSM。当前所有分片由同一保管人暂管，这是明确的治理例外，不构成多人制衡；交接、盘点、使用与变更都必须写入独立 Audit。OpenBao Root Token 不作为日常服务凭据，Root 操作只在受控 Break-glass 条件下执行。
 
-OpenBao Audit 同时尝试写入独立 Audit PVC 与 stdout 两个 `file` Audit Device。一个 Device 发生非阻塞失败而另一个成功记录时请求可以继续；两个 Device 均无法记录时请求 Fail Closed。归档 Audit 写入 `audit-worm`，默认保留 365 天 `COMPLIANCE` Object Lock；对象保护、精确版本与清理由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有。
+OpenBao Audit 同时尝试写入独立 Audit PVC 与 stdout 两个 `file` Audit Device。一个 Device 发生非阻塞失败而另一个成功记录时请求可以继续；两个 Device 均无法记录时请求 Fail Closed。归档 Audit 写入 `audit-worm`，默认保留 365 天 `COMPLIANCE` Object Lock；对象保护、精确版本与清理由[数据、消息与存储](./07-data-messaging-storage.md)拥有。
 
 每个 OpenBao Pod 的 Audit PVC 与 Raft Data PVC 分离：DEV 为 5 GiB，PROD 为 10 GiB。本地缓冲默认保留 7 天，不是长期权威归档；PVC 使用率在 70%/85% 进入 Warning/Critical。两个 `file` Audit Device 以 HCL/GitOps 声明，一个落入独立 Audit PVC，另一个写入 stdout；均采用 JSON、`log_raw=false` 与 HMAC 保护。任一 Device 失败但另一个可记录时请求可继续，两个 Device 都无法记录时必须 Fail Closed。
 
@@ -142,7 +142,7 @@ etcd snapshot 与 Recovery Bundle 必须绑定 Config Hash、Generation 和该 S
 
 ## 7. Volume、Ceph 与 Object Encryption
 
-Volume 与 Ceph 的 dm-crypt/LUKS 安全语义由本节定义，物理 Storage Node 和 Rook-Ceph 拓扑由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)定义。
+Volume 与 Ceph 的 dm-crypt/LUKS 安全语义由本节定义，物理 Storage Node 和 Rook-Ceph 拓扑由[基础设施与运维](./09-infrastructure-operations.md)定义。
 
 `stateful-rwo-lowlatency` 的当前 Alibaba Provider Mapping 为每个环境使用独立专用 `Aliyun_AES_256` CMK，并启用 Deletion Protection；该 CMK 不与 OS、Ceph、Object、OpenBao Seal 或其他环境复用。Key 环境不匹配、Key 不可用、Provider 无法证明 Volume 已加密时，Provision/Ready Fail Closed；禁止回退默认 Key、Local PV、Ceph/NAS 或明文 Volume。RWO Volume 重挂前必须完成旧 Writer Detach/Fence，不能依赖新的 Attach 覆盖旧 Writer。
 
@@ -160,17 +160,17 @@ Cluster 外 etcd snapshot + recovery bundle
 → 恢复 PostgreSQL、NATS、Artifact 与其他数据
 ```
 
-各阶段都要验证环境绑定、对象版本、签名/校验和、Keyring/证书与 Audit 证据；验证失败时保持恢复冻结。PostgreSQL、NATS、Temporal 与对象版本的组件级恢复算法仍以[07](../07-data-messaging-storage/data-messaging-storage-detail.md)为准。
+各阶段都要验证环境绑定、对象版本、签名/校验和、Keyring/证书与 Audit 证据；验证失败时保持恢复冻结。PostgreSQL、NATS、Temporal 与对象版本的组件级恢复算法仍以[07](./07-data-messaging-storage.md)为准。
 
 ## 8. File 与 Image Security
 
-File Security Worker 使用 [09 PCS](../09-infrastructure-operations/infrastructure-operations-detail.md)锁定的 ClamAV Engine/Image。Launch Profile 可使用单 Replica；Hardened Target 每环境运行 2 个 Replica、总并发为 4。两种 Profile 的单对象上限均为 100 MiB，`MaxScanSize=400 MiB`、`MaxRecursion=17`、`MaxFiles=10000`、`MaxScanTime=120s`，扫描结果固定为 `CLEAN`、`MALICIOUS`、`SUSPICIOUS` 或 `ERROR`。
+File Security Worker 使用 [09 PCS](./09-infrastructure-operations.md)锁定的 ClamAV Engine/Image。Launch Profile 可使用单 Replica；Hardened Target 每环境运行 2 个 Replica、总并发为 4。两种 Profile 的单对象上限均为 100 MiB，`MaxScanSize=400 MiB`、`MaxRecursion=17`、`MaxFiles=10000`、`MaxScanTime=120s`，扫描结果固定为 `CLEAN`、`MALICIOUS`、`SUSPICIOUS` 或 `ERROR`。
 
 每个 Scanner Replica 是带 `File Security Worker` 与 `clamd/freshclam` 的独立 StatefulSet Pod，通过 Pod 内 Unix Socket 调用，不暴露 ClamAV 网络服务。每副本使用独立 5 GiB RWO Signature PVC；ClamAV Container 的 Request/Limit 为 `1 CPU / 3 GiB` 与 `2 CPU / 6 GiB`，Worker Container 的 Request/Limit 为 `200m CPU / 256 MiB` 与 `1 CPU / 1 GiB`。Hardened Target 的两个副本以 Anti-Affinity/Topology Spread 分散，并设 `PDB minAvailable=1`。
 
 `freshclam` 每 2 小时检查一次，并对副本使用受控随机 Jitter；数据库更新先验证签名、完整性和 Engine Load Test，再由 `clamd` Concurrent Reload。连续 6/12/24 小时未成功更新分别为 Warning/Critical/退出 Ready；超过 24 小时的副本不能返回 `CLEAN`，新对象保持不可用。`MaxThreads=2`、`MaxQueue=4`，单副本最多并发扫描 2 个对象；单副本故障时环境并发降至 2，由持久化异步队列承接任务。
 
-需要扫描的对象只有在 Verdict 为 `CLEAN` 且扫描覆盖完整时才可进入可用业务状态；其余 Verdict、超限、超时、签名库不可用和覆盖不完整全部 Fail Closed。平台内部受信流程生成且类型受约束的纯文本 Spec、Plan、日志可以由版本化 Source/Media Policy 跳过扫描，但该决定由服务端生成并绑定 Artifact Source、Media Category 与 Policy Version，Frontend、Agent 或调用方不能声明可信，也不能把“跳过”记录为 `CLEAN`。扫描错误的有界重试、`SCAN_FAILED`、受控重新入队、Quarantine 不可绕过与 Artifact 业务状态由 [02](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有。文件上传配额、Object Version 与 Bucket Capacity 以[07](../07-data-messaging-storage/data-messaging-storage-detail.md)为准。
+需要扫描的对象只有在 Verdict 为 `CLEAN` 且扫描覆盖完整时才可进入可用业务状态；其余 Verdict、超限、超时、签名库不可用和覆盖不完整全部 Fail Closed。平台内部受信流程生成且类型受约束的纯文本 Spec、Plan、日志可以由版本化 Source/Media Policy 跳过扫描，但该决定由服务端生成并绑定 Artifact Source、Media Category 与 Policy Version，Frontend、Agent 或调用方不能声明可信，也不能把“跳过”记录为 `CLEAN`。扫描错误的有界重试、`SCAN_FAILED`、受控重新入队、Quarantine 不可绕过与 Artifact 业务状态由 [02](./02-requirement-workflow.md)唯一拥有。文件上传配额、Object Version 与 Bucket Capacity 以[07](./07-data-messaging-storage.md)为准。
 
 运行镜像必须具备可验证 provenance、SBOM、漏洞扫描和签名。部署 Gate 验证镜像 digest、签名身份、SBOM、扫描结论和 PCS 兼容性；不满足任一条件的镜像不得进入工作负载。镜像扫描结论和例外只记录受限摘要与证据引用。
 
@@ -188,7 +188,7 @@ PENDING_SCAN → PASSED | BLOCKED | ERROR | EXPIRED
 
 ## 9. Audit、WORM 与 Break-glass
 
-Audit 是独立的追加式不可篡改事实。任何需要 Audit 的受保护状态变更，只有在 Audit 与对应持久证据可靠提交后才能成功；平台 Audit 的可靠提交点是与领域事实同一 PostgreSQL 事务的持久化提交（见[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)的单事务写入），OpenBao 等独立来源以其自身 Audit Device 成功记录为准，WORM 归档不是业务成功的同步前置。Audit 容量无法覆盖扩容 Lead Time 时相关写操作 Fail Closed。Coverage 至少包括 Identity/认证因子重置、授权/配置、Requirement/Workflow/MR/Attempt、Secret/PKI、Archive/Restore/Delete、DLQ/Replay、Provider Feed、Break-glass、加密轮换、文件/镜像判定、工作负载安全异常和治理操作。平台、OpenBao、Provider 与 Kubernetes Audit 独立保存并可按 Correlation ID、环境和对象关联；任一来源都不能替代其他来源。
+Audit 是独立的追加式不可篡改事实。任何需要 Audit 的受保护状态变更，只有在 Audit 与对应持久证据可靠提交后才能成功；平台 Audit 的可靠提交点是与领域事实同一 PostgreSQL 事务的持久化提交（见[平台应用与集成](./06-platform-application-integration.md)的单事务写入），OpenBao 等独立来源以其自身 Audit Device 成功记录为准，WORM 归档不是业务成功的同步前置。Audit 容量无法覆盖扩容 Lead Time 时相关写操作 Fail Closed。Coverage 至少包括 Identity/认证因子重置、授权/配置、Requirement/Workflow/MR/Attempt、Secret/PKI、Archive/Restore/Delete、DLQ/Replay、Provider Feed、Break-glass、加密轮换、文件/镜像判定、工作负载安全异常和治理操作。平台、OpenBao、Provider 与 Kubernetes Audit 独立保存并可按 Correlation ID、环境和对象关联；任一来源都不能替代其他来源。
 
 各 Audit 来源（平台 PostgreSQL 事务事实、OpenBao Audit Device 缓冲等）到 `audit-worm` 的归档由独立 `audit-archiver` 以 at-least-once 语义异步执行：对象键由 Audit 事实唯一 ID 与内容哈希构成，重试与重放收敛为同一 WORM 对象，不产生重复证据；`audit-archiver` 只追加，不修改或删除既有对象，并维护可观测的归档 Watermark 与积压深度。归档积压、来源缓冲余量或 `audit-worm` 容量任一按当前扩容 Lead Time 无法覆盖时进入 Critical 告警并触发前述容量 Fail Closed 判定；归档失败不回滚已提交的业务事务，只阻止后续受保护写入。归档链随 `audit-worm` 所属 Object Storage Capability 激活启用；激活前，权威 Audit 事实由 PostgreSQL 事实及其 Backup 链保留。
 

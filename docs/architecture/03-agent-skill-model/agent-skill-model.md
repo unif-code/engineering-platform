@@ -2,13 +2,13 @@
 
 > 文档层级：L1 运行地图
 > 规范事实源：[Agent、Skill 与 Model 详细说明](./agent-skill-model-detail.md)
-> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 目标与边界
 
 本领域负责 Agent Definition、Superpowers Runtime Bundle、Model Catalog 与 Route、Run/Attempt、不可变 Execution Binding、模型评测工具链、执行等待与运行审计。它不拥有 Requirement 主状态、人工 Gate、人员资格、GitLab 交付协议或 Sandbox 的物理实现。
 
-业务 Workflow 决定何时和为何创建 Run，运行中的 Agent 仅在绑定输入和最小权限内执行；需求、Gate 和业务 Assignment 见[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)。Sandbox 隔离、资源与物化细节见[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)。
+业务 Workflow 决定何时和为何创建 Run，运行中的 Agent 仅在绑定输入和最小权限内执行；需求、Gate 和业务 Assignment 见[Requirement Workflow](./02-requirement-workflow.md)。Sandbox 隔离、资源与物化细节见[Sandbox Runtime](./04-sandbox-runtime.md)。
 
 ## 概念地图
 

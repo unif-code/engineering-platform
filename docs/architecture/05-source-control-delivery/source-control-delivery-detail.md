@@ -2,13 +2,13 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[Source Control 与交付](./source-control-delivery.md)
-> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 责任边界
 
-本文是 GitLab Binding、任务分支 Saga、Integration/Formal MR、Git/MR/Artifact `IntegrationBaselineEvidence`、GitLab 外部事实收敛、Formal Review Assignment、Merge 与多仓语义的唯一规范事实源。本文唯一拥有 Evidence 的结构、`integrationBaselineId/hash`、外部事实与变化事件。Requirement、WorkItem、Gate、Decision、Acceptance、`RequirementIntegrationBaselineSelection` 与业务状态由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有；本文消费其稳定 ID 和受保护命令，产生 Binding、Branch、MR、Merge 与 Evidence 事实，不复制 Requirement 的冻结、选择、验收或状态机。
+本文是 GitLab Binding、任务分支 Saga、Integration/Formal MR、Git/MR/Artifact `IntegrationBaselineEvidence`、GitLab 外部事实收敛、Formal Review Assignment、Merge 与多仓语义的唯一规范事实源。本文唯一拥有 Evidence 的结构、`integrationBaselineId/hash`、外部事实与变化事件。Requirement、WorkItem、Gate、Decision、Acceptance、`RequirementIntegrationBaselineSelection` 与业务状态由 [Requirement Workflow](./02-requirement-workflow.md)唯一拥有；本文消费其稳定 ID 和受保护命令，产生 Binding、Branch、MR、Merge 与 Evidence 事实，不复制 Requirement 的冻结、选择、验收或状态机。
 
-人员资格由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有；Execution Binding 与 Agent 的分支写权限由[Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有。平台不复制 GitLab 仓库或权限页面，也不把 GitLab Role 当作平台 Capability、Scope、Membership 或 Assignment 的替代品。
+人员资格由[身份、组织与授权](./01-identity-organization-authorization.md)拥有；Execution Binding 与 Agent 的分支写权限由[Agent、Skill 与 Model](./03-agent-skill-model.md)拥有。平台不复制 GitLab 仓库或权限页面，也不把 GitLab Role 当作平台 Capability、Scope、Membership 或 Assignment 的替代品。
 
 ## 2. GitLab Binding
 
@@ -103,7 +103,7 @@ Reviewer 必须同时是当前 Assignment assignee，且实时具备 `merge_requ
 
 本节在前文已经定义 GitLab Project/Repository、Branch、Integration MR、人工 Jenkins Evidence、Acceptance、Formal MR 与 Review Contract 后，只扩展任务分支 Commit/Push 的受控来源，不改变实际交付时序。Agent Commit 仍发生在 Integration MR 之前；Agent 场景除通用账号、Membership、Capability、Scope、Repository Binding 与 GitLab 保护校验外，还必须满足不可变 Execution Binding 和 Tool Policy。
 
-Agent Credential 必须绑定 Platform Environment、Attempt、Project、任务分支与 TTL，只允许读取 Binding 固定的 Repository/Commit 并写当前任务分支；TTL 是任务分支 Push 窗口的硬上限，Attempt 进入 Fence 或清理时凭据按[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)的清理 Contract 即刻吊销。Agent 产生的有效代码必须先在 Sandbox 内形成可核验 Commit，再以该凭据直接 Push 当前任务分支；Connector 不代理该 Push，只以幂等方式核验远端 `headSha`、将 Push Effect 记入 `SourceControlEffect` Ledger 并收敛未知结果。远端确认的 Commit SHA、Push Effect、实际 Agent、发起人员和 Binding 引用共同进入交付证据；Fence 生效后到达远端的 Push 不进入该 Attempt 的交付证据，Reconciler 发现此类 Push 时冻结该任务分支并发布带新旧 hash 的证据变化事件，由 02 owner 决定业务处置。未知或失败的 Push 只通过 Effect Ledger 与 Reconciliation 收敛，不能被解释为已交付。
+Agent Credential 必须绑定 Platform Environment、Attempt、Project、任务分支与 TTL，只允许读取 Binding 固定的 Repository/Commit 并写当前任务分支；TTL 是任务分支 Push 窗口的硬上限，Attempt 进入 Fence 或清理时凭据按[Sandbox Runtime](./04-sandbox-runtime.md)的清理 Contract 即刻吊销。Agent 产生的有效代码必须先在 Sandbox 内形成可核验 Commit，再以该凭据直接 Push 当前任务分支；Connector 不代理该 Push，只以幂等方式核验远端 `headSha`、将 Push Effect 记入 `SourceControlEffect` Ledger 并收敛未知结果。远端确认的 Commit SHA、Push Effect、实际 Agent、发起人员和 Binding 引用共同进入交付证据；Fence 生效后到达远端的 Push 不进入该 Attempt 的交付证据，Reconciler 发现此类 Push 时冻结该任务分支并发布带新旧 hash 的证据变化事件，由 02 owner 决定业务处置。未知或失败的 Push 只通过 Effect Ledger 与 Reconciliation 收敛，不能被解释为已交付。
 
 Agent 不能直接 Push `dev` 或 `main`，不能扩大 Repository Scope、Force Push、选择 Reviewer、形成 Human Decision、代替 Acceptance/Formal Review 或执行 Merge。Agent 自动化只改变任务分支 Commit 的来源，不改变前述人工交付顺序、证据绑定和责任链。
 
@@ -145,4 +145,4 @@ reconcileExternalEffect
 | Formal Merge 冲突或保护拒绝 | 返回 `FormalMergeBlocked`，不绕过 GitLab 保护 |
 | 多仓部分合并 | 保留已合并事实，返回 `MultiRepositoryDeliveryBlocked` 并停止不安全动作 |
 
-审计记录 Connection/Project/Secret Reference 变化、Repository/Branch Binding、base/head SHA、外部 Effect、Commit/Agent/发起用户、检查、Artifact、Integration Merge、Acceptance、Review Assignment/Decision、Formal Merge、Webhook/Reconciliation 与异常处置；不得记录 Secret 明文、完整 PAT 或敏感源码。平台运营视图仅展示 GitLab Connector、授权 Project、Drift、Inbox/Reconciliation、Effect、Assignment 与 Merge 阻塞；应用集成入口见[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)。
+审计记录 Connection/Project/Secret Reference 变化、Repository/Branch Binding、base/head SHA、外部 Effect、Commit/Agent/发起用户、检查、Artifact、Integration Merge、Acceptance、Review Assignment/Decision、Formal Merge、Webhook/Reconciliation 与异常处置；不得记录 Secret 明文、完整 PAT 或敏感源码。平台运营视图仅展示 GitLab Connector、授权 Project、Drift、Inbox/Reconciliation、Effect、Assignment 与 Merge 阻塞；应用集成入口见[平台应用与集成](./06-platform-application-integration.md)。

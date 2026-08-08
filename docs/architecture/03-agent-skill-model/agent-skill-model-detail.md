@@ -2,13 +2,13 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[Agent、Skill 与 Model](./agent-skill-model.md)
-> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 责任边界
 
 本文是 Agent Definition、Superpowers Runtime Bundle、Model Catalog/Capability/Route、Run/Attempt、Execution Binding、模型评测工具链、执行等待、Child Execution、Context/Tool/Network Policy、事件和失败语义的唯一规范事实源。
 
-Requirement、WorkItem、Route、Gate、人工 Assignment 与 Decision 的业务语义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有。人员资格由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Sandbox 的 KVM/Kata、Materialization、Secret 注入、Lease 物理实现和容量 BOM 由[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)拥有；本文只约束其通过 Port 提供的逻辑契约。
+Requirement、WorkItem、Route、Gate、人工 Assignment 与 Decision 的业务语义由[Requirement Workflow](./02-requirement-workflow.md)拥有。人员资格由[身份、组织与授权](./01-identity-organization-authorization.md)拥有。Sandbox 的 KVM/Kata、Materialization、Secret 注入、Lease 物理实现和容量 BOM 由[Sandbox Runtime](./04-sandbox-runtime.md)拥有；本文只约束其通过 Port 提供的逻辑契约。
 
 Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human Gate Decision。Prompt、UI 开关和 Model 输出都不是授权事实。Runtime 以随镜像发布的版本化 Superpowers Runtime Bundle 与 Loaded Skill Contract 执行；Workflow 不保存 Provider 专有参数或具体 Model 名称。
 
@@ -53,7 +53,7 @@ Agent 不是人员岗位，不能授予 Capability、扩大 Scope 或做 Human G
 
 ## 3. Superpowers Runtime Bundle
 
-当前架构基线的 `Superpowers Runtime Bundle` 是 Skill 的唯一权威可加载来源，并随 Runtime 镜像交付。Workflow 解析 Route 并将所需 Bundle 与 Loaded Skill 写入 Execution Binding；Route→Skill 定义由[Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)唯一拥有。
+当前架构基线的 `Superpowers Runtime Bundle` 是 Skill 的唯一权威可加载来源，并随 Runtime 镜像交付。Workflow 解析 Route 并将所需 Bundle 与 Loaded Skill 写入 Execution Binding；Route→Skill 定义由[Requirement Workflow](./02-requirement-workflow.md)唯一拥有。
 
 Runtime 镜像必须记录镜像 digest、Bundle hash、Bundle Manifest、可加载 Skill 名单、构建来源、签名与扫描结果。BINDING 阶段只接受 Bundle Manifest 与 Agent Definition 共同允许的 Skill；缺少 Route 所需 Skill、Manifest/Definition 不一致或出现其他动态来源时 Fail Closed。一个 Attempt 内保持同一 Bundle；Bundle 通过 `RuntimeBundlePort` 接入，并复用 Binding、权限与审计契约。
 
@@ -152,7 +152,7 @@ FINALIZING →（固化失败，记录证据缺口）FAILED
 
 每次评测必须固定工具版本与镜像 digest、Evaluation Config、Dataset/Case Version、Prompt/Template Hash、Model Deployment/Capability Snapshot、随机 Seed、并发、阈值、超时和数据分类。`promptfoo`/`EvalScope` 只能通过 `ModelEvaluationPort → ModelGatewayPort → Provider Adapter` 调用当前环境的批准 Deployment，不取得 Provider 原始 Endpoint、API Key 或 SDK Credential，也不能把工具自己的 Provider/Model 配置带入领域层；能力校验、参数吸收、配额、成本、Correlation 与取消仍由现有 Gateway/Adapter Contract 执行。
 
-执行结果形成不可变 `Evaluation Evidence`，至少包含原始结构化结果、摘要、工具版本、输入 Hash、实际 Model Deployment、Provider Request/Correlation ID、Token/成本/延迟、失败与 Coverage，并通过[Requirement Workflow 的 Artifact Contract](../02-requirement-workflow/requirement-workflow-detail.md)保存稳定引用和内容校验值。业务 Workflow 只能消费该证据并自行判定 Gate；工具的页面、退出码或临时缓存不能直接改写 Requirement、Attempt、Model Catalog 或有效配置。
+执行结果形成不可变 `Evaluation Evidence`，至少包含原始结构化结果、摘要、工具版本、输入 Hash、实际 Model Deployment、Provider Request/Correlation ID、Token/成本/延迟、失败与 Coverage，并通过[Requirement Workflow 的 Artifact Contract](./02-requirement-workflow.md)保存稳定引用和内容校验值。业务 Workflow 只能消费该证据并自行判定 Gate；工具的页面、退出码或临时缓存不能直接改写 Requirement、Attempt、Model Catalog 或有效配置。
 
 Evaluation Job 是运行在 `platform-worker` 的受限可信工作负载，只获得本次数据集、批准 Model Route 与结果 Artifact 的最小短期权限，并以 Non-root、只读 RootFS、`automountServiceAccountToken=false` 和 default-deny NetworkPolicy 运行；主工具容器禁止挂载默认 Token 或 Kubernetes API audience Token。确需短期服务身份时，只有 OpenBao Agent init/sidecar 可挂载短 TTL、`audience=openbao` 的 projected ServiceAccount Token，并将短期 mTLS/Service Identity 写入 tmpfs；主工具容器只读取该内存文件，不能挂载或读取用于登录 OpenBao 的 Token。不需要 Secret 的 Job 不启动 Injector。Egress 只允许 Model Gateway、Artifact API 与明确批准的数据集来源。Evaluation Config 只允许已注册的声明式 Provider、Assertion、Evaluator 和 Dataset Adapter，禁止用户提供或加载内联 JavaScript/Python、Shell Command、远程 Plugin 或其他可执行扩展；未来确需执行不可信评测代码时必须新增独立 Sandbox Execution Contract，不能放宽本 Job。
 
@@ -170,7 +170,7 @@ Secret 仍按 08 注入，Prompt、测试输入和模型输出只进入按数据
 
 高级 Child 路径增加 `RUNNING → WAITING_CHILD → QUEUED` 转换；`WAITING_CHILD` 表示 Parent 已完成 Handoff，正在等待独立 Child 的持久化结果。
 
-本 Target Contract 定义的 Child Type 范围包含 Image Build；新增 Child Type 必须独立定义状态机、Binding、资源、权限、结果与恢复 Contract，不能复用 Image Build 的隐含假设。具体 Child Type 的实施阶段、激活状态与 Release 验收只由 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)记录，本领域不保存当前启用或部署事实。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
+本 Target Contract 定义的 Child Type 范围包含 Image Build；新增 Child Type 必须独立定义状态机、Binding、资源、权限、结果与恢复 Contract，不能复用 Image Build 的隐含假设。具体 Child Type 的实施阶段、激活状态与 Release 验收只由 [12 实施路线图详细说明](./12-implementation-roadmap.md)记录，本领域不保存当前启用或部署事实。同一 Parent Attempt 任一时刻最多有一个非终态 Child，可顺序创建多个但不得以并行绕过限制。Parent 仅在以稳定 Idempotency Key 创建/确认唯一 Child Binding、固化 Checkpoint 与关联引用、并可靠释放自身活动资源后进入 `WAITING_CHILD`。
 
 Child Build Execution 使用独立状态机，不能复用 Parent Attempt 状态；状态集合与转换固定为：
 
@@ -190,13 +190,13 @@ Build Handoff 已完成但 Child 尚未取得 Lease 时，如果有效的 `agent
 
 Child 使用独立 Execution ID、Binding、Lease、Credential 与 Fencing Token。Child 终态先固化 Digest、SBOM/Provenance、日志、Artifact 或结构化错误，再释放资源。Parent 仅在仍等待、未取消/归档/删除/超时、原 Binding 与 Checkpoint 有效且结果属于绑定 Child 时回到 `QUEUED`。Child 失败自身不终结 Parent；Parent 的后续处理由 Tool/Workflow Policy 决定。
 
-Child 完成 `FINALIZING` 且其 Build Lease 可安全释放时，若 Parent 仍通过上述恢复校验，系统必须在同一受控提交中释放 Child Lease，并为该 Parent 创建专属 `ParentContinuationReservation`。该 Reservation 只用于重新取得 Parent 原 Execution Binding 所绑定的 standard Agent Lease；具体 Resource Profile、Unit Weight、Capacity Ledger 与 Lease 原子实现由[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)拥有。
+Child 完成 `FINALIZING` 且其 Build Lease 可安全释放时，若 Parent 仍通过上述恢复校验，系统必须在同一受控提交中释放 Child Lease，并为该 Parent 创建专属 `ParentContinuationReservation`。该 Reservation 只用于重新取得 Parent 原 Execution Binding 所绑定的 standard Agent Lease；具体 Resource Profile、Unit Weight、Capacity Ledger 与 Lease 原子实现由[Sandbox Runtime](./04-sandbox-runtime.md)拥有。
 
 Parent 随后进入 Agent Continuation Queue，优先使用自己的 Reservation 恢复；剩余容量才向普通新 Agent 或后续 Build 开放。优先恢复不得绕过 `agent.sandbox.active_attempt_limit`、Resource Vector、Placement、并发或安全 Gate，也不得抢占现有执行。
 
 `ParentContinuationReservation` 必须绑定 Parent、原 Binding、Generation/Fencing Token、版本化 TTL 与 Policy Version，并通过 Reconciliation 收敛。Parent 失效、取消、归档、删除或超时，恢复 Gate 失败，或 TTL 到期时，Reservation 必须立即释放，不能永久占用容量。本领域拥有 Parent/Child 生命周期和优先恢复语义；Sandbox Runtime 拥有 Reservation 对 Capacity Ledger/Lease 的原子物化与释放。
 
-Parent 取消、Requirement 归档/删除或 Deadline 到期时，须级联安全终止非终态 Child；迟到 Child 结果只可审计，不得复活 Parent。Parent/Child 的队列、执行和总 Deadline 分别保存，不可用 `WAITING_INPUT` 默认期限重置。Lease、资源向量与物理调度仅通过[Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)契约处理。
+Parent 取消、Requirement 归档/删除或 Deadline 到期时，须级联安全终止非终态 Child；迟到 Child 结果只可审计，不得复活 Parent。Parent/Child 的队列、执行和总 Deadline 分别保存，不可用 `WAITING_INPUT` 默认期限重置。Lease、资源向量与物理调度仅通过[Sandbox Runtime](./04-sandbox-runtime.md)契约处理。
 
 ## 9. Context、Tool、Network 与权限
 

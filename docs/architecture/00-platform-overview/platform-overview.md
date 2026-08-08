@@ -20,7 +20,7 @@ Core Platform 负责本地身份、组织与 Workspace、授权、Requirement �
 - 将人、Agent、代码变更、交付证据和 Audit 关联为可解释的业务事实；
 - 让环境隔离、受控执行和可替换集成共同约束平台演进。
 
-身份、组织、Workspace 与授权的边界由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization.md)定义；[安全、审计与治理](../08-security-audit-governance/security-audit-governance.md)和[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)分别拥有安全审计与专业运维控制台规则。
+身份、组织、Workspace 与授权的边界由[身份、组织与授权](./01-identity-organization-authorization.md)定义；[安全、审计与治理](./08-security-audit-governance.md)和[基础设施与运维](./09-infrastructure-operations.md)分别拥有安全审计与专业运维控制台规则。
 
 ## 端到端业务主链路
 
@@ -34,7 +34,7 @@ Core Platform 负责本地身份、组织与 Workspace、授权、Requirement �
 → 全程留下可关联的 Audit
 ```
 
-此链路中的 Requirement 状态、Route、Gate 和交付规则由[Requirement Workflow](../02-requirement-workflow/requirement-workflow.md)拥有；GitLab、MR 与交付集成规则由[Source Control 与交付](../05-source-control-delivery/source-control-delivery.md)拥有。
+此链路中的 Requirement 状态、Route、Gate 和交付规则由[Requirement Workflow](./02-requirement-workflow.md)拥有；GitLab、MR 与交付集成规则由[Source Control 与交付](./05-source-control-delivery.md)拥有。
 
 ## 模块地图
 
@@ -64,7 +64,7 @@ Core Platform 负责本地身份、组织与 Workspace、授权、Requirement �
 - **Hardened Target Profile**：保留完整 Node Role、冗余、隔离、可观测性、恢复和规模化目标，供容量与可靠性需求达到 Evolution Trigger 后采用；它不是 Launch Profile 的默认部署声明。
 - **Future Evolution**：通过独立演进 Port/Adapter、数据边界或 Deployable 提升规模与韧性，不重写无关领域语义，也不自动启用目标能力。
 
-Profile 的 Release 选择、实施状态、环境 Promotion 和容量场景只由[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)及其 detail 拥有；本总览不复制版本范围、服务器数字或运行状态。
+Profile 的 Release 选择、实施状态、环境 Promotion 和容量场景只由[实施路线图](./12-implementation-roadmap.md)及其 detail 拥有；本总览不复制版本范围、服务器数字或运行状态。
 
 ## 稳定边界
 
@@ -78,15 +78,15 @@ Profile 的 Release 选择、实施状态、环境 Promotion 和容量场景只�
 ## 阅读导航
 
 - [平台总览详细说明](./platform-overview-detail.md)：系统上下文、环境和全局依赖方向。
-- [身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization.md)：人员与访问控制入口。
-- [Requirement Workflow](../02-requirement-workflow/requirement-workflow.md)：业务交付流程与人工 Gate。
-- [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model.md)：Agent 责任和执行能力。
-- [Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime.md)：受控执行环境。
-- [Source Control 与交付](../05-source-control-delivery/source-control-delivery.md)：代码、MR 与交付集成。
-- [平台应用与集成](../06-platform-application-integration/platform-application-integration.md)：应用入口与集成边界。
-- [数据、消息与存储](../07-data-messaging-storage/data-messaging-storage.md)：领域事实与数据支撑边界。
-- [安全、审计与治理](../08-security-audit-governance/security-audit-governance.md)：安全边界与治理证据。
-- [基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)：部署、运维与兼容性 Contract。
-- [Configuration Governance](../10-configuration-governance/configuration-governance.md)：配置分类、生命周期与跨环境 Promotion。
-- [架构基线](../11-architecture-baseline/architecture-baseline.md)：跨模块不变量、质量场景与三类 Gate。
-- [实施路线图](../12-implementation-roadmap/implementation-roadmap.md)：Release Scope、实施状态、环境 Promotion 与 Profile 选择。
+- [身份、组织与授权](./01-identity-organization-authorization.md)：人员与访问控制入口。
+- [Requirement Workflow](./02-requirement-workflow.md)：业务交付流程与人工 Gate。
+- [Agent、Skill 与 Model](./03-agent-skill-model.md)：Agent 责任和执行能力。
+- [Sandbox Runtime](./04-sandbox-runtime.md)：受控执行环境。
+- [Source Control 与交付](./05-source-control-delivery.md)：代码、MR 与交付集成。
+- [平台应用与集成](./06-platform-application-integration.md)：应用入口与集成边界。
+- [数据、消息与存储](./07-data-messaging-storage.md)：领域事实与数据支撑边界。
+- [安全、审计与治理](./08-security-audit-governance.md)：安全边界与治理证据。
+- [基础设施与运维](./09-infrastructure-operations.md)：部署、运维与兼容性 Contract。
+- [Configuration Governance](./10-configuration-governance.md)：配置分类、生命周期与跨环境 Promotion。
+- [架构基线](./11-architecture-baseline.md)：跨模块不变量、质量场景与三类 Gate。
+- [实施路线图](./12-implementation-roadmap.md)：Release Scope、实施状态、环境 Promotion 与 Profile 选择。

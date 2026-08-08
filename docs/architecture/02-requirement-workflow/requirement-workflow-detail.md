@@ -2,13 +2,13 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[Requirement Workflow](./requirement-workflow.md)
-> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 责任边界与治理
 
-本文是 Requirement、WorkItem、Route、人工 Gate、业务责任 Assignment、Decision、Artifact 与 `RequirementIntegrationBaselineSelection` 的唯一规范事实源。它拥有 Requirement 何时选定或冻结当前证据引用、Acceptance 绑定与失效以及业务状态，不定义 `IntegrationBaselineEvidence` 的 Git/MR/Artifact 证据结构、人员资格、Agent 内部执行、Sandbox 物理资源、GitLab Adapter 或对象存储实现。`IntegrationBaselineEvidence` 只由 [Source Control 与交付](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
+本文是 Requirement、WorkItem、Route、人工 Gate、业务责任 Assignment、Decision、Artifact 与 `RequirementIntegrationBaselineSelection` 的唯一规范事实源。它拥有 Requirement 何时选定或冻结当前证据引用、Acceptance 绑定与失效以及业务状态，不定义 `IntegrationBaselineEvidence` 的 Git/MR/Artifact 证据结构、人员资格、Agent 内部执行、Sandbox 物理资源、GitLab Adapter 或对象存储实现。`IntegrationBaselineEvidence` 只由 [Source Control 与交付](./05-source-control-delivery.md)拥有。
 
-人员、Capability、Scope、Membership、账号与 Session 的有效性由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。Workflow 在每次受保护命令中调用该 owner；Assignment 只说明当前责任，永不授予资格或扩大范围。
+人员、Capability、Scope、Membership、账号与 Session 的有效性由[身份、组织与授权](./01-identity-organization-authorization.md)拥有。Workflow 在每次受保护命令中调用该 owner；Assignment 只说明当前责任，永不授予资格或扩大范围。
 
 受控业务行为依以下顺序收敛：
 
@@ -50,7 +50,7 @@ Requirement Aggregate 为必需 WorkItem 集合维护单调递增的 `requiredWo
 
 Artifact Version、Commit、交付 head SHA、Route Bundle、必需 WorkItem 集合或其他被确认输入变化时，当前 Selection 与旧 Acceptance 失效而历史保留。仅与交付快照无关的展示变化不能伪造集合变化；是否影响 Selection 必须由 Requirement 领域命令显式判定。
 
-完成的 Decision、Attempt、Artifact 与 Audit 始终保存原 actor，不因组织、授权或 Assignment 后续变化而重写。外部交付的准确 Commit、分支与 MR 事实由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)提供，本领域只保存稳定引用。
+完成的 Decision、Attempt、Artifact 与 Audit 始终保存原 actor，不因组织、授权或 Assignment 后续变化而重写。外部交付的准确 Commit、分支与 MR 事实由[Source Control Delivery](./05-source-control-delivery.md)提供，本领域只保存稳定引用。
 
 ## 3. 创建、分配与仓库选择
 
@@ -64,7 +64,7 @@ Artifact Version、Commit、交付 head SHA、Route Bundle、必需 WorkItem 集
 repositoryState = WAITING_REPOSITORY
 ```
 
-负责人在授权范围内选择仓库；操作人仍须有仓库绑定资格。未绑定时不得建分支、启动 Human/Agent 执行或创建 Integration/Formal MR。仓库和分支已创建后，发现选错仓库须将原 WorkItem 标为 `SUPERSEDED` 并创建替代 WorkItem；原 Binding、Attempt、Artifact 和 Audit 保留，被替代项不再计入完成条件。分支命名、Binding Saga 和交付协议只见[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)。
+负责人在授权范围内选择仓库；操作人仍须有仓库绑定资格。未绑定时不得建分支、启动 Human/Agent 执行或创建 Integration/Formal MR。仓库和分支已创建后，发现选错仓库须将原 WorkItem 标为 `SUPERSEDED` 并创建替代 WorkItem；原 Binding、Attempt、Artifact 和 Audit 保留，被替代项不再计入完成条件。分支命名、Binding Saga 和交付协议只见[Source Control Delivery](./05-source-control-delivery.md)。
 
 创建 WorkItem 的默认 Assignment 为：
 
@@ -88,7 +88,7 @@ repositoryState = WAITING_REPOSITORY
 | `refactor` | Route Snapshot 指定的技术基线与验证 | 实际启用部分确认 |
 | `chore` | Route Snapshot 指定的技术基线与验证 | 实际启用部分确认 |
 
-`feat` 的当前 SDD 顺序是 `brainstorming → writing-plans → test-driven-development → verification-before-completion → requesting-code-review`。Workflow 固定 Route、阶段输入输出、Artifact、Gate 与恢复；Skill 的内部方法由[Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有，执行时使用版本化 Superpowers Runtime Bundle。
+`feat` 的当前 SDD 顺序是 `brainstorming → writing-plans → test-driven-development → verification-before-completion → requesting-code-review`。Workflow 固定 Route、阶段输入输出、Artifact、Gate 与恢复；Skill 的内部方法由[Agent、Skill 与 Model](./03-agent-skill-model.md)拥有，执行时使用版本化 Superpowers Runtime Bundle。
 
 每条 Route 将可审计结论固化为结构化、可版本绑定 Artifact：
 
@@ -119,7 +119,7 @@ GatePolicy
 | `REQUIREMENT_ACCEPTANCE` | 冻结的 `RequirementIntegrationBaselineSelection` | 最终验收 |
 | `FORMAL_MR_REVIEW` | Formal MR 的精确 `headSha` | 人工代码 Review |
 
-Decision 结果枚举固定为 `APPROVED`、`CHANGES_REQUESTED`、`REJECTED`，新增结果属于 Contract 变更；岗位不能编码进 Gate Type 或结果。Formal MR 的默认路由、Review Assignment 与 `headSha` 失效由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)唯一规定。
+Decision 结果枚举固定为 `APPROVED`、`CHANGES_REQUESTED`、`REJECTED`，新增结果属于 Contract 变更；岗位不能编码进 Gate Type 或结果。Formal MR 的默认路由、Review Assignment 与 `headSha` 失效由[Source Control Delivery](./05-source-control-delivery.md)唯一规定。
 
 ### 5.1 SDD 审核人
 
@@ -191,7 +191,7 @@ WorkItem 交付按 Source Control 的任务分支、`dev` 集成、外部人工�
 
 所有必需 WorkItem 完成集成、测试和外部人工验证后，02 owner 先冻结当前 `RequirementDeliverySnapshot`，05 owner 再根据该快照生成不可变 `IntegrationBaselineEvidence`，不能绑定持续移动的分支 HEAD。Requirement 通过上述 CAS 与覆盖校验创建并冻结指向该 `integrationBaselineId/hash` 的 `RequirementIntegrationBaselineSelection`。任一必需项的 Commit、Artifact、测试证据或必需集合变化都会形成新的 Evidence；02 owner 将旧 Selection 标记为不再当前并使旧验收失效，随后基于当前快照选择新 Evidence 并再次验收。
 
-验收通过且仍对当前 `RequirementIntegrationBaselineSelection` 有效后，才允许创建各 WorkItem 的 Formal MR。Requirement 进入 `COMPLETED` 的条件同时是：验收有效、所有必需 WorkItem 的 Formal MR 已合并 `main`、没有仍应计入的未完成 WorkItem。GitLab 分支、MR、Webhook、分支保护与 reconciliation 细节由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)拥有。
+验收通过且仍对当前 `RequirementIntegrationBaselineSelection` 有效后，才允许创建各 WorkItem 的 Formal MR。Requirement 进入 `COMPLETED` 的条件同时是：验收有效、所有必需 WorkItem 的 Formal MR 已合并 `main`、没有仍应计入的未完成 WorkItem。GitLab 分支、MR、Webhook、分支保护与 reconciliation 细节由[Source Control Delivery](./05-source-control-delivery.md)拥有。
 
 ## 8. Artifact 与高级协作
 
@@ -213,7 +213,7 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 
 后端在上传/下载时实时校验当前授权及 Artifact 关系，按准确 Object Version 校验大小、MIME 与 SHA-256。是否进入 `PENDING_SCAN` 只能由服务端依据版本化 Artifact Source/Media Policy 决定：用户上传、外部 Connector 内容和含外部二进制的 Agent Artifact 必须扫描；只有平台内部受信流程生成、类型受约束的纯文本 Spec、Plan、日志可由命中的 Policy 跳过，Frontend、调用者和 Agent 不能自行声明可信。跳过扫描不是 `CLEAN` Verdict，Artifact 必须保存 Source/Media Category、Policy Version 与完整性证据。
 
-扫描投递按 Artifact Version、SHA-256 与 Scan Policy Version 幂等。Engine 不可用、Signature 过期、Timeout 或解析失败时保持不可用并按可配置的有界退避重试；超过上限进入 `SCAN_FAILED`、告警，Engine 恢复后只能通过受控命令重新入队。`MALICIOUS/SUSPICIOUS` 进入 `QUARANTINED`，不能人工放行或绕过，只能在 Signature/Policy 更新后重新扫描得到 `CLEAN`，或由用户重新上传。只有 `AVAILABLE` Artifact 能下载或进入 Workflow Gate。Presigned Request 默认 `5min`、只对应单一 Object Version，不持久化也不写入日志。文件类型、扫描、Object Lock、技术垃圾清理和存储/安全实现分别由[Data/Messaging/Storage](../07-data-messaging-storage/data-messaging-storage-detail.md)与[Security/Audit/Governance](../08-security-audit-governance/security-audit-governance-detail.md)拥有；本领域依赖其状态而不复制实现。
+扫描投递按 Artifact Version、SHA-256 与 Scan Policy Version 幂等。Engine 不可用、Signature 过期、Timeout 或解析失败时保持不可用并按可配置的有界退避重试；超过上限进入 `SCAN_FAILED`、告警，Engine 恢复后只能通过受控命令重新入队。`MALICIOUS/SUSPICIOUS` 进入 `QUARANTINED`，不能人工放行或绕过，只能在 Signature/Policy 更新后重新扫描得到 `CLEAN`，或由用户重新上传。只有 `AVAILABLE` Artifact 能下载或进入 Workflow Gate。Presigned Request 默认 `5min`、只对应单一 Object Version，不持久化也不写入日志。文件类型、扫描、Object Lock、技术垃圾清理和存储/安全实现分别由[Data/Messaging/Storage](./07-data-messaging-storage.md)与[Security/Audit/Governance](./08-security-audit-governance.md)拥有；本领域依赖其状态而不复制实现。
 
 多仓 Requirement 与 Agent/Child Execution 产生的 Artifact 都只能扩展协作范围，不能绕过已经成立的 Requirement、SDD、人工 Assignment、Gate、Decision、Evidence Selection 与 Acceptance 责任链。多仓部分合并保留已发生事实并进入受控处置，不伪造跨仓原子性。
 

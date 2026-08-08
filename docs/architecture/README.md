@@ -11,10 +11,10 @@
 | 事实层 | 回答的问题 | 唯一事实源 |
 | --- | --- | --- |
 | Target Architecture | 平台完整目标由哪些模块、边界、Port/Adapter、不变量和安全 Contract 构成？ | 00～11；领域规则由对应 detail 唯一拥有，11 只索引跨模块基线。 |
-| Implementation Roadmap | 哪些 Capability 被选入哪个 Release、实施到什么状态、采用哪个 Profile，以及如何从 DEV Promotion 到 PROD？ | [12 实施路线图](./12-implementation-roadmap/implementation-roadmap.md)、[路线图详细说明](./12-implementation-roadmap/implementation-roadmap-detail.md)与[环境容量和服务器规划](./12-implementation-roadmap/environment-capacity-plan.md)。 |
+| Implementation Roadmap | 哪些 Capability 被选入哪个 Release、实施到什么状态、采用哪个 Profile，以及如何从 DEV Promotion 到 PROD？ | [12 实施路线图](./12-implementation-roadmap.md)、[路线图详细说明](./12-implementation-roadmap.md)与[环境容量和服务器规划](./environment-capacity-plan.md)。 |
 | Deployed State | 某个 Platform Environment 实际运行什么 Image Digest/Bundle、配置、拓扑、容量和健康状态？ | 该环境受保护 Git 路径形成的 GitOps Desired State、Platform Compatibility Set（PCS）和 Operations Read Model 证据；Markdown 与 HTML 不复制运行状态。 |
 
-Target Architecture 的适用与 Gate 规则见[架构基线详细说明](./11-architecture-baseline/architecture-baseline-detail.md)；Implementation Roadmap 的 Scope、状态与 Profile 选择见[实施路线图详细说明](./12-implementation-roadmap/implementation-roadmap-detail.md)；Deployed State 的环境证据定义见[基础设施与运维详细说明](./09-infrastructure-operations/infrastructure-operations-detail.md)和[Configuration Governance 详细说明](./10-configuration-governance/configuration-governance-detail.md)。
+Target Architecture 的适用与 Gate 规则见[架构基线详细说明](./11-architecture-baseline.md)；Implementation Roadmap 的 Scope、状态与 Profile 选择见[实施路线图详细说明](./12-implementation-roadmap.md)；Deployed State 的环境证据定义见[基础设施与运维详细说明](./09-infrastructure-operations.md)和[Configuration Governance 详细说明](./10-configuration-governance.md)。
 
 ## 受众阅读路径
 
@@ -29,19 +29,19 @@ Target Architecture 的适用与 Gate 规则见[架构基线详细说明](./11-a
 
 | 编号 | 主题 | L1 架构地图 | L2 详细 Contract | 一句职责 |
 | --- | --- | --- | --- | --- |
-| 00 | 平台总览 | [L1](./00-platform-overview/platform-overview.md) | [L2](./00-platform-overview/platform-overview-detail.md) | 说明 System Context、总体边界和责任链。 |
-| 01 | 身份、组织与授权 | [L1](./01-identity-organization-authorization/identity-organization-authorization.md) | [L2](./01-identity-organization-authorization/identity-organization-authorization-detail.md) | 说明身份、组织、成员与服务端授权。 |
-| 02 | Requirement Workflow | [L1](./02-requirement-workflow/requirement-workflow.md) | [L2](./02-requirement-workflow/requirement-workflow-detail.md) | 说明业务责任、审核、验收与证据。 |
-| 03 | Agent、Skill 与 Model | [L1](./03-agent-skill-model/agent-skill-model.md) | [L2](./03-agent-skill-model/agent-skill-model-detail.md) | 说明受控执行、模型路由、评测工具链和不可变 Binding。 |
-| 04 | Sandbox Runtime | [L1](./04-sandbox-runtime/sandbox-runtime.md) | [L2](./04-sandbox-runtime/sandbox-runtime-detail.md) | 说明隔离执行环境、容量与恢复。 |
-| 05 | Source Control 与交付 | [L1](./05-source-control-delivery/source-control-delivery.md) | [L2](./05-source-control-delivery/source-control-delivery-detail.md) | 说明代码绑定、交付证据和 MR 协作。 |
-| 06 | 平台应用与集成 | [L1](./06-platform-application-integration/platform-application-integration.md) | [L2](./06-platform-application-integration/platform-application-integration-detail.md) | 说明应用边界、集成、安全公告和运维可见性。 |
-| 07 | 数据、消息与存储 | [L1](./07-data-messaging-storage/data-messaging-storage.md) | [L2](./07-data-messaging-storage/data-messaging-storage-detail.md) | 说明数据事实、消息、Artifact 与组件恢复。 |
-| 08 | 安全、审计与治理 | [L1](./08-security-audit-governance/security-audit-governance.md) | [L2](./08-security-audit-governance/security-audit-governance-detail.md) | 说明 Trust、Secret、加密、Audit 与安全恢复。 |
-| 09 | 基础设施与运维 | [L1](./09-infrastructure-operations/infrastructure-operations.md) | [L2](./09-infrastructure-operations/infrastructure-operations-detail.md) | 说明环境、Flux GitOps、Kubernetes、可观测性、DR 与容量。 |
-| 10 | Configuration Governance | [L1](./10-configuration-governance/configuration-governance.md) | [L2](./10-configuration-governance/configuration-governance-detail.md) | 说明配置分类、生命周期、Effective Snapshot 与 Promotion。 |
-| 11 | 架构基线 | [L1](./11-architecture-baseline/architecture-baseline.md) | [L2](./11-architecture-baseline/architecture-baseline-detail.md) | 索引跨模块不变量、质量场景和三类 Gate。 |
-| 12 | 实施路线图 | [L1](./12-implementation-roadmap/implementation-roadmap.md) | [L2](./12-implementation-roadmap/implementation-roadmap-detail.md) · [容量规划](./12-implementation-roadmap/environment-capacity-plan.md) | 唯一记录 Release Scope、实施状态、环境 Promotion、Profile 选择与人数容量场景。 |
+| 00 | 平台总览 | [L1](./00-platform-overview.md) | [L2](./00-platform-overview.md) | 说明 System Context、总体边界和责任链。 |
+| 01 | 身份、组织与授权 | [L1](./01-identity-organization-authorization.md) | [L2](./01-identity-organization-authorization.md) | 说明身份、组织、成员与服务端授权。 |
+| 02 | Requirement Workflow | [L1](./02-requirement-workflow.md) | [L2](./02-requirement-workflow.md) | 说明业务责任、审核、验收与证据。 |
+| 03 | Agent、Skill 与 Model | [L1](./03-agent-skill-model.md) | [L2](./03-agent-skill-model.md) | 说明受控执行、模型路由、评测工具链和不可变 Binding。 |
+| 04 | Sandbox Runtime | [L1](./04-sandbox-runtime.md) | [L2](./04-sandbox-runtime.md) | 说明隔离执行环境、容量与恢复。 |
+| 05 | Source Control 与交付 | [L1](./05-source-control-delivery.md) | [L2](./05-source-control-delivery.md) | 说明代码绑定、交付证据和 MR 协作。 |
+| 06 | 平台应用与集成 | [L1](./06-platform-application-integration.md) | [L2](./06-platform-application-integration.md) | 说明应用边界、集成、安全公告和运维可见性。 |
+| 07 | 数据、消息与存储 | [L1](./07-data-messaging-storage.md) | [L2](./07-data-messaging-storage.md) | 说明数据事实、消息、Artifact 与组件恢复。 |
+| 08 | 安全、审计与治理 | [L1](./08-security-audit-governance.md) | [L2](./08-security-audit-governance.md) | 说明 Trust、Secret、加密、Audit 与安全恢复。 |
+| 09 | 基础设施与运维 | [L1](./09-infrastructure-operations.md) | [L2](./09-infrastructure-operations.md) | 说明环境、Flux GitOps、Kubernetes、可观测性、DR 与容量。 |
+| 10 | Configuration Governance | [L1](./10-configuration-governance.md) | [L2](./10-configuration-governance.md) | 说明配置分类、生命周期、Effective Snapshot 与 Promotion。 |
+| 11 | 架构基线 | [L1](./11-architecture-baseline.md) | [L2](./11-architecture-baseline.md) | 索引跨模块不变量、质量场景和三类 Gate。 |
+| 12 | 实施路线图 | [L1](./12-implementation-roadmap.md) | [L2](./12-implementation-roadmap.md) · [容量规划](./environment-capacity-plan.md) | 唯一记录 Release Scope、实施状态、环境 Promotion、Profile 选择与人数容量场景。 |
 
 ## main/detail Contract
 

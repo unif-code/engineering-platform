@@ -7,9 +7,9 @@
 
 本文是 PostgreSQL、Valkey、NATS JetStream、Temporal Persistence、Rook-Ceph RGW/Object Storage、Artifact 存储、应用级 Backup、Retention、跨组件一致性和组件故障语义的唯一规范事实源。
 
-领域状态仍由对应领域 owner 拥有，应用调用、Port/Adapter 和 Outbox 使用边界由 [平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有；Typed Configuration 的生命周期、Snapshot 与 Promotion 协议由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有，本文只规定其 PostgreSQL 持久化基线。本文不定义密钥、加密、Secret 或审计内容保护机制，统一链接 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；不定义 Cluster、Node、SKU、总容量、组件精确版本或环境容量，统一链接 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
+领域状态仍由对应领域 owner 拥有，应用调用、Port/Adapter 和 Outbox 使用边界由 [平台应用与集成](./06-platform-application-integration.md)拥有；Typed Configuration 的生命周期、Snapshot 与 Promotion 协议由 [Configuration Governance](./10-configuration-governance.md)拥有，本文只规定其 PostgreSQL 持久化基线。本文不定义密钥、加密、Secret 或审计内容保护机制，统一链接 [安全、审计与治理](./08-security-audit-governance.md)；不定义 Cluster、Node、SKU、总容量、组件精确版本或环境容量，统一链接 [基础设施与运维](./09-infrastructure-operations.md)。
 
-本文描述完整 Target Architecture，不声明任何环境已经部署 CloudNativePG、Valkey、NATS、Temporal、Rook-Ceph RGW 或 Backup/Retention 组件。实施阶段、Capability 激活状态、Release 验收与 Capacity Profile 选择只见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)；环境实际拓扑由 GitOps Desired State、PCS 与运行证据证明。
+本文描述完整 Target Architecture，不声明任何环境已经部署 CloudNativePG、Valkey、NATS、Temporal、Rook-Ceph RGW 或 Backup/Retention 组件。实施阶段、Capability 激活状态、Release 验收与 Capacity Profile 选择只见[实施路线图](./12-implementation-roadmap.md)；环境实际拓扑由 GitOps Desired State、PCS 与运行证据证明。
 
 PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger 和可重建投影的权威关系事实源。Valkey、NATS、Temporal、对象存储、普通日志与指标均不能替代它。每个 Platform Environment 都有独立的组件、数据、Backup、Bucket 与恢复链；DEV 与 PROD 只共享同源 Contract，不共享运行时状态。
 
@@ -31,7 +31,7 @@ Hardened Target 使用 CloudNativePG 的一个 Primary 与两个 Standby，并�
 
 CloudNativePG 通过 Barman Cloud Plugin、WAL Archive 与 S3-compatible `postgres-backup` Class 实现应用一致性 Backup/PITR。每个备份必须绑定环境、时间、版本、校验结果与恢复链；持续 WAL Archive 与 Base Backup 均需要可用 Headroom。恢复只能从经验证的 Base Backup + WAL 链进行，不能把任意 PVC/CSI Snapshot 声明为一致性数据库恢复源。恢复成功后需先验证数据与服务，再重新开放应用流量。
 
-PostgreSQL 默认 `archive_timeout=5min`，每日执行 Physical Base Backup，使用 LZ4；DEV Recovery Window 为 7 天，PROD 为 30 天。PROD Cluster DR Candidate 在 `PGDATA <= 50 GiB` 时为 `RPO <= 5min`、`RTO <= 60min`。DEV 每月、PROD 每季度执行完整 Restore Drill，并以实测结果验证恢复链。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。
+PostgreSQL 默认 `archive_timeout=5min`，每日执行 Physical Base Backup，使用 LZ4；DEV Recovery Window 为 7 天，PROD 为 30 天。PROD Cluster DR Candidate 在 `PGDATA <= 50 GiB` 时为 `RPO <= 5min`、`RTO <= 60min`。DEV 每月、PROD 每季度执行完整 Restore Drill，并以实测结果验证恢复链。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](./08-security-audit-governance.md)。
 
 PostgreSQL 与 PgBouncer 的 Hardened Target Component Envelope：
 
@@ -46,7 +46,7 @@ Hardened Target 的三个 PostgreSQL Pod 在同一环境使用相同规格，CPU
 
 ## 3. Valkey
 
-Valkey 只在对应 Capability Package 首次消费时激活。Launch Profile 可使用一个实例，但仍消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)，使用 `noeviction`、AOF everysec、周期 RDB、硬 Memory Ceiling 与真实重建验证；实例故障时回源 PostgreSQL 或 Fail Closed。
+Valkey 只在对应 Capability Package 首次消费时激活。Launch Profile 可使用一个实例，但仍消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](./08-security-audit-governance.md)，使用 `noeviction`、AOF everysec、周期 RDB、硬 Memory Ceiling 与真实重建验证；实例故障时回源 PostgreSQL 或 Fail Closed。
 
 Hardened Target 使用一个 Primary、两个 Replica 与三个 Sentinel（quorum=2）；业务仅使用 Sentinel-aware Client，禁止固定 Primary 地址或厂商私有配置。Replica/Sentinel 不改变 Valkey 仅保存可重建热数据的事实边界。
 
@@ -65,7 +65,7 @@ Valkey 与 Sentinel 的 Hardened Target Component Envelope：
 
 ## 4. NATS JetStream、Outbox 与 Inbox
 
-NATS JetStream 只在持久异步传输被对应 Capability Package 首次消费时激活。Launch Profile 可使用单节点 File Storage，但仍必须消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)，执行 Stream 硬上限、Persist ACK、应用一致性 Account Backup、真实 Restore 和 Outbox Watermark 对账；节点故障时发布保留在 Outbox 并背压，不静默丢消息。
+NATS JetStream 只在持久异步传输被对应 Capability Package 首次消费时激活。Launch Profile 可使用单节点 File Storage，但仍必须消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](./08-security-audit-governance.md)，执行 Stream 硬上限、Persist ACK、应用一致性 Account Backup、真实 Restore 和 Outbox Watermark 对账；节点故障时发布保留在 Outbox 并背压，不静默丢消息。
 
 Hardened Target 使用三个节点、File Storage 与三副本 Quorum。每个 Deployable Unit 按 Publish/Subscribe Subject Allowlist 获得最小访问；平台和系统账号隔离，Sandbox 不获得 NATS 访问。
 
@@ -89,7 +89,7 @@ platform.{command|event|dlq}.{domain}.{message}.v{major}
 
 NATS 的权威恢复是应用一致性 Account Backup，而不是多个 PVC/CSI Snapshot。备份 Manifest 必须记录 Stream、消息/Consumer 配置与位置、Sequence 范围、Checksum、版本及对应 PostgreSQL Outbox Watermark。恢复先重建空集群并验证 Stream、Sequence、Consumer、Schema 与抽样 Payload，再从 Watermark 以安全重叠窗补发 Outbox，保留原 Envelope ID，由 Inbox/Effect Ledger 去重。
 
-NATS 默认每日 `04:00 Asia/Shanghai` 执行应用一致性 Account Backup；前次任务未完成、完整性检查失败、空间不足或 Stream 配置正在变化时不得启动重叠任务。Backup Retention 为 DEV 3 天、PROD 7 天，已发布 Outbox 至少保留 30 天。DEV 每月、PROD 每季度执行完整 Restore Drill。Cluster DR 目标为 `RPO <= 5min`、`RTO <= 60min`；每日 Backup 周期不是消息 RPO，消息恢复还依赖 Outbox Watermark、安全重叠补发与幂等消费。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。
+NATS 默认每日 `04:00 Asia/Shanghai` 执行应用一致性 Account Backup；前次任务未完成、完整性检查失败、空间不足或 Stream 配置正在变化时不得启动重叠任务。Backup Retention 为 DEV 3 天、PROD 7 天，已发布 Outbox 至少保留 30 天。DEV 每月、PROD 每季度执行完整 Restore Drill。Cluster DR 目标为 `RPO <= 5min`、`RTO <= 60min`；每日 Backup 周期不是消息 RPO，消息恢复还依赖 Outbox Watermark、安全重叠补发与幂等消费。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](./08-security-audit-governance.md)。
 
 NATS 的 Hardened Target Component Envelope：
 
@@ -104,7 +104,7 @@ NATS 的 Hardened Target Component Envelope：
 
 Temporal 只在 Durable Workflow 被对应 Capability Package 首次消费时激活。Launch Profile 可让各 Server Role 和 Platform Orchestrator Worker 使用单 Replica，但 Durable Persistence、TLS/身份授权、Worker Build ID、硬 Resource Limit、恢复 Fencing 与端到端对账不得省略；故障时暂停长任务推进。
 
-Temporal Server 的 Default Store 与 Visibility Store 使用同环境 CloudNativePG 中隔离的 `temporal` 与 `temporal_visibility` 数据库。Temporal 仅使用 ClusterIP，并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](../08-security-audit-governance/security-audit-governance-detail.md)；普通浏览器和 Sandbox 不具有 Temporal 访问资格。
+Temporal Server 的 Default Store 与 Visibility Store 使用同环境 CloudNativePG 中隔离的 `temporal` 与 `temporal_visibility` 数据库。Temporal 仅使用 ClusterIP，并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](./08-security-audit-governance.md)；普通浏览器和 Sandbox 不具有 Temporal 访问资格。
 
 Runtime Role 只做 DML，Schema 由短生命周期 DDL Job 管理。History 只保存 Workflow 的非敏感控制元数据，禁止写入源码、Prompt、Secret 或完整附件。Worker Build ID 与不可变应用镜像/Workflow Code 绑定；活动 Workflow 的版本演进通过显式兼容策略完成，不在发布期间静默替换。Temporal 的 Durable History 只解释编排推进，领域状态仍以 PostgreSQL owner 为准。
 
@@ -125,9 +125,9 @@ Temporal 的 Hardened Target Component Envelope：
 
 ## 6. Object Storage、Bucket Class 与 Artifact
 
-Object Storage 只在附件、Artifact、WORM Audit、组件 Backup 或 Observability Object 被对应 Capability Package 首次消费时激活。环境内 Object Storage 的目标实现即 Rook-Ceph RGW，Launch 与 Hardened Target 只在拓扑、副本与容量上不同；在 Rook-Ceph 尚未激活的早期单节点阶段，仅组件 Backup 允许使用 Cluster 外 OSS/S3-compatible Repository 作为过渡通道（阶段选择见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)及其容量规划），该过渡通道不承载附件、Artifact、WORM Audit 或 Observability Object。Rook-Ceph 激活后新对象一律写入环境内 RGW；过渡 Repository 中的既有 Backup 按其保留策略继续可用于恢复，不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、版本化精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变；实现和拓扑不得降低已启用能力的证据判定。
+Object Storage 只在附件、Artifact、WORM Audit、组件 Backup 或 Observability Object 被对应 Capability Package 首次消费时激活。环境内 Object Storage 的目标实现即 Rook-Ceph RGW，Launch 与 Hardened Target 只在拓扑、副本与容量上不同；在 Rook-Ceph 尚未激活的早期单节点阶段，仅组件 Backup 允许使用 Cluster 外 OSS/S3-compatible Repository 作为过渡通道（阶段选择见[实施路线图](./12-implementation-roadmap.md)及其容量规划），该过渡通道不承载附件、Artifact、WORM Audit 或 Observability Object。Rook-Ceph 激活后新对象一律写入环境内 RGW；过渡 Repository 中的既有 Backup 按其保留策略继续可用于恢复，不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、版本化精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变；实现和拓扑不得降低已启用能力的证据判定。
 
-Rook-Ceph RGW 是每环境的 S3-compatible Object Storage，职责仅限 Object Storage；它不为 PostgreSQL、Valkey、NATS、Temporal 或其他实时 Stateful Workload 提供 RBD/CephFS。实时 PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 和容量由 [09](../09-infrastructure-operations/infrastructure-operations-detail.md)拥有。
+Rook-Ceph RGW 是每环境的 S3-compatible Object Storage，职责仅限 Object Storage；它不为 PostgreSQL、Valkey、NATS、Temporal 或其他实时 Stateful Workload 提供 RBD/CephFS。实时 PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 和容量由 [09](./09-infrastructure-operations.md)拥有。
 
 Bucket Class 固定为：
 
@@ -136,9 +136,9 @@ requirement-attachments  agent-artifacts  audit-worm  postgres-backup
 nats-backup              openbao-recovery observability-logs observability-traces
 ```
 
-每个 Class 使用独立 Policy、Versioning、Retention、Quota 与 Capacity Ledger，并服从 [08 的权威 Security Contract](../08-security-audit-governance/security-audit-governance-detail.md)。Prefix 不能替代 Bucket 级隔离；同一 Class 中的物理 Bucket 必须划分互斥配额，Class Usage 汇总当前/非当前 Version、Object Lock、Delete Marker、Multipart、GC 延迟和元数据估算。
+每个 Class 使用独立 Policy、Versioning、Retention、Quota 与 Capacity Ledger，并服从 [08 的权威 Security Contract](./08-security-audit-governance.md)。Prefix 不能替代 Bucket 级隔离；同一 Class 中的物理 Bucket 必须划分互斥配额，Class Usage 汇总当前/非当前 Version、Object Lock、Delete Marker、Multipart、GC 延迟和元数据估算。
 
-Environment Bucket-Class Capacity Ledger 是 Class 准入的权威运行账本。每个 Class 的版本化参数至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes`、各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区、基于对象分布证据生成的 `rgwMaxObjects` 以及 Desired/Effective Revision；同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`。精确数值和 Ceph Raw Envelope 由[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)唯一拥有，[09](../09-infrastructure-operations/infrastructure-operations-detail.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
+Environment Bucket-Class Capacity Ledger 是 Class 准入的权威运行账本。每个 Class 的版本化参数至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes`、各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区、基于对象分布证据生成的 `rgwMaxObjects` 以及 Desired/Effective Revision；同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`。精确数值和 Ceph Raw Envelope 由[环境容量与服务器规划](./environment-capacity-plan.md)唯一拥有，[09](./09-infrastructure-operations.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
 
 Class Usage 使用保守的 logical stored bytes 口径，聚合全部物理 Bucket/Cluster 实例的 Current Version、Noncurrent Version、受 Lock/Retention 保护对象、Delete Marker/Index、已上传和已预占 Multipart、尚未完成 GC 的对象与标准化 Metadata/Overhead 估算。Ledger、RGW Stats、Cluster Raw 平均值和最满 OSD 分别保留自身单位与阈值；任一 Gate 更危险时取更严格结果，禁止挑选更宽松口径或直接混算 logical/raw bytes。
 
@@ -161,7 +161,7 @@ Bucket Class 的对象保护矩阵固定为：
 
 Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体。附件或 Agent Artifact 的归档、逻辑删除、Requirement 恢复状态变化都不释放对象容量；仅在其领域 owner 明确的引用、状态和保留条件满足后才可能改变存储引用。上传和下载仅能由应用授权签发短期、精确版本的 Presigned Request。文件检查由应用 `FileSecurityPort` 处理：需要扫描的对象只有合格 Verdict 才可用；由 02/08 的版本化 Source/Media Policy 合法跳过扫描的受信内部纯文本可在完整性验证后不带 Verdict 进入 `AVAILABLE`。本模块不决定扫描分支、Verdict 或 Artifact 业务状态。
 
-Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 和 Environment Bucket-Class Capacity Ledger；任何一侧失败都不形成可用预占。两本账本由同一个存储准入 owner 模块在其自有 Schema 内持久化，双账本预占因此是该模块的单模块本地事务，不违反[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)的单模块事务边界；Product Quota 额度值与 Bucket-Class 容量参数仍分别按其 Policy owner 的 Effective Snapshot 与容量 Contract 只读解析，预占事务不改写其他模块拥有的数据。物理 RGW native quota 只作为最后后备保护，不能替代双账本准入。达到产品额度返回 `ARTIFACT_QUOTA`；达到 Bucket Class 或 Raw Capacity 边界返回 `STORAGE_CAPACITY` 并创建 Operations Incident。提高产品配额不能突破 Environment Capacity、08 Security Contract 或 File Security Scanner Envelope。
+Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 和 Environment Bucket-Class Capacity Ledger；任何一侧失败都不形成可用预占。两本账本由同一个存储准入 owner 模块在其自有 Schema 内持久化，双账本预占因此是该模块的单模块本地事务，不违反[平台应用与集成](./06-platform-application-integration.md)的单模块事务边界；Product Quota 额度值与 Bucket-Class 容量参数仍分别按其 Policy owner 的 Effective Snapshot 与容量 Contract 只读解析，预占事务不改写其他模块拥有的数据。物理 RGW native quota 只作为最后后备保护，不能替代双账本准入。达到产品额度返回 `ARTIFACT_QUOTA`；达到 Bucket Class 或 Raw Capacity 边界返回 `STORAGE_CAPACITY` 并创建 Operations Incident。提高产品配额不能突破 Environment Capacity、08 Security Contract 或 File Security Scanner Envelope。
 
 ## 7. Backup、Retention 与 Reconciler
 

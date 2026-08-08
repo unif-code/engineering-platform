@@ -2,13 +2,13 @@
 
 > 文档层级：L1 运行地图
 > 规范事实源：[Source Control 与交付详细说明](./source-control-delivery-detail.md)
-> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 目标与边界
 
 本领域通过稳定 `SourceControlPort` 管理 GitLab Project、Requirement/WorkItem 的仓库绑定、任务分支、Integration MR、Formal MR、人工 Review 与 Merge。它复用 GitLab Project，不复制第二套代码项目、分支、MR 或 GitLab 权限体系。
 
-Requirement、WorkItem、Gate、Decision、Acceptance、`RequirementIntegrationBaselineSelection` 与业务状态由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md)拥有；本领域唯一拥有 Git/MR/Artifact `IntegrationBaselineEvidence` 的证据结构、`integrationBaselineId/hash`、外部事实与变化事件。Attempt 和 Execution Binding 由 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有；Sandbox 仅消费固定 Branch Binding 以执行代码，见 [Sandbox Runtime](../04-sandbox-runtime/sandbox-runtime-detail.md)。
+Requirement、WorkItem、Gate、Decision、Acceptance、`RequirementIntegrationBaselineSelection` 与业务状态由 [Requirement Workflow](./02-requirement-workflow.md)拥有；本领域唯一拥有 Git/MR/Artifact `IntegrationBaselineEvidence` 的证据结构、`integrationBaselineId/hash`、外部事实与变化事件。Attempt 和 Execution Binding 由 [Agent、Skill 与 Model](./03-agent-skill-model.md)拥有；Sandbox 仅消费固定 Branch Binding 以执行代码，见 [Sandbox Runtime](./04-sandbox-runtime.md)。
 
 ## 绑定与任务分支
 

@@ -2,13 +2,13 @@
 
 > 文档层级：L1 领域地图
 > 规范事实源：[Requirement Workflow 详细说明](./requirement-workflow-detail.md)
-> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 目标与边界
 
 Requirement Workflow 将一项业务交付从创建、基线确认、实现、验证、验收直到合并完成串为可追溯流程。它拥有 Requirement、WorkItem、Route、Gate、Decision、Artifact 与 `RequirementIntegrationBaselineSelection` 的业务语义；不拥有人员资格、Agent 执行实现、Sandbox 物理形态、GitLab 协议细节或 `IntegrationBaselineEvidence` 的证据结构。
 
-人员是否有资格承担责任由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)判定。本领域保存的是 Requirement、Gate 或验收的当前责任 Assignment，不能以 Assignment 补足 Capability、Scope 或 Membership。
+人员是否有资格承担责任由[身份、组织与授权](./01-identity-organization-authorization.md)判定。本领域保存的是 Requirement、Gate 或验收的当前责任 Assignment，不能以 Assignment 补足 Capability、Scope 或 Membership。
 
 ## 对象地图
 
@@ -27,7 +27,7 @@ Requirement
 
 - `Requirement` 是整体交付与验收聚合。
 - `WorkItem` 是一个仓库中的可交付责任；一个 WorkItem 最终只对应一个仓库与任务分支。
-- `Run` 表示执行目标，`Attempt` 表示一次固定执行输入的尝试；其运行语义由[Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md)拥有。
+- `Run` 表示执行目标，`Attempt` 表示一次固定执行输入的尝试；其运行语义由[Agent、Skill 与 Model](./03-agent-skill-model.md)拥有。
 - `Artifact` 是可准确版本绑定的流程证据，而不是源码或持续变化分支的替代品。
 
 ## 主流程
@@ -44,7 +44,7 @@ Requirement
 → COMPLETED
 ```
 
-创建时选择受控 Requirement Type，并由当前 Route Policy 解析相应方法基线。初始与后续 WorkItem 的仓库绑定、类型枚举和 Route 映射只由[详细说明](./requirement-workflow-detail.md)定义；仓库与任务分支的创建、集成和 MR 协议由[Source Control Delivery](../05-source-control-delivery/source-control-delivery-detail.md)定义。
+创建时选择受控 Requirement Type，并由当前 Route Policy 解析相应方法基线。初始与后续 WorkItem 的仓库绑定、类型枚举和 Route 映射只由[详细说明](./requirement-workflow-detail.md)定义；仓库与任务分支的创建、集成和 MR 协议由[Source Control Delivery](./05-source-control-delivery.md)定义。
 
 Route 将方法与业务流程分开；实际启用的每一份 SDD 或 Route Baseline 均须经过人工确认，具体 Skill/方法映射不在 L1 重复。
 
@@ -62,4 +62,4 @@ Requirement 生命周期依次覆盖创建准备、基线确认、执行、验�
 
 多仓 Requirement、Agent/Child Execution 与高级 Artifact 配额、扫描和恢复属于核心 Requirement/SDD/人工责任链之上的受控协作能力。它们只能消费已经成立的 Assignment、Gate、Decision 与 Acceptance Contract，不能反向替代人工责任或改变 Requirement 的业务语义。
 
-Artifact 的对象存储、文件安全、配额账本和 Audit 存储实现由[Data/Messaging/Storage](../07-data-messaging-storage/data-messaging-storage-detail.md)与[Security/Audit/Governance](../08-security-audit-governance/security-audit-governance-detail.md)拥有；本领域仅使用其可验证结果。
+Artifact 的对象存储、文件安全、配额账本和 Audit 存储实现由[Data/Messaging/Storage](./07-data-messaging-storage.md)与[Security/Audit/Governance](./08-security-audit-governance.md)拥有；本领域仅使用其可验证结果。

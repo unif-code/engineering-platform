@@ -7,11 +7,11 @@
 
 本主题定义平台通用 Typed Configuration 的分类、生命周期、Effective Snapshot、兼容演进与 DEV→PROD Promotion。Configuration 位于 Control Plane 仓库（`engineering-platform-backend`）的 `control_plane/app/modules/configuration/`，是 Python Control Plane 模块化单体中的独立领域模块，不是独立 Deployable 或既有微服务。
 
-本文描述完整 Target Architecture，不记录 Release 版本、实施状态、环境 Promotion 状态或 Capacity Profile 选择；这些事实只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)。
+本文描述完整 Target Architecture，不记录 Release 版本、实施状态、环境 Promotion 状态或 Capacity Profile 选择；这些事实只见[实施路线图](./12-implementation-roadmap.md)。
 
 各领域模块拥有自己的 Namespace、Typed Schema、已发布 Policy 数据、默认值、约束、Reader/Migrator、解析器和业务解释；Configuration Governance 统一拥有 Draft、Publish、Rollback、Effective Snapshot 与增强治理协议，禁止各模块建立平行配置工作流。
 
-Super Admin、配置管理资格、TOTP Challenge 和恢复授权由[身份、组织与授权](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有；Web、Control Plane 装配、Port/Adapter 与管理入口由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。
+Super Admin、配置管理资格、TOTP Challenge 和恢复授权由[身份、组织与授权](./01-identity-organization-authorization.md)拥有；Web、Control Plane 装配、Port/Adapter 与管理入口由[平台应用与集成](./06-platform-application-integration.md)拥有。
 
 ## 配置分类与事实通道
 

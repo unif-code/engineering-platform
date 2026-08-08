@@ -2,13 +2,13 @@
 
 > 文档层级：L1 运行地图
 > 规范事实源：[Sandbox Runtime 详细说明](./sandbox-runtime-detail.md)
-> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 目标与边界
 
 Sandbox Runtime 为 Agent Attempt 和 Image Build 提供隔离、可重建、可审计的执行环境。它把逻辑 Sandbox Environment 与短生命周期的物理 Materialization 分开，并通过稳定 `SandboxPort` 隔离 Workflow、Agent Runtime 与 Kubernetes、Kata 和 Compute Provider 的实现。
 
-它不拥有 Requirement、WorkItem、Gate、Decision 或 Attempt 的业务状态；这些由 [Requirement Workflow](../02-requirement-workflow/requirement-workflow-detail.md) 和 [Agent、Skill 与 Model](../03-agent-skill-model/agent-skill-model-detail.md) 定义。它也不保存代码、Artifact、Audit 或 Secret 的唯一事实，分别依赖 [Source Control 与交付](../05-source-control-delivery/source-control-delivery-detail.md)、[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md) 和 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md) 的 Contract。
+它不拥有 Requirement、WorkItem、Gate、Decision 或 Attempt 的业务状态；这些由 [Requirement Workflow](./02-requirement-workflow.md) 和 [Agent、Skill 与 Model](./03-agent-skill-model.md) 定义。它也不保存代码、Artifact、Audit 或 Secret 的唯一事实，分别依赖 [Source Control 与交付](./05-source-control-delivery.md)、[数据、消息与存储](./07-data-messaging-storage.md) 和 [安全、审计与治理](./08-security-audit-governance.md) 的 Contract。
 
 ## 逻辑环境与物化
 
@@ -27,7 +27,7 @@ Requirement Sandbox Environment
 
 正式 Agent 只允许在独立物理 Sandbox Host/服务器上激活；该物理服务器作为专用 `sandbox-worker`，不得同时承载 Platform、Storage 或 Control Plane 工作负载。仅在共享物理 Host 上划分独立 Kubernetes Node、VM、Taint 或 RuntimeClass 仍属于同机 Sandbox，只能标记为 `LAB_ONLY`，不能通过正式 Agent 安全或 Release 验收。每次激活和物化必须同时满足 KVM/Kata、不可变 Runtime、CPU/Memory/Ephemeral Request/Limit、当前有效 Capacity Profile、Binding Deadline、Fencing、Repository、default-deny Network、短期 Secret 与清理恢复 Gate。任一条件未知或不满足时 Fail Closed，Capability 保持关闭或执行保持不可运行。
 
-Launch Profile 的容量与可靠性选择来自 [12 的有效 Capacity Profile](../12-implementation-roadmap/implementation-roadmap-detail.md)，不在本领域固定环境服务器数或并发 Ceiling。Sandbox N+1 属于 Hardened Target Profile；无论当前选中哪个 Profile，都不得绕过已验证的物理 Ceiling、资源硬上限或隔离 Gate。
+Launch Profile 的容量与可靠性选择来自 [12 的有效 Capacity Profile](./12-implementation-roadmap.md)，不在本领域固定环境服务器数或并发 Ceiling。Sandbox N+1 属于 Hardened Target Profile；无论当前选中哪个 Profile，都不得绕过已验证的物理 Ceiling、资源硬上限或隔离 Gate。
 
 ## 隔离、容量与生命周期
 
@@ -35,7 +35,7 @@ Launch Profile 的容量与可靠性选择来自 [12 的有效 Capacity Profile]
 
 Execution Binding 固定 Resource Profile、Runtime、Network、Secret、Repository Branch 与权限。Sandbox Controller 接收 Agent owner 发出的已授权物化请求，原子申请带 Fencing Token 的 Capacity Lease，并返回 `MaterializationReady`、结构化 `MaterializationBlocked` 或 `MaterializationFailed`；它不决定 Attempt 如何排队或转换。收到挂起、Child Handoff、结束或取消的物理清理命令时，Controller 固化事实、Fence 副作用、吊销凭据、释放 Lease 并销毁 Materialization。
 
-Agent 与 Build 共享同一 Capacity Ledger，并分别受独立的版本化 Platform Policy 准入；Resource Profile、Capacity Unit、Policy Gate 与 `ParentContinuationReservation` 的物理账本 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。当前有效 Profile 的选择见 12；Node 数、Ceiling 与容量数值见[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)，通用物理拓扑与基础设施准入 Contract 由[基础设施与运维](../09-infrastructure-operations/infrastructure-operations.md)拥有。
+Agent 与 Build 共享同一 Capacity Ledger，并分别受独立的版本化 Platform Policy 准入；Resource Profile、Capacity Unit、Policy Gate 与 `ParentContinuationReservation` 的物理账本 Contract 由[详细说明](./sandbox-runtime-detail.md)拥有。Build 是 Parent Attempt 的独立 Child Execution，Child 物化前必须完成 Parent 的物理资源交接。当前有效 Profile 的选择见 12；Node 数、Ceiling 与容量数值见[环境容量与服务器规划](./environment-capacity-plan.md)，通用物理拓扑与基础设施准入 Contract 由[基础设施与运维](./09-infrastructure-operations.md)拥有。
 
 ## 网络、Secret、Preview 与镜像构建
 
@@ -50,4 +50,4 @@ Image Build 使用独立 Kata Materialization 与 Rootless BuildKit，先固化 
 - 逻辑 Sandbox Environment 不能成为可写执行实例的别名；不同 Attempt、Child 或 Workspace 不共享可写目录、执行身份或短期 Secret。
 - 只有 Sandbox Controller 可以把已绑定的 Runtime Profile 物化为 Kata 执行；业务对象、用户与 Agent 都不能选择 Node、RuntimeClass 或 Host 权限。
 - Agent 的有效代码必须 Commit 并 Push 到当前绑定的任务分支；Formal MR 不得依赖 Sandbox 本地快照，恢复也不得依赖旧 Node 或本地磁盘。
-- 运行时安全、故障清理、证据与审计规则见[详细说明](./sandbox-runtime-detail.md)；平台应用入口与 API 集成边界见[平台应用与集成](../06-platform-application-integration/platform-application-integration.md)。
+- 运行时安全、故障清理、证据与审计规则见[详细说明](./sandbox-runtime-detail.md)；平台应用入口与 API 集成边界见[平台应用与集成](./06-platform-application-integration.md)。

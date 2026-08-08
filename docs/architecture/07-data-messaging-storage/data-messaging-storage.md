@@ -5,11 +5,11 @@
 
 ## 目标与边界
 
-本视图定义 PostgreSQL、Valkey、NATS、Temporal 与 Ceph/Object Storage 的事实源、数据流、一致性和恢复关系。它不定义领域对象的状态机、应用调用边界或 Configuration 生命周期；它们分别由 01–05 领域文档、[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)与 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。
+本视图定义 PostgreSQL、Valkey、NATS、Temporal 与 Ceph/Object Storage 的事实源、数据流、一致性和恢复关系。它不定义领域对象的状态机、应用调用边界或 Configuration 生命周期；它们分别由 01–05 领域文档、[平台应用与集成](./06-platform-application-integration.md)与 [Configuration Governance](./10-configuration-governance.md)拥有。
 
-下述数据服务和恢复关系构成完整 Target Architecture，不声明任何环境中的实际组件或拓扑。实施阶段、Capability 激活状态、Release 验收与 Capacity Profile 选择只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)；环境实际运行状态由 GitOps Desired State、PCS 与运行证据证明。
+下述数据服务和恢复关系构成完整 Target Architecture，不声明任何环境中的实际组件或拓扑。实施阶段、Capability 激活状态、Release 验收与 Capacity Profile 选择只见[实施路线图](./12-implementation-roadmap.md)；环境实际运行状态由 GitOps Desired State、PCS 与运行证据证明。
 
-安全密钥、加密和 Secret 机制只见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)。Cluster、Node、组件版本、存储容量与环境参数只见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
+安全密钥、加密和 Secret 机制只见 [安全、审计与治理](./08-security-audit-governance.md)。Cluster、Node、组件版本、存储容量与环境参数只见 [基础设施与运维](./09-infrastructure-operations.md)。
 
 ## 目标事实源地图
 

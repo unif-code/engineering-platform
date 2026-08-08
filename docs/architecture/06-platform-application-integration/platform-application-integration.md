@@ -5,11 +5,11 @@
 
 ## 目标与边界
 
-本视图定义平台应用的完整 Target Architecture、组件边界、集成 Contract 与运行时关系，不声明任何 Platform Environment 的实际部署状态。环境中的 Image、Bundle、拓扑与健康状态由 GitOps Desired State、Platform Compatibility Set（PCS）和运行证据证明；实施阶段、Capability 激活状态与 Release 验收只见[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)。
+本视图定义平台应用的完整 Target Architecture、组件边界、集成 Contract 与运行时关系，不声明任何 Platform Environment 的实际部署状态。环境中的 Image、Bundle、拓扑与健康状态由 GitOps Desired State、Platform Compatibility Set（PCS）和运行证据证明；实施阶段、Capability 激活状态与 Release 验收只见[实施路线图](./12-implementation-roadmap.md)。
 
 目标 Control Plane 交付为一个 Python 项目中的**模块化单体**；模块保有自己的领域模型、Application Service、数据和迁移，并以公开 Port/DTO/事件协作。模块可在未来提取为独立服务，但可提取性不表示当前已有领域微服务。
 
-本文不拥有 Identity、Requirement、Agent、Sandbox 或 GitLab 的领域状态；它们分别由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)、[02](../02-requirement-workflow/requirement-workflow-detail.md)、[03](../03-agent-skill-model/agent-skill-model-detail.md)、[04](../04-sandbox-runtime/sandbox-runtime-detail.md) 与 [05](../05-source-control-delivery/source-control-delivery-detail.md) 定义。Configuration 的通用治理协议与生命周期状态语义由 [10](../10-configuration-governance/configuration-governance-detail.md) 定义，各 Namespace 的 Policy 数据仍归对应领域模块；数据事实与持久化基线由 [07](../07-data-messaging-storage/data-messaging-storage-detail.md) 定义。
+本文不拥有 Identity、Requirement、Agent、Sandbox 或 GitLab 的领域状态；它们分别由 [01](./01-identity-organization-authorization.md)、[02](./02-requirement-workflow.md)、[03](./03-agent-skill-model.md)、[04](./04-sandbox-runtime.md) 与 [05](./05-source-control-delivery.md) 定义。Configuration 的通用治理协议与生命周期状态语义由 [10](./10-configuration-governance.md) 定义，各 Namespace 的 Policy 数据仍归对应领域模块；数据事实与持久化基线由 [07](./07-data-messaging-storage.md) 定义。
 
 ## 组件地图
 
@@ -52,9 +52,9 @@ Flux 只 Reconcile 当前环境受保护 Git 路径中的 Desired State；Contro
 
 ## Configuration、管理与增强能力
 
-每个领域模块拥有自己的 Typed Configuration Schema、默认值、约束、解析器与业务解释；Configuration 模块位于同一 Python 模块化单体内，通过稳定 Port 提供 Effective Configuration。Catalog、Draft、Publish、Rollback、Snapshot、Schema 演进与 Promotion 生命周期由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)统一约束；发布资格与 Super Admin 边界由 [01](../01-identity-organization-authorization/identity-organization-authorization-detail.md)拥有。
+每个领域模块拥有自己的 Typed Configuration Schema、默认值、约束、解析器与业务解释；Configuration 模块位于同一 Python 模块化单体内，通过稳定 Port 提供 Effective Configuration。Catalog、Draft、Publish、Rollback、Snapshot、Schema 演进与 Promotion 生命周期由 [Configuration Governance](./10-configuration-governance.md)统一约束；发布资格与 Super Admin 边界由 [01](./01-identity-organization-authorization.md)拥有。
 
-Operations Read Model、安全公告、复杂管理 Console 与高级 External Provider 治理是完整 Target Architecture 中按需激活的增强能力。平台管理后台只展示当前环境；启用后消费 Operations Read Model 展示健康、容量、告警、Drift 与 Runbook，并通过预注册、允许列表内且逐次授权的新标签页入口打开专业 Console。它不接受任意目标 URL，也不成为基础设施写控制面。密钥、加密与安全审计机制见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；Cluster、Node 与容量基线见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
+Operations Read Model、安全公告、复杂管理 Console 与高级 External Provider 治理是完整 Target Architecture 中按需激活的增强能力。平台管理后台只展示当前环境；启用后消费 Operations Read Model 展示健康、容量、告警、Drift 与 Runbook，并通过预注册、允许列表内且逐次授权的新标签页入口打开专业 Console。它不接受任意目标 URL，也不成为基础设施写控制面。密钥、加密与安全审计机制见 [安全、审计与治理](./08-security-audit-governance.md)；Cluster、Node 与容量基线见 [基础设施与运维](./09-infrastructure-operations.md)。
 
 安全公告继续由平台拥有采集编排、筛选、去重、发布和 Audit；依赖与 SBOM 漏洞匹配复用版本锁定的 `OSV-Scanner` 一次性 Job，并只对 Source Adapter 固化的数据快照执行离线扫描，不建设独立漏洞管理平台、外部数据通道或常驻扫描服务。
 

@@ -2,11 +2,11 @@
 
 > 文档层级：L2 规范事实源
 > 对应主文：[身份、组织与授权](./identity-organization-authorization.md)
-> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)。
+> 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 目的与边界
 
-本文是平台本地身份、组织、Workspace Membership、授权、Super Admin、配置授权与 Identity 恢复语义的唯一规范事实源。Configuration Catalog、Draft、Publish、Rollback、Effective Snapshot 与 Promotion 生命周期由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有；本文只判定谁可以发起受保护配置命令。本文只拥有 Identity/Organization/Authorization 领域的 Audit Trigger 与业务摘要；通用 Audit Envelope、可靠提交、脱敏、WORM、Retention 和恢复 Contract 由 [08](../08-security-audit-governance/security-audit-governance-detail.md)唯一拥有。
+本文是平台本地身份、组织、Workspace Membership、授权、Super Admin、配置授权与 Identity 恢复语义的唯一规范事实源。Configuration Catalog、Draft、Publish、Rollback、Effective Snapshot 与 Promotion 生命周期由 [Configuration Governance](./10-configuration-governance.md)拥有；本文只判定谁可以发起受保护配置命令。本文只拥有 Identity/Organization/Authorization 领域的 Audit Trigger 与业务摘要；通用 Audit Envelope、可靠提交、脱敏、WORM、Retention 和恢复 Contract 由 [08](./08-security-audit-governance.md)唯一拥有。
 
 本文不定义 Requirement 状态、WorkItem 流程、人工 Gate 规则、外部交付语义或基础设施认证细节；这些事实由各自主题拥有。本文也不将岗位、外部系统角色或前端显示状态作为授权事实。
 
@@ -160,7 +160,7 @@ Super Admin 不自动获得 Requirement、Workspace、MR、Agent 或其他业务
 
 所有 `PLATFORM_POLICY` 仅允许 Super Admin 使用 `platform.configuration.manage` 创建 Draft、校验、发布和回滚，包括 Workspace Scope 的 Policy Override。发布或回滚要求独立的当前权限校验、原因和新的 TOTP Challenge，并记录安全 Audit。
 
-本节只拥有 Capability、Scope、当前账号状态、TOTP Challenge 与恢复资格，不拥有 Draft 状态、ChangeSet、Snapshot、并发或 Promotion 算法；这些统一消费 [10 的 Configuration Contract](../10-configuration-governance/configuration-governance-detail.md)。
+本节只拥有 Capability、Scope、当前账号状态、TOTP Challenge 与恢复资格，不拥有 Draft 状态、ChangeSet、Snapshot、并发或 Promotion 算法；这些统一消费 [10 的 Configuration Contract](./10-configuration-governance.md)。
 
 `GITOPS_CONFIG` 在平台中只读展示，修改由受控 GitOps 负责；`SYSTEM_INVARIANT` 只读且无编辑入口。`platform.configuration.manage` 不能绕过 Capability、Scope、Assignment、人工 Gate、资源状态、Audit、Secret 隔离或其他 System Invariant。
 

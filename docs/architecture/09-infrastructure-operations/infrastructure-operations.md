@@ -7,9 +7,9 @@
 
 本视图定义完整 Target Architecture 中的 Platform Environment、Cloud Boundary、Kubernetes、逻辑 Node Role、物理放置、网络、存储拓扑、Observability、Cluster DR、容量准入与 TCO Contract。它不记录环境已部署状态，也不拥有业务状态、Secret、加密、Audit、Artifact、数据服务恢复算法、Release 版本、Environment Promotion、Profile 选择或人数容量矩阵。
 
-[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)唯一拥有 Release 版本、实施状态、Environment Promotion 和 Profile 选择；[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)唯一拥有分阶段采购、CPU/RAM/Disk 与人数服务器矩阵。环境实际 Deployed State 只能由本环境的 GitOps Desired State、PCS 与 Operations Read Model 证据证明，不能由本文推断。
+[实施路线图](./12-implementation-roadmap.md)唯一拥有 Release 版本、实施状态、Environment Promotion 和 Profile 选择；[环境容量与服务器规划](./environment-capacity-plan.md)唯一拥有分阶段采购、CPU/RAM/Disk 与人数服务器矩阵。环境实际 Deployed State 只能由本环境的 GitOps Desired State、PCS 与 Operations Read Model 证据证明，不能由本文推断。
 
-安全、PKI、Secret、加密和 Audit 由[安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)拥有；组件数据和恢复语义由[数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有；运行状态投影、Console 和外部 Feed 由[平台应用与集成](../06-platform-application-integration/platform-application-integration-detail.md)拥有。12 选择 Capacity Profile，[Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有已发布 `PLATFORM_POLICY` 的 Effective Value 与生命周期，本文只验证 Aggregate Physical Ceiling、调度放置、Headroom 与 Provisioning Gate。
+安全、PKI、Secret、加密和 Audit 由[安全、审计与治理](./08-security-audit-governance.md)拥有；组件数据和恢复语义由[数据、消息与存储](./07-data-messaging-storage.md)拥有；运行状态投影、Console 和外部 Feed 由[平台应用与集成](./06-platform-application-integration.md)拥有。12 选择 Capacity Profile，[Configuration Governance](./10-configuration-governance.md)拥有已发布 `PLATFORM_POLICY` 的 Effective Value 与生命周期，本文只验证 Aggregate Physical Ceiling、调度放置、Headroom 与 Provisioning Gate。
 
 ## 环境与实例隔离
 
@@ -30,7 +30,7 @@ Control Plane、Platform、Sandbox 与 Storage 始终是不同逻辑 Role 和隔
 - **Compact Launch Profile**：允许 Control Plane、Platform 与 Storage 逻辑 Role 融合放置到 `core` Node；允许 `NON_HA` 或较少 Replica，但已启用能力仍必须可观测、可备份恢复，并在故障时 Fail Closed。正式 Agent 验收起，Sandbox 必须使用独立物理 `sandbox-worker` 服务器；与 Platform、Storage 或 Control Plane 共享物理 Host 的 Sandbox 一律为 `LAB_ONLY`。
 - **Hardened Target Profile**：将四个逻辑 Role 物理拆为 `k8s-control-plane`、`platform-worker`、`sandbox-worker`、`storage-worker` 专用 Node Pool，并增加 Sandbox N+1、组件 HA、完整 Observability 和更强 Cluster DR；它不是首次发布的默认 Release Gate。
 
-精确阶段到 Profile 的映射与选择只见[实施路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)，阶段对应的服务器数量、规格、人数与容量数值只见[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)。09 detail 只定义 Compact Launch/Hardened Target 的通用物理拓扑与准入 Contract，不建立阶段索引。
+精确阶段到 Profile 的映射与选择只见[实施路线图详细说明](./12-implementation-roadmap.md)，阶段对应的服务器数量、规格、人数与容量数值只见[环境容量与服务器规划](./environment-capacity-plan.md)。09 detail 只定义 Compact Launch/Hardened Target 的通用物理拓扑与准入 Contract，不建立阶段索引。
 
 ## GitOps、运维与可观测性
 

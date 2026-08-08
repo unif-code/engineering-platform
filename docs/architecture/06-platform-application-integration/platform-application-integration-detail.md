@@ -7,9 +7,9 @@
 
 本文是前端应用边界、Control Plane 模块化单体、Deployable、Port/Adapter、应用通信、External Provider Contract、Operations Read Model、Console Access 与安全公告的唯一 Target Architecture 规范事实源。
 
-本文消费领域 owner 的稳定 ID、受保护命令与有效配置快照，不重新定义 Identity、授权、Requirement、Agent、Sandbox 或 GitLab 的状态机。PostgreSQL、Valkey、NATS、Temporal 与 Object Storage 的运行和恢复事实由 [数据、消息与存储](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有。安全密钥、加密、Secret 与 Audit 保留规则只见 [安全、审计与治理](../08-security-audit-governance/security-audit-governance-detail.md)；Cluster、Node、组件版本和总容量只见 [基础设施与运维](../09-infrastructure-operations/infrastructure-operations-detail.md)。
+本文消费领域 owner 的稳定 ID、受保护命令与有效配置快照，不重新定义 Identity、授权、Requirement、Agent、Sandbox 或 GitLab 的状态机。PostgreSQL、Valkey、NATS、Temporal 与 Object Storage 的运行和恢复事实由 [数据、消息与存储](./07-data-messaging-storage.md)拥有。安全密钥、加密、Secret 与 Audit 保留规则只见 [安全、审计与治理](./08-security-audit-governance.md)；Cluster、Node、组件版本和总容量只见 [基础设施与运维](./09-infrastructure-operations.md)。
 
-本文不声明任何环境已部署哪些组件。实施阶段、Capability 激活状态、Release 验收与 Profile 选择只见[实施路线图](../12-implementation-roadmap/implementation-roadmap-detail.md)；实际运行组件由环境 GitOps Desired State、PCS 与运行证据证明。DEV 与 PROD 只从相同代码、Contract、Flux GitOps 模板与 PCS 独立实例化，始终使用独立入口、Session、组件和状态。
+本文不声明任何环境已部署哪些组件。实施阶段、Capability 激活状态、Release 验收与 Profile 选择只见[实施路线图](./12-implementation-roadmap.md)；实际运行组件由环境 GitOps Desired State、PCS 与运行证据证明。DEV 与 PROD 只从相同代码、Contract、Flux GitOps 模板与 PCS 独立实例化，始终使用独立入口、Session、组件和状态。
 
 ## 2. Umi Web 与 Session Bootstrap
 
@@ -38,7 +38,7 @@ Secure + HttpOnly + SameSite Cookie
 → 受保护 API 的服务端实时授权
 ```
 
-后端不能下发任意模块路径、脚本或 URL。Umi Access、菜单和按钮只控制用户体验；API 仍调用 [01 的当前授权判定](../01-identity-organization-authorization/identity-organization-authorization-detail.md)。浏览器不持有或直连数据库、消息系统、Kubernetes、Secret Manager、RGW 管理接口、Model Gateway 或基础设施凭据；对象读写仅可在授权后使用绑定精确 Object Version 的短期 Presigned Request。
+后端不能下发任意模块路径、脚本或 URL。Umi Access、菜单和按钮只控制用户体验；API 仍调用 [01 的当前授权判定](./01-identity-organization-authorization.md)。浏览器不持有或直连数据库、消息系统、Kubernetes、Secret Manager、RGW 管理接口、Model Gateway 或基础设施凭据；对象读写仅可在授权后使用绑定精确 Object Version 的短期 Presigned Request。
 
 ## 3. Python Control Plane 与模块边界
 
@@ -81,7 +81,7 @@ Browser 的业务请求只经当前环境 `platform-gateway`；内部同步调�
 
 ## 5. 同步、异步与一致性
 
-同步调用适用于认证、查询、校验和命令受理；长任务同步只返回受理结果，状态通过 Query、SSE 或事件取得。Workflow 的编排事实由 [03](../03-agent-skill-model/agent-skill-model-detail.md)拥有，持久化约束由 [07](../07-data-messaging-storage/data-messaging-storage-detail.md)拥有。
+同步调用适用于认证、查询、校验和命令受理；长任务同步只返回受理结果，状态通过 Query、SSE 或事件取得。Workflow 的编排事实由 [03](./03-agent-skill-model.md)拥有，持久化约束由 [07](./07-data-messaging-storage.md)拥有。
 
 ```text
 单一模块领域写入 + Audit + Outbox
@@ -95,7 +95,7 @@ Browser 的业务请求只经当前环境 `platform-gateway`；内部同步调�
 
 传输为 at-least-once；Outbox Relay 可重试，Inbox/Effect Ledger 必须将重复交付归并为相同业务效果。大对象仅传 Object Reference。命令使用稳定 Idempotency Key 与显式版本/并发条件；消息的 Schema 与主版本通过 Contract 演进，不允许消费者猜测未知字段或将传输顺序当作业务顺序。
 
-Configuration 的 Catalog、Draft、Publish、Rollback、Effective Snapshot、Schema 演进与 DEV→PROD Promotion 生命周期只由 [Configuration Governance](../10-configuration-governance/configuration-governance-detail.md)拥有。本文只规定 Control Plane 如何通过稳定 Port 消费 Effective Configuration，并保持模块、Outbox、Adapter 与管理入口边界；各领域配置值的业务语义仍由对应领域 owner 定义。
+Configuration 的 Catalog、Draft、Publish、Rollback、Effective Snapshot、Schema 演进与 DEV→PROD Promotion 生命周期只由 [Configuration Governance](./10-configuration-governance.md)拥有。本文只规定 Control Plane 如何通过稳定 Port 消费 Effective Configuration，并保持模块、Outbox、Adapter 与管理入口边界；各领域配置值的业务语义仍由对应领域 owner 定义。
 
 ## 6. 增强 External Provider Contract
 
@@ -103,7 +103,7 @@ External Provider Contract 只治理平台外的 Cloud/Operations Plane Binding�
 
 运维/IaC拥有 Cloud Account、网络、外部 Edge、DNS、Egress、Cloud KMS、Cluster 外 Backup、Watchdog、Provider Audit 及其变更恢复；平台只拥有 gateway 之后的应用路由、认证、稳定 Infrastructure Port、状态 Feed 校验、只读 Projection、告警关联与受权 Console 入口。Super Admin 和平台 API 不跨越这个边界。
 
-每个外部依赖必须有版本化、不可原地修改的 `ExternalProviderBinding` Generation，至少记录 Environment、Binding ID/Kind、Provider Mapping、逻辑 Endpoint/Resource Reference、方向/协议、Trust Profile、Desired IaC/PCS Revision、健康/失败 Contract、数据分类、Operations Owner、Runbook、Console Link 与生命周期。只允许保存 Secret Reference、证书 Fingerprint、Key ID 等非敏感标识；凭据和恢复材料由 [08](../08-security-audit-governance/security-audit-governance-detail.md) 管理。
+每个外部依赖必须有版本化、不可原地修改的 `ExternalProviderBinding` Generation，至少记录 Environment、Binding ID/Kind、Provider Mapping、逻辑 Endpoint/Resource Reference、方向/协议、Trust Profile、Desired IaC/PCS Revision、健康/失败 Contract、数据分类、Operations Owner、Runbook、Console Link 与生命周期。只允许保存 Secret Reference、证书 Fingerprint、Key ID 等非敏感标识；凭据和恢复材料由 [08](./08-security-audit-governance.md) 管理。
 
 权威链为：Cluster 外 IaC/PCS/`CloudEnvironmentBinding` 定义 Desired → Provider API/外部探针提供 Observed → Provider Audit 记录变更 → 平台保存已签名 Feed 的只读 Projection。Projection、页面颜色与人工备注不是 Desired State；Observed 偏离 Desired 时标记 `DRIFT` 并链接 Runbook，不从平台自动修复。
 

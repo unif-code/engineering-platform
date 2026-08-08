@@ -8,7 +8,7 @@
 
 本文是内部研发平台的批准 Target Architecture 基线，用于指导设计、实施、评审与运行准备。它定义完整目标模块及跨模块 Contract，不声明仓库实现进度、Release Scope、Platform Environment 部署状态或容量选择。
 
-DEV 与 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibility Set 在独立环境中实例化。Release Scope、实施状态、环境 Promotion 与 Profile 选择由 [12 实施路线图](../12-implementation-roadmap/implementation-roadmap.md)唯一拥有；实际 Deployed State 由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
+DEV 与 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibility Set 在独立环境中实例化。Release Scope、实施状态、环境 Promotion 与 Profile 选择由 [12 实施路线图](./12-implementation-roadmap.md)唯一拥有；实际 Deployed State 由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
 
 ## 系统级原则
 
@@ -31,17 +31,17 @@ DEV 与 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibilit
 
 | 编号 | 主题 | L1 | L2 规范事实 |
 | --- | --- | --- | --- |
-| 00 | 平台总览 | [平台总览](../00-platform-overview/platform-overview.md) | [详细说明](../00-platform-overview/platform-overview-detail.md) |
-| 01 | 身份、组织与授权 | [架构地图](../01-identity-organization-authorization/identity-organization-authorization.md) | [详细说明](../01-identity-organization-authorization/identity-organization-authorization-detail.md) |
-| 02 | Requirement Workflow | [架构地图](../02-requirement-workflow/requirement-workflow.md) | [详细说明](../02-requirement-workflow/requirement-workflow-detail.md) |
-| 03 | Agent、Skill 与 Model | [架构地图](../03-agent-skill-model/agent-skill-model.md) | [详细说明](../03-agent-skill-model/agent-skill-model-detail.md) |
-| 04 | Sandbox Runtime | [架构地图](../04-sandbox-runtime/sandbox-runtime.md) | [详细说明](../04-sandbox-runtime/sandbox-runtime-detail.md) |
-| 05 | Source Control 与交付 | [架构地图](../05-source-control-delivery/source-control-delivery.md) | [详细说明](../05-source-control-delivery/source-control-delivery-detail.md) |
-| 06 | 平台应用与集成 | [架构地图](../06-platform-application-integration/platform-application-integration.md) | [详细说明](../06-platform-application-integration/platform-application-integration-detail.md) |
-| 07 | 数据、消息与存储 | [架构地图](../07-data-messaging-storage/data-messaging-storage.md) | [详细说明](../07-data-messaging-storage/data-messaging-storage-detail.md) |
-| 08 | 安全、审计与治理 | [架构地图](../08-security-audit-governance/security-audit-governance.md) | [详细说明](../08-security-audit-governance/security-audit-governance-detail.md) |
-| 09 | 基础设施与运维 | [架构地图](../09-infrastructure-operations/infrastructure-operations.md) | [详细说明](../09-infrastructure-operations/infrastructure-operations-detail.md) |
-| 10 | Configuration Governance | [架构地图](../10-configuration-governance/configuration-governance.md) | [详细说明](../10-configuration-governance/configuration-governance-detail.md) |
+| 00 | 平台总览 | [平台总览](./00-platform-overview.md) | [详细说明](./00-platform-overview.md) |
+| 01 | 身份、组织与授权 | [架构地图](./01-identity-organization-authorization.md) | [详细说明](./01-identity-organization-authorization.md) |
+| 02 | Requirement Workflow | [架构地图](./02-requirement-workflow.md) | [详细说明](./02-requirement-workflow.md) |
+| 03 | Agent、Skill 与 Model | [架构地图](./03-agent-skill-model.md) | [详细说明](./03-agent-skill-model.md) |
+| 04 | Sandbox Runtime | [架构地图](./04-sandbox-runtime.md) | [详细说明](./04-sandbox-runtime.md) |
+| 05 | Source Control 与交付 | [架构地图](./05-source-control-delivery.md) | [详细说明](./05-source-control-delivery.md) |
+| 06 | 平台应用与集成 | [架构地图](./06-platform-application-integration.md) | [详细说明](./06-platform-application-integration.md) |
+| 07 | 数据、消息与存储 | [架构地图](./07-data-messaging-storage.md) | [详细说明](./07-data-messaging-storage.md) |
+| 08 | 安全、审计与治理 | [架构地图](./08-security-audit-governance.md) | [详细说明](./08-security-audit-governance.md) |
+| 09 | 基础设施与运维 | [架构地图](./09-infrastructure-operations.md) | [详细说明](./09-infrastructure-operations.md) |
+| 10 | Configuration Governance | [架构地图](./10-configuration-governance.md) | [详细说明](./10-configuration-governance.md) |
 | 11 | 架构基线 | 本文 | [详细说明](./architecture-baseline-detail.md) |
 
 ## 阅读优先级

@@ -8,7 +8,7 @@
 
 本文定义平台的 System Context、总体责任和依赖边界。它说明各领域如何共同组成 Core Platform，以及不同 Profile 如何在不改变目标 Contract 的前提下选择和启用能力，但不重复定义身份授权、Workflow、Agent、Sandbox、交付、Configuration、安全或基础设施主题的内部规则。
 
-本文不定义组件精确版本、领域状态机全集、Release Scope、实施状态、环境 Promotion 或容量表；目标 Contract 分别属于其领域 owner，路线图事实属于 [12](../12-implementation-roadmap/implementation-roadmap-detail.md)，Deployed State 由环境 GitOps Desired State、PCS 和 Operations Read Model 证据证明。
+本文不定义组件精确版本、领域状态机全集、Release Scope、实施状态、环境 Promotion 或容量表；目标 Contract 分别属于其领域 owner，路线图事实属于 [12](./12-implementation-roadmap.md)，Deployed State 由环境 GitOps Desired State、PCS 和 Operations Read Model 证据证明。
 
 ## 2. System Context
 
@@ -87,7 +87,7 @@ DEV 与 PROD 是两个独立的 Platform Environment：不共享 Web/API 运行�
 | Hardened Target Profile | 完整 Node Role、冗余、隔离、可观测性、恢复和规模化目标。 | 由已批准的 Evolution Trigger 与容量证据驱动候选评估，不是默认采购或部署状态。 |
 | Future Evolution | Port/Adapter、数据边界、Deployable 与基础设施实现的独立演进方向。 | 每项分别验证兼容、迁移、回退、恢复、安全和 Observability，不借演进重写无关领域。 |
 
-[实施路线图](../12-implementation-roadmap/implementation-roadmap.md)统一导航 Release Scope、Profile 选择和 Promotion；[路线图详细说明](../12-implementation-roadmap/implementation-roadmap-detail.md)拥有版本 Contract 与状态；[环境容量与服务器规划](../12-implementation-roadmap/environment-capacity-plan.md)拥有人数容量场景和 Profile 数值。本节只定义三者必须遵守的架构边界。
+[实施路线图](./12-implementation-roadmap.md)统一导航 Release Scope、Profile 选择和 Promotion；[路线图详细说明](./12-implementation-roadmap.md)拥有版本 Contract 与状态；[环境容量与服务器规划](./environment-capacity-plan.md)拥有人数容量场景和 Profile 数值。本节只定义三者必须遵守的架构边界。
 
 ## 9. 端到端责任链
 
@@ -115,7 +115,7 @@ DEV 与 PROD 是两个独立的 Platform Environment：不共享 Web/API 运行�
 - UI 不能直接连接领域数据存储或基础设施 Backend；后端返回的菜单与可见性也不是安全边界。
 - Adapter 依赖内部 Port，不能反向要求业务模块采用外部系统的角色、状态或数据模型。
 - 事件与投影依赖权威领域事实；它们的延迟、失败或重建不得静默放宽安全规则。
-- Configuration 通用治理协议由 [10](../10-configuration-governance/configuration-governance-detail.md)拥有；各 Namespace 的 Policy 数据与业务解释仍由对应领域模块拥有。
+- Configuration 通用治理协议由 [10](./10-configuration-governance.md)拥有；各 Namespace 的 Policy 数据与业务解释仍由对应领域模块拥有。
 
 ## 11. 架构质量目标
 
