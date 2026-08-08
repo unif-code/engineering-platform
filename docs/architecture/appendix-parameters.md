@@ -291,6 +291,7 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 | 同账号有效 Session 上限 | 默认 `3`，可在 `1～10` 范围内调整 | 密码重置、TOTP 重置、账号停用和安全事件都可以撤销 Session | [01](./01-identity-organization-authorization.md) |
 | 用户附件额度 | 单文件 `50 MiB`；每 Requirement 合计 `200 MiB` | 使用量达到 `80%` 预警 | [02](./02-requirement-workflow.md) |
 | Agent Artifact 额度 | 单 Object `100 MiB`；单 Attempt 合计 `500 MiB`；单 Requirement 全部 Attempt 合计 `1 GiB` | 超限时 Attempt 安全停止为 `FAILED`，记录 `failureCode=RESOURCE_EXHAUSTED` 与 `failureDimension=ARTIFACT_QUOTA`，不截断证据 | [02](./02-requirement-workflow.md) |
+| Artifact Presigned Request 有效期 | 默认 `5min` | 只对应单一 Object Version，不持久化也不写入日志；Policy 可收紧但不得延长为长期可复用 URL | [02](./02-requirement-workflow.md) |
 | Draft 自动归档等待期 | 默认连续 `30` 天无 Meaningful Activity | 由 Super Admin 修改并按 `NEXT_SCHEDULE` 生效，不得写死在 Frontend、任务或镜像 | [10](./10-configuration-governance.md) |
 | Promotion Bundle 首次导入有效期 | 默认 `30` 天 | 按 `NEW_OBJECT` 只影响后续导出；PROD 当前 Import Policy 可缩短但不可越过签名覆盖的 `notAfter` | [10](./10-configuration-governance.md) |
 
@@ -310,6 +311,7 @@ Scanner 的 `100 MiB` 单对象安全 Envelope 是独立 Security Floor，不是
 | `RESOURCE_EXHAUSTED/EPHEMERAL_STORAGE` | Ephemeral Limit、DiskPressure、Eviction、Inode 或写满风险形成该维度。 | [04](./04-sandbox-runtime.md) |
 | `ARTIFACT_QUOTA` | 产品维度：达到产品额度时返回的 `failureDimension`，不能与容量维度 `STORAGE_CAPACITY` 混同。 | [02](./02-requirement-workflow.md)、[07](./07-data-messaging-storage.md) |
 | `STORAGE_CAPACITY` | 容量维度：Class Operating/Admission、物理 RGW Size/Object Guard、Cluster Raw 或最满 OSD Gate 任一失败时统一返回，保留失败 Gate、Class、Effective Revision 与 Reservation ID，并触发 Operations Incident。 | [07](./07-data-messaging-storage.md) |
+| `UPLOAD_FAILED` | Artifact Version 在完成上传与完整性确认前失败的异常终态；该 Object Version 不可用、不进入 Workflow Gate，只能由调用方重新上传形成新的 Object Version。 | [02](./02-requirement-workflow.md) |
 | `SCAN_FAILED` | 扫描投递的有界退避重试超过上限后的异常状态；告警后只能通过受控命令重新入队。 | [02](./02-requirement-workflow.md)（[08](./08-security-audit-governance.md) 只提供扫描 Contract） |
 | `REQUIREMENT_SNAPSHOT_CONFLICT` | 生成 Integration Baseline Evidence 期间发现 Requirement/必需集合版本已变化，本次生成失败并重新获取快照，不发布部分覆盖或混合版本的 Evidence。 | [05](./05-source-control-delivery.md) |
 | `SOURCE_SUPERSEDED` | Promotion 逐 Key 比较 High-water Mark 时源 Sequence 较小。 | [10](./10-configuration-governance.md) |
