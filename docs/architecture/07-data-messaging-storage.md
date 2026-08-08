@@ -163,7 +163,7 @@ nats-backup              openbao-recovery observability-logs observability-trace
 
 每个 Class 使用独立 Policy、Versioning、Retention、Quota 与 Capacity Ledger，并服从 [08 的权威 Security Contract](./08-security-audit-governance.md)。Prefix 不能替代 Bucket 级隔离；同一 Class 中的物理 Bucket 必须划分互斥配额，Class Usage 汇总当前/非当前 Version、Object Lock、Delete Marker、Multipart、GC 延迟和元数据估算。
 
-Environment Bucket-Class Capacity Ledger 是 Class 准入的权威运行账本。每个 Class 的版本化参数至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes`、各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区、基于对象分布证据生成的 `rgwMaxObjects` 以及 Desired/Effective Revision；同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`。精确数值和 Ceph Raw Envelope 由[环境容量与服务器规划](./environment-capacity-plan.md)唯一拥有，[09](./09-infrastructure-operations.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
+Environment Bucket-Class Capacity Ledger 是 Class 准入的权威运行账本。每个 Class 的版本化参数至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes`、各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区、基于对象分布证据生成的 `rgwMaxObjects` 以及 Desired/Effective Revision；同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`。精确数值和 Ceph Raw Envelope 由[环境容量与服务器规划](./appendix-parameters.md#容量与服务器规划)唯一拥有，[09](./09-infrastructure-operations.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
 
 Class Usage 使用保守的 logical stored bytes 口径，聚合全部物理 Bucket/Cluster 实例的 Current Version、Noncurrent Version、受 Lock/Retention 保护对象、Delete Marker/Index、已上传和已预占 Multipart、尚未完成 GC 的对象与标准化 Metadata/Overhead 估算。Ledger、RGW Stats、Cluster Raw 平均值和最满 OSD 分别保留自身单位与阈值；任一 Gate 更危险时取更严格结果，禁止挑选更宽松口径或直接混算 logical/raw bytes。
 

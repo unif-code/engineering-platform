@@ -111,7 +111,7 @@ Sandbox 先分别应用两个独立、版本化的 `PLATFORM_POLICY`，再执行
 
 两个 Policy 的 Key、Minimum 与准入效果由本文拥有；有效值与物理 Maximum 必须读取 [12 当前选择的 Capacity Profile](./12-implementation-roadmap.md)，并受[基础设施与运维](./09-infrastructure-operations.md)对该 Profile 已验证 Ceiling 的约束。Policy 发布与配置生命周期由 [Configuration Governance](./10-configuration-governance.md)拥有；发布权限与 Super Admin 边界由[身份、组织与授权](./01-identity-organization-authorization.md)拥有。Sandbox 只消费已生效的 Policy Snapshot，不复制配置工作流或 Profile 数值。
 
-Sandbox N+1 是 Hardened Target Profile 的可靠性目标：任一个 `sandbox-worker` Host 失效后，剩余故障域仍能承载该 Profile 获准的全部 Unit 组合。Launch Profile 不无条件承诺 N+1；Host 故障时必须 Fence 旧执行、拒绝超出剩余已验证容量的新 Lease，并从权威 Git、Checkpoint 与 Artifact 恢复或安全结束。Node 数、每环境 Ceiling、磁盘容量和总容量只由[环境容量与服务器规划](./environment-capacity-plan.md)定义；Provider Mapping、通用物理拓扑和准入验证由[基础设施与运维](./09-infrastructure-operations.md)拥有。本领域仅消费 12 为当前阶段选择的有效 Capacity Profile。
+Sandbox N+1 是 Hardened Target Profile 的可靠性目标：任一个 `sandbox-worker` Host 失效后，剩余故障域仍能承载该 Profile 获准的全部 Unit 组合。Launch Profile 不无条件承诺 N+1；Host 故障时必须 Fence 旧执行、拒绝超出剩余已验证容量的新 Lease，并从权威 Git、Checkpoint 与 Artifact 恢复或安全结束。Node 数、每环境 Ceiling、磁盘容量和总容量只由[环境容量与服务器规划](./appendix-parameters.md#容量与服务器规划)定义；Provider Mapping、通用物理拓扑和准入验证由[基础设施与运维](./09-infrastructure-operations.md)拥有。本领域仅消费 12 为当前阶段选择的有效 Capacity Profile。
 
 每个 Node 的 Runtime/Ephemeral 磁盘只存可再生 Checkout、缓存、中间文件、Writable Layer 与有界临时日志，不提供备份或跨 Node 恢复承诺。CPU 达到 Limit 时 Throttle；Memory 无 Swap，OOM 形成 `RESOURCE_EXHAUSTED/MEMORY`；Ephemeral Limit、DiskPressure、Eviction、Inode 或写满风险形成 `RESOURCE_EXHAUSTED/EPHEMERAL_STORAGE`。新 Lease 的磁盘投影不安全时返回 `CAPACITY_UNAVAILABLE`，Node 丢失只能从 Git、Checkpoint 和 Artifact 重建。
 

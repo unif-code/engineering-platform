@@ -11,7 +11,7 @@
 | 事实层 | 回答的问题 | 唯一事实源 |
 | --- | --- | --- |
 | Target Architecture | 平台完整目标由哪些模块、边界、Port/Adapter、不变量和安全 Contract 构成？ | 00～11；领域规则由对应 detail 唯一拥有，11 只索引跨模块基线。 |
-| Implementation Roadmap | 哪些 Capability 被选入哪个 Release、实施到什么状态、采用哪个 Profile，以及如何从 DEV Promotion 到 PROD？ | [12 实施路线图](./12-implementation-roadmap.md)、[路线图详细说明](./12-implementation-roadmap.md)与[环境容量和服务器规划](./environment-capacity-plan.md)。 |
+| Implementation Roadmap | 哪些 Capability 被选入哪个 Release、实施到什么状态、采用哪个 Profile，以及如何从 DEV Promotion 到 PROD？ | [12 实施路线图](./12-implementation-roadmap.md)、[路线图详细说明](./12-implementation-roadmap.md)与[环境容量和服务器规划](./appendix-parameters.md#容量与服务器规划)。 |
 | Deployed State | 某个 Platform Environment 实际运行什么 Image Digest/Bundle、配置、拓扑、容量和健康状态？ | 该环境受保护 Git 路径形成的 GitOps Desired State、Platform Compatibility Set（PCS）和 Operations Read Model 证据；Markdown 与 HTML 不复制运行状态。 |
 
 Target Architecture 的适用与 Gate 规则见[架构基线详细说明](./11-architecture-baseline.md)；Implementation Roadmap 的 Scope、状态与 Profile 选择见[实施路线图详细说明](./12-implementation-roadmap.md)；Deployed State 的环境证据定义见[基础设施与运维详细说明](./09-infrastructure-operations.md)和[Configuration Governance 详细说明](./10-configuration-governance.md)。
@@ -41,7 +41,7 @@ Target Architecture 的适用与 Gate 规则见[架构基线详细说明](./11-a
 | 09 | 基础设施与运维 | [L1](./09-infrastructure-operations.md) | [L2](./09-infrastructure-operations.md) | 说明环境、Flux GitOps、Kubernetes、可观测性、DR 与容量。 |
 | 10 | Configuration Governance | [L1](./10-configuration-governance.md) | [L2](./10-configuration-governance.md) | 说明配置分类、生命周期、Effective Snapshot 与 Promotion。 |
 | 11 | 架构基线 | [L1](./11-architecture-baseline.md) | [L2](./11-architecture-baseline.md) | 索引跨模块不变量、质量场景和三类 Gate。 |
-| 12 | 实施路线图 | [L1](./12-implementation-roadmap.md) | [L2](./12-implementation-roadmap.md) · [容量规划](./environment-capacity-plan.md) | 唯一记录 Release Scope、实施状态、环境 Promotion、Profile 选择与人数容量场景。 |
+| 12 | 实施路线图 | [L1](./12-implementation-roadmap.md) | [L2](./12-implementation-roadmap.md) · [容量规划](./appendix-parameters.md#容量与服务器规划) | 唯一记录 Release Scope、实施状态、环境 Promotion、Profile 选择与人数容量场景。 |
 
 ## main/detail Contract
 

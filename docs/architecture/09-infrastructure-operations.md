@@ -4,7 +4,7 @@
 
 本文是完整 Target Architecture 中 Platform Environment、CloudEnvironmentBinding、Platform Compatibility Set（PCS）、GitOps、Kubernetes、逻辑 Node Role、物理放置、网络、存储物理拓扑、Observability、环境级 Cluster DR、容量准入与 TCO 的规范事实源。本文不声明任何环境已 Provision、已部署或已接收 Promotion。
 
-Release 版本、Capability Scope、实现状态、Environment Promotion 与 Reliability/Capacity Profile 选择只由[实施路线图](./12-implementation-roadmap.md)拥有；分阶段采购、CPU/RAM/Disk、人数场景和服务器矩阵只由[环境容量与服务器规划](./environment-capacity-plan.md)拥有。本文拥有 Profile 必须遵守的基础设施不变量、物理放置验证和 Hardened Target 拓扑，但不复制这些计划事实。
+Release 版本、Capability Scope、实现状态、Environment Promotion 与 Reliability/Capacity Profile 选择只由[实施路线图](./12-implementation-roadmap.md)拥有；分阶段采购、CPU/RAM/Disk、人数场景和服务器矩阵只由[环境容量与服务器规划](./appendix-parameters.md#容量与服务器规划)拥有。本文拥有 Profile 必须遵守的基础设施不变量、物理放置验证和 Hardened Target 拓扑，但不复制这些计划事实。
 
 身份和业务状态分别属于 [01](./01-identity-organization-authorization.md)与 [02](./02-requirement-workflow.md)；组件数据、Artifact、Retention 和组件级恢复属于 [07](./07-data-messaging-storage.md)；Secret、加密、PKI 和 Audit 属于 [08](./08-security-audit-governance.md)。Operations Read Model、Console Access、External Status Feed 与公告流程由 [06](./06-platform-application-integration.md)拥有。
 
@@ -114,7 +114,7 @@ Flux 只允许读取当前环境批准的 Git/OCI/Helm 来源并访问本 Cluste
 
 ## 4. 部署 Profile Contract
 
-本文只定义物理拓扑必须遵守的 Target Contract，不建立版本或阶段索引，也不声明实现、验收、Environment Promotion 或 Deployed State。精确 Release 到 Profile 的映射与选择只见[实施路线图详细说明](./12-implementation-roadmap.md)，分阶段服务器数量、CPU/RAM/Disk 和人数容量场景只见[环境容量与服务器规划](./environment-capacity-plan.md)。
+本文只定义物理拓扑必须遵守的 Target Contract，不建立版本或阶段索引，也不声明实现、验收、Environment Promotion 或 Deployed State。精确 Release 到 Profile 的映射与选择只见[实施路线图详细说明](./12-implementation-roadmap.md)，分阶段服务器数量、CPU/RAM/Disk 和人数容量场景只见[环境容量与服务器规划](./appendix-parameters.md#容量与服务器规划)。
 
 | 部署 Profile Contract | 通用物理拓扑 | 可靠性边界 |
 | --- | --- | --- |
@@ -147,7 +147,7 @@ Hardened Target 将四个逻辑 Role 拆为四类专用 Node Pool：
 - `sandbox-worker` 承载 Kata/KVM Guest 与受控代码执行，并保持独立物理边界；
 - `storage-worker` 承载 RWO 存储物理实现、Rook-Ceph 与恢复流量。
 
-Control Plane 保持专用 Node、stacked etcd 与 quorum；Sandbox Pool 使用 Kata/KVM 并保留 N+1；Storage Pool 使用 Rook-Ceph 和 Host 故障域；Platform、数据、Secret 与 Observability 按各 owner 的 HA Contract 跨 Node 分散。精确节点数量、服务器规格、磁盘和 Capacity Ceiling 不在本文重复，统一链接[环境容量与服务器规划](./environment-capacity-plan.md)。
+Control Plane 保持专用 Node、stacked etcd 与 quorum；Sandbox Pool 使用 Kata/KVM 并保留 N+1；Storage Pool 使用 Rook-Ceph 和 Host 故障域；Platform、数据、Secret 与 Observability 按各 owner 的 HA Contract 跨 Node 分散。精确节点数量、服务器规格、磁盘和 Capacity Ceiling 不在本文重复，统一链接[环境容量与服务器规划](./appendix-parameters.md#容量与服务器规划)。
 
 Hardened Target 是稳定目标，不是首次正式 Launch 的默认 Release Gate。未达到 Evolution Trigger 时，不能仅因目标存在就要求提前物理拆分；若 Trigger 在发布前成立，相应增强按第 10 节成为 Release Blocker。
 
@@ -175,7 +175,7 @@ Compact Launch 允许 Storage 逻辑 Role 融合到 `core`，但必须保留独�
 
 Hardened Target 使用专用 `storage-worker` Pool 和 PCS 锁定的 Rook-Ceph，提供 RGW Object Storage；Rook Operator、MON、MGR、RGW 与 OSD 跨 Host 分散，Ceph 使用三副本、`min_size=2` 与 `failureDomain=host`。OS/MON 与 Raw OSD 使用物理分离设备，Recovery、Backfill、Scrub 和故障切换保留独立 Headroom；OSD 必须满足 [08 的 dm-crypt/LUKS 与恢复 Gate](./08-security-audit-governance.md)。RGW 只承载对象类存储，不承载实时 RBD/CephFS PVC；Bucket Class、Object Version、Retention、Object Lock 和双 Capacity Ledger 由 07/08 定义。
 
-Raw、Bucket Class、RWO 与 Backup 的数值、阈值和扩容场景只在[环境容量与服务器规划](./environment-capacity-plan.md)维护。09 通过 Provisioning Gate 验证它们可以落到所选物理设备、调度与恢复窗口，不建立第二份容量表。
+Raw、Bucket Class、RWO 与 Backup 的数值、阈值和扩容场景只在[环境容量与服务器规划](./appendix-parameters.md#容量与服务器规划)维护。09 通过 Provisioning Gate 验证它们可以落到所选物理设备、调度与恢复窗口，不建立第二份容量表。
 
 ## 8. Observability 与 Operations Health
 
@@ -247,7 +247,7 @@ Evolution Trigger 必须绑定 Environment、Profile/Policy Revision、观察窗
 
 `Environment TCO Snapshot` 是版本化只读 Contract，引用 CloudEnvironmentBinding、PCS、Capacity Profile、Policy Revision 与报价有效期，记录精确 SKU、数量、购买方式、磁盘类型、NLB、KMS、外部 Backup、NAT/EIP/Egress、网络流量、恢复演练、币种、税费与折扣。Region、Zone、SKU 和价格由部署输入填充；DEV 与 PROD 独立估价，不能共享购买或把一个环境的故障风险隐藏在另一个环境。
 
-TCO 只作为 Trigger 与决策证据，不能修改业务、Policy、Capacity Ceiling 或 Deployed State。服务器与存储数值统一引用 [12 容量事实源](./environment-capacity-plan.md)，不在本文建立副本。
+TCO 只作为 Trigger 与决策证据，不能修改业务、Policy、Capacity Ceiling 或 Deployed State。服务器与存储数值统一引用 [12 容量事实源](./appendix-parameters.md#容量与服务器规划)，不在本文建立副本。
 
 ## 11. 不变量
 

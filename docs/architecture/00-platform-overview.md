@@ -124,7 +124,7 @@ DEV 与 PROD 是两个独立的 Platform Environment：不共享 Web/API 运行�
 | Hardened Target Profile | 完整 Node Role、冗余、隔离、可观测性、恢复和规模化目标。 | 由已批准的 Evolution Trigger 与容量证据驱动候选评估，不是默认采购或部署状态。 |
 | Future Evolution | Port/Adapter、数据边界、Deployable 与基础设施实现的独立演进方向。 | 每项分别验证兼容、迁移、回退、恢复、安全和 Observability，不借演进重写无关领域。 |
 
-[实施路线图](./12-implementation-roadmap.md)统一导航 Release Scope、Profile 选择和 Promotion；[路线图详细说明](./12-implementation-roadmap.md)拥有版本 Contract 与状态；[环境容量与服务器规划](./environment-capacity-plan.md)拥有人数容量场景和 Profile 数值。本节只定义三者必须遵守的架构边界。
+[实施路线图](./12-implementation-roadmap.md)统一导航 Release Scope、Profile 选择和 Promotion；[路线图详细说明](./12-implementation-roadmap.md)拥有版本 Contract 与状态；[环境容量与服务器规划](./appendix-parameters.md#容量与服务器规划)拥有人数容量场景和 Profile 数值。本节只定义三者必须遵守的架构边界。
 
 ### Profile 与演进边界
 
