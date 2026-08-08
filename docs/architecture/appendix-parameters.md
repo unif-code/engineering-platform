@@ -269,7 +269,7 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 
 ## Platform Policy Key
 
-本节参数由 [04 Sandbox Runtime](./04-sandbox-runtime.md)的准入 Gate、[03 Agent、Skill 与 Model](./03-agent-skill-model.md)的 Child 收敛语义、[01 身份、组织与授权](./01-identity-organization-authorization.md)的认证与 Session 规则、[02 Requirement Workflow](./02-requirement-workflow.md)的 Artifact 额度以及 [10 配置治理](./10-configuration-governance.md)的 Draft/Promotion 生命周期消费；有效值与发布生命周期由 10 拥有，物理 Maximum 受 [12](./12-implementation-roadmap.md)当前选择的 Capacity Profile 与 [09](./09-infrastructure-operations.md)已验证 Ceiling 约束。
+本节参数由 [04 Sandbox Runtime](./04-sandbox-runtime.md)的准入 Gate、[03 Agent、Skill 与 Model](./03-agent-skill-model.md)的 Child 收敛语义、[01 身份、组织与授权](./01-identity-organization-authorization.md)的认证与 Session 规则、[02 Requirement Workflow](./02-requirement-workflow.md)的 Artifact 额度、[06 平台应用与集成](./06-platform-application-integration.md)的安全公告采集与发布调度以及 [10 配置治理](./10-configuration-governance.md)的 Draft/Promotion 生命周期消费；有效值与发布生命周期由 10 拥有，物理 Maximum 受 [12](./12-implementation-roadmap.md)当前选择的 Capacity Profile 与 [09](./09-infrastructure-operations.md)已验证 Ceiling 约束。
 
 ### Sandbox 与 Image Build 准入 Policy
 
@@ -297,6 +297,16 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 | Promotion Bundle 首次导入有效期 | 默认 `30` 天 | 按 `NEW_OBJECT` 只影响后续导出；PROD 当前 Import Policy 可缩短但不可越过签名覆盖的 `notAfter` | [10](./10-configuration-governance.md) |
 
 Scanner 的 `100 MiB` 单对象安全 Envelope 是独立 Security Floor，不是产品额度，不能仅提高产品额度越过（[02](./02-requirement-workflow.md)）。
+
+### 安全公告采集与发布调度
+
+来源：[06 平台应用与集成](./06-platform-application-integration.md)。调度、时区、来源允许列表、Endpoint、扫描器版本/digest、筛选条件、timeout、限流与重试值全部是注册的版本化配置，不硬编码在 Frontend、业务代码或任务脚本中。
+
+| 参数 | 默认值 | 生效与约束 |
+| --- | --- | --- |
+| 增量采集并运行 `OSV-Scanner` | 每周日 `02:00 Asia/Shanghai` | 采集必须先于发布完成；调度与时区都是注册的版本化配置 |
+| 公告自动发布 | 每周一 `07:00 Asia/Shanghai` | 必需来源失败或扫描为 `FAILED/EXPIRED` 时阻止本期自动发布并保留上一期 |
+| 单个失败来源或扫描 Job 的重试 | 最多 `3` 次有界重试 | 超过上限后告警，不发布空公告 |
 
 ## 错误码
 
