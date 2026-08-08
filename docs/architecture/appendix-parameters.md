@@ -5,7 +5,7 @@
 
 ## 容量与服务器规划
 
-本节参数由 [12 实施路线图](./12-implementation-roadmap.md)在选择 Profile 时消费，由 [09 基础设施与运维](./09-infrastructure-operations.md)在验证物理放置、Aggregate Physical Ceiling 与 Provisioning Gate 时消费，由 [04 Sandbox Runtime](./04-sandbox-runtime.md)读取 Node 数、每环境 Ceiling 与磁盘容量，由 [07 数据、消息与存储](./07-data-messaging-storage.md)读取 Raw、Bucket Class、RWO、Stream 与 Backup 数值，由 [08 安全、审计与治理](./08-security-audit-governance.md)读取 OpenBao 与 Scanner 的资源、阈值与恢复数值。`### 1.` 到 `### 11.` 整体承接原 `environment-capacity-plan.md` 全文，只降低标题层级、不改写内容；其中的“本文”均指该容量与服务器规划本身。末尾的[组件资源包络](#组件资源包络)不属于该原文，是从 07、08 正文迁入的组件级数值。
+本节参数由 [12 实施路线图](./12-implementation-roadmap.md)在选择 Profile 时消费，由 [09 基础设施与运维](./09-infrastructure-operations.md)在验证物理放置、Aggregate Physical Ceiling 与 Provisioning Gate 时消费，由 [04 Sandbox Runtime](./04-sandbox-runtime.md)读取 Node 数、每环境 Ceiling 与磁盘容量，由 [07 数据、消息与存储](./07-data-messaging-storage.md)读取 Raw、Bucket Class、RWO、Stream 与 Backup 数值，由 [08 安全、审计与治理](./08-security-audit-governance.md)读取 OpenBao 与 Scanner 的资源、阈值与恢复数值。`### 1.` 到 `### 11.` 整体承接原 `environment-capacity-plan.md` 全文，只降低标题层级、不改写内容；其中的“本文”均指该容量与服务器规划本身。末尾的[组件资源包络](#组件资源包络)不属于该原文，是从 07、08、09 正文迁入的组件级数值。
 
 ### 1. 文档目标
 
@@ -242,7 +242,7 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 
 ### 组件资源包络
 
-来源：[07 数据、消息与存储](./07-data-messaging-storage.md)与[08 安全、审计与治理](./08-security-audit-governance.md)。下列数值默认描述 Hardened Target Profile 的组件级包络；Launch Profile 可按 [12 实施路线图](./12-implementation-roadmap.md)的选择降低副本与拓扑，但不得取消硬 Request/Limit、存储与队列上限、Cluster 外 Backup 与真实 Restore 验证。数据实例的 CPU/Memory Request 与 Limit 相等以保持 Guaranteed QoS；任何 Profile 都禁止无 Request/Limit 的 BestEffort 数据实例。
+来源：[07 数据、消息与存储](./07-data-messaging-storage.md)、[08 安全、审计与治理](./08-security-audit-governance.md)与[09 基础设施与运维](./09-infrastructure-operations.md)。下列数值默认描述 Hardened Target Profile 的组件级包络；Launch Profile 可按 [12 实施路线图](./12-implementation-roadmap.md)的选择降低副本与拓扑，但不得取消硬 Request/Limit、存储与队列上限、Cluster 外 Backup 与真实 Restore 验证。数据实例的 CPU/Memory Request 与 Limit 相等以保持 Guaranteed QoS；任何 Profile 都禁止无 Request/Limit 的 BestEffort 数据实例。
 
 #### 数据服务资源与拓扑
 
@@ -302,10 +302,25 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 - `freshclam` 每 `2` 小时检查一次并对副本使用受控随机 Jitter；连续 `6`/`12`/`24` 小时未成功更新分别为 Warning/Critical/退出 Ready，超过 `24` 小时的副本不能返回 `CLEAN`。
 - `trivy-data-sync` 每 `6` 小时更新 Vulnerability DB，每 `24` 小时更新 Java DB 与 Checks；Freshness Gate 的 Warning/Critical/Expired 为 Vulnerability DB `12`/`18`/`24` 小时、仅对相关镜像启用的 Java DB `36`/`48`/`72` 小时、Checks `48`/`72` 小时/`7` 天。
 
+#### Flux GitOps 与 Observability 组件拓扑
+
+来源：[09 基础设施与运维](./09-infrastructure-operations.md)。Flux Controller 的 Limit 不低于 `4× CPU Request` 与 `2× Memory Request`，并在 Platform 逻辑 Role 的有效 Capacity Profile 中为整套 Flux 保留至少 `1 CPU / 2 GiB` Rollout/Fault Headroom；低规模 Launch Profile 允许每个 Controller 为 `1` Replica，并以 `maxUnavailable=0`、`maxSurge=1` 完成滚动升级，由 Kubernetes 负责故障重启。
+
+| Flux Controller | 单 Pod CPU / Memory Request |
+| --- | --- |
+| `source-controller` | `100m / 256Mi` |
+| `kustomize-controller` | `250m / 512Mi` |
+| `helm-controller` | `100m / 256Mi` |
+| `notification-controller` | `50m / 128Mi` |
+
+- 扩大 Repository、Application 或 Reconcile 并发前必须依据队列、Reconcile p95、OOM/Throttle 与 API Server 压力形成新 Capacity Candidate。
+- Hardened Target 的 Observability 副本数为：Prometheus `2`（含 Thanos Sidecar 与 Thanos Query）、Alertmanager `3`、Grafana `2`、Loki `3` 与 Loki Gateway `2`、OpenTelemetry Gateway `2`、Tempo Monolithic Backend（`target=all`）、每 Node 的 Agent/Exporter/Canary，以及跨 Node 分散的 Hubble Relay 与只读 Hubble UI。Launch Profile 可降低副本与拓扑，但不得关闭 NetworkPolicy、安全日志、Deny 可见性与告警路径。
+
 #### 组件 Backup、Retention 与恢复目标
 
 | 组件 | Backup 调度 | Retention / Recovery Window | Cluster DR 目标 | Restore Drill |
 | --- | --- | --- | --- | --- |
+| Kubernetes etcd（来源 09） | PCS 锁定的 `etcdctl snapshot save`：DEV 每 `3` 小时、PROD 每 `30` 分钟；高风险变更前另生成 `BACKUP_VERIFIED` Pre-change Snapshot | DEV 保留 `7` 天；PROD 保留 `48` 小时周期点与 `30` 天每日点 | DEV `RPO ≤ 6h`、PROD `RPO ≤ 1h`，两者 `RTO ≤ 120min` | DEV 每月、PROD 每季度在隔离环境完整恢复 |
 | PostgreSQL | 持续 WAL Archive（`archive_timeout=5min`）与每日 LZ4 Physical Base Backup | Recovery Window DEV `7` 天、PROD `30` 天 | PROD Candidate 在 `PGDATA <= 50 GiB` 时 `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
 | NATS | 每日 `04:00 Asia/Shanghai` 应用一致性 Account Backup | Backup Retention DEV `3` 天、PROD `7` 天；已发布 Outbox 至少保留 `30` 天 | `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
 | OpenBao | 应用一致性 Raft Snapshot：DEV 每 `6` 小时、PROD 每 `1` 小时；升级与高风险变更前另生成按需 Snapshot | DEV 保留 `7` 天；PROD 保留 `48` 小时周期点与 `30` 天每日点 | DEV `RPO ≤ 6h`、PROD `RPO ≤ 1h`，两者 `RTO ≤ 60min` | DEV 每月、PROD 每季度在隔离环境完整恢复 |
@@ -341,7 +356,7 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 
 - Scratch 使用有界 `emptyDir`；完成后结构化结果先固化到 Artifact，再由 `ttlSecondsAfterFinished=86400` 清理 Job/Pod。
 - 两个 Evaluation Profile 共享 `maxActiveEvaluationJobs=1`，不能同时运行。
-- 初始 Evaluation Ceiling 为每个 promptfoo Job `200 requests / 2,000,000 total tokens / 60min`、每个 EvalScope Job `1,000 requests / 10,000,000 total tokens / 4h`；`maxCost` 由当前币种与 Model Catalog 价格快照计算并且必须显式给出。
+- 每个 Evaluation Job 在受理前必须固定 `maxRequests`、`maxInputTokens`、`maxOutputTokens`、`maxTotalTokens`、`maxCost` 与 Model Gateway Quota Snapshot。初始 Evaluation Ceiling 为每个 promptfoo Job `200 requests / 2,000,000 total tokens / 60min`、每个 EvalScope Job `1,000 requests / 10,000,000 total tokens / 4h`；`maxCost` 由当前币种与 Model Catalog 价格快照计算并且必须显式给出。
 
 ## Platform Policy Key
 
@@ -447,7 +462,9 @@ reconcileExternalEffect
 
 ## Runtime 组件清单
 
-本节组件清单由 [04 Sandbox Runtime](./04-sandbox-runtime.md)的 KVM/Kata/Node Gate 与 Image Build 消费；精确版本/digest 只由 [09 基础设施与运维](./09-infrastructure-operations.md)的 PCS 锁定，Secret、Audit 与 PKI 语义由 [08 安全、审计与治理](./08-security-audit-governance.md)拥有。
+本节记录 Runtime 组件的角色与 Platform Compatibility Set（PCS）当前锁定的精确版本。PCS 的注册、Candidate、兼容与 Provisioning Gate 语义由 [09 基础设施与运维](./09-infrastructure-operations.md)拥有，本节只保存其锁定值；Sandbox 组件清单由 [04 Sandbox Runtime](./04-sandbox-runtime.md)的 KVM/Kata/Node Gate 与 Image Build 消费，Secret、Audit 与 PKI 语义由 [08 安全、审计与治理](./08-security-audit-governance.md)拥有。
+
+### Sandbox Runtime 与 Node Image 组件
 
 | 组件 | 角色 | 来源主题 |
 | --- | --- | --- |
@@ -459,5 +476,39 @@ reconcileExternalEffect
 | virtiofsd | `sandbox-worker` 预烘焙不可变 Node Image 的受控组成部分；配置更新只能通过新的 Image、Runtime Profile 和受控逐 Node 替换生效。 | [04](./04-sandbox-runtime.md) |
 | containerd | 同为不可变 Node Image 的受控组成部分；禁止在运行 Node 上补装或漂移修改。 | [04](./04-sandbox-runtime.md) |
 | Rootless BuildKit | Image Build Child 的构建器；Child 使用独立 Kata Materialization、Rootless BuildKit、Binding、Credential、Workspace 和 Fencing Token。首批有界 `IMAGE_BUILD` Child Type 仅启用 Rootless BuildKit。 | [04](./04-sandbox-runtime.md)、[12](./12-implementation-roadmap.md) |
-| OpenBao | 保存 Secret 与 Lease 事实；使用 Integrated Storage（Raft），不以 PostgreSQL 或业务数据服务作为 Storage Backend；精确版本/digest 只由 09 的 PCS 锁定，不得使用浮动 Tag。 | [04](./04-sandbox-runtime.md)、[08](./08-security-audit-governance.md) |
+| OpenBao | 保存 Secret 与 Lease 事实；使用 Integrated Storage（Raft），不以 PostgreSQL 或业务数据服务作为 Storage Backend；精确版本/digest 按下表锁定，不得使用浮动 Tag。 | [04](./04-sandbox-runtime.md)、[08](./08-security-audit-governance.md) |
 | OpenBao Agent Injector | 将当前执行的短期 Secret 写入 Pod `tmpfs` 内存文件，不写入 Deployment YAML、Environment Variable、镜像或持久磁盘。 | [04](./04-sandbox-runtime.md)、[08](./08-security-audit-governance.md) |
+
+### Platform Compatibility Set 锁定版本
+
+来源：[09 基础设施与运维](./09-infrastructure-operations.md)。下表是 Target Architecture 的初始兼容候选：每个制品仍须绑定 Artifact/Image Digest，禁止 `latest`、浮动 Tag 或启动时自动升级；精确 Patch、Chart、Operand、CRD 与 Image 组合是同一 PCS 不可分割的内容，任何变化都创建新 PCS Candidate。
+
+| 领域 | 组件 | 稳定系列 | PCS 精确版本 |
+| --- | --- | --- | --- |
+| Kubernetes | Kubernetes | 1.36 | 1.36.3 |
+| Kubernetes | Ubuntu Server Minimal amd64 | 24.04 LTS | 24.04.4 |
+| Kubernetes | containerd | 2.3 LTS | 2.3.1；CRI v1、config v4、cgroup v2 |
+| Kubernetes | Kata Containers | 4.0.x | 4.0.0 |
+| Kubernetes | Cilium | 1.20.x | 1.20.0 |
+| Kubernetes | Gateway API | 1.6.x Standard | CRD v1.6.1 |
+| Kubernetes | cert-manager | 1.21.x | v1.21.1 |
+| GitOps | Flux | 2.9.x | v2.9.3 |
+| Data | CloudNativePG | 1.30.x | 1.30.0 |
+| Data | PostgreSQL | 18 | 18.4 |
+| Data | PgBouncer | 1.25.x | 1.25.2 |
+| Data | Barman Cloud Plugin | 0.13.x | 0.13.0 |
+| Data | Valkey | 9.1 | 9.1.1-trixie |
+| Messaging | NATS Server / Helm Chart | 2.14 | Server 2.14.4-scratch；Chart 2.14.2 |
+| Workflow | Temporal | Server 1.31 | Chart 1.6.0；Server/Admin Tools 1.31.2；UI 2.52.0；Python SDK 1.30.0 |
+| Security | OpenBao | 2.6 | Server 2.6.1；Chart 0.28.6 |
+| Security | ClamAV | 1.5 | 1.5.3 |
+| Security | Trivy | 0.73.x | v0.73.0；Vulnerability/Java DB 与 Checks 由独立 `trivy-data-sync` 按 [08](./08-security-audit-governance.md) 的 Freshness Gate 更新 |
+| Security Tooling | OSV-Scanner | 2.3.x | v2.3.8 |
+| Evaluation Tooling | promptfoo | 0.121.x | 0.121.15 |
+| Evaluation Tooling | EvalScope | 1.9.x | v1.9.1 |
+| Object Storage | Rook / Ceph | Rook 1.20 / Ceph 20.2 | Rook 1.20.2；Ceph 20.2.2 |
+| Observability | kube-prometheus-stack | 88.1.x | Chart 88.1.5；Prometheus Operator 0.93.0；Prometheus 3.13.2-distroless；Alertmanager 0.33.1；Grafana Chart 12.10.3 / Grafana 13.1.2 |
+| Observability | Thanos | 0.42.x | 0.42.4 |
+| Observability | Loki | 3.7 | Chart 18.7.3；Loki 3.7.5 |
+| Observability | OpenTelemetry Collector | Chart 0.168.x | Chart 0.168.0；默认 Operand 0.157.0 |
+| Observability | Tempo | 3.0 | 3.0.2 Monolithic `target=all` |
