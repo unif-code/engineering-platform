@@ -125,11 +125,11 @@ Profile 的 Release 选择、实施状态与环境 Promotion 见[实施路线图
 
 ## 与其他模块的关系
 
-下表按模块列出其在 Core Platform 中消费和提供的能力；每个模块的完整 Contract 由该模块自身定义，本文不复制其状态、参数或协议字段。
+00 拥有模块边界与责任链总览，故本表按模块列出该模块自身的消费与提供；其余各篇的同名表是该篇模块自身的视角。表中包含 01～10 的 Core Platform 模块，以及 11、12 与参数附录三篇跨模块文档。每个模块的完整 Contract 由该模块自身定义，本文不复制其状态、参数或协议字段。
 
 | 模块 | 消费 | 提供 |
 | --- | --- | --- |
-| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 10 的配置命令资格与 Effective Snapshot | Principal、组织、Workspace、Membership、Capability、Scope、Assignment 与服务端授权判定 |
+| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 10 的 Configuration Contract（Draft/ChangeSet/Effective Snapshot/Promotion 语义） | Principal、组织、Workspace、Membership 与成员投影、Capability、Scope、Assignment、服务端授权判定、Super Admin 与 Bootstrap 边界、配置命令资格与 Identity 恢复 |
 | [02 Requirement Workflow](./02-requirement-workflow.md) | 01 授权判定、03 执行事实、05 交付证据、07 Artifact 对象 | Requirement、WorkItem、Route、Gate、Decision、Acceptance 与业务责任链 |
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | 01 授权、02 业务上下文、04 执行能力、10 配置快照 | Agent Definition、Skill/Model 路由、Evaluation、Run/Attempt 与不可变 Execution Binding |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | 03 Execution Binding、08 短期凭据、09 Node 与物理容量边界 | 隔离执行、lease、资源准入、网络、Preview、清理与恢复 |
@@ -138,7 +138,7 @@ Profile 的 Release 选择、实施状态与环境 Promotion 见[实施路线图
 | [07 数据、消息与存储](./07-data-messaging-storage.md) | 09 的运行、存储与备份能力 | 权威数据、消息、缓存、Artifact 对象与配额账本、Retention、备份与组件恢复支撑 |
 | [08 安全、审计与治理](./08-security-audit-governance.md) | 01 身份事实、07 存储与保留能力 | Trust、Secret、加密、供应链、Audit Envelope、Break-glass 与安全恢复的 Fail Closed Contract |
 | [09 基础设施与运维](./09-infrastructure-operations.md) | 10 的 GitOps 配置治理协议 | Platform Environment、GitOps Desired State、Kubernetes、网络、可观测性、物理容量准入与环境恢复 |
-| [10 Configuration Governance](./10-configuration-governance.md) | 各领域 Namespace 的 Schema、默认值与业务解释 | 配置分类、版本、Effective Snapshot、兼容性演进与 DEV→PROD Promotion 协议 |
+| [10 Configuration Governance](./10-configuration-governance.md) | 01 的配置命令资格、各领域 Namespace 的 Schema、默认值与业务解释 | 配置分类、版本、Effective Snapshot、兼容性演进与 DEV→PROD Promotion 协议 |
 | [11 架构基线](./11-architecture-baseline.md) | 00～10 的目标 Contract | 跨模块不变量、依赖与写入边界、Quality Scenario 以及三类 Gate 的分类与语义 |
 | [12 实施路线图](./12-implementation-roadmap.md) | 00～11 的目标 Contract、附录的容量场景与数值 | Release Scope、Release Gate 与验收证据、实施状态、环境 Promotion 与 Profile 选择 |
 | [参数附录](./appendix-parameters.md) | 各模块正文中的定性规则 | 全部精确参数：资源数值、Policy Key、错误码、Port 方法清单、Runtime 组件、容量场景与服务器矩阵 |
