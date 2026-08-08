@@ -1,7 +1,5 @@
-# Sandbox Runtime 详细说明
+# Sandbox Runtime
 
-> 文档层级：L2 规范事实源
-> 对应主文：[Sandbox Runtime](./sandbox-runtime.md)
 > 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 责任边界与逻辑模型
@@ -24,6 +22,21 @@
 | `SandboxCheckpoint` | 恢复所需结构化状态与 Artifact 引用 |
 
 代码与分支以 GitLab 为准，Checkpoint、日志、测试与构建证据以 Artifact Store 为准，业务对象与 Lease 以 Control Plane 为准。Sandbox 不保存这些事实的唯一副本。
+
+### 目标与边界
+
+Sandbox Runtime 为 Agent Attempt 和 Image Build 提供隔离、可重建、可审计的执行环境。它把逻辑 Sandbox Environment 与短生命周期的物理 Materialization 分开，并通过稳定 `SandboxPort` 隔离 Workflow、Agent Runtime 与 Kubernetes、Kata 和 Compute Provider 的实现。
+
+它不拥有 Requirement、WorkItem、Gate、Decision 或 Attempt 的业务状态；这些由 [Requirement Workflow](./02-requirement-workflow.md) 和 [Agent、Skill 与 Model](./03-agent-skill-model.md) 定义。它也不保存代码、Artifact、Audit 或 Secret 的唯一事实，分别依赖 [Source Control 与交付](./05-source-control-delivery.md)、[数据、消息与存储](./07-data-messaging-storage.md) 和 [安全、审计与治理](./08-security-audit-governance.md) 的 Contract。
+
+### 逻辑环境与物化
+
+```text
+Requirement Sandbox Environment
+├── WorkItem checkout / service binding / Preview
+├── Agent Attempt → Kata Materialization
+└── Image Build Child Execution → 独立 Kata Materialization
+```
 
 ### 1.1 正式 Agent Capability Activation Gate
 
@@ -142,3 +155,8 @@ Sandbox 只拥有 Child Lease 与 Reservation 在 Capacity Ledger 中的原子�
 需持久化的执行证据包括固定 Commit、测试输出、Preview 元数据、Tool/Egress 记录、Template/Runtime/Profile Digest、资源峰值、失败诊断、Checkpoint/Patch、Image Digest、SBOM/Provenance 与校验 Hash。审计、保留和访问规则由[安全、审计与治理](./08-security-audit-governance.md)拥有。
 
 Jenkins 是用户在独立外部平台手工触发、查看和处置的系统。Sandbox 不调用 Jenkins、不接收 Jenkins Webhook、不读取或投影 Jenkins 状态，也不把 Jenkins 建模为 Sandbox Child、Runtime 或系统 Gate。
+
+## 不变量与关系
+
+- 逻辑 Sandbox Environment 不能成为可写执行实例的别名；不同 Attempt、Child 或 Workspace 不共享可写目录、执行身份或短期 Secret。
+- 运行时安全、故障清理、证据与审计规则见详细说明；平台应用入口与 API 集成边界见[平台应用与集成](./06-platform-application-integration.md)。

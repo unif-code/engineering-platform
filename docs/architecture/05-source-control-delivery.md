@@ -1,7 +1,5 @@
-# Source Control 与交付详细说明
+# Source Control 与交付
 
-> 文档层级：L2 规范事实源
-> 对应主文：[Source Control 与交付](./source-control-delivery.md)
 > 实施阶段、激活状态和 Release 验收见 [12 实施路线图详细说明](./12-implementation-roadmap.md)。
 
 ## 1. 责任边界
@@ -9,6 +7,12 @@
 本文是 GitLab Binding、任务分支 Saga、Integration/Formal MR、Git/MR/Artifact `IntegrationBaselineEvidence`、GitLab 外部事实收敛、Formal Review Assignment、Merge 与多仓语义的唯一规范事实源。本文唯一拥有 Evidence 的结构、`integrationBaselineId/hash`、外部事实与变化事件。Requirement、WorkItem、Gate、Decision、Acceptance、`RequirementIntegrationBaselineSelection` 与业务状态由 [Requirement Workflow](./02-requirement-workflow.md)唯一拥有；本文消费其稳定 ID 和受保护命令，产生 Binding、Branch、MR、Merge 与 Evidence 事实，不复制 Requirement 的冻结、选择、验收或状态机。
 
 人员资格由[身份、组织与授权](./01-identity-organization-authorization.md)拥有；Execution Binding 与 Agent 的分支写权限由[Agent、Skill 与 Model](./03-agent-skill-model.md)拥有。平台不复制 GitLab 仓库或权限页面，也不把 GitLab Role 当作平台 Capability、Scope、Membership 或 Assignment 的替代品。
+
+### 目标与边界
+
+本领域通过稳定 `SourceControlPort` 管理 GitLab Project、Requirement/WorkItem 的仓库绑定、任务分支、Integration MR、Formal MR、人工 Review 与 Merge。它复用 GitLab Project，不复制第二套代码项目、分支、MR 或 GitLab 权限体系。
+
+Attempt 和 Execution Binding 由 [Agent、Skill 与 Model](./03-agent-skill-model.md)拥有；Sandbox 仅消费固定 Branch Binding 以执行代码，见 [Sandbox Runtime](./04-sandbox-runtime.md)。
 
 ## 2. GitLab Binding
 
@@ -70,6 +74,8 @@ task branch（from main）
 Integration MR 不要求 Formal Human Review；有权限的用户可在满足确定性检查和 GitLab 保护规则后合并到 `dev`。Integration Merge 使用 merge commit 保留集成上下文，且不得删除 source branch，因为它仍要用于 Formal MR。`dev` 是集成验证目标，不是 Formal MR 的 source；平台不创建 `dev → main` MR，也不要求固定的 `main → dev` 同步。
 
 Jenkins 是独立外部平台，用户手工触发、查看和处置构建/测试。平台不存在 Jenkins Adapter，不调用或触发 Jenkins Job，不接收 Jenkins Webhook，不查询、保存、展示或投影 Jenkins Build/Deploy 状态，不复制 Jenkins Log，也不把 Jenkins 结果定义为可自动判断的 Gate。Jenkins 的失败、重试与回滚完全由 Jenkins 处置；用户完成外部验证后，任何平台内受保护动作仍由 02 owner 的 Route、Acceptance 与 Gate Contract 校验。
+
+用户提交的只是外部验证证据引用及其提交人、时间、目标 Commit 和说明，不是平台获取的 Jenkins 状态。
 
 ## 5. IntegrationBaselineEvidence 与 Formal MR
 
@@ -146,3 +152,8 @@ reconcileExternalEffect
 | 多仓部分合并 | 保留已合并事实，返回 `MultiRepositoryDeliveryBlocked` 并停止不安全动作 |
 
 审计记录 Connection/Project/Secret Reference 变化、Repository/Branch Binding、base/head SHA、外部 Effect、Commit/Agent/发起用户、检查、Artifact、Integration Merge、Acceptance、Review Assignment/Decision、Formal Merge、Webhook/Reconciliation 与异常处置；不得记录 Secret 明文、完整 PAT 或敏感源码。平台运营视图仅展示 GitLab Connector、授权 Project、Drift、Inbox/Reconciliation、Effect、Assignment 与 Merge 阻塞；应用集成入口见[平台应用与集成](./06-platform-application-integration.md)。
+
+## 不变量与关系
+
+- GitLab 外部写操作使用 Idempotency、Effect Ledger、Webhook Inbox 与 Reconciliation 收敛；Workflow 不依赖 GitLab 私有状态字符串或凭据格式。
+- GitLab 鉴权与平台 Capability、Scope、Membership、Assignment 均须有效，互不替代。详细 Branch Saga、Review Assignment、失败与审计规则见详细说明。

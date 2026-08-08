@@ -1,7 +1,4 @@
-# 数据、消息与存储详细说明
-
-> 文档层级：L2 规范事实源
-> 对应主文：[数据、消息与存储](./data-messaging-storage.md)
+# 数据、消息与存储
 
 ## 1. 责任边界与数据原则
 
@@ -12,6 +9,34 @@
 本文描述完整 Target Architecture，不声明任何环境已经部署 CloudNativePG、Valkey、NATS、Temporal、Rook-Ceph RGW 或 Backup/Retention 组件。实施阶段、Capability 激活状态、Release 验收与 Capacity Profile 选择只见[实施路线图](./12-implementation-roadmap.md)；环境实际拓扑由 GitOps Desired State、PCS 与运行证据证明。
 
 PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger 和可重建投影的权威关系事实源。Valkey、NATS、Temporal、对象存储、普通日志与指标均不能替代它。每个 Platform Environment 都有独立的组件、数据、Backup、Bucket 与恢复链；DEV 与 PROD 只共享同源 Contract，不共享运行时状态。
+
+### 目标与边界
+
+本视图定义 PostgreSQL、Valkey、NATS、Temporal 与 Ceph/Object Storage 的事实源、数据流、一致性和恢复关系。它不定义领域对象的状态机、应用调用边界或 Configuration 生命周期；它们分别由 01–05 领域文档、[平台应用与集成](./06-platform-application-integration.md)与 [Configuration Governance](./10-configuration-governance.md)拥有。
+
+### 目标事实源地图
+
+| 组件 | 拥有的事实 | 不可替代为 |
+| --- | --- | --- |
+| PostgreSQL | 领域关系事实、授权投影、配置版本、Outbox/Inbox、Audit 索引及效果账本 | Cache、消息或诊断数据 |
+| Valkey | 可重建 Session 热索引、撤销索引、缓存、限流、幂等键与短期锁 | 权威身份、安全或业务事实 |
+| NATS JetStream | 可靠命令/事件传输、Consumer 位置与短期重放 | 永久业务主存储 |
+| Temporal | Durable Workflow 进度、Timer、Activity 与编排历史 | Requirement、Attempt 或授权主数据 |
+| Ceph RGW/Object Storage | 版本化 Artifact、WORM Audit、应用一致性 Backup 与诊断对象 | Stateful 实时数据库 PVC |
+
+### 数据流与一致性
+
+```text
+领域命令
+→ PostgreSQL 单模块事务（领域事实 + Audit + Outbox）
+→ NATS JetStream Persist ACK
+→ Inbox / Effect Ledger 幂等消费
+→ Temporal 或外部 Adapter 推进长任务
+
+Artifact / Backup / Audit Object
+→ Object Storage 版本化对象
+→ 元数据、引用、配额与状态仍由 PostgreSQL 维护
+```
 
 ### 1.1 Capability 激活与 Profile Contract
 
@@ -198,3 +223,5 @@ Backup 是组件自己的应用一致性恢复链：CloudNativePG 使用 Base Ba
 4. RGW 只提供对象服务，`stateful-rwo-lowlatency` 承载实时 Stateful RWO 数据；二者不混用。
 5. Retention 与恢复始终以精确版本、经验证 Manifest 和有效恢复链判定，归档或逻辑删除从不等同于物理释放。
 6. Valkey、NATS、Temporal 与 Object Storage 只在对应 Capability Package 首次消费时激活；未启用组件不部署，已启用组件不得省略 TLS、身份、硬资源上限、Backup/Restore 或 Fail Closed。
+7. 跨组件不存在分布式事务；重复交付、外部不确定结果与重试必须由幂等键、Inbox、Effect Ledger 和 Reconciler 收敛。
+8. 任一组件恢复均保留其权威恢复链；组件故障不得静默降级为丢失安全、审计或领域事实。

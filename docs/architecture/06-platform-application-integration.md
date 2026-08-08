@@ -1,7 +1,4 @@
-# 平台应用与集成详细说明
-
-> 文档层级：L2 规范事实源
-> 对应主文：[平台应用与集成](./platform-application-integration.md)
+# 平台应用与集成
 
 ## 1. 责任边界
 
@@ -10,6 +7,38 @@
 本文消费领域 owner 的稳定 ID、受保护命令与有效配置快照，不重新定义 Identity、授权、Requirement、Agent、Sandbox 或 GitLab 的状态机。PostgreSQL、Valkey、NATS、Temporal 与 Object Storage 的运行和恢复事实由 [数据、消息与存储](./07-data-messaging-storage.md)拥有。安全密钥、加密、Secret 与 Audit 保留规则只见 [安全、审计与治理](./08-security-audit-governance.md)；Cluster、Node、组件版本和总容量只见 [基础设施与运维](./09-infrastructure-operations.md)。
 
 本文不声明任何环境已部署哪些组件。实施阶段、Capability 激活状态、Release 验收与 Profile 选择只见[实施路线图](./12-implementation-roadmap.md)；实际运行组件由环境 GitOps Desired State、PCS 与运行证据证明。DEV 与 PROD 只从相同代码、Contract、Flux GitOps 模板与 PCS 独立实例化，始终使用独立入口、Session、组件和状态。
+
+### 目标与边界
+
+本视图定义平台应用的完整 Target Architecture、组件边界、集成 Contract 与运行时关系，不声明任何 Platform Environment 的实际部署状态。环境中的 Image、Bundle、拓扑与健康状态由 GitOps Desired State、Platform Compatibility Set（PCS）和运行证据证明；实施阶段、Capability 激活状态与 Release 验收只见[实施路线图](./12-implementation-roadmap.md)。
+
+本文不拥有 Identity、Requirement、Agent、Sandbox 或 GitLab 的领域状态；它们分别由 [01](./01-identity-organization-authorization.md)、[02](./02-requirement-workflow.md)、[03](./03-agent-skill-model.md)、[04](./04-sandbox-runtime.md) 与 [05](./05-source-control-delivery.md) 定义。Configuration 的通用治理协议与生命周期状态语义由 [10](./10-configuration-governance.md) 定义，各 Namespace 的 Policy 数据仍归对应领域模块；数据事实与持久化基线由 [07](./07-data-messaging-storage.md) 定义。
+
+### 组件地图
+
+以下是完整目标组件地图；图中节点不表示必须同时部署：
+
+```text
+Browser
+  → platform-gateway
+    ├── Umi Web（用户端 + 平台管理后台）
+    └── Python Control Plane（模块化单体）
+          ├── 领域模块（含独立 Configuration 模块）
+          ├── 公开 Application Facade / Port
+          ├── Transactional Outbox / Inbox
+          └── Operations Read Model / Console Access（按需增强）
+                ↕ 按 Capability 激活的 Port / Adapter
+       GitLab · Model · Sandbox · Object · Security Feed · Operations Feed
+
+按 Capability 激活的独立 Deployable：Platform Orchestrator Worker、Model Gateway、
+Sandbox Controller、GitLab Connector、File Security Worker、Operations Adapter
+```
+
+- `platform-gateway` 是当前 Platform Environment 的唯一北向应用入口，负责 TLS、路由、限流和受控 Console 入口，不承载领域决策。
+- 同一 Umi Web 构建产物承载用户端和 `/admin` 管理路由；对话交互复用 `@ant-design/x` 组件而不引入独立 Chat 应用，后端返回受限菜单数据，静态 Route Registry 决定可加载页面。
+- Python Control Plane 是业务事实的应用协调者；独立 Deployable 通过稳定 Contract 工作，不能直读其私有表。
+- 未启用的 Capability 不部署其专属 Deployable；保留 Port/Adapter Contract 不等于预先安装 Worker、Controller、Scanner、Feed 或 Console。
+- DEV 与 PROD 使用同源代码、Contract、Flux GitOps 模板和 PCS，但各自实例化 Web、gateway、Control Plane、Session 与全部状态，不共享运行时组件或状态。
 
 ## 2. Umi Web 与 Session Bootstrap
 
@@ -39,6 +68,13 @@ Secure + HttpOnly + SameSite Cookie
 ```
 
 后端不能下发任意模块路径、脚本或 URL。Umi Access、菜单和按钮只控制用户体验；API 仍调用 [01 的当前授权判定](./01-identity-organization-authorization.md)。浏览器不持有或直连数据库、消息系统、Kubernetes、Secret Manager、RGW 管理接口、Model Gateway 或基础设施凭据；对象读写仅可在授权后使用绑定精确 Object Version 的短期 Presigned Request。
+
+### 会话与请求主流程
+
+1. Browser 以 Secure、HttpOnly、SameSite Cookie 访问当前环境 `platform-gateway`。
+2. Web 取得当前 Principal、Workspace 摘要、有效 Capability 与导航数据，并由静态 Route Registry 渲染页面。
+3. 每个受保护 API 仍由 Control Plane 使用当前身份、权限、范围、成员资格、责任与资源条件判定；前端隐藏菜单只改善体验。
+4. 长任务同步返回受理结果，后续状态以 Query、SSE 或事件更新；外部副作用由 Outbox、Inbox 与 Effect Ledger 收敛。
 
 ## 3. Python Control Plane 与模块边界
 
@@ -97,6 +133,8 @@ Browser 的业务请求只经当前环境 `platform-gateway`；内部同步调�
 
 Configuration 的 Catalog、Draft、Publish、Rollback、Effective Snapshot、Schema 演进与 DEV→PROD Promotion 生命周期只由 [Configuration Governance](./10-configuration-governance.md)拥有。本文只规定 Control Plane 如何通过稳定 Port 消费 Effective Configuration，并保持模块、Outbox、Adapter 与管理入口边界；各领域配置值的业务语义仍由对应领域 owner 定义。
 
+每个领域模块拥有自己的 Typed Configuration Schema、默认值、约束、解析器与业务解释；Configuration 模块位于同一 Python 模块化单体内，通过稳定 Port 提供 Effective Configuration。Catalog、Draft、Publish、Rollback、Snapshot、Schema 演进与 Promotion 生命周期由 [Configuration Governance](./10-configuration-governance.md)统一约束；发布资格与 Super Admin 边界由 [01](./01-identity-organization-authorization.md)拥有。
+
 ## 6. 增强 External Provider Contract
 
 External Provider Contract 只治理平台外的 Cloud/Operations Plane Binding：`CLOUD_FOUNDATION`、`BUSINESS_EDGE`、`CONTROL_PLANE_ENDPOINT`、`EGRESS`、`CONTROL_PLANE_RECOVERY`、`EXTERNAL_WATCHDOG`、`PROVIDER_AUDIT` 与 `EXTERNAL_PROVIDER_CONSOLE`。集群内 Grafana、Hubble、Temporal、OpenBao 的 Console 使用本地 Console Access Contract；GitLab、Model Provider 与安全公告 Feed 由各自 Connector/Source Adapter 管理。Target Architecture 中 Jenkins 是用户手工使用的外部系统，不存在 Jenkins Adapter、Webhook 或状态投影。
@@ -154,3 +192,7 @@ Target Architecture 的安全公告由 Frontend 轮询 Backend API，不使用 W
 5. 外部状态的唯一导入形式是已验证、可去重、受时效约束的只读 Envelope，平台不接受 IaC、Shell、Provider Mutation 或任意 Callback。
 6. Configuration 生命周期只由 10 Configuration Governance 拥有；06 只消费 Effective Configuration，不建立平行 Draft、Publish、Rollback 或 Promotion 状态。
 7. Capability 未激活时不部署其专属 Deployable；已激活能力必须满足完整 Port/Adapter、安全、恢复和可观测 Contract，不能使用半成品降级启用。
+8. Browser 不直连数据库、NATS、Kubernetes、OpenBao、Model Gateway 或基础设施管理接口。
+9. 领域事务、Audit 与待发布消息原子写入；消息传输至少一次，业务效果由 Inbox/Effect Ledger 幂等化。
+10. 外部状态 Feed 只影响可见性；其 `STALE/UNKNOWN` 不等于真实依赖故障，也不阻塞没有同步依赖该 Feed 的既有业务运行。
+11. Configuration 是 Control Plane 内独立领域模块；Platform Application and Integration 只消费其公开 Contract，Configuration 不形成独立 Deployable 或微服务。
