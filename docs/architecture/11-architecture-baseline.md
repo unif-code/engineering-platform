@@ -1,110 +1,28 @@
 # 架构基线
 
-> 架构基线：`2026-08-06.175`
+> 具体 Release 的 Scope、实施阶段、Capability 激活状态、环境 Promotion 与 Profile 选择见[实施路线图](./12-implementation-roadmap.md)。
 
-## 1. 责任边界
+## 目标与边界
 
-本文只定义跨模块不变量、依赖边界、事实 owner 索引、质量属性场景以及 Release Gate、Capability Activation Gate、Evolution Trigger 的分类和引用关系。每个领域对象的状态、协议字段、资源参数、恢复步骤和安全机制均由其模块 detail 唯一拥有；本文不复制这些规则。
+本主题定义跨模块不变量、全局依赖与写入边界、Quality Scenario，以及 Release Gate、Capability Activation Gate 与 Evolution Trigger 三类 Gate 的分类语义和组合规则。00～11 共同构成已批准的 Target Architecture 基线，用于指导设计、实施、评审与运行准备。
 
-00～11 定义完整 Target Architecture；[12](./12-implementation-roadmap.md)唯一选择 Release Scope、Profile 与环境 Promotion。被路线图选入当前 Release 的能力必须满足其目标 Contract，未选能力保持关闭；目标能力不得以不满足安全、授权、隔离、证据或恢复 Contract 的半成品方式启用。实际 Deployed State 仍必须由环境 GitOps Desired State、PCS 和 Operations Read Model 证据证明。
+基线只描述目标模块与跨模块 Contract，不声明仓库实现进度、Release Scope、Platform Environment 部署状态或容量数值。DEV 与 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibility Set 在独立环境中实例化；实际 Deployed State 不属于任何文档，只能由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
 
-### 基线定位与适用范围
+每个领域对象的状态、协议字段、资源参数、恢复步骤与安全机制由其所属模块定义，本文不复制这些规则，也不再另建 owner 索引与模块地图：各类事实的归属、跨 owner 拆分与文档导航见 [README 所有权矩阵](./README.md#事实所有权矩阵)与[文档导航](./README.md#文档导航)，本文正文与表格中的模块编号按该矩阵解析，精确参数见[参数附录](./appendix-parameters.md)。架构评审以本文与 00 为入口，具体决策回到对应 owner 文档，运行判断回到 Deployed State 证据。
 
-本文是内部研发平台的批准 Target Architecture 基线，用于指导设计、实施、评审与运行准备。它定义完整目标模块及跨模块 Contract，不声明仓库实现进度、Release Scope、Platform Environment 部署状态或容量选择。
+## 核心模型
 
-DEV 与 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibility Set 在独立环境中实例化。Release Scope、实施状态、环境 Promotion 与 Profile 选择由 [12 实施路线图](./12-implementation-roadmap.md)唯一拥有；实际 Deployed State 由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
-
-### 系统级原则
-
-1. 平台以领域事实、明确责任和可验证证据为中心；浏览器展示、菜单、Read Model、Telemetry 与外部 Feed 均不是权威事实源。
-2. 授权、Workflow、执行、交付、数据、安全和运维各自拥有规范性 Contract；跨模块协作使用稳定引用，不复制彼此的状态或参数。
-3. 所有环境、信任材料、数据、凭据和故障域保持隔离；受保护操作在信任、授权、配额或恢复条件不可证明时 Fail Closed。
-4. 模块内事务保持单一事实边界；跨模块与外部副作用通过 Outbox、Inbox、Effect Ledger、幂等键和审计证据收敛。
-5. 配置是有类型、可版本化且可回溯的受控输入；运行和决策绑定有效配置快照，而不是依赖可变页面值。
-6. 架构可替换基础设施、可提取模块与可独立迁移 Deployable，但不以过早拆分牺牲当前系统的一致性和可运营性。
-
-## 2. 跨模块不变量矩阵
-
-| 不变量 | 规范 owner | 消费者 | 证据 |
-| --- | --- | --- | --- |
-| 服务端以实时授权投影和 Assignment 判定受保护动作；Assignment 只委派既有权限，不能扩大 Capability 或 Scope。 | [01](./01-identity-organization-authorization.md) | 02、05、06、10、管理入口 | 授权判定、Assignment 记录与 Audit |
-| Requirement、WorkItem、Route、Gate、Decision、Acceptance 与 Artifact 形成业务责任链；跨模块只以稳定标识和版本引用协作。 | [02](./02-requirement-workflow.md) | 01、03、05、06、07 | 领域版本、Decision、Acceptance 与 Artifact 证据 |
-| Run、Attempt 与不可变 Execution Binding 是受控执行事实；执行资源不取得 Requirement 的业务写权限。 | [03](./03-agent-skill-model.md) | 02、04、06、07 | Binding、运行事件与 Effect Ledger |
-| Git/MR/Artifact `IntegrationBaselineEvidence` 的结构、ID/hash、外部事实与变化事件由 05 拥有；Requirement 选定/冻结 Evidence 引用、Acceptance 绑定与失效及业务状态由 02 拥有。 | [05](./05-source-control-delivery.md) 与 [02](./02-requirement-workflow.md) | 03、06、07 | Evidence、Selection、外部事实、Acceptance 与交付 Audit |
-| Browser、菜单、Read Model、Telemetry 与外部 Feed 只用于展示、诊断或可见性；它们不能授权、反写领域事实或阻断独立的已运行业务。 | [06](./06-platform-application-integration.md) | 00～05、07～10 | 应用 API、Read Model freshness、Collector/Feed 状态与 Audit |
-| 模块内事务在单一事实边界完成；跨模块与外部副作用经 Outbox、Inbox、Effect Ledger、幂等键和可重放证据收敛。 | [06](./06-platform-application-integration.md) | 02～05、07、09～10 | Transaction、Outbox/Inbox、Effect Ledger、Reconciliation |
-| DEV 与 PROD 的运行实例、信任边界、数据、凭据、密钥、备份和故障域完全隔离。 | [09](./09-infrastructure-operations.md) | 00～08、10 | CloudEnvironmentBinding、PCS、部署与恢复证据 |
-| `GITOPS_CONFIG` 只由环境受保护 Git 路径形成 Desired State；本环境 Flux 只负责 Reconcile，Observed Status 与平台投影不能成为第二事实源或跨环境写路径。 | [09](./09-infrastructure-operations.md) 与 [10](./10-configuration-governance.md) | 01～08、11 | Git MR/Commit、Review、Flux Inventory/Condition、Drift 与 Audit |
-| 配置有类型、版本和生效快照；运行、审核和集成使用被绑定的 Effective Snapshot，不读取未受控的可变值。 | [10](./10-configuration-governance.md) | 01～09 | 配置版本、Snapshot、发布与 Audit |
-| Execution Binding 不可变；Sandbox 以 fenced lease、容量准入和 Kata 隔离运行，恢复不能绕过绑定和资源边界。 | [03](./03-agent-skill-model.md) 与 [04](./04-sandbox-runtime.md) | 02、06、09 | Binding、lease、Capacity Profile、Runtime 事件 |
-| Artifact 以 exact Object Version 作为证据单位，同时受 Product Quota Ledger 与 Environment Bucket-Class Capacity Ledger 约束；两类不足独立呈现。 | [07](./07-data-messaging-storage.md) | 02、05、06、08、09 | Object Version、双 Ledger reservation、扫描与容量证据 |
-| 安全、Audit 与恢复依赖可验证信任、密钥、授权和证据；任一受保护条件不可证明时 Fail Closed。 | [08](./08-security-audit-governance.md) | 01～07、09～10 | Trust、Audit、恢复验证与告警证据 |
-
-## 3. 依赖方向与写入边界
-
-通用依赖方向固定为：
+### 全局依赖方向
 
 ```text
 UI → public API → domain/application → Port → Adapter → external
 ```
 
-- 00 提供 System Context；01～05 提供领域 Contract；06 提供应用与集成 Contract；07 提供数据事实与持久化 Contract；08 提供 Trust/Security Contract；09 提供环境与运维 Contract；10 提供 Configuration Governance Contract；11 仅提供跨模块索引。
-- UI 只能调用 public API，不直连数据服务、消息系统、Secret、Kubernetes、Cloud 或外部 Provider。
-- domain/application 依赖 Port 抽象，不依赖 Adapter 实现；Adapter 不得塑形或替代领域语义。
-- projection、Read Model、Telemetry、Feed 和管理看板不得反写权威领域事实。
-- 每个业务写入在 owner 的事务边界内完成；跨 owner 的传播、重试、未知外部结果与恢复遵循 06 的一致性 Contract。
+每一跳只向右依赖：左侧不感知右侧实现，右侧不塑形左侧语义；跳跃直连、反向依赖与反写权威事实都不成立。
 
-## 4. Fact Owner Index
+### 三类 Gate
 
-| 编号 | 唯一职责 | Canonical detail |
-| --- | --- | --- |
-| 00 | System Context、全局责任链与总体边界。 | [00 detail](./00-platform-overview.md) |
-| 01 | 本地身份、组织、Workspace、授权、配置授权与恢复资格。 | [01 detail](./01-identity-organization-authorization.md) |
-| 02 | Requirement 领域对象、Workflow、Gate、Decision、Acceptance、Artifact 与 `RequirementIntegrationBaselineSelection` 业务语义。 | [02 detail](./02-requirement-workflow.md) |
-| 03 | Agent 定义、Skill/Model 路由、模型评测工具链、Run/Attempt 与 Execution Binding。 | [03 detail](./03-agent-skill-model.md) |
-| 04 | Sandbox 物化、隔离、lease、容量准入、网络、Preview 与清理。 | [04 detail](./04-sandbox-runtime.md) |
-| 05 | GitLab Binding、分支交付、`IntegrationBaselineEvidence`、Formal MR 与外部事实收敛。 | [05 detail](./05-source-control-delivery.md) |
-| 06 | Web/Control Plane、Port/Adapter、一致性、Operations Read Model、Console 与公告。 | [06 detail](./06-platform-application-integration.md) |
-| 07 | PostgreSQL、Valkey、NATS、Temporal、Object Storage、Artifact 对象/配额账本、Retention 与组件数据恢复。 | [07 detail](./07-data-messaging-storage.md) |
-| 08 | Secret、PKI、加密、供应链、Audit、Break-glass 与信任恢复。 | [08 detail](./08-security-audit-governance.md) |
-| 09 | Environment Binding、PCS、Flux GitOps、Kubernetes、Node、网络、可观测性、Cluster DR、容量与 TCO。 | [09 detail](./09-infrastructure-operations.md) |
-| 10 | Configuration Catalog、生命周期协议、Effective Snapshot、兼容演进与 DEV→PROD Promotion。 | [10 detail](./10-configuration-governance.md) |
-| 11 | 跨模块不变量、引用关系、质量场景与三类 Gate。 | 本文 |
-
-### 模块地图
-
-| 编号 | 主题 | L1 | L2 规范事实 |
-| --- | --- | --- | --- |
-| 00 | 平台总览 | [平台总览](./00-platform-overview.md) | [详细说明](./00-platform-overview.md) |
-| 01 | 身份、组织与授权 | [架构地图](./01-identity-organization-authorization.md) | [详细说明](./01-identity-organization-authorization.md) |
-| 02 | Requirement Workflow | [架构地图](./02-requirement-workflow.md) | [详细说明](./02-requirement-workflow.md) |
-| 03 | Agent、Skill 与 Model | [架构地图](./03-agent-skill-model.md) | [详细说明](./03-agent-skill-model.md) |
-| 04 | Sandbox Runtime | [架构地图](./04-sandbox-runtime.md) | [详细说明](./04-sandbox-runtime.md) |
-| 05 | Source Control 与交付 | [架构地图](./05-source-control-delivery.md) | [详细说明](./05-source-control-delivery.md) |
-| 06 | 平台应用与集成 | [架构地图](./06-platform-application-integration.md) | [详细说明](./06-platform-application-integration.md) |
-| 07 | 数据、消息与存储 | [架构地图](./07-data-messaging-storage.md) | [详细说明](./07-data-messaging-storage.md) |
-| 08 | 安全、审计与治理 | [架构地图](./08-security-audit-governance.md) | [详细说明](./08-security-audit-governance.md) |
-| 09 | 基础设施与运维 | [架构地图](./09-infrastructure-operations.md) | [详细说明](./09-infrastructure-operations.md) |
-| 10 | Configuration Governance | [架构地图](./10-configuration-governance.md) | [详细说明](./10-configuration-governance.md) |
-| 11 | 架构基线 | 本文 | 详细说明 |
-
-## 5. Quality Scenarios
-
-| 场景触发 | 期望结果 | 证据 owner |
-| --- | --- | --- |
-| 用户授权或 Assignment 发生撤销，同时存在 Session 或待执行操作。 | 新受保护请求立即按当前服务端授权拒绝；已启动 Attempt 的控制权按领域 Contract 收敛。 | [01](./01-identity-organization-authorization.md)、[03](./03-agent-skill-model.md) |
-| 并发写入或外部调用结果未知。 | 权威事务保持一致；外部副作用通过幂等和 Reconciliation 收敛，不以投影猜测成功。 | [06](./06-platform-application-integration.md) |
-| Attempt 或承载它的 Node 发生恢复。 | 执行恢复保持不可变 Binding、fenced lease 和容量边界，并从可验证检查点继续或安全结束；物理 Node 或 Cluster 恢复由环境 Contract 验证后再承载工作负载。 | [03](./03-agent-skill-model.md)、[04](./04-sandbox-runtime.md)、[09](./09-infrastructure-operations.md) |
-| Collector 或 External Status Feed 不可用。 | 诊断和可见性降级；独立的 Requirement、事务、Agent 与控制循环继续按其 owner Contract 工作。 | [06](./06-platform-application-integration.md) |
-| Artifact 并发上传或安全扫描结果未知。 | Artifact 生命周期、exact Object Version、双 Ledger reservation 与安全判定保持各自 owner 一致；不满足安全条件的对象不能成为可用证据。 | [02](./02-requirement-workflow.md)、[07](./07-data-messaging-storage.md)、[08](./08-security-audit-governance.md) |
-| 组件数据或 Cluster 需要恢复。 | 组件恢复、信任恢复和环境恢复按各自 owner 的验证链执行；数据恢复完成不等同于端到端 Workflow 可恢复。 | [07](./07-data-messaging-storage.md)、[08](./08-security-audit-governance.md)、[09](./09-infrastructure-operations.md) |
-| Sandbox 的 N+1 余量不满足。 | 新执行不能绕过 Capacity Profile 或隔离要求进入运行；保留明确的准入和诊断证据。 | [04](./04-sandbox-runtime.md)、[09](./09-infrastructure-operations.md) |
-| Evaluation 或 Vulnerability Scan Job 失败、超预算、证据不完整或过期。 | 不形成评测通过或“无漏洞”结论；对应 Gate 不推进，安全公告保留上一期并显示 Gap/Alert。 | [03](./03-agent-skill-model.md)、[06](./06-platform-application-integration.md)、[09](./09-infrastructure-operations.md) |
-| 使用 Break-glass 或恢复权限。 | 只允许具备资格的受控操作，并形成独立、追加式、可验证 Audit；信任或证据缺失时拒绝开放受保护服务。 | [01](./01-identity-organization-authorization.md)、[08](./08-security-audit-governance.md) |
-
-## 6. Gate 分类
-
-三类 Gate 的输入、决策和效果不同，不能混用：
+三类 Gate 的输入、决策和效果不同，不能混用；各 Release 的 Scope、前置依赖、验收证据与 Promotion 结果由实施路线图定义，本文只固定分类语义与组合规则：
 
 | 分类 | 决策对象 | 通过后允许 | 未通过时 |
 | --- | --- | --- | --- |
@@ -112,67 +30,97 @@ UI → public API → domain/application → Port → Adapter → external
 | Capability Activation Gate | 已实施 Capability 在指定 Platform Environment、Scope、配置和依赖下的启用请求。 | 只在批准边界内打开该 Capability。 | Capability 保持关闭；不得以降级安全 Contract 的方式部分启用。 |
 | Evolution Trigger | 业务需求、容量、可靠性、兼容性或运维测量形成的演进信号。 | 创建待评估的 Capability、Capacity 或 Architecture Candidate。 | 保持既有目标边界；Trigger 本身不批准开发、采购、迁移、启用或部署。 |
 
-### 6.1 Release Gate
+### 跨模块验证维度
 
-Release Gate 由 [12 路线图详细说明](./12-implementation-roadmap.md)为各 Release 定义 Scope、前置依赖、验收证据与 Promotion 结果。11 只固定以下跨模块规则：
-
-1. Gate 只验收被路线图选入该 Release 的 Capability，不把完整 Target Architecture 的所有未来能力强行纳入当前验收。
-2. 每项入选 Capability 必须满足其领域 owner 的完整目标 Contract；Release Scope 不能重写或放宽授权、安全、隔离、证据、容量准入和恢复底线。
-3. 未选 Capability、未完成 Capability Activation Gate 的能力以及仅有界面或 Adapter 占位的能力必须保持关闭。
-4. Release 状态只表示路线图决策；实际 Image、配置、拓扑和健康状态仍由 Deployed State 证据证明。
-5. Gate 失败时安全停止推进、保留证据并按 owner Contract 恢复，不要求所有单点故障下无感继续。
-
-### 6.2 Capability Activation Gate
-
-Capability Activation Gate 在 Capability 已实施后、首次或变更启用边界前执行，并至少证明：
-
-- Capability、Scope、Assignment、Session 与配置授权形成服务端当前有效判定；
-- 依赖的 Trust、Secret、供应链、数据、网络、容量和恢复条件可验证，未知时 Fail Closed；
-- Execution Binding、Port/Adapter、Effective Snapshot、外部 Effect 与 Audit 证据能够绑定和回放；
-- 启用范围、关闭路径、回退条件、Observability 与责任人明确；
-- 环境本地证据能够证明启用结果，不以 UI、Read Model freshness 或路线图状态替代运行事实。
-
-Activation Gate 通过后必须形成环境本地、不可变的 `CapabilityActivationRecord`，至少绑定 Capability 标识、目标 Environment、适用 Scope、Gate 证据引用、批准 Principal、批准时间与生效配置版本；Record 及其失效与替换历史由 Configuration 模块作为跨模块治理数据按[Configuration Governance 详细说明](./10-configuration-governance.md)的生命周期持久化，是该 Capability 在指定 Environment 与 Scope 内已通过激活的唯一运行时权威事实。启用该 Capability 的 Feature Toggle 发布、其专属 Deployable 的 Desired State 变更以及消费该 Capability 的 Execution Binding、Run 与 Sandbox 物化必须引用当前有效 Record；Record 缺失、失效或不可解析时 Fail Closed，Capability 保持或恢复关闭。Record 不替代 Deployed State 证据，Release Gate 与路线图状态也不替代 Record。
-
-一次 Release Gate 通过不自动打开全部入选 Capability；需要运行时开关或受控 Scope 的能力仍须分别完成 Capability Activation Gate。一次 Capability Activation Gate 通过也不构成后续 Release 或跨环境 Promotion 的批准。
-
-### 6.3 Evolution Trigger
-
-Evolution Trigger 只负责把已批准阈值或明确业务需求转换为候选评估。Trigger 成立后，owner 必须为候选明确价值、影响边界、兼容与迁移方案、回退、容量、安全、恢复、Observability 和后续适用 Gate；在这些决策完成前，不改变 Release Scope、Capability 开关或 Deployed State。
-
-以下 Future Evolution 路径彼此独立，每一项只替换其 owner 的 Port/Adapter、数据或部署边界，不能借一次演进重写无关领域模块：
-
-| Target Architecture 起始边界 | 独立演进方向 | 主要 owner |
-| --- | --- | --- |
-| Python Control Plane 模块化单体 | 按模块提取独立微服务 | [06](./06-platform-application-integration.md) |
-| PostgreSQL | 云托管 PostgreSQL 或模块独立数据库 | [07](./07-data-messaging-storage.md) |
-| Valkey HA | Valkey Cluster 或云 Redis-compatible | [07](./07-data-messaging-storage.md) |
-| NATS JetStream | 扩展集群或其他 Event Bus Adapter | [07](./07-data-messaging-storage.md) |
-| OpenBao | 托管 Secret Manager | [08](./08-security-audit-governance.md) |
-| S3-compatible Object Storage | 其他自建或云托管实现 | [07](./07-data-messaging-storage.md) |
-| 精简 Observability | 分布式 Observability | [09](./09-infrastructure-operations.md) |
-| Sandbox Node Pool | 独立 Sandbox Cluster | [04](./04-sandbox-runtime.md)、[09](./09-infrastructure-operations.md) |
-| Cluster DR | Site DR | [09](./09-infrastructure-operations.md) |
-
-## 7. 跨模块验证维度
-
-Release Gate 和 Capability Activation Gate 按其 Scope 组合下列验证维度；Evolution Trigger 只决定是否创建候选，不跳过候选后续适用的 Gate：
+Release Gate 与 Capability Activation Gate 按各自 Scope 组合下列维度；Evolution Trigger 只决定是否创建候选，不跳过候选后续适用的 Gate。
 
 | 验证维度 | 必须满足的跨模块约束 | 规范 owner |
 | --- | --- | --- |
-| Environment | `CloudEnvironmentBinding`、PCS、Capacity Profile 与 Provisioning Gate 形成可验证环境实例。 | [09](./09-infrastructure-operations.md) |
-| Authorization | Capability、Scope、Assignment、Session 与配置授权在服务端形成当前有效判定。 | [01](./01-identity-organization-authorization.md) |
-| Security | Trust、Secret、加密、Audit、供应链和恢复信任链可验证且 Fail Closed。 | [08](./08-security-audit-governance.md) |
-| Execution | Requirement 的责任链、不可变 Execution Binding、Sandbox 准入与受控恢复保持一致。 | [02](./02-requirement-workflow.md)、[03](./03-agent-skill-model.md)、[04](./04-sandbox-runtime.md) |
-| Integration and configuration | Port/Adapter、typed/versioned configuration、Outbox/Inbox 与外部证据可独立验证和回放。 | [05](./05-source-control-delivery.md)、[06](./06-platform-application-integration.md)、[10](./10-configuration-governance.md) |
+| Environment | `CloudEnvironmentBinding`、PCS、Capacity Profile 与 Provisioning Gate 形成可验证环境实例。 | 09 |
+| Authorization | Capability、Scope、Assignment、Session 与配置授权在服务端形成当前有效判定。 | 01 |
+| Security | Trust、Secret、加密、Audit、供应链和恢复信任链可验证且 Fail Closed。 | 08 |
+| Execution | Requirement 的责任链、不可变 Execution Binding、Sandbox 准入与受控恢复保持一致。 | 02、03、04 |
+| Integration and configuration | Port/Adapter、typed/versioned configuration、Outbox/Inbox 与外部证据可独立验证和回放。 | 05、06、10 |
 
-## 阅读优先级
+### Quality Scenario
 
-- 负责人和架构评审先阅读 00、11 的 L1，再按决策主题进入对应 L2。
-- 产品、Leader 和研发先阅读 00、12，再进入当前 Capability 对应的领域 detail。
-- 应用和 Agent 开发按 12 的 Release Scope 阅读 02～07、10 的 L2，并以 08 的安全 Contract 和 09 的环境 Contract 约束实现。
-- 平台、安全与运维按 12 的 Profile 选择阅读 06～10 的 L2；架构评审回到 11，运行判断回到 Deployed State 证据。
+每个场景描述跨模块的期望收敛结果，是架构评审与 Gate 验收的检验单：
 
-## 变更规则
+| 场景触发 | 期望结果 | 证据 owner |
+| --- | --- | --- |
+| 用户授权或 Assignment 发生撤销，同时存在 Session 或待执行操作。 | 新受保护请求立即按当前服务端授权拒绝；已启动 Attempt 的控制权按领域 Contract 收敛。 | 01、03 |
+| 并发写入或外部调用结果未知。 | 权威事务保持一致；外部副作用通过幂等和 Reconciliation 收敛，不以投影猜测成功。 | 06 |
+| Attempt 或承载它的 Node 发生恢复。 | 执行恢复保持不可变 Binding、fenced lease 和容量边界，并从可验证检查点继续或安全结束；物理 Node 或 Cluster 恢复由环境 Contract 验证后再承载工作负载。 | 03、04、09 |
+| Collector 或 External Status Feed 不可用。 | 诊断和可见性降级；独立的 Requirement、事务、Agent 与控制循环继续按其 owner Contract 工作。 | 06 |
+| Artifact 并发上传或安全扫描结果未知。 | Artifact 生命周期、exact Object Version、双 Ledger reservation 与安全判定保持各自 owner 一致；不满足安全条件的对象不能成为可用证据。 | 02、07、08 |
+| 组件数据或 Cluster 需要恢复。 | 组件恢复、信任恢复和环境恢复按各自 owner 的验证链执行；数据恢复完成不等同于端到端 Workflow 可恢复。 | 07、08、09 |
+| Sandbox 的 N+1 余量不满足。 | 新执行不能绕过 Capacity Profile 或隔离要求进入运行；保留明确的准入和诊断证据。 | 04、09 |
+| Evaluation 或 Vulnerability Scan Job 失败、超预算、证据不完整或过期。 | 不形成评测通过或“无漏洞”结论；对应 Gate 不推进，安全公告保留上一期并显示 Gap/Alert。 | 03、06、09 |
+| 使用 Break-glass 或恢复权限。 | 只允许具备资格的受控操作，并形成独立、追加式、可验证 Audit；信任或证据缺失时拒绝开放受保护服务。 | 01、08 |
 
-架构变更先识别事实 owner，再在该 owner 的 detail 中更新规范性 Contract，并同步更新相关 L1 地图、跨模块引用和验证证据。路线图只选择要交付的 Capability，不能修改目标 Contract；任何变更不得通过菜单、Read Model、部署参数或文档副本绕开 owner。若影响边界、信任、数据兼容性、运行恢复或交付责任，必须同时更新受影响模块的链接、质量场景和适用 Gate。
+### Future Evolution 边界
+
+已识别的独立演进路径彼此不耦合，每项只替换起始边界所属 owner 的 Port/Adapter、数据或部署实现：
+
+| Target Architecture 起始边界 | 独立演进方向 | 主要 owner |
+| --- | --- | --- |
+| Python Control Plane 模块化单体 | 按模块提取独立微服务 | 06 |
+| PostgreSQL | 云托管 PostgreSQL 或模块独立数据库 | 07 |
+| Valkey HA | Valkey Cluster 或云 Redis-compatible | 07 |
+| NATS JetStream | 扩展集群或其他 Event Bus Adapter | 07 |
+| OpenBao | 托管 Secret Manager | 08 |
+| S3-compatible Object Storage | 其他自建或云托管实现 | 07 |
+| 精简 Observability | 分布式 Observability | 09 |
+| Sandbox Node Pool | 独立 Sandbox Cluster | 04、09 |
+| Cluster DR | Site DR | 09 |
+
+## 关键不变量
+
+- 授权、Workflow、执行、交付、数据、安全与运维各自拥有规范性 Contract，跨模块只以稳定标识、版本和 Port 引用协作，不复制彼此的状态或参数——复制会立刻产生第二事实源，并让两侧无法独立演进。
+- 平台以领域事实、明确责任和可验证证据为中心：Browser、菜单、Read Model、Telemetry、外部 Feed 与管理看板只用于展示、诊断或可见性，不能授权、反写权威领域事实或阻断独立的已运行业务，其失败只降低可见性并由应用 API、Read Model freshness、Collector/Feed 状态与 Audit 呈现——它们都不是权威事实源。
+- UI 只调用 public API，不直连数据服务、消息系统、Secret、Kubernetes、Cloud 或外部 Provider——展示层不是安全边界，直连会把凭据与基础设施暴露在最外层。
+- domain/application 只依赖 Port 抽象而不依赖 Adapter 实现，Adapter 不得塑形或替代领域语义——这是外部 Provider 与基础设施可替换的前提。
+- 每个业务写入在其 owner 的事务边界内完成，模块内事务保持单一事实边界；跨模块与外部副作用经 Outbox、Inbox、Effect Ledger、幂等键与可重放证据收敛，并遵循 06 的一致性 Contract，以 Transaction、Outbox/Inbox、Effect Ledger 与 Reconciliation 为证据——分布式原子性不可伪造，只能显式收敛。
+- 受保护动作由服务端以实时授权投影和 Assignment 判定，Assignment 只委派既有权限、不能扩大 Capability 或 Scope，并以授权判定、Assignment 记录与 Audit 为证据——授权结论必须来自服务端当前事实，委派不能成为提权通道。
+- Requirement、WorkItem、Route、Gate、Decision、Acceptance 与 Artifact 形成业务责任链，跨模块只以稳定标识和版本引用协作，并以领域版本、Decision、Acceptance 与 Artifact 证据留痕——责任链是可追溯的业务事实，不能被运行资源或外部对象改写。
+- Run、Attempt 与不可变 Execution Binding 是受控执行事实，执行资源不取得 Requirement 的业务写权限，并以 Binding、运行事件与 Effect Ledger 为证据——运行资源可以重建，业务责任不随其转移。
+- Execution Binding 不可变，Sandbox 以 fenced lease、容量准入和 Kata 隔离运行，恢复不能绕过绑定和资源边界，并以 Binding、lease、Capacity Profile 与 Runtime 事件为证据——恢复不是放宽隔离与容量的窗口。
+- Git/MR/Artifact `IntegrationBaselineEvidence` 的结构、ID/hash、外部事实与变化事件属于 05，Requirement 选定/冻结 Evidence 引用、Acceptance 绑定与失效及业务状态属于 02，两侧变更必须双向确认——结构事实与业务解释分离，才能让外部变化不直接改写验收结论。
+- Artifact 以 exact Object Version 作为证据单位，同时受 Product Quota Ledger 与 Environment Bucket-Class Capacity Ledger 约束，两类不足独立呈现——业务配额与物理容量是两种不同的拒绝原因，混淆会掩盖真实瓶颈。
+- DEV 与 PROD 的运行实例、信任边界、数据、凭据、密钥、备份和故障域完全隔离，并由 `CloudEnvironmentBinding`、PCS、部署与恢复证据证明——隔离是可验证的故障域与信任域边界，不是部署习惯。
+- `GITOPS_CONFIG` 的 Desired State 仅在环境受保护 Git 路径形成，本环境 Flux 只负责 Reconcile，Observed Status 与平台投影不构成第二事实源或跨环境写路径，并以 Git MR/Commit、Review、Flux Inventory/Condition、Drift 与 Audit 为证据——基础设施变更必须经 Git Review，不能从平台侧绕开。
+- 配置有类型、版本和生效快照，运行、审核与集成使用被绑定的 Effective Snapshot 而不读取未受控的可变值，并以配置版本、Snapshot、发布与 Audit 为证据——可变页面值不能决定受控行为。
+- 安全、Audit 与恢复依赖可验证的信任、密钥、授权与证据；信任、授权、配额或恢复条件任一不可证明时受保护操作 Fail Closed，并以 Trust、Audit、恢复验证与告警证据留痕——安全与责任正确性优先于可用性，猜测不能作为继续执行的依据。
+- Release Gate 只验收被路线图选入该 Release 的 Capability，不把完整 Target Architecture 的所有未来能力强行纳入当前验收——验收范围必须与交付决策一致。
+- 每项入选 Capability 必须满足其领域 owner 的完整目标 Contract，Release Scope 不能重写或放宽授权、安全、隔离、证据、容量准入和恢复底线——Release 决策只选择做什么，不改变正确性标准。
+- 未选 Capability、未完成 Capability Activation Gate 的能力以及仅有界面或 Adapter 占位的能力必须保持关闭，也不得以不满足授权、安全、隔离、证据或恢复 Contract 的半成品方式启用——部分启用会把整条链路的安全边界降级。
+- Release 状态只表示路线图决策，实际 Image、配置、拓扑和健康状态仍由 Deployed State 证据证明——目标 Contract、交付决策与运行事实是三类互不替代的证据。
+- Gate 失败时安全停止推进、保留失败与恢复证据并按 owner Contract 恢复，不要求所有单点故障下无感继续——安全停止比强行继续更可运营。
+- Capability Activation Gate 在 Capability 已实施后、首次或变更启用边界前执行，至少证明 Capability/Scope/Assignment/Session 与配置授权形成服务端当前有效判定、依赖的 Trust/Secret/供应链/数据/网络/容量/恢复条件可验证且未知时 Fail Closed、Execution Binding/Port/Adapter/Effective Snapshot/外部 Effect 与 Audit 证据可绑定并回放、启用范围/关闭路径/回退条件/Observability 与责任人明确，以及环境本地证据能证明启用结果——不以 UI、Read Model freshness 或路线图状态替代运行事实。
+- Activation Gate 通过后必须形成环境本地、不可变的 `CapabilityActivationRecord`，至少绑定 Capability 标识、目标 Environment、适用 Scope、Gate 证据引用、批准 Principal、批准时间与生效配置版本，其失效与替换历史作为跨模块治理数据由 [10](./10-configuration-governance.md) 按配置生命周期持久化；该 Record 是判断此 Capability 在指定 Environment 与 Scope 内已通过激活的权威运行时事实——运行时判断需要一个可解析、可失效的事实，而不是文档或界面状态。
+- 启用该 Capability 的 Feature Toggle 发布、其专属 Deployable 的 Desired State 变更，以及消费该 Capability 的 Execution Binding、Run 与 Sandbox 物化都必须引用当前有效 Record；Record 缺失、失效或不可解析时 Fail Closed，Capability 保持或恢复关闭——否则一个开关就能绕过 Activation Gate。
+- Record 不替代 Deployed State 证据，Release Gate 与路线图状态也不替代 Record：一次 Release Gate 通过不自动打开全部入选 Capability，需要运行时开关或受控 Scope 的能力仍须分别完成 Capability Activation Gate；一次 Activation Gate 通过也不构成后续 Release 或跨环境 Promotion 的批准——两类 Gate 的决策对象不同，通过范围也不同。
+- Evolution Trigger 只把已批准阈值或明确业务需求转换为候选评估；Trigger 成立后 owner 必须为候选明确价值、影响边界、兼容与迁移方案、回退、容量、安全、恢复、Observability 和后续适用 Gate，在这些决策完成前不改变 Release Scope、Capability 开关或 Deployed State——测量信号是评估输入，不是批准。
+- 架构可替换基础设施、可提取模块、可独立迁移 Deployable，但每次演进只替换其 owner 的 Port/Adapter、数据或部署边界，不借一次演进重写无关领域模块，也不以过早拆分牺牲当前系统的一致性和可运营性——演进只有在边界可控时才产生价值。
+- 路线图只选择要交付的 Capability，不能修改目标 Contract；任何变更不得通过菜单、Read Model、部署参数或文档副本绕开 owner——绕开 owner 的变更没有可验证的事实来源。
+- 影响跨模块边界、信任、数据兼容性、运行恢复或交付责任的变更必须同时更新受影响模块的引用、Quality Scenario 与适用 Gate——不变量、场景与 Gate 是同一套约束的三种表达，只改一处会让基线自相矛盾。
+
+## 与其他模块的关系
+
+下表是本模块自身视角：11 从各模块消费什么、向各模块提供什么。各模块的完整 Contract 由其自身定义，本文不复制其状态、参数或协议字段。
+
+| 模块 | 消费 | 提供 |
+| --- | --- | --- |
+| [00 平台总览](./00-platform-overview.md) | System Context、模块边界、逻辑分层与端到端责任链约定 | 完整的全局依赖与写入边界、跨模块不变量本体与三类 Gate 分类语义 |
+| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 服务端授权判定、Assignment、Session 与配置命令资格的领域 Contract | Authorization 验证维度、授权不变量，以及授权撤销与 Break-glass 质量场景 |
+| [02 Requirement Workflow](./02-requirement-workflow.md) | Requirement 责任链、人工 Gate、Decision、Acceptance 与 Artifact 业务状态 Contract | Execution 验证维度、责任链不变量，以及 Artifact 与交付证据质量场景 |
+| [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | Run/Attempt、不可变 Execution Binding 与评测工具链 Contract | 受控执行不变量、Execution 验证维度，以及执行恢复与评测失败质量场景 |
+| [04 Sandbox Runtime](./04-sandbox-runtime.md) | 隔离物化、fenced lease、容量准入与清理 Contract | 隔离与容量不变量，以及 N+1 余量不足与 Node 恢复质量场景 |
+| [05 Source Control 与交付](./05-source-control-delivery.md) | GitLab Binding、`IntegrationBaselineEvidence` 结构与外部事实收敛 Contract | 交付证据双向确认不变量与 Integration and configuration 验证维度 |
+| [06 平台应用与集成](./06-platform-application-integration.md) | 应用与集成 Contract、Port/Adapter 装配与跨模块一致性 Contract | 一致性收敛与投影不反写不变量，以及未知外部结果与 Feed 不可用质量场景 |
+| [07 数据、消息与存储](./07-data-messaging-storage.md) | 权威数据、消息、Artifact 对象与配额账本、备份与组件恢复 Contract | Artifact 双账本不变量与组件数据恢复质量场景 |
+| [08 安全、审计与治理](./08-security-audit-governance.md) | Trust、Secret、加密、供应链、Audit 与安全恢复的 Fail Closed Contract | Security 验证维度、Fail Closed 不变量与信任恢复质量场景 |
+| [09 基础设施与运维](./09-infrastructure-operations.md) | 环境与运维 Contract：Environment Binding、PCS、GitOps、容量准入与 Cluster DR | Environment 验证维度、环境隔离与 `GITOPS_CONFIG` 不变量，以及 Evolution Trigger 分类语义 |
+| [10 Configuration Governance](./10-configuration-governance.md) | Configuration Governance Contract：分类、Effective Snapshot、兼容演进与 Promotion | 配置受控输入不变量，以及 `CapabilityActivationRecord` 必须绑定的 Gate 证据语义 |
+| [12 实施路线图](./12-implementation-roadmap.md) | 各 Release 的 Scope、前置依赖、验收证据、Promotion 结果与 Profile 选择 | Release Gate 与 Capability Activation Gate 的分类语义、验证维度与 Gate 失败处置规则 |
+| [参数附录](./appendix-parameters.md) | 容量 Evolution Trigger 阈值、Hardened Target 场景与上线前验证证据清单 | 三类 Gate 与验证维度的分类语义，供参数按 Gate 与场景归位 |
