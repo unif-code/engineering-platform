@@ -286,12 +286,29 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 
 稳态 Request 合计约 `3.2 CPU / 6.5 GiB`，Limit 合计约 `13 CPU / 13 GiB`。上述组件均不声明独立数据 PVC，Durable Persistence 计入同环境 PostgreSQL，不在 ESSD BOM 中重复增加 Temporal 数据卷。发布还须为四类 Temporal Server Surge 预留约 `1.25 CPU / 2.5 GiB` Request，并为一整组新 Platform Orchestrator Worker 预留 `500m CPU / 1 GiB` Request。
 
-#### 数据服务 Backup、Retention 与恢复目标
+#### 安全组件资源与阈值
+
+| 组件/环境 | Replica | CPU Request / Limit | Memory Request / Limit | 其他上限 |
+| --- | --- | --- | --- | --- |
+| OpenBao Voting Server DEV | 3（quorum 2） | `250m / 1 CPU` | `512 MiB / 1 GiB` | Raft Data PVC `10 GiB`；Audit PVC `5 GiB` |
+| OpenBao Voting Server PROD | 5（quorum 3） | `500m / 2 CPU` | `1 GiB / 2 GiB` | Raft Data PVC `10 GiB`；Audit PVC `10 GiB` |
+| OpenBao Agent Injector DEV | 2 | `50m / 250m` | `128 MiB / 256 MiB` | 无 PVC |
+| OpenBao Agent Injector PROD | 2 | `100m / 500m` | `256 MiB / 512 MiB` | 无 PVC |
+| File Security（ClamAV + Worker） | 每环境 2 | ClamAV `1 / 2 CPU`；Worker `200m / 1 CPU` | ClamAV `3 / 6 GiB`；Worker `256 MiB / 1 GiB` | 每副本 Signature PVC `5 GiB`；`PDB minAvailable=1` |
+| Image Security（Trivy） | 每环境 2 | `500m / 2 CPU` | `1 / 4 GiB` | Ephemeral `10 / 20 GiB`；每副本单并发 |
+
+- OpenBao Voting Server 副本数固定为 DEV `3`、PROD `5` 且不使用 HPA；Raft 与 Audit PVC 使用率 `70%`/`85%` 为 Warning/Critical，只在线扩容不缩容；本地 Audit 缓冲默认保留 `7` 天。Hardened Target 中每个环境的 `pki-publication` 使用两个跨 Node 分散的无状态副本。
+- File Security 并发固定为 `MaxThreads=2`、`MaxQueue=4`，单副本最多并发扫描 `2` 个对象、环境总并发 `4`，单副本故障时环境并发降至 `2`；引擎上限为 `MaxScanSize=400 MiB`、`MaxRecursion=17`、`MaxFiles=10000`、`MaxScanTime=120s`，单对象安全 Envelope 见本附录 [Platform Policy Key](#platform-policy-key) 的 Scanner 说明。
+- `freshclam` 每 `2` 小时检查一次并对副本使用受控随机 Jitter；连续 `6`/`12`/`24` 小时未成功更新分别为 Warning/Critical/退出 Ready，超过 `24` 小时的副本不能返回 `CLEAN`。
+- `trivy-data-sync` 每 `6` 小时更新 Vulnerability DB，每 `24` 小时更新 Java DB 与 Checks；Freshness Gate 的 Warning/Critical/Expired 为 Vulnerability DB `12`/`18`/`24` 小时、仅对相关镜像启用的 Java DB `36`/`48`/`72` 小时、Checks `48`/`72` 小时/`7` 天。
+
+#### 组件 Backup、Retention 与恢复目标
 
 | 组件 | Backup 调度 | Retention / Recovery Window | Cluster DR 目标 | Restore Drill |
 | --- | --- | --- | --- | --- |
 | PostgreSQL | 持续 WAL Archive（`archive_timeout=5min`）与每日 LZ4 Physical Base Backup | Recovery Window DEV `7` 天、PROD `30` 天 | PROD Candidate 在 `PGDATA <= 50 GiB` 时 `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
 | NATS | 每日 `04:00 Asia/Shanghai` 应用一致性 Account Backup | Backup Retention DEV `3` 天、PROD `7` 天；已发布 Outbox 至少保留 `30` 天 | `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
+| OpenBao | 应用一致性 Raft Snapshot：DEV 每 `6` 小时、PROD 每 `1` 小时；升级与高风险变更前另生成按需 Snapshot | DEV 保留 `7` 天；PROD 保留 `48` 小时周期点与 `30` 天每日点 | DEV `RPO ≤ 6h`、PROD `RPO ≤ 1h`，两者 `RTO ≤ 60min` | DEV 每月、PROD 每季度在隔离环境完整恢复 |
 
 `postgres-backup` 的近期 Backup Object 与 `nats-backup`、`openbao-recovery` 对象默认使用 `7` 天 `GOVERNANCE` Object Lock；`audit-worm` 的 Retention 期限由 [08 安全、审计与治理](./08-security-audit-governance.md)作为 Security Floor 拥有，不在本节调整。每日 Backup 周期不是消息 RPO。
 
