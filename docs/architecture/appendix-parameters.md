@@ -289,6 +289,7 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 | 一次性临时密码有效期 | 默认 `24` 小时 | 由版本化 `PLATFORM_POLICY` 管理，不由客户端或脚本固定 | [01](./01-identity-organization-authorization.md) |
 | 密码过期周期 | 永不过期、`90` 天、`180` 天或受约束的自定义周期 | 每个 Policy Version 自服务端成功发布并成为当前 Effective Policy 时生效 | [01](./01-identity-organization-authorization.md) |
 | 同账号有效 Session 上限 | 默认 `3`，可在 `1～10` 范围内调整 | 密码重置、TOTP 重置、账号停用和安全事件都可以撤销 Session | [01](./01-identity-organization-authorization.md) |
+| Agent 执行等待输入期限 | 默认 `24h` | 在 Binding 时保存有效值与 Policy Version；期限内答复回到 `QUEUED`，逾期经 `CANCELING` 进入 `TIMED_OUT` | [03](./03-agent-skill-model.md) |
 | 用户附件额度 | 单文件 `50 MiB`；每 Requirement 合计 `200 MiB` | 使用量达到 `80%` 预警 | [02](./02-requirement-workflow.md) |
 | Agent Artifact 额度 | 单 Object `100 MiB`；单 Attempt 合计 `500 MiB`；单 Requirement 全部 Attempt 合计 `1 GiB` | 超限时 Attempt 安全停止为 `FAILED`，记录 `failureCode=RESOURCE_EXHAUSTED` 与 `failureDimension=ARTIFACT_QUOTA`，不截断证据 | [02](./02-requirement-workflow.md) |
 | Artifact Presigned Request 有效期 | 默认 `5min` | 只对应单一 Object Version，不持久化也不写入日志；Policy 可收紧但不得延长为长期可复用 URL | [02](./02-requirement-workflow.md) |
