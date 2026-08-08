@@ -1,7 +1,4 @@
-# 基础设施与运维详细说明
-
-> 文档层级：L2 规范事实源
-> 对应主文：[基础设施与运维](./infrastructure-operations.md)
+# 基础设施与运维
 
 ## 1. 责任边界
 
@@ -13,6 +10,10 @@ Release 版本、Capability Scope、实现状态、Environment Promotion 与 Rel
 
 责任分工固定为：12 选择 Reliability/Capacity Profile；[10](./10-configuration-governance.md)拥有已发布 `PLATFORM_POLICY` 的 Effective Value、Snapshot 与生命周期；本文拥有基础设施 `GITOPS_CONFIG` Desired State，并读取 PCS、选定 Profile 与 Effective Policy，验证 Aggregate Physical Ceiling、调度放置、PDB、Rollout/Fault Headroom 和 Provisioning Gate。09 不产生或修改 Policy Effective Value，10 不声明物理容量，12 不复制配置生命周期。
 
+### 目标与边界
+
+本视图定义完整 Target Architecture 中的 Platform Environment、Cloud Boundary、Kubernetes、逻辑 Node Role、物理放置、网络、存储拓扑、Observability、Cluster DR、容量准入与 TCO Contract。它不记录环境已部署状态，也不拥有业务状态、Secret、加密、Audit、Artifact、数据服务恢复算法、Release 版本、Environment Promotion、Profile 选择或人数容量矩阵。
+
 ## 2. Cloud Boundary 与环境实例
 
 每个 Platform Environment 使用独立 Resource Account、VPC、Kubernetes Cluster、IaC State、Identity、CIDR、Gateway、Flux、证书、KMS、Backup 与 Audit 边界。`CloudEnvironmentBinding` 是不可变 Generation，绑定 Environment、Account、Region、Zone Set、CIDR、Provider Resource Mapping、入口和恢复 Repository；改变 Account、Region、Zone、CIDR 或核心 Mapping 必须建立新 Generation 并完成迁移、回退和验证。
@@ -20,6 +21,18 @@ Release 版本、Capability Scope、实现状态、Environment Promotion 与 Rel
 DEV 与 PROD 使用同一组件模板、Contract、GitOps 模板与 PCS 兼容基线，各自在不同服务器、Cluster、域名和配置上部署独立实例。两者不共享 Gateway、Flux Controller、Git Credential、IaC State、数据库、对象、Session、Secret、Key、Backup、Provider Trust 或运行时资源；一个环境的资格、路径、MR 或 ServiceAccount 不能操作另一环境。Management Account 只承载治理，不承载平台工作负载、数据或恢复材料；治理面或 TCO 读取故障不是已运行请求的同步依赖。
 
 Region、Zone、vSwitch、CIDR、精确资源 ID、SKU、价格和折扣是 Binding 与部署输入，不是本文声明的已部署事实。环境 Deployed State 只由该环境的 GitOps Desired State、PCS 和 Operations Read Model 运行证据证明；路线图选择的 Capacity Profile 不能替代这些证据。
+
+### 环境与实例隔离
+
+```text
+DEV Platform Environment                 PROD Platform Environment
+独立 Account / VPC / Cluster             独立 Account / VPC / Cluster
+独立 Gateway / Flux / GitOps State       独立 Gateway / Flux / GitOps State
+独立数据、Secret、备份与运行资源           独立数据、Secret、备份与运行资源
+             同一组件模板、Contract 与 PCS 兼容基线
+```
+
+DEV 与 PROD 使用同一组件模板独立实例化，分别绑定服务器、Cluster、域名、配置、Credential 和恢复材料。“同一个组件”只表示同源模板与兼容 Contract，不表示共享同一个 Gateway、Flux、数据服务、Secret 或任何运行实例。每个环境绑定不可变 `CloudEnvironmentBinding` Generation；环境间无默认网络互通，Management Account 不承载平台运行资源或恢复材料。
 
 ## 3. Platform Compatibility Set 与 Provisioning Gate
 

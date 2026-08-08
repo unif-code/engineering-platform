@@ -1,14 +1,27 @@
-# 架构基线详细说明
+# 架构基线
 
 > 架构基线：`2026-08-06.175`
-> 文档层级：L2 跨模块规范索引
-> 对应主文：[架构基线](./architecture-baseline.md)
 
 ## 1. 责任边界
 
 本文只定义跨模块不变量、依赖边界、事实 owner 索引、质量属性场景以及 Release Gate、Capability Activation Gate、Evolution Trigger 的分类和引用关系。每个领域对象的状态、协议字段、资源参数、恢复步骤和安全机制均由其模块 detail 唯一拥有；本文不复制这些规则。
 
 00～11 定义完整 Target Architecture；[12](./12-implementation-roadmap.md)唯一选择 Release Scope、Profile 与环境 Promotion。被路线图选入当前 Release 的能力必须满足其目标 Contract，未选能力保持关闭；目标能力不得以不满足安全、授权、隔离、证据或恢复 Contract 的半成品方式启用。实际 Deployed State 仍必须由环境 GitOps Desired State、PCS 和 Operations Read Model 证据证明。
+
+### 基线定位与适用范围
+
+本文是内部研发平台的批准 Target Architecture 基线，用于指导设计、实施、评审与运行准备。它定义完整目标模块及跨模块 Contract，不声明仓库实现进度、Release Scope、Platform Environment 部署状态或容量选择。
+
+DEV 与 PROD 以同源代码、Contract、GitOps 模板和 Platform Compatibility Set 在独立环境中实例化。Release Scope、实施状态、环境 Promotion 与 Profile 选择由 [12 实施路线图](./12-implementation-roadmap.md)唯一拥有；实际 Deployed State 由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
+
+### 系统级原则
+
+1. 平台以领域事实、明确责任和可验证证据为中心；浏览器展示、菜单、Read Model、Telemetry 与外部 Feed 均不是权威事实源。
+2. 授权、Workflow、执行、交付、数据、安全和运维各自拥有规范性 Contract；跨模块协作使用稳定引用，不复制彼此的状态或参数。
+3. 所有环境、信任材料、数据、凭据和故障域保持隔离；受保护操作在信任、授权、配额或恢复条件不可证明时 Fail Closed。
+4. 模块内事务保持单一事实边界；跨模块与外部副作用通过 Outbox、Inbox、Effect Ledger、幂等键和审计证据收敛。
+5. 配置是有类型、可版本化且可回溯的受控输入；运行和决策绑定有效配置快照，而不是依赖可变页面值。
+6. 架构可替换基础设施、可提取模块与可独立迁移 Deployable，但不以过早拆分牺牲当前系统的一致性和可运营性。
 
 ## 2. 跨模块不变量矩阵
 
@@ -57,6 +70,23 @@ UI → public API → domain/application → Port → Adapter → external
 | 09 | Environment Binding、PCS、Flux GitOps、Kubernetes、Node、网络、可观测性、Cluster DR、容量与 TCO。 | [09 detail](./09-infrastructure-operations.md) |
 | 10 | Configuration Catalog、生命周期协议、Effective Snapshot、兼容演进与 DEV→PROD Promotion。 | [10 detail](./10-configuration-governance.md) |
 | 11 | 跨模块不变量、引用关系、质量场景与三类 Gate。 | 本文 |
+
+### 模块地图
+
+| 编号 | 主题 | L1 | L2 规范事实 |
+| --- | --- | --- | --- |
+| 00 | 平台总览 | [平台总览](./00-platform-overview.md) | [详细说明](./00-platform-overview.md) |
+| 01 | 身份、组织与授权 | [架构地图](./01-identity-organization-authorization.md) | [详细说明](./01-identity-organization-authorization.md) |
+| 02 | Requirement Workflow | [架构地图](./02-requirement-workflow.md) | [详细说明](./02-requirement-workflow.md) |
+| 03 | Agent、Skill 与 Model | [架构地图](./03-agent-skill-model.md) | [详细说明](./03-agent-skill-model.md) |
+| 04 | Sandbox Runtime | [架构地图](./04-sandbox-runtime.md) | [详细说明](./04-sandbox-runtime.md) |
+| 05 | Source Control 与交付 | [架构地图](./05-source-control-delivery.md) | [详细说明](./05-source-control-delivery.md) |
+| 06 | 平台应用与集成 | [架构地图](./06-platform-application-integration.md) | [详细说明](./06-platform-application-integration.md) |
+| 07 | 数据、消息与存储 | [架构地图](./07-data-messaging-storage.md) | [详细说明](./07-data-messaging-storage.md) |
+| 08 | 安全、审计与治理 | [架构地图](./08-security-audit-governance.md) | [详细说明](./08-security-audit-governance.md) |
+| 09 | 基础设施与运维 | [架构地图](./09-infrastructure-operations.md) | [详细说明](./09-infrastructure-operations.md) |
+| 10 | Configuration Governance | [架构地图](./10-configuration-governance.md) | [详细说明](./10-configuration-governance.md) |
+| 11 | 架构基线 | 本文 | 详细说明 |
 
 ## 5. Quality Scenarios
 
@@ -135,3 +165,14 @@ Release Gate 和 Capability Activation Gate 按其 Scope 组合下列验证维�
 | Security | Trust、Secret、加密、Audit、供应链和恢复信任链可验证且 Fail Closed。 | [08](./08-security-audit-governance.md) |
 | Execution | Requirement 的责任链、不可变 Execution Binding、Sandbox 准入与受控恢复保持一致。 | [02](./02-requirement-workflow.md)、[03](./03-agent-skill-model.md)、[04](./04-sandbox-runtime.md) |
 | Integration and configuration | Port/Adapter、typed/versioned configuration、Outbox/Inbox 与外部证据可独立验证和回放。 | [05](./05-source-control-delivery.md)、[06](./06-platform-application-integration.md)、[10](./10-configuration-governance.md) |
+
+## 阅读优先级
+
+- 负责人和架构评审先阅读 00、11 的 L1，再按决策主题进入对应 L2。
+- 产品、Leader 和研发先阅读 00、12，再进入当前 Capability 对应的领域 detail。
+- 应用和 Agent 开发按 12 的 Release Scope 阅读 02～07、10 的 L2，并以 08 的安全 Contract 和 09 的环境 Contract 约束实现。
+- 平台、安全与运维按 12 的 Profile 选择阅读 06～10 的 L2；架构评审回到 11，运行判断回到 Deployed State 证据。
+
+## 变更规则
+
+架构变更先识别事实 owner，再在该 owner 的 detail 中更新规范性 Contract，并同步更新相关 L1 地图、跨模块引用和验证证据。路线图只选择要交付的 Capability，不能修改目标 Contract；任何变更不得通过菜单、Read Model、部署参数或文档副本绕开 owner。若影响边界、信任、数据兼容性、运行恢复或交付责任，必须同时更新受影响模块的链接、质量场景和适用 Gate。

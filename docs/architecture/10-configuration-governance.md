@@ -1,7 +1,4 @@
-# Configuration Governance 详细说明
-
-> 文档层级：L2 规范事实源
-> 对应主文：[Configuration Governance](./configuration-governance.md)
+# Configuration Governance
 
 ## 1. 目的与边界
 
@@ -14,6 +11,21 @@ Configuration 位于 Control Plane 仓库（`engineering-platform-backend`）的
 “唯一 owner”指 Catalog、通用生命周期协议、状态语义、跨环境治理和公开 Configuration Facade 只有一个事实来源，不表示把所有 Namespace 数据集中到一个数据库 Schema。每个领域模块仍在自己的模块 Schema 中拥有本 Namespace 的 Draft、Published Version、Active Pointer、Policy Snapshot 与迁移，并负责在本模块事务内完成校验、切换 Pointer、Outbox 与 Audit；Configuration 模块拥有 Catalog 注册元数据、跨模块索引以及 Promotion Case、Lineage、Rebind、Divergence 等治理数据，并只通过已注册的 Application Facade/Port 编排领域 owner。它不得直写其他模块表，跨模块或跨 Scope 的 ChangeSet 不形成全局事务。
 
 责任边界固定为：12 选择 Reliability/Capacity Profile；10 拥有已发布 `PLATFORM_POLICY` 的有效值、Snapshot 与生命周期；09 读取 PCS 与有效配置校验 Aggregate Physical Ceiling、资源放置和 Headroom。10 不声明物理容量，09 不产生或修改 Policy 有效值，12 不复制配置生命周期。
+
+### 生命周期概览
+
+```text
+Typed Schema + Active Snapshot
+→ Draft / Clone / Takeover
+→ Validation + Impact Preview
+→ Publish（不可变新版本并立即激活）
+→ Effective Snapshot + Outbox
+
+Base 过期 → Stale → Schema-aware Three-way Rebase
+Rollback → 从历史 Snapshot 创建新 Draft → 重新发布更高版本
+```
+
+Typed Schema、仅 Super Admin 管理、服务端 Validation、Publish、不可变 Effective Snapshot、Audit 与 Rollback 构成基础生命周期。Draft Takeover、Schema-aware Three-way Rebase、DEV→PROD Bundle Promotion、Lineage High-water 与 Divergence Review 是增强 Contract；未启用增强能力时不得以简化实现绕过基础生命周期。
 
 ## 2. Catalog、分类与 Schema
 
@@ -141,3 +153,5 @@ Audit 不得包含 Secret、Token、密码、Access Key、TOTP Secret、Private 
 6. Source Lineage、High-water Mark、Signing Key 与 Divergence 历史不能因恢复、轮换、回滚或重新导入而静默重置或改写。
 7. Configuration 始终是模块化单体中的独立领域模块，不形成独立 Deployable 或微服务。
 8. 12 选择 Capacity Profile，10 拥有已发布 Policy 的有效值与生命周期，09 只校验物理 Ceiling；任何一方都不能复制或改写另一方事实。
+9. Frontend、脚本、旧缓存或 Projection 不能自行决定当前有效配置。
+10. 各领域拥有 Namespace 的 Policy 数据与业务语义；Configuration Governance 拥有通用治理协议，不建立集中式跨模块事务。

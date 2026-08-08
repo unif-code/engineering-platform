@@ -1,7 +1,4 @@
-# 安全、审计与治理详细说明
-
-> 文档层级：L2 规范事实源
-> 对应主文：[安全、审计与治理](./security-audit-governance.md)
+# 安全、审计与治理
 
 ## 1. 责任边界与 Profile 语义
 
@@ -9,7 +6,41 @@
 
 本文描述完整 Target Architecture，不声明任何 Environment 已经部署哪些安全组件。实施阶段、Capability 激活状态、Release 验收与 Reliability/Capacity Profile 只见[实施路线图](./12-implementation-roadmap.md)；实际 Trust、Image、配置、拓扑和恢复证据由环境 GitOps Desired State、PCS、Audit 与 Restore Drill 证明。
 
+### 目标与边界
+
+本视图定义平台的安全 Trust Boundary、Secret、加密、PKI、供应链保护、不可篡改 Audit 与受限恢复控制。它为各业务模块和基础设施提供统一的安全 Contract，却不拥有人员、权限、Requirement、Agent、Sandbox、GitLab 或数据服务的领域状态。
+
+本文描述完整 Target Architecture，不声明任何环境的实际部署状态。实施阶段、Capability 激活状态、Release 验收与 Reliability/Capacity Profile 只见[实施路线图](./12-implementation-roadmap.md)；DEV 与 PROD 使用同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC 和 Cluster 中实例化，不共享运行实例、Session、数据、凭据、密钥或故障域。
+
+身份、组织、Session、Capability 与 Super Admin 的业务语义由[身份、组织与授权](./01-identity-organization-authorization.md)拥有。应用 Console Access、External Provider Envelope 与公告流程由[平台应用与集成](./06-platform-application-integration.md)拥有；Configuration 生命周期和 Promotion 由 [Configuration Governance](./10-configuration-governance.md)拥有。数据服务恢复由[数据、消息与存储](./07-data-messaging-storage.md)拥有；环境、Cluster 和运维基线由[基础设施与运维](./09-infrastructure-operations.md)拥有。
+
+### 控制域
+
+| 控制域 | 目标能力 | 唯一事实源 |
+| --- | --- | --- |
+| 身份保护 | 密码验证材料、TOTP、Session 敏感值保护 | [01](./01-identity-organization-authorization.md) 与本文 detail |
+| Secret 与 Workload Identity | OpenBao、Kubernetes Auth、Agent Injector、最小 Policy | 本文 detail |
+| PKI 与传输信任 | 环境证书链、CRL、OCSP、Trust Bundle | 本文 detail |
+| 数据服务访问 | PostgreSQL/PgBouncer、Valkey、NATS、Temporal 的传输、服务身份与最小访问 | 本文 detail |
+| 数据静态加密 | Kubernetes Secret、Volume、Ceph/RGW Object 加密 | 本文 detail |
+| 审计与供应链 | WORM Audit、文件扫描、镜像来源与签名 | 本文 detail |
+| 环境与恢复 | Cluster、PCS、DR、容量和运维观测 | [09](./09-infrastructure-operations.md) |
+
 ### 1.1 Security Floor
+
+```text
+Human / Workload Identity
+  → 最小权限 Capability 或 Workload Policy
+  → 短期凭据、受限网络与加密存储
+  → 可验证的 Audit、告警与恢复证据
+```
+
+- 认证材料、Secret、Private Key、短期访问材料、Prompt 与源码正文不得进入 Frontend、日志、Trace、Metric Label 或 Audit 正文。
+- 本地账号 Password/Argon2id、TOTP、Session 保护和服务端实时授权是人员访问底线。
+- Secret 只按工作负载、环境和用途最小化分发；业务代码、镜像、Git、Artifact、普通环境变量和持久卷不是 Secret 载体。
+- Workload Identity、TLS/mTLS、数据静态加密、供应链来源/SBOM/签名/扫描、追加式 Audit 和经演练的 Backup/Restore 是所有已启用 Capability 的共同底线。
+- 所有安全例外、恢复操作、Provider 信任材料变化和高权限动作都产生独立、追加式 Audit。
+- 安全控制失去可信前提时，受保护操作 Fail Closed；诊断可见性不会被当作安全或业务事实。
 
 下列控制是所有已启用 Capability 的不可降级 Security Floor，与 Replica 数、HA 或 Hardened Profile 无关：
 
@@ -162,6 +193,10 @@ Cluster 外 etcd snapshot + recovery bundle
 
 各阶段都要验证环境绑定、对象版本、签名/校验和、Keyring/证书与 Audit 证据；验证失败时保持恢复冻结。PostgreSQL、NATS、Temporal 与对象版本的组件级恢复算法仍以[07](./07-data-messaging-storage.md)为准。
 
+### 信任与恢复顺序
+
+环境的根信任、密钥环、恢复材料和数据恢复必须组成可验证链。恢复先恢复能够验证和解密控制面的外部材料，再恢复 OpenBao 与数据服务，最后开放工作负载；任何缺失的信任、密钥环、签名或 Audit 条件都会阻止受保护服务重新开放。
+
 ## 8. File 与 Image Security
 
 File Security Worker 使用 [09 PCS](./09-infrastructure-operations.md)锁定的 ClamAV Engine/Image。Launch Profile 可使用单 Replica；Hardened Target 每环境运行 2 个 Replica、总并发为 4。两种 Profile 的单对象上限均为 100 MiB，`MaxScanSize=400 MiB`、`MaxRecursion=17`、`MaxFiles=10000`、`MaxScanTime=120s`，扫描结果固定为 `CLEAN`、`MALICIOUS`、`SUSPICIOUS` 或 `ERROR`。
@@ -196,6 +231,12 @@ Audit 是独立的追加式不可篡改事实。任何需要 Audit 的受保护�
 
 Break-glass 仅通过 01 的受限 Recovery Port 和 GitOps 锁定的一次性 Job/CLI 执行，不经过 Web 页面、普通平台 API 或直接数据库修改。它使用短期、最小化的高权限资格，必须给出原因、双 Audit 证据、执行范围和失效时间。无法建立审计双写、身份验证、受限范围或恢复证据时，Break-glass 不执行。
 
+### Audit 与治理
+
+Audit 是独立于业务投影和 Telemetry 的追加式事实。它关联身份、时间、环境、目标、动作、结果、原因、版本与 Correlation ID，保留可验证的治理证据；它不承载可重放的认证材料或业务内容。
+
+平台只读展示安全、配置、轮换、过期和恢复证据。Super Admin 的配置权限与带外恢复资格由 01 的授权 Contract 判定，Policy 发布过程由 [10](./10-configuration-governance.md)约束；平台管理后台不提供云资源、Kubernetes、Secret 或恢复材料的通用写入口。
+
 ## 10. External Provider Trust Material
 
 06 定义 External Provider Envelope 字段、签名验证顺序、Ingest 和 High-water 算法；本文只定义其信任材料。每个 Signing Key 精确绑定 Environment、Binding Kind、Binding ID Scope、Binding Generation 与 Collector Lineage，Private Key 保持在 Cluster 外受控边界，平台只持有验证所需的公开材料。
@@ -220,3 +261,6 @@ Console 的预注册链接、允许列表、目标认证与打开 Audit 由 06 �
 6. Audit WORM、双写证据与 Break-glass 限制始终优先于高权限操作便利性。
 7. Provider 信任材料、环境绑定与回放证据必须在恢复后保持连续、可验证和可审计。
 8. Launch 与 Hardened Target 使用相同 Security Floor；Replica、Quorum、完整轮换自动化和更高 DR 频率只能增强可用性，不能改变已启用能力的安全通过条件。
+9. 密码、TOTP、Token、Session、Private Key、完整 Presigned URL、Prompt 与源码正文永不进入不受保护的可观测性或 Audit 正文。
+10. OpenBao Root、Break-glass、审计双写和加密恢复均以 Fail Closed 保护，不以便利性降低安全边界。
+11. Audit 是独立追加式不可篡改事实；其 WORM 保存策略不由业务归档或对象逻辑删除替代。
