@@ -1,20 +1,18 @@
 # 数据、消息与存储
 
-## 1. 责任边界与数据原则
+> 实施阶段、Capability 激活状态、Release 验收与 Capacity Profile 选择见[实施路线图](./12-implementation-roadmap.md)。
 
-本文是 PostgreSQL、Valkey、NATS JetStream、Temporal Persistence、Rook-Ceph RGW/Object Storage、Artifact 存储、应用级 Backup、Retention、跨组件一致性和组件故障语义的唯一规范事实源。
+## 目标与边界
 
-领域状态仍由对应领域 owner 拥有，应用调用、Port/Adapter 和 Outbox 使用边界由 [平台应用与集成](./06-platform-application-integration.md)拥有；Typed Configuration 的生命周期、Snapshot 与 Promotion 协议由 [Configuration Governance](./10-configuration-governance.md)拥有，本文只规定其 PostgreSQL 持久化基线。本文不定义密钥、加密、Secret 或审计内容保护机制，统一链接 [安全、审计与治理](./08-security-audit-governance.md)；不定义 Cluster、Node、SKU、总容量、组件精确版本或环境容量，统一链接 [基础设施与运维](./09-infrastructure-operations.md)。
+本主题定义 PostgreSQL、Valkey、NATS JetStream、Temporal Persistence 与 Rook-Ceph RGW/Object Storage 的事实源划分、数据流与跨组件一致性，以及 Artifact 对象与配额账本、应用级 Backup、Retention 执行和组件故障恢复语义。PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger 与可重建投影的权威关系事实源；Valkey、NATS、Temporal、对象存储、日志与指标都不能替代它。每个 Platform Environment 拥有独立的组件、数据、Backup、Bucket 与恢复链，DEV 与 PROD 只共享同源 Contract，不共享运行时状态。
 
-本文描述完整 Target Architecture，不声明任何环境已经部署 CloudNativePG、Valkey、NATS、Temporal、Rook-Ceph RGW 或 Backup/Retention 组件。实施阶段、Capability 激活状态、Release 验收与 Capacity Profile 选择只见[实施路线图](./12-implementation-roadmap.md)；环境实际拓扑由 GitOps Desired State、PCS 与运行证据证明。
+本文不拥有领域对象的状态机、应用调用与 Port/Adapter 边界、Typed Configuration 的生命周期与 Promotion、密钥/加密/Secret/Audit 保护机制，也不拥有 Cluster、Node、组件版本与总容量；它们分别属于 [01](./01-identity-organization-authorization.md)～[05](./05-source-control-delivery.md)、[06](./06-platform-application-integration.md)、[10](./10-configuration-governance.md)、[08](./08-security-audit-governance.md) 与 [09](./09-infrastructure-operations.md)。完整归属见 [README 所有权矩阵](./README.md#事实所有权矩阵)。本文只规定 Typed Configuration 的 PostgreSQL 持久化基线；数据服务的传输、工作负载身份与最小访问只消费 [08](./08-security-audit-governance.md) 的有效 Contract，本文只拥有拓扑、数据语义与恢复。
 
-PostgreSQL 是业务、权限、配置、版本、Outbox/Inbox、Effect Ledger 和可重建投影的权威关系事实源。Valkey、NATS、Temporal、对象存储、普通日志与指标均不能替代它。每个 Platform Environment 都有独立的组件、数据、Backup、Bucket 与恢复链；DEV 与 PROD 只共享同源 Contract，不共享运行时状态。
+精确参数不在正文：各组件的 Replica、CPU/Memory、PVC、Stream 与消息上限、Backup 调度、Retention Window、RPO/RTO 与 Restore Drill 周期见[参数附录的组件资源包络](./appendix-parameters.md#组件资源包络)，Bucket Class 容量参数与 Ceph Raw Envelope 见[参数附录的容量规划](./appendix-parameters.md#容量与服务器规划)，容量与配额维度的结构化错误码见[参数附录的错误码](./appendix-parameters.md#错误码)。
 
-### 目标与边界
+## 核心模型
 
-本视图定义 PostgreSQL、Valkey、NATS、Temporal 与 Ceph/Object Storage 的事实源、数据流、一致性和恢复关系。它不定义领域对象的状态机、应用调用边界或 Configuration 生命周期；它们分别由 01–05 领域文档、[平台应用与集成](./06-platform-application-integration.md)与 [Configuration Governance](./10-configuration-governance.md)拥有。
-
-### 目标事实源地图
+### 事实源地图
 
 | 组件 | 拥有的事实 | 不可替代为 |
 | --- | --- | --- |
@@ -38,167 +36,45 @@ Artifact / Backup / Audit Object
 → 元数据、引用、配额与状态仍由 PostgreSQL 维护
 ```
 
-### 1.1 Capability 激活与 Profile Contract
+事件为 CloudEvents Structured JSON，命令为平台 `CommandEnvelope`，Subject 固定为 `platform.{command|event|dlq}.{domain}.{message}.v{major}`；单条消息有硬上限，超限内容只以 Object Reference 传递。业务 Stream 固定为命令、事件与 DLQ 三类：`PLATFORM_COMMANDS` 使用 `WorkQueuePolicy` 并在成功 ACK 后删除，`PLATFORM_EVENTS` 与 `PLATFORM_DLQ` 使用 `LimitsPolicy` 的有界时间窗；时间与容量限制同时生效，命令与 DLQ 满容量按 `DiscardNew` 显式失败，事件 Stream 的 `DiscardOld` 只服务恢复与受控重放。
 
-PostgreSQL 作为最早被业务 Capability 消费的权威事实源优先激活。Valkey 只在 Session 热索引、撤销索引、缓存或限流需要独立服务时激活；NATS 只在持久异步传输首次被消费时激活；Temporal 只在 Durable Workflow 首次被消费时激活；Object Storage 只在附件、Artifact、WORM Audit、组件 Backup 或 Observability Object 首次消费时激活。未被消费的组件不部署，不以占位实例、空 Stream、空 Bucket 或 Feature Toggle 宣称能力可用。
+### Capability 激活与 Profile
 
-Launch Profile 可以为已启用组件选择单实例或最小拓扑，但每个实例必须同时满足：TLS 和最小 Workload Identity、显式硬 Resource Request/Limit 与存储/队列上限、Cluster 外 Backup、真实 Restore 验证、容量不足时拒绝或背压、依赖不可证明时 Fail Closed。单实例故障允许受影响能力安全停止，不能丢失已确认事实、伪造成功证据或回退到明文、匿名、无限资源和未受保护存储。
+PostgreSQL 作为最早被业务 Capability 消费的权威事实源优先激活；Valkey、NATS、Temporal 与 Object Storage 分别在 Session 热索引/撤销索引/缓存/限流、持久异步传输、Durable Workflow，以及附件/Artifact/WORM Audit/组件 Backup/Observability Object 首次被消费时激活。
 
-Hardened Target Profile 在相同数据语义上增加 Replica、Standby、Sentinel、Quorum、跨 Node 分散和更高恢复频率。下文标注为 Hardened Target 的拓扑不构成无条件部署要求；Profile 由 12 选择，09 校验 Aggregate Physical Ceiling、放置、PDB、Rollout 与 Headroom，07 只拥有组件数据、故障和恢复 Contract。
+Launch Profile 可以为已启用组件选择单实例或最小拓扑，Hardened Target 在相同数据语义上增加 Replica、Standby、Sentinel、Quorum、跨 Node 分散与更高恢复频率。有效 Profile 由 [12](./12-implementation-roadmap.md) 选择并进入 PCS，[09](./09-infrastructure-operations.md) 验证 Aggregate Physical Ceiling、放置、PDB、Rollout 与 Headroom。
 
-## 2. PostgreSQL 与连接边界
-
-PostgreSQL 一经激活即使用独立 Schema/Role、有界连接、TLS、应用一致性 Backup/PITR、硬资源与存储 Ceiling，并在依赖或恢复链不可证明时 Fail Closed。Launch Profile 可使用单 Primary；其故障时停止数据库依赖能力，恢复验证完成前不开放写流量。
-
-Hardened Target 使用 CloudNativePG 的一个 Primary 与两个 Standby，并采用 quorum-based synchronous replication：`method=any`、`number=1`、`dataDurability=required`、`failoverQuorum=true`。两个 Standby 都不可用时，不得自动降级为异步写入；Failover 候选必须证明包含全部已确认事务。
-
-业务流量经 PgBouncer Transaction Pooling 进入数据库，Launch 可使用一个实例，Hardened Target 使用两个 Pod；所有连接池有界。只有 Alembic、DDL Job、DBA 或受控 Break-glass 可直连 rw service。模块拥有独立 Schema、迁移目录和数据访问账号，任何模块不得直接读写其他模块内部表。
-
-CloudNativePG 通过 Barman Cloud Plugin、WAL Archive 与 S3-compatible `postgres-backup` Class 实现应用一致性 Backup/PITR。每个备份必须绑定环境、时间、版本、校验结果与恢复链；持续 WAL Archive 与 Base Backup 均需要可用 Headroom。恢复只能从经验证的 Base Backup + WAL 链进行，不能把任意 PVC/CSI Snapshot 声明为一致性数据库恢复源。恢复成功后需先验证数据与服务，再重新开放应用流量。
-
-PostgreSQL 默认 `archive_timeout=5min`，每日执行 Physical Base Backup，使用 LZ4；DEV Recovery Window 为 7 天，PROD 为 30 天。PROD Cluster DR Candidate 在 `PGDATA <= 50 GiB` 时为 `RPO <= 5min`、`RTO <= 60min`。DEV 每月、PROD 每季度执行完整 Restore Drill，并以实测结果验证恢复链。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](./08-security-audit-governance.md)。
-
-PostgreSQL 与 PgBouncer 的 Hardened Target Component Envelope：
-
-| 组件/环境 | Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | `shared_buffers` | 单 Pod PVC |
-| --- | ---: | --- | --- | ---: | ---: |
-| PostgreSQL DEV | 3 | 500m / 500m | 1 GiB / 1 GiB | 256 MB | 40 GiB |
-| PostgreSQL PROD | 3 | 1 CPU / 1 CPU | 2 GiB / 2 GiB | 512 MB | 100 GiB |
-| PgBouncer DEV | 2 | 50m / 250m | 64 MiB / 128 MiB | — | 无 |
-| PgBouncer PROD | 2 | 100m / 500m | 128 MiB / 256 MiB | — | 无 |
-
-Hardened Target 的三个 PostgreSQL Pod 在同一环境使用相同规格，CPU/Memory Request 与 Limit 相等以保持 Guaranteed QoS；三个 Data PVC 合计为 DEV `120 GiB`、PROD `300 GiB`。PgBouncer 是无状态连接层，不声明数据 PVC。Launch 与 Hardened 的有效 Resource Profile 均由 12 选择并进入 PCS，09 聚合验证物理 Ceiling、PDB 与 Rollout Headroom；任何 Profile 都禁止无 Request/Limit 的 BestEffort 数据实例。
-
-## 3. Valkey
-
-Valkey 只在对应 Capability Package 首次消费时激活。Launch Profile 可使用一个实例，但仍消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](./08-security-audit-governance.md)，使用 `noeviction`、AOF everysec、周期 RDB、硬 Memory Ceiling 与真实重建验证；实例故障时回源 PostgreSQL 或 Fail Closed。
-
-Hardened Target 使用一个 Primary、两个 Replica 与三个 Sentinel（quorum=2）；业务仅使用 Sentinel-aware Client，禁止固定 Primary 地址或厂商私有配置。Replica/Sentinel 不改变 Valkey 仅保存可重建热数据的事实边界。
-
-Valkey 仅保存可重建的 Session 热数据、撤销索引、缓存、限流、幂等键和短期锁。Session、安全和领域的权威事实始终保留在 PostgreSQL。缓存不可用、版本未知或安全写操作无法回源时，必须回查 PostgreSQL 或 Fail Closed；不得因 Valkey 故障放行陈旧授权、绕过撤销或将缓存内容升级为事实源。PVC 可用于快速恢复，但其丢失后的正确恢复方式是从权威事实重建。
-
-Valkey 与 Sentinel 的 Hardened Target Component Envelope：
-
-| 组件/环境 | Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | `maxmemory` | 单 Pod PVC |
-| --- | ---: | --- | --- | ---: | ---: |
-| Valkey DEV | 3 | 100m / 500m | 256 MiB / 512 MiB | 192 MiB | 5 GiB |
-| Valkey PROD | 3 | 250m / 1 CPU | 512 MiB / 1 GiB | 384 MiB | 10 GiB |
-| Sentinel DEV | 3 | 25m / 100m | 32 MiB / 64 MiB | — | 无 |
-| Sentinel PROD | 3 | 50m / 200m | 64 MiB / 128 MiB | — | 无 |
-
-每个 Valkey 数据实例使用独立 PVC；合计为 DEV `15 GiB`、PROD `30 GiB`。Sentinel 无状态且不声明数据 PVC。`maxmemory` 必须低于 Pod Memory Limit，为复制、AOF、Client 和内存碎片保留余量；达到上限时按 `noeviction` 拒绝新写并告警。
-
-## 4. NATS JetStream、Outbox 与 Inbox
-
-NATS JetStream 只在持久异步传输被对应 Capability Package 首次消费时激活。Launch Profile 可使用单节点 File Storage，但仍必须消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](./08-security-audit-governance.md)，执行 Stream 硬上限、Persist ACK、应用一致性 Account Backup、真实 Restore 和 Outbox Watermark 对账；节点故障时发布保留在 Outbox 并背压，不静默丢消息。
-
-Hardened Target 使用三个节点、File Storage 与三副本 Quorum。每个 Deployable Unit 按 Publish/Subscribe Subject Allowlist 获得最小访问；平台和系统账号隔离，Sandbox 不获得 NATS 访问。
-
-事件为 CloudEvents Structured JSON，命令为平台 `CommandEnvelope`；Subject 为：
+### 组件恢复链
 
 ```text
-platform.{command|event|dlq}.{domain}.{message}.v{major}
+PostgreSQL   经验证 Base Backup + 连续 WAL 链 → 数据与服务验证 → 重新开放写流量
+NATS         应用一致性 Account Backup + Manifest → 空集群重建并验证 Stream / Sequence /
+             Consumer / Schema / 抽样 Payload → 从 Outbox Watermark 安全重叠补发
+             → 保留原 Envelope ID，由 Inbox / Effect Ledger 去重
+Temporal     Fence 写入入口与全部 Worker → Default / Visibility Store 的 PostgreSQL PITR
+             → 同 Server / Schema / Shard / Namespace 配置启动并验证 Visibility 与 Build ID
+             → 依领域事实、Outbox、Inbox 与 Effect Ledger 对账外部效果 → 重新开放 Worker
+Object       精确 Object Version + 经验证 Manifest → 引用、Lock 与保留资格判定 → 受控执行
 ```
 
-每条消息限制为 256 KiB，大对象使用 Object Reference。首个 Stream Contract 固定为：
+每个 Backup Manifest 必须绑定环境、时间、版本、校验结果与恢复链引用；NATS Manifest 还绑定 Stream、消息/Consumer 配置与位置、Sequence 范围与对应 PostgreSQL Outbox Watermark。Backup 的访问与保护机制只消费 [08](./08-security-audit-governance.md) 的有效 Security Contract。
 
-| Stream | Retention Policy | 时间规则 | `MaxBytes` | 满容量行为 |
-| --- | --- | --- | ---: | --- |
-| `PLATFORM_COMMANDS` | `WorkQueuePolicy` | 成功 ACK 后删除；未完成消息最多 7 天 | 1 GiB | `DiscardNew` 并告警 |
-| `PLATFORM_EVENTS` | `LimitsPolicy` | 最多保留 30 天 | 5 GiB | `DiscardOld`，删除最旧消息 |
-| `PLATFORM_DLQ` | `LimitsPolicy` | 最多保留 90 天 | 2 GiB | `DiscardNew` 并告警 |
+### Bucket Class 与对象保护
 
-时间与容量限制同时生效。`PLATFORM_COMMANDS` 和 `PLATFORM_DLQ` 满容量时发布失败必须显式返回，不能静默丢弃命令或失败证据；`PLATFORM_EVENTS` 的有界淘汰只服务于恢复和受控重放，业务事实仍从 PostgreSQL 重建。JetStream 不是无限历史库，DLQ 不自动 redrive；人工重放必须重新校验 Capability、Subject、Schema、目标 Consumer、Idempotency Request ID 和审计关系。
-
-一致性流程固定为领域写入、Audit、Outbox 同一 PostgreSQL transaction 提交；Relay 收到 JetStream Persist ACK 后才标记发布；Consumer 先以 Inbox Unique Key 去重、成功提交业务效果后才 AckSync。传输是 at-least-once，Inbox 和 Effect Ledger 消除重复业务效果；外部副作用不确定时保留 `UNKNOWN/RECONCILIATION`，由 Reconciler 查询真实外部结果，禁止假设 exactly-once。
-
-NATS 的权威恢复是应用一致性 Account Backup，而不是多个 PVC/CSI Snapshot。备份 Manifest 必须记录 Stream、消息/Consumer 配置与位置、Sequence 范围、Checksum、版本及对应 PostgreSQL Outbox Watermark。恢复先重建空集群并验证 Stream、Sequence、Consumer、Schema 与抽样 Payload，再从 Watermark 以安全重叠窗补发 Outbox，保留原 Envelope ID，由 Inbox/Effect Ledger 去重。
-
-NATS 默认每日 `04:00 Asia/Shanghai` 执行应用一致性 Account Backup；前次任务未完成、完整性检查失败、空间不足或 Stream 配置正在变化时不得启动重叠任务。Backup Retention 为 DEV 3 天、PROD 7 天，已发布 Outbox 至少保留 30 天。DEV 每月、PROD 每季度执行完整 Restore Drill。Cluster DR 目标为 `RPO <= 5min`、`RTO <= 60min`；每日 Backup 周期不是消息 RPO，消息恢复还依赖 Outbox Watermark、安全重叠补发与幂等消费。Backup 的访问与保护机制只消费 [08 的有效 Security Contract](./08-security-audit-governance.md)。
-
-NATS 的 Hardened Target Component Envelope：
-
-| 环境 | Replica | 单 Node CPU Request / Limit | 单 Node Memory Request / Limit | Memory Store 上限 | File Store 上限 | 单 Node PVC |
-| --- | ---: | --- | --- | ---: | ---: | ---: |
-| DEV | 3 | 100m / 500m | 256 MiB / 512 MiB | 128 MiB | 12 GiB | 20 GiB |
-| PROD | 3 | 250m / 1 CPU | 512 MiB / 1 GiB | 128 MiB | 12 GiB | 20 GiB |
-
-三个 NATS Node 各自使用独立 PVC，两个环境均合计 `60 GiB`。业务 Stream 只使用 File Store；20 GiB PVC 中最多 12 GiB 用于 File Store，其余空间保留给 RAFT、索引、Compaction、临时文件与恢复。
-
-## 5. Temporal Persistence
-
-Temporal 只在 Durable Workflow 被对应 Capability Package 首次消费时激活。Launch Profile 可让各 Server Role 和 Platform Orchestrator Worker 使用单 Replica，但 Durable Persistence、TLS/身份授权、Worker Build ID、硬 Resource Limit、恢复 Fencing 与端到端对账不得省略；故障时暂停长任务推进。
-
-Temporal Server 的 Default Store 与 Visibility Store 使用同环境 CloudNativePG 中隔离的 `temporal` 与 `temporal_visibility` 数据库。Temporal 仅使用 ClusterIP，并消费 [08 的有效 Data-Service Transport/Service Identity/Access Contract](./08-security-audit-governance.md)；普通浏览器和 Sandbox 不具有 Temporal 访问资格。
-
-Runtime Role 只做 DML，Schema 由短生命周期 DDL Job 管理。History 只保存 Workflow 的非敏感控制元数据，禁止写入源码、Prompt、Secret 或完整附件。Worker Build ID 与不可变应用镜像/Workflow Code 绑定；活动 Workflow 的版本演进通过显式兼容策略完成，不在发布期间静默替换。Temporal 的 Durable History 只解释编排推进，领域状态仍以 PostgreSQL owner 为准。
-
-Temporal Persistence 恢复顺序固定为：先 Fence Temporal 写入入口与全部 SDK Worker；再对 Default/Visibility Store 执行 PostgreSQL PITR；随后以相同 Server、Schema、Shard 与 Namespace 配置启动 Temporal，验证 Visibility 查询和 Worker Build ID 映射；最后依据 PostgreSQL 领域事实、Outbox、Inbox 与 Effect Ledger 对账外部效果，确认无重复或遗漏后才重新开放 Worker。Persistence Database 的 RTO 不等于端到端 Workflow RTO；端到端恢复必须包含 Workflow/Visibility/Build ID/外部效果验证，并通过完整 Restore Drill 形成实测结果。
-
-Temporal 的 Hardened Target Component Envelope：
-
-| 组件 | 每环境 Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | 数据 PVC |
-| --- | ---: | --- | --- | --- |
-| Frontend | 2 | 250m / 1 CPU | 512 MiB / 1 GiB | 无 |
-| History | 2 | 500m / 2 CPU | 1 GiB / 2 GiB | 无 |
-| Matching | 2 | 250m / 1 CPU | 512 MiB / 1 GiB | 无 |
-| Temporal System Worker | 2 | 250m / 1 CPU | 512 MiB / 1 GiB | 无 |
-| Platform Orchestrator Worker | 2 | 250m / 1 CPU | 512 MiB / 1 GiB | 无 |
-| Temporal UI / Console Access Adapter | 2 | 100m / 500m | 256 MiB / 512 MiB | 无 |
-
-上述稳态 Request 合计约为 `3.2 CPU / 6.5 GiB`，Limit 合计约为 `13 CPU / 13 GiB`。四类 Temporal Server、Worker、UI 与 Adapter 均不声明独立数据 PVC；Durable Persistence 与 Grafana 状态一样计入同环境 PostgreSQL，不能在 ESSD BOM 中重复增加 Temporal 数据卷。发布还必须为四类 Server Surge 预留约 `1.25 CPU / 2.5 GiB` Request，并为一整组新 Platform Orchestrator Worker 预留 `500m CPU / 1 GiB` Request。
-
-## 6. Object Storage、Bucket Class 与 Artifact
-
-Object Storage 只在附件、Artifact、WORM Audit、组件 Backup 或 Observability Object 被对应 Capability Package 首次消费时激活。环境内 Object Storage 的目标实现即 Rook-Ceph RGW，Launch 与 Hardened Target 只在拓扑、副本与容量上不同；在 Rook-Ceph 尚未激活的早期单节点阶段，仅组件 Backup 允许使用 Cluster 外 OSS/S3-compatible Repository 作为过渡通道（阶段选择见[实施路线图](./12-implementation-roadmap.md)及其容量规划），该过渡通道不承载附件、Artifact、WORM Audit 或 Observability Object。Rook-Ceph 激活后新对象一律写入环境内 RGW；过渡 Repository 中的既有 Backup 按其保留策略继续可用于恢复，不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、版本化精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变；实现和拓扑不得降低已启用能力的证据判定。
-
-Rook-Ceph RGW 是每环境的 S3-compatible Object Storage，职责仅限 Object Storage；它不为 PostgreSQL、Valkey、NATS、Temporal 或其他实时 Stateful Workload 提供 RBD/CephFS。实时 PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 和容量由 [09](./09-infrastructure-operations.md)拥有。
-
-Bucket Class 固定为：
-
-```text
-requirement-attachments  agent-artifacts  audit-worm  postgres-backup
-nats-backup              openbao-recovery observability-logs observability-traces
-```
-
-每个 Class 使用独立 Policy、Versioning、Retention、Quota 与 Capacity Ledger，并服从 [08 的权威 Security Contract](./08-security-audit-governance.md)。Prefix 不能替代 Bucket 级隔离；同一 Class 中的物理 Bucket 必须划分互斥配额，Class Usage 汇总当前/非当前 Version、Object Lock、Delete Marker、Multipart、GC 延迟和元数据估算。
-
-Environment Bucket-Class Capacity Ledger 是 Class 准入的权威运行账本。每个 Class 的版本化参数至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes`、各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区、基于对象分布证据生成的 `rgwMaxObjects` 以及 Desired/Effective Revision；同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`。精确数值和 Ceph Raw Envelope 由[环境容量与服务器规划](./appendix-parameters.md#容量与服务器规划)唯一拥有，[09](./09-infrastructure-operations.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
-
-Class Usage 使用保守的 logical stored bytes 口径，聚合全部物理 Bucket/Cluster 实例的 Current Version、Noncurrent Version、受 Lock/Retention 保护对象、Delete Marker/Index、已上传和已预占 Multipart、尚未完成 GC 的对象与标准化 Metadata/Overhead 估算。Ledger、RGW Stats、Cluster Raw 平均值和最满 OSD 分别保留自身单位与阈值；任一 Gate 更危险时取更严格结果，禁止挑选更宽松口径或直接混算 logical/raw bytes。
-
-每次写入或 Backup 预占依次验证 Product Quota（适用时）、Class Operating/Admission、物理 RGW Size/Object Guard、Cluster Raw 与最满 OSD Gate。Class 的 30 天预测按“当前全部占用 + p95/p99 预期写入 + Locked/Multipart 上界 - 已由权威 Reconciler 证明可安全释放的对象”计算；未验证 Backup、只有 Delete Marker 的 Version、失败 Reconcile 和未完成 GC 不得计作可回收。任一 Gate 失败统一返回容量维度 `STORAGE_CAPACITY`，保留失败 Gate、Class、Effective Revision 与 Reservation ID，并触发 Operations Incident；不能把它混同为产品维度 `ARTIFACT_QUOTA`。
-
-Bucket Class 的对象保护矩阵固定为：
+Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-compatible 对象服务；实时 Stateful PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 与容量由 [09](./09-infrastructure-operations.md) 拥有。Rook-Ceph 尚未激活的早期单节点阶段，仅组件 Backup 允许使用 Cluster 外 OSS/S3-compatible Repository 作为过渡通道，该通道不承载附件、Artifact、WORM Audit 或 Observability Object；Rook-Ceph 激活后新对象一律写入环境内 RGW，过渡 Repository 中的既有 Backup 按其保留策略继续可用于恢复而不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变。Bucket Class 固定为下表八类，每类使用独立 Policy、Credential、Quota 与 Capacity Ledger：
 
 | Bucket Class | Versioning / Object Lock | 保留与清理语义 |
 | --- | --- | --- |
-| `requirement-attachments` | 启用 Versioning；普通对象默认不加 Lock | 当前不进行已接受业务数据的物理清理；只允许未完成 Multipart 与无业务引用 `ORPHANED` 精确 Version 的技术垃圾清理 |
-| `agent-artifacts` | 启用 Versioning；绑定 Decision、Acceptance、Merge 或 Release 的精确版本使用 `GOVERNANCE` Lock | 当前不进行已接受业务数据的物理清理；只允许未完成 Multipart 与无业务引用 `ORPHANED` 精确 Version 的技术垃圾清理 |
-| `audit-worm` | 启用 Versioning；365 天 `COMPLIANCE` Lock | 08 唯一定义 Retention、Legal Hold/调查冻结与策略级删除资格；本模块只执行已获资格的精确 Version 操作 |
-| `postgres-backup` | 启用 Versioning；近期 Backup Object 默认 7 天 `GOVERNANCE` Lock | 还须满足 DEV 7 天、PROD 30 天 Recovery Window 与完整 Base Backup + WAL 恢复链 |
-| `nats-backup` | 启用 Versioning；`GOVERNANCE` Lock 覆盖 DEV 3 天、PROD 7 天有效 Backup Retention | 仍须保留可恢复 Account Backup、Manifest 与 Outbox 对账链 |
-| `openbao-recovery` | 启用 Versioning；默认 7 天 `GOVERNANCE` Lock | 使用离线 OpenPGP；保留与对应 Shamir/Seal Generation、Manifest 和恢复演练共同判定 |
-| `observability-logs` | 由 Loki Backend 管理对象版本与 Retention，不使用通用 Reconciler 直接删除 | Loki 索引一致性与 09 的 Log Retention 决定清理 |
-| `observability-traces` | 由 Tempo Backend 管理对象版本与 Retention，不使用通用 Reconciler 直接删除 | Tempo Block/索引一致性与 09 的 Trace Retention 决定清理 |
+| `requirement-attachments` | 启用 Versioning；普通对象默认不加 Lock | 不物理清理已接受业务数据；只允许未完成 Multipart 与无业务引用 `ORPHANED` 精确 Version 的技术垃圾清理 |
+| `agent-artifacts` | 启用 Versioning；绑定 Decision、Acceptance、Merge 或 Release 的精确版本使用 `GOVERNANCE` Lock | 同上 |
+| `audit-worm` | 启用 Versioning；长期 `COMPLIANCE` Lock | Retention 期限、Legal Hold/调查冻结与策略级删除资格由 [08](./08-security-audit-governance.md) 判定；本模块只执行已获资格的精确 Version 操作 |
+| `postgres-backup` | 启用 Versioning；近期 Backup Object 使用 `GOVERNANCE` Lock | 还须满足各环境 Recovery Window 与完整 Base Backup + WAL 恢复链 |
+| `nats-backup` | 启用 Versioning；`GOVERNANCE` Lock 覆盖有效 Backup Retention | 仍须保留可恢复 Account Backup、Manifest 与 Outbox 对账链 |
+| `openbao-recovery` | 启用 Versioning；`GOVERNANCE` Lock | 使用离线 OpenPGP；与对应 Shamir/Seal Generation、Manifest 和恢复演练共同判定 |
+| `observability-logs` | 由 Loki Backend 管理对象版本与 Retention | Loki 索引一致性与 [09](./09-infrastructure-operations.md) 的 Log Retention 决定清理 |
+| `observability-traces` | 由 Tempo Backend 管理对象版本与 Retention | Tempo Block/索引一致性与 [09](./09-infrastructure-operations.md) 的 Trace Retention 决定清理 |
 
-`GOVERNANCE` Lock 不授予普通服务 Retention Bypass；`COMPLIANCE` Lock 不可由 Super Admin、Reconciler 或普通运维缩短。任何 Class 的 Prefix 都不能替代独立 Bucket、Credential、Quota、Encryption 或 Retention Boundary。
-
-Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体。附件或 Agent Artifact 的归档、逻辑删除、Requirement 恢复状态变化都不释放对象容量；仅在其领域 owner 明确的引用、状态和保留条件满足后才可能改变存储引用。上传和下载仅能由应用授权签发短期、精确版本的 Presigned Request。文件检查由应用 `FileSecurityPort` 处理：需要扫描的对象只有合格 Verdict 才可用；由 02/08 的版本化 Source/Media Policy 合法跳过扫描的受信内部纯文本可在完整性验证后不带 Verdict 进入 `AVAILABLE`。本模块不决定扫描分支、Verdict 或 Artifact 业务状态。
-
-Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 和 Environment Bucket-Class Capacity Ledger；任何一侧失败都不形成可用预占。两本账本由同一个存储准入 owner 模块在其自有 Schema 内持久化，双账本预占因此是该模块的单模块本地事务，不违反[平台应用与集成](./06-platform-application-integration.md)的单模块事务边界；Product Quota 额度值与 Bucket-Class 容量参数仍分别按其 Policy owner 的 Effective Snapshot 与容量 Contract 只读解析，预占事务不改写其他模块拥有的数据。物理 RGW native quota 只作为最后后备保护，不能替代双账本准入。达到产品额度返回 `ARTIFACT_QUOTA`；达到 Bucket Class 或 Raw Capacity 边界返回 `STORAGE_CAPACITY` 并创建 Operations Incident。提高产品配额不能突破 Environment Capacity、08 Security Contract 或 File Security Scanner Envelope。
-
-## 7. Backup、Retention 与 Reconciler
-
-Backup 是组件自己的应用一致性恢复链：CloudNativePG 使用 Base Backup + WAL，NATS 使用 Account Backup + Outbox 对账，Temporal 随其 PostgreSQL Persistence 恢复。对象 Backup Job 在上传前必须预检并原子预占目标 Bucket Class 的 working set 与 Version/Lock 放大；空间不足时形成 Backup/RPO Degraded Incident，不得上传半份“成功 Backup”、缩短恢复窗口或借用 Audit Emergency Margin。
-
-目标默认恢复边界是单站点 Cluster DR，不提供 Zone、Region、Account 或 Site DR 保证。DEV 不是 PROD Standby；每个环境独立执行 Backup、Restore 与 Drill。
-
-`Object Retention Reconciler` 只清理 `audit-worm`、`postgres-backup`、`nats-backup` 和 `openbao-recovery` 中超过各自权威保留期的精确 Object Version。对于 `audit-worm`，08 owner 先依据 Audit Retention、Legal Hold/调查冻结与 Security Floor 产生策略级资格，本模块不得重新解释或缩短；对象执行还必须证明 Object Lock 已到期且无恢复/业务引用。Backup 类别还须证明存在满足 Recovery Window 和恢复链的更新有效副本。每次判定、拒绝、删除、失败和 GC 验证均追加 Audit。Reconciler 使用专用最小权限身份，不具备 Retention Bypass、跨 Bucket 或通配 Prefix 删除能力。
-
-无法完整证明资格、Manifest/索引不一致、删除失败或 GC 未验证时，对象继续计入容量，不能仅因逻辑 Retention 到期扣减。当前已经被业务接受的 `requirement-attachments` 与 `agent-artifacts` 只做归档、逻辑删除和引用治理，不进入业务数据物理清理；归档、逻辑删除或 Requirement 恢复均不释放 Object Storage 容量。未完成 Multipart Abort 与无业务引用的 `ORPHANED` 技术垃圾仍可按精确 Object Version 受控清理。Loki/Tempo 的对象由各自 Backend Retention 清理，Reconciler 不得绕过其索引一致性。Bucket Class Operating Quota、底层 Enforcement 和容量扩展由版本化 `GITOPS_CONFIG`/Environment Capacity Profile 约束，管理后台只读显示。
-
-## 8. 一致性与故障语义
+### 一致性与故障语义
 
 | 组件或场景 | 语义与处置 |
 | --- | --- |
@@ -213,15 +89,61 @@ Backup 是组件自己的应用一致性恢复链：CloudNativePG 使用 Base Ba
 | Backup Headroom/锁定对象不足 | 形成容量与 RPO 风险，阻止不安全备份，不删除受保护副本 |
 | Retention Reconciler 失败 | 对象继续占用并告警，禁止乐观释放空间 |
 
-任何组件故障、恢复或重放必须保留 Correlation ID、版本、影响范围和可审计结果。诊断数据可以有其独立 Retention 和降级策略，但不得影响业务、Audit、Backup 或 Artifact 的权威事实。
+## 关键不变量
 
-## 9. 不变量
+- PostgreSQL 是唯一的业务权威关系事实源，Cache、消息、Workflow History、对象存储、日志与指标都不得承接跨领域主状态——只有单一权威关系事实才能给恢复与审计一个确定基准。
+- 每个 Platform Environment 拥有独立组件、数据、Backup、Bucket 与恢复链，DEV 不是 PROD Standby，各环境独立执行 Backup、Restore 与 Drill——环境是可验证的故障域，共享任何运行状态都会让隔离失效。
+- 组件只在对应 Capability Package 首次被消费时激活，未启用组件不部署，也不以占位实例、空 Stream、空 Bucket 或 Feature Toggle 宣称能力可用——半启用会让能力判定失去证据。
+- 已启用组件无论 Profile 都必须具备 TLS 与最小 Workload Identity、显式硬 Request/Limit、存储与队列上限、Cluster 外 Backup、真实 Restore 验证、容量不足时拒绝或背压，以及依赖不可证明时 Fail Closed——Launch 的单实例只降低可用性目标，不降低安全与证据门槛。
+- 单实例故障允许受影响能力安全停止，但不得丢失已确认事实、伪造成功证据或回退到明文、匿名、无限资源与未受保护存储——服务可以重启，被伪造的证据无法恢复。
+- 业务流量经 PgBouncer Transaction Pooling 进入 PostgreSQL 且所有连接池有界，只有 Alembic、DDL Job、DBA 与受控 Break-glass 可直连 rw service——连接边界同时是资源保护与审计入口。
+- 每个模块拥有独立 Schema、迁移目录与数据访问账号，任何模块不得直接读写其他模块内部表——数据边界是模块可提取性与责任归属的前提。
+- Hardened Target 的 PostgreSQL 使用 quorum 同步复制，Standby 不足时不得自动降级为异步写入，Failover 候选必须证明包含全部已确认事务——降级确认等于悄悄放弃已经承诺的持久性。
+- 数据库恢复只能来自经验证的 Base Backup 与连续 WAL 链，不得把任意 PVC/CSI Snapshot 声明为一致性数据库恢复源，且恢复后先验证数据与服务再开放应用流量——块级快照是崩溃一致而不是应用一致的。
+- Valkey 只保存可重建的 Session 热索引、撤销索引、缓存、限流、幂等键与短期锁；缓存不可用、版本未知或安全写无法回源时必须回查 PostgreSQL 或 Fail Closed，绝不放行陈旧授权、绕过撤销或把缓存升级为事实源；内存达到上限时按 `noeviction` 拒绝新写并告警而不淘汰既有键——可重建数据一旦被当作权威，撤销与授权就会静默失效，而静默淘汰幂等键与短期锁会直接破坏一致性保证。
+- 业务只使用 Sentinel-aware Client，不固定 Primary 地址或依赖厂商私有配置；PVC 可用于快速恢复，但其丢失后的正确恢复方式是从权威事实重建——拓扑冗余不应要求业务改写代码，也不应把缓存副本升级为备份。
+- 领域写入、Audit 与待发布消息在同一 PostgreSQL 单模块事务原子提交，Relay 取得 JetStream Persist ACK 后才标记已发布，Consumer 先以 Inbox 唯一键去重并在业务效果提交后才 AckSync——事实与其证据必须同生同灭。
+- 传输是 at-least-once，Inbox 与 Effect Ledger 负责消除重复业务效果，外部副作用不确定时保留 `UNKNOWN/RECONCILIATION` 并由 Reconciler 查询真实外部结果，禁止假设 exactly-once——未证明的外部效果按未完成处理。
+- 跨组件不存在分布式事务，重复交付、外部不确定结果与重试只能由幂等键、Inbox、Effect Ledger 与 Reconciler 收敛——假设分布式原子性只会把不一致推迟到恢复时暴露。
+- 命令与 DLQ Stream 满容量时发布失败必须显式返回，不得静默丢弃命令或失败证据；事件 Stream 的有界淘汰只服务恢复与受控重放，业务事实仍从 PostgreSQL 重建——JetStream 不是无限历史库。
+- DLQ 不自动 redrive，人工重放必须重新校验 Capability、Subject、Schema、目标 Consumer、Idempotency Request ID 与审计关系——重放是一次新的受控动作，不是原动作的延续。
+- NATS 的权威恢复是应用一致性 Account Backup 及其绑定 Outbox Watermark 的 Manifest，而不是多个 PVC/CSI Snapshot；补发使用安全重叠窗并保留原 Envelope ID——只有幂等去重成立时重叠补发才是安全的。
+- 前次 Backup 未完成、完整性检查失败、空间不足或 Stream 配置正在变化时不得启动重叠 Backup 任务；每日 Backup 周期不是消息 RPO——半份备份与错误的 RPO 假设都会在真实恢复时失败。
+- 每个 Deployable Unit 只按 Publish/Subscribe Subject Allowlist 获得最小消息访问，平台与系统账号隔离，Sandbox 不获得 NATS 访问（Contract 属 [08](./08-security-audit-governance.md)）——最小主题范围是消息面越权的唯一有效边界。
+- Temporal 的 Default 与 Visibility Store 使用同环境 PostgreSQL 中隔离的数据库，Runtime Role 只做 DML 而 Schema 由短生命周期 DDL Job 管理——编排存储不额外引入第二套持久化技术与权限模型。
+- Temporal History 只保存 Workflow 的非敏感控制元数据，禁止写入源码、Prompt、Secret 或完整附件，Durable History 只解释编排推进而领域状态仍以其 owner 为准——编排历史不是业务事实的第二来源，也不是敏感内容的容器。
+- Worker Build ID 与不可变应用镜像/Workflow Code 绑定，活动 Workflow 的版本演进只经显式兼容策略完成，不在发布期间静默替换——静默替换会让运行中的编排语义漂移。
+- 组件恢复必须按上述恢复链执行，Persistence Database 的 RTO 不等于端到端 Workflow RTO，端到端恢复必须包含 Workflow/Visibility/Build ID/外部效果验证并通过完整 Restore Drill 形成实测结果——未对账就重新开放 Worker 会重复执行外部副作用。
+- RGW 只提供对象服务，实时 Stateful RWO 数据一律使用 `stateful-rwo-lowlatency`，二者不混用——对象恢复与实时数据库延迟不能互相拖累。
+- Environment Bucket-Class Capacity Ledger 是 Class 准入的权威运行账本，每个 Class 使用独立 Policy、Versioning、Retention、Quota 与版本化容量参数，其物理 Bucket 划分互斥配额且分区之和不得超过该 Class 的准入上限；Prefix 不能替代 Bucket 级隔离、Credential、加密或 Retention 边界——共享前缀会让任一越权读写扩散到全部类别，而超额分区会让准入 Gate 允许物理上放不下的写入。
+- Class Usage 使用保守的 logical stored bytes 口径，聚合当前/非当前 Version、受 Lock 保护对象、Delete Marker/Index、已上传与已预占 Multipart、未完成 GC 的对象与标准化元数据估算；Ledger、RGW Stats、Cluster Raw 与最满 OSD 各自保留单位与阈值，任一 Gate 更危险时取更严格结果——挑选更宽松口径或混算 logical/raw bytes 会让容量准入失去意义。
+- 每次写入或 Backup 预占依次验证 Product Quota（适用时）、Class Operating/Admission、物理 RGW Size/Object Guard、Cluster Raw 与最满 OSD Gate；Class 的 30 天预测按“当前全部占用 + p95/p99 预期写入 + Locked/Multipart 上界 − 已由权威 Reconciler 证明可安全释放的对象”计算，未验证 Backup、只有 Delete Marker 的 Version、失败 Reconcile 与未完成 GC 都不得计作可回收——乐观回收会在真实写入时耗尽容量。
+- 容量维度失败与产品配额维度失败是两个不同错误码：容量失败保留失败 Gate、Class、Effective Revision 与 Reservation ID 并触发 Operations Incident，提高产品配额也不能突破 Environment Capacity、[08](./08-security-audit-governance.md) 的 Security Contract 或 File Security Scanner Envelope——把容量问题当作配额问题会让扩容决策失去依据。
+- Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 与 Environment Bucket-Class Capacity Ledger，任何一侧失败都不形成可用预占；两本账本由同一个存储准入 owner 在其自有 Schema 内持久化，因此该双账本预占是单模块本地事务而不违反[平台应用与集成](./06-platform-application-integration.md)的事务边界，额度与容量参数仍分别按其 Policy owner 的 Effective Snapshot 只读解析；物理 RGW native quota 只作为最后后备保护，不能替代双账本准入——两本账同时成立才能既守住产品承诺又守住物理容量，同 owner 持久化让它无需分布式事务，而后备保护无法产生可解释、可审计的业务拒绝原因。
+- Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体；上传与下载只能由应用授权签发绑定精确版本的短期 Presigned Request——对象访问必须由业务授权判定，而不是由谁持有 URL 决定。
+- 需要扫描的对象只有合格 Verdict 才可用，由 [02](./02-requirement-workflow.md)/[08](./08-security-audit-governance.md) 的版本化 Source/Media Policy 合法跳过扫描的受信内部纯文本可在完整性验证后不带 Verdict 进入可用状态；本模块不决定扫描分支、Verdict 或 Artifact 业务状态——存储执行与业务判定必须分属不同 owner。
+- 归档、逻辑删除与 Requirement 恢复都不释放 Object Storage 容量，已被业务接受的附件与 Agent Artifact 不进入业务数据物理清理，只有未完成 Multipart Abort 与无业务引用的 `ORPHANED` 技术垃圾可按精确 Object Version 受控清理——逻辑状态变化不等于物理释放。
+- `Object Retention Reconciler` 只清理 Audit 与 Backup 类 Bucket 中超过各自权威保留期的精确 Object Version：`audit-worm` 的策略级资格由 [08](./08-security-audit-governance.md) 产生且不得被重新解释或缩短，对象执行还须证明 Object Lock 已到期且无恢复/业务引用，Backup 类还须证明存在满足 Recovery Window 与恢复链的更新有效副本；Reconciler 使用专用最小权限身份，不具备 Retention Bypass、跨 Bucket 或通配 Prefix 删除能力；`GOVERNANCE` Lock 不授予普通服务 Retention Bypass，`COMPLIANCE` Lock 也不可由 Super Admin、Reconciler 或普通运维缩短——删除权限必须小于它可能造成的损失，可被绕过的保留期不是保留期。
+- 无法完整证明资格、Manifest/索引不一致、删除失败或 GC 未验证时，对象继续计入容量并告警，不能仅因逻辑 Retention 到期扣减——账面释放会让容量 Gate 基于虚假余量放行。
+- 对象 Backup Job 在上传前必须预检并原子预占目标 Bucket Class 的 working set 与 Version/Lock 放大，空间不足时形成 Backup/RPO Degraded Incident，不得上传半份"成功 Backup"、缩短恢复窗口或借用 Audit Emergency Margin——被削弱的备份比没有备份更危险，因为它看起来是绿色的。
+- 目标默认恢复边界是单站点 Cluster DR，不提供 Zone、Region、Account 或 Site DR 保证——不承诺未经演练验证的恢复能力。
+- 任何组件故障、恢复或重放都保留 Correlation ID、版本、影响范围与可审计结果；诊断数据可以有独立 Retention 与降级策略，但不得影响业务、Audit、Backup 或 Artifact 的权威事实——可观测性是辅助证据，不是事实源。
+- Bucket Class Operating Quota、底层 Enforcement 与容量扩展由版本化 `GITOPS_CONFIG`/Environment Capacity Profile 约束，管理后台只读显示——运行时容量边界不能由业务后台改写。
 
-1. PostgreSQL 是唯一的业务权威关系事实；Cache、Bus、Workflow History、日志与指标都不是替代品。
-2. 业务效果只在 Outbox/Inbox/Effect Ledger 能证明幂等时重试；不确定的外部结果不得被标记为成功。
-3. Temporal、NATS 与 Object Storage 都只保存各自职责内的数据，不能承接跨领域主状态。
-4. RGW 只提供对象服务，`stateful-rwo-lowlatency` 承载实时 Stateful RWO 数据；二者不混用。
-5. Retention 与恢复始终以精确版本、经验证 Manifest 和有效恢复链判定，归档或逻辑删除从不等同于物理释放。
-6. Valkey、NATS、Temporal 与 Object Storage 只在对应 Capability Package 首次消费时激活；未启用组件不部署，已启用组件不得省略 TLS、身份、硬资源上限、Backup/Restore 或 Fail Closed。
-7. 跨组件不存在分布式事务；重复交付、外部不确定结果与重试必须由幂等键、Inbox、Effect Ledger 和 Reconciler 收敛。
-8. 任一组件恢复均保留其权威恢复链；组件故障不得静默降级为丢失安全、审计或领域事实。
+## 与其他模块的关系
+
+下表是本模块自身视角：07 从各模块消费什么、向各模块提供什么。各模块的完整 Contract 由其自身定义，本文不复制其状态、参数或协议字段。
+
+| 模块 | 消费 | 提供 |
+| --- | --- | --- |
+| [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | 责任链中权威数据、消息、缓存与对象事实的持久化基线 |
+| [02 Requirement Workflow](./02-requirement-workflow.md) | Artifact 业务状态、扫描分支结果与对象引用条件 | Artifact 对象、Object Version、双账本预占、技术垃圾清理与 Retention 执行 |
+| [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | Attempt 日志、评测与执行证据的 Artifact 引用条件 | Artifact 对象、消息投递与 Temporal/NATS 运行支撑 |
+| [04 Sandbox Runtime](./04-sandbox-runtime.md) | 需持久化的执行证据及其校验 Hash | Artifact 对象与 Checkpoint、日志、构建证据的存储 Contract |
+| [05 Source Control 与交付](./05-source-control-delivery.md) | Evidence 引用的 Artifact Hash 与外部 Effect 的可对账事实 | Artifact 对象与 Object Version、Inbox/Outbox 与 Effect Ledger 的持久化基线 |
+| [06 平台应用与集成](./06-platform-application-integration.md) | 应用侧的单模块事务、Outbox/Inbox/Effect Ledger 一致性 Contract 与 Object Reference 传递约束 | PostgreSQL、Valkey、NATS、Temporal 与 Object Storage 的运行与恢复事实、Outbox/Inbox 持久化基线 |
+| [08 安全、审计与治理](./08-security-audit-governance.md) | 数据服务的传输/工作负载身份/最小访问 Contract、静态与对象加密、Object Lock 语义、Audit Retention 与 Legal Hold 资格 | 数据服务拓扑与恢复链、`audit-worm` 与 `openbao-recovery` 的对象版本、容量计入与精确删除执行 |
+| [09 基础设施与运维](./09-infrastructure-operations.md) | Cluster、Node、StorageClass Provider Mapping、物理放置与 Aggregate Physical Ceiling、Cluster DR 与 Log/Trace Retention | 组件数据、故障与恢复 Contract，以及 Bucket Class 与 Backup 的容量账本证据 |
+| [10 Configuration Governance](./10-configuration-governance.md) | Draft、Effective Snapshot 与 Promotion 的通用配置生命周期语义 | Typed Configuration、版本与 Activation Record 的 PostgreSQL 持久化基线 |
+| [12 实施路线图](./12-implementation-roadmap.md) | 当前阶段的 Capability 激活状态、Release 验收记录与 Capacity Profile 选择 | 组件数据、一致性与恢复必须证明的 Contract，供 Release Gate 引用 |
+| [参数附录](./appendix-parameters.md) | 组件资源包络、Bucket Class 容量参数与结构化错误码 | 本文正文中的定性规则 |

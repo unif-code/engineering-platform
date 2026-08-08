@@ -5,7 +5,7 @@
 
 ## 容量与服务器规划
 
-本节参数由 [12 实施路线图](./12-implementation-roadmap.md)在选择 Profile 时消费，由 [09 基础设施与运维](./09-infrastructure-operations.md)在验证物理放置、Aggregate Physical Ceiling 与 Provisioning Gate 时消费，由 [04 Sandbox Runtime](./04-sandbox-runtime.md)读取 Node 数、每环境 Ceiling 与磁盘容量，由 [07 数据、消息与存储](./07-data-messaging-storage.md)读取 Raw、Bucket Class、RWO 与 Backup 数值。本节整体承接原 `environment-capacity-plan.md` 全文，只降低标题层级、不改写内容；其中的“本文”均指该容量与服务器规划本身。
+本节参数由 [12 实施路线图](./12-implementation-roadmap.md)在选择 Profile 时消费，由 [09 基础设施与运维](./09-infrastructure-operations.md)在验证物理放置、Aggregate Physical Ceiling 与 Provisioning Gate 时消费，由 [04 Sandbox Runtime](./04-sandbox-runtime.md)读取 Node 数、每环境 Ceiling 与磁盘容量，由 [07 数据、消息与存储](./07-data-messaging-storage.md)读取 Raw、Bucket Class、RWO、Stream 与 Backup 数值，由 [08 安全、审计与治理](./08-security-audit-governance.md)读取 OpenBao 与 Scanner 的资源、阈值与恢复数值。`### 1.` 到 `### 11.` 整体承接原 `environment-capacity-plan.md` 全文，只降低标题层级、不改写内容；其中的“本文”均指该容量与服务器规划本身。末尾的[组件资源包络](#组件资源包络)不属于该原文，是从 07、08 正文迁入的组件级数值。
 
 ### 1. 文档目标
 
@@ -239,6 +239,65 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 - [Rook-Ceph Prerequisites](https://rook.io/docs/rook/latest-release/Getting-Started/Prerequisites/prerequisites/)
 - [Kata Containers Virtualization](https://github.com/kata-containers/kata-containers/blob/main/docs/design/virtualization.md)
 - [阿里云 ECS：开启嵌套虚拟化](https://help.aliyun.com/zh/ecs/user-guide/enable-nested-virtualization)
+
+### 组件资源包络
+
+来源：[07 数据、消息与存储](./07-data-messaging-storage.md)与[08 安全、审计与治理](./08-security-audit-governance.md)。下列数值默认描述 Hardened Target Profile 的组件级包络；Launch Profile 可按 [12 实施路线图](./12-implementation-roadmap.md)的选择降低副本与拓扑，但不得取消硬 Request/Limit、存储与队列上限、Cluster 外 Backup 与真实 Restore 验证。数据实例的 CPU/Memory Request 与 Limit 相等以保持 Guaranteed QoS；任何 Profile 都禁止无 Request/Limit 的 BestEffort 数据实例。
+
+#### 数据服务资源与拓扑
+
+| 组件/环境 | Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit | 组件内存或存储上限 | 单 Pod 数据 PVC |
+| --- | ---: | --- | --- | --- | ---: |
+| PostgreSQL DEV | 3 | `500m / 500m` | `1 GiB / 1 GiB` | `shared_buffers=256 MB` | `40 GiB` |
+| PostgreSQL PROD | 3 | `1 CPU / 1 CPU` | `2 GiB / 2 GiB` | `shared_buffers=512 MB` | `100 GiB` |
+| PgBouncer DEV | 2 | `50m / 250m` | `64 MiB / 128 MiB` | — | 无 |
+| PgBouncer PROD | 2 | `100m / 500m` | `128 MiB / 256 MiB` | — | 无 |
+| Valkey DEV | 3 | `100m / 500m` | `256 MiB / 512 MiB` | `maxmemory=192 MiB` | `5 GiB` |
+| Valkey PROD | 3 | `250m / 1 CPU` | `512 MiB / 1 GiB` | `maxmemory=384 MiB` | `10 GiB` |
+| Valkey Sentinel DEV | 3（quorum 2） | `25m / 100m` | `32 MiB / 64 MiB` | — | 无 |
+| Valkey Sentinel PROD | 3（quorum 2） | `50m / 200m` | `64 MiB / 128 MiB` | — | 无 |
+| NATS DEV | 3 | `100m / 500m` | `256 MiB / 512 MiB` | Memory Store `128 MiB`；File Store `12 GiB` | `20 GiB` |
+| NATS PROD | 3 | `250m / 1 CPU` | `512 MiB / 1 GiB` | Memory Store `128 MiB`；File Store `12 GiB` | `20 GiB` |
+
+- 数据 PVC 合计：PostgreSQL DEV `120 GiB`、PROD `300 GiB`；Valkey DEV `15 GiB`、PROD `30 GiB`；NATS 两个环境均为 `60 GiB`。PgBouncer 与 Sentinel 是无状态层，不声明数据 PVC。
+- `maxmemory` 必须低于 Pod Memory Limit，为复制、AOF、Client 与内存碎片保留余量；`20 GiB` NATS PVC 中最多 `12 GiB` 用于 File Store，其余保留给 RAFT、索引、Compaction、临时文件与恢复。Valkey 固定使用 `noeviction`、AOF everysec 与周期 RDB。
+- Hardened Target 拓扑为：PostgreSQL 一个 Primary 与两个 Standby，quorum 同步复制固定 `method=any`、`number=1`、`dataDurability=required`、`failoverQuorum=true`；Valkey 一个 Primary、两个 Replica 与三个 Sentinel；NATS 三节点 File Storage 与三副本 Quorum。
+
+#### 消息 Stream 与消息上限
+
+| Stream | Retention Policy | 时间规则 | `MaxBytes` | 满容量行为 |
+| --- | --- | --- | ---: | --- |
+| `PLATFORM_COMMANDS` | `WorkQueuePolicy` | 成功 ACK 后删除；未完成消息最多 `7` 天 | `1 GiB` | `DiscardNew` 并告警 |
+| `PLATFORM_EVENTS` | `LimitsPolicy` | 最多保留 `30` 天 | `5 GiB` | `DiscardOld`，删除最旧消息 |
+| `PLATFORM_DLQ` | `LimitsPolicy` | 最多保留 `90` 天 | `2 GiB` | `DiscardNew` 并告警 |
+
+时间与容量限制同时生效；单条消息上限为 `256 KiB`，超限内容只以 Object Reference 传递。
+
+#### Temporal Server 与 Worker
+
+| 组件 | 每环境 Replica | 单 Pod CPU Request / Limit | 单 Pod Memory Request / Limit |
+| --- | ---: | --- | --- |
+| Frontend | 2 | `250m / 1 CPU` | `512 MiB / 1 GiB` |
+| History | 2 | `500m / 2 CPU` | `1 GiB / 2 GiB` |
+| Matching | 2 | `250m / 1 CPU` | `512 MiB / 1 GiB` |
+| Temporal System Worker | 2 | `250m / 1 CPU` | `512 MiB / 1 GiB` |
+| Platform Orchestrator Worker | 2 | `250m / 1 CPU` | `512 MiB / 1 GiB` |
+| Temporal UI / Console Access Adapter | 2 | `100m / 500m` | `256 MiB / 512 MiB` |
+
+稳态 Request 合计约 `3.2 CPU / 6.5 GiB`，Limit 合计约 `13 CPU / 13 GiB`。上述组件均不声明独立数据 PVC，Durable Persistence 计入同环境 PostgreSQL，不在 ESSD BOM 中重复增加 Temporal 数据卷。发布还须为四类 Temporal Server Surge 预留约 `1.25 CPU / 2.5 GiB` Request，并为一整组新 Platform Orchestrator Worker 预留 `500m CPU / 1 GiB` Request。
+
+#### 数据服务 Backup、Retention 与恢复目标
+
+| 组件 | Backup 调度 | Retention / Recovery Window | Cluster DR 目标 | Restore Drill |
+| --- | --- | --- | --- | --- |
+| PostgreSQL | 持续 WAL Archive（`archive_timeout=5min`）与每日 LZ4 Physical Base Backup | Recovery Window DEV `7` 天、PROD `30` 天 | PROD Candidate 在 `PGDATA <= 50 GiB` 时 `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
+| NATS | 每日 `04:00 Asia/Shanghai` 应用一致性 Account Backup | Backup Retention DEV `3` 天、PROD `7` 天；已发布 Outbox 至少保留 `30` 天 | `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
+
+`postgres-backup` 的近期 Backup Object 与 `nats-backup`、`openbao-recovery` 对象默认使用 `7` 天 `GOVERNANCE` Object Lock；`audit-worm` 的 Retention 期限由 [08 安全、审计与治理](./08-security-audit-governance.md)作为 Security Floor 拥有，不在本节调整。每日 Backup 周期不是消息 RPO。
+
+#### Bucket Class 容量账本参数
+
+每个 Bucket Class 的版本化容量参数至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes`、各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区、基于对象分布证据生成的 `rgwMaxObjects` 以及 Desired/Effective Revision；同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`。各 Class 的当前有效数值与 Ceph Raw Envelope 由本节 [8. Storage 规划](#8-storage-规划)的规划边界与 Environment Capacity Profile 共同确定，[09 基础设施与运维](./09-infrastructure-operations.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
 
 ## Resource Profile
 
