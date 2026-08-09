@@ -642,10 +642,11 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 grep -n 'environment-capacity-plan\|-detail\.md' visuals/platform-architecture-map.html *.md   # 无输出;有则修复
 ```
 
-- [ ] **Step 2: 验收 1——总行数**
+- [ ] **Step 2: 验收 1——总行数**(2026-08-08 用户裁决修订:正文 ≤2000,附录单列)
 
 ```bash
-cat *.md | wc -l   # ≤ 1600
+cat README.md [0-9]*.md | wc -l   # ≤ 2000(正文)
+wc -l appendix-parameters.md       # 附录单列报告,不计入正文预算
 ```
 
 - [ ] **Step 3: 验收 2——单篇行数**
