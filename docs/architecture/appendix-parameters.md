@@ -188,9 +188,10 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 - Cluster Raw 当前值或 30 天预测达到规划边界；
 - 任一 Bucket Class 达到其 Warning Threshold；
 - Backup Working Set 不能覆盖 Recovery Window；
+- External Repository（含 RGW 业务对象的外部副本）用量或 30 天预测达到 `externalMaxSizeBytes` 阈值，或 BackupBinding 复制水位持续滞后；
 - Recovery、Backfill 或容量压力开始影响平台 SLO。
 
-优先在三个 Core Node 对称增加新 OSD；如果融合 Node 的 CPU、Memory、IO 或维护窗口不再满足 Gate，再将 Storage 迁移为独立 Node Pool。
+优先在三个 Core Node 对称增加新 OSD；如果融合 Node 的 CPU、Memory、IO 或维护窗口不再满足 Gate，再将 Storage 迁移为独立 Node Pool。External 侧的扩容动作是提升 Provider 配额或扩容外部 Repository 并更新版本化 `externalMaxSizeBytes` 基线，同样不得以缩短保留或绕过 Lock 代替扩容。
 
 ### 9. Evolution Trigger
 
@@ -333,7 +334,7 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 
 #### Bucket Class 容量账本参数
 
-每个 Bucket Class 的版本化容量参数按其当前 `StorageBinding` 类型声明。两类 Binding 都至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes` 与 Desired/Effective Revision；RGW Binding 另含各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区与基于对象分布证据生成的 `rgwMaxObjects`，同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`；External Binding 另含 `externalMaxSizeBytes`（Provider Bucket 配额/用量 Guard 的准入上限）、Provider 配额引用与 `providerUsageMaxStaleness`（默认 `10` 分钟；Provider 用量/配额证据超过陈旧上限、unknown 或不可得时拒绝新预占），不适用 Cluster Raw 与最满 OSD Gate。各 Class 的当前有效数值与 Ceph Raw Envelope 由本节 [8. Storage 规划](#8-storage-规划)的规划边界与 Environment Capacity Profile 共同确定，[09 基础设施与运维](./09-infrastructure-operations.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
+每个 Bucket Class 的版本化容量参数按其当前 `StorageBinding` 类型声明。两类 Binding 都至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes` 与 Desired/Effective Revision；RGW Binding 另含各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区与基于对象分布证据生成的 `rgwMaxObjects`，同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`；External Binding 另含 `externalMaxSizeBytes`（Provider Bucket 配额/用量 Guard 的准入上限）、Provider 配额引用与 `providerUsageMaxStaleness`（默认 `10` 分钟；Provider 用量/配额证据超过陈旧上限、unknown 或不可得时拒绝新预占），不适用 Cluster Raw 与最满 OSD Gate。`BackupBinding` 的目的端沿用 External Binding 参数集与陈旧规则，其复制水位预算即该 Class 的 RPO（见[组件资源包络](#组件资源包络)的 Backup 表）。各 Class 的当前有效数值、Ceph Raw Envelope 与 External Repository 的 Provider 配额基线由本节 [8. Storage 规划](#8-storage-规划)的规划边界与 Environment Capacity Profile 共同确定，[09 基础设施与运维](./09-infrastructure-operations.md)验证 RGW 侧物理放置、Aggregate Ceiling 与 Headroom，External 侧以 Provider 配额与用量证据为准。
 
 ## Resource Profile
 
@@ -422,7 +423,7 @@ Scanner 的 `100 MiB` 单对象安全 Envelope 是独立 Security Floor，不是
 | `RESOURCE_EXHAUSTED/MEMORY` | Memory 无 Swap，OOM 形成该维度。 | [04](./04-sandbox-runtime.md) |
 | `RESOURCE_EXHAUSTED/EPHEMERAL_STORAGE` | Ephemeral Limit、DiskPressure、Eviction、Inode 或写满风险形成该维度。 | [04](./04-sandbox-runtime.md) |
 | `ARTIFACT_QUOTA` | 产品维度：达到产品额度时返回的 `failureDimension`，不能与容量维度 `STORAGE_CAPACITY` 混同。 | [02](./02-requirement-workflow.md)、[07](./07-data-messaging-storage.md) |
-| `STORAGE_CAPACITY` | 容量维度：Class Operating/Admission、物理 RGW Size/Object Guard、Cluster Raw 或最满 OSD Gate 任一失败时统一返回，保留失败 Gate、Class、Effective Revision 与 Reservation ID，并触发 Operations Incident。 | [07](./07-data-messaging-storage.md) |
+| `STORAGE_CAPACITY` | 容量维度：按 `StorageBinding` 类型统一返回——RGW Binding 的 Class Operating/Admission、物理 RGW Size/Object Guard、Cluster Raw 或最满 OSD Gate，External Binding 的 Class Operating/Admission、Provider 配额/用量 Guard 或用量证据 unknown/超陈旧上限，以及 `BackupBinding` `DEGRADED` 导致的该 Class 新写入 Fail Closed；保留失败 Gate、Class、Binding Generation、Effective Revision 与 Reservation ID，并触发 Operations Incident。 | [07](./07-data-messaging-storage.md) |
 | `UPLOAD_FAILED` | Artifact Version 在完成上传与完整性确认前失败的异常终态；该 Object Version 不可用、不进入 Workflow Gate，只能由调用方重新上传形成新的 Object Version。 | [02](./02-requirement-workflow.md) |
 | `SCAN_FAILED` | 扫描投递的有界退避重试超过上限后的异常状态；告警后只能通过受控命令重新入队。 | [02](./02-requirement-workflow.md)（[08](./08-security-audit-governance.md) 只提供扫描 Contract） |
 | `REQUIREMENT_SNAPSHOT_CONFLICT` | 生成 Integration Baseline Evidence 期间发现 Requirement/必需集合版本已变化，本次生成失败并重新获取快照，不发布部分覆盖或混合版本的 Evidence。 | [05](./05-source-control-delivery.md) |
