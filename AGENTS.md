@@ -14,6 +14,7 @@
 - `pnpm test`：单次运行 Vitest 测试套件。
 - `pnpm test:watch` / `pnpm test:coverage`：监听测试或生成覆盖率报告。
 - `pnpm doctor`：检查 React 代码中的常见问题。
+- `pnpm openapi:fetch` / `pnpm openapi:generate` / `pnpm openapi:check`：按 `openapi/artifact.lock.json` 锁定的后端 OpenAPI Artifact 取回并校验 Digest、生成 `src/services/generated`、做一致性与 dirty-diff 检查。
 
 ## 共享 Skill 与组件知识查询
 
