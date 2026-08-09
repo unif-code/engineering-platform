@@ -12,7 +12,7 @@
     "start": "npm run dev",
     "format": "biome check --write",
     "biome:lint": "biome lint",
-    "lint": "npm run biome:lint && npm run tsc",
+    "lint": "npm run biome:lint && npm run tsc && npm run openapi:check",
     "tsc": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -60,5 +60,12 @@
     "typescript": "^6.0.3",
     "vite": "^7.3.5",
     "vitest": "^4.1.8"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "allowedVersions": {
+        "openapi-typescript>typescript": "6"
+      }
+    }
   }
 }

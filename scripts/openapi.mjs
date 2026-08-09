@@ -57,6 +57,45 @@ async function fetchArtifact(lock) {
   return fail(`不支持的 source：${lock.source}（仅支持 https:// 与 file:）`);
 }
 
+const HTTP_METHODS = [
+  'get',
+  'put',
+  'post',
+  'delete',
+  'patch',
+  'head',
+  'options',
+  'trace',
+];
+
+// 前端侧的最小兼容检查：删除的 path/operation 视为 breaking；
+// 完整语义兼容 diff 由后端仓 CI 承担（见 docs/architecture/06）。
+function assertCompatible(oldBuf, newBuf) {
+  const oldSpec = JSON.parse(oldBuf.toString('utf8'));
+  const newSpec = JSON.parse(newBuf.toString('utf8'));
+  if (oldSpec.info?.version === newSpec.info?.version) {
+    fail(
+      `构件内容变化但 info.version 未变（${newSpec.info?.version}）：Artifact 必须随内容演进版本。`,
+    );
+  }
+  const removed = [];
+  for (const [p, ops] of Object.entries(oldSpec.paths ?? {})) {
+    const next = newSpec.paths?.[p];
+    if (!next) {
+      removed.push(p);
+      continue;
+    }
+    for (const m of HTTP_METHODS) {
+      if (ops?.[m] && !next[m]) removed.push(`${m.toUpperCase()} ${p}`);
+    }
+  }
+  if (removed.length > 0 && !process.argv.includes('--allow-breaking')) {
+    fail(
+      `检测到 breaking change（已删除的 path/operation）：${removed.join('、')}。确认已按 Contract 兼容演进后可加 --allow-breaking 覆盖。`,
+    );
+  }
+}
+
 async function cmdFetch() {
   const lock = readLock();
   requirePinned(lock);
@@ -66,6 +105,10 @@ async function cmdFetch() {
     fail(
       `Digest 不匹配：锁定 ${lock.sha256}，实际 ${digest}。拒绝写入未受信构件。`,
     );
+  }
+  if (fs.existsSync(SPEC_PATH)) {
+    const prev = fs.readFileSync(SPEC_PATH);
+    if (!prev.equals(buf)) assertCompatible(prev, buf);
   }
   fs.mkdirSync(path.dirname(SPEC_PATH), { recursive: true });
   fs.writeFileSync(SPEC_PATH, buf);
@@ -93,13 +136,20 @@ const generatorVersion = () =>
     ),
   ).version;
 
+const BANNER =
+  '// GENERATED FROM openapi/spec.json — DO NOT EDIT（见 AGENTS.md 接口与数据获取）\n';
+
 function generateInto(dir, lock) {
   fs.mkdirSync(dir, { recursive: true });
   const schema = execFileSync(GENERATOR_BIN, [SPEC_PATH], { encoding: 'utf8' });
   fs.writeFileSync(path.join(dir, 'schema.d.ts'), schema);
   fs.writeFileSync(
+    path.join(dir, 'client.ts'),
+    `${BANNER}import { createApiClient } from '../transport';\nimport type { paths } from './schema';\n\n/** 绑定当前锁定 Artifact 类型的平台 API 客户端 */\nexport const api = createApiClient<paths>();\n`,
+  );
+  fs.writeFileSync(
     path.join(dir, 'index.ts'),
-    '// GENERATED FROM openapi/spec.json — DO NOT EDIT（见 AGENTS.md 接口与数据获取）\nexport type * from "./schema";\n',
+    `${BANNER}export { api } from './client';\nexport type * from './schema';\n`,
   );
   fs.writeFileSync(
     path.join(dir, 'ARTIFACT.json'),
