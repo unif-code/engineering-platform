@@ -327,13 +327,13 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 | PostgreSQL | 持续 WAL Archive（`archive_timeout=5min`）与每日 LZ4 Physical Base Backup | Recovery Window DEV `7` 天、PROD `30` 天 | PROD Candidate 在 `PGDATA <= 50 GiB` 时 `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
 | NATS | 每日 `04:00 Asia/Shanghai` 应用一致性 Account Backup | Backup Retention DEV `3` 天、PROD `7` 天；已发布 Outbox 至少保留 `30` 天 | `RPO <= 5min`、`RTO <= 60min` | DEV 每月、PROD 每季度完整 Restore |
 | OpenBao | 应用一致性 Raft Snapshot：DEV 每 `6` 小时、PROD 每 `1` 小时；升级与高风险变更前另生成按需 Snapshot | DEV 保留 `7` 天；PROD 保留 `48` 小时周期点与 `30` 天每日点 | DEV `RPO ≤ 6h`、PROD `RPO ≤ 1h`，两者 `RTO ≤ 60min` | DEV 每月、PROD 每季度在隔离环境完整恢复 |
-| RGW 业务对象（`requirement-attachments`、`agent-artifacts`，来源 07） | Backup Watermark 驱动的持续异步对象复制到 Cluster 外 Repository，复制延迟 p95 ≤ `15min` | 与源 Class 的保留、Versioning 与 Lock 语义一致；Backup Manifest 绑定 Class、Binding/Backup Generation、Watermark 与 SHA-256 | `RPO ≤ 1h`、`RTO ≤ 4h` | DEV 每月、PROD 每季度按 Manifest 抽样恢复并校验完整性 |
+| RGW 业务对象（`requirement-attachments`、`agent-artifacts`，来源 07） | Backup Watermark 驱动的持续异步对象复制到 Cluster 外 Repository，复制延迟 p95 ≤ `15min` | 与源 Class 的保留、Versioning 与 Lock 语义一致；Backup Manifest 绑定 Class、Binding/Backup Generation、Watermark 与 SHA-256，逐 Object Version 无洞对账；Watermark 滞后超 RPO 或目的端预占失败即 `DEGRADED`，该 Class 新写入 Fail Closed | `RPO ≤ 1h`、`RTO ≤ 4h` | DEV 每月、PROD 每季度按 Manifest 抽样恢复并校验完整性 |
 
 `postgres-backup` 的近期 Backup Object 与 `openbao-recovery` 对象默认使用 `7` 天 `GOVERNANCE` Object Lock；`nats-backup` 不使用统一默认值，其 `GOVERNANCE` Lock 覆盖所在环境的有效 Backup Retention（DEV `3` 天、PROD `7` 天），以便 Retention 到期时锁也已到期；`audit-worm` 的 Retention 期限由 [08 安全、审计与治理](./08-security-audit-governance.md)作为 Security Floor 拥有，不在本节调整。每日 Backup 周期不是消息 RPO。
 
 #### Bucket Class 容量账本参数
 
-每个 Bucket Class 的版本化容量参数按其当前 `StorageBinding` 类型声明。两类 Binding 都至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes` 与 Desired/Effective Revision；RGW Binding 另含各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区与基于对象分布证据生成的 `rgwMaxObjects`，同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`；External Binding 另含 `externalMaxSizeBytes`（Provider Bucket 配额/用量 Guard 的准入上限）与 Provider 配额引用，不适用 Cluster Raw 与最满 OSD Gate。各 Class 的当前有效数值与 Ceph Raw Envelope 由本节 [8. Storage 规划](#8-storage-规划)的规划边界与 Environment Capacity Profile 共同确定，[09 基础设施与运维](./09-infrastructure-operations.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
+每个 Bucket Class 的版本化容量参数按其当前 `StorageBinding` 类型声明。两类 Binding 都至少包含 `operatingQuotaBytes`、`emergencyMarginBytes`、`admissionCeilingBytes` 与 Desired/Effective Revision；RGW Binding 另含各物理 Bucket 的互斥 `rgwMaxSizeBytes` 分区与基于对象分布证据生成的 `rgwMaxObjects`，同一 Class 的物理分区之和不得超过其 `admissionCeilingBytes`；External Binding 另含 `externalMaxSizeBytes`（Provider Bucket 配额/用量 Guard 的准入上限）、Provider 配额引用与 `providerUsageMaxStaleness`（默认 `10` 分钟；Provider 用量/配额证据超过陈旧上限、unknown 或不可得时拒绝新预占），不适用 Cluster Raw 与最满 OSD Gate。各 Class 的当前有效数值与 Ceph Raw Envelope 由本节 [8. Storage 规划](#8-storage-规划)的规划边界与 Environment Capacity Profile 共同确定，[09 基础设施与运维](./09-infrastructure-operations.md)只验证其物理放置、Aggregate Ceiling 与 Headroom。
 
 ## Resource Profile
 
