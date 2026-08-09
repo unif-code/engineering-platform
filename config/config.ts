@@ -13,6 +13,7 @@ export default defineConfig({
   model: {},
   initialState: {},
   request: {},
+  mock: { exclude: ['**/*.test.ts', '**/handlers.ts'] },
   reactQuery: {},
   tailwindcss: {},
   layout: {
