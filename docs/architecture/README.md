@@ -21,7 +21,7 @@
 | 10 | [Configuration Governance](./10-configuration-governance.md) | 说明配置分类、生命周期、Effective Snapshot 与 Promotion。 |
 | 11 | [架构基线](./11-architecture-baseline.md) | 索引跨模块不变量、质量场景和三类 Gate。 |
 | 12 | [实施路线图](./12-implementation-roadmap.md) | 唯一记录 Release Scope、实施状态、环境 Promotion 与 Profile 选择。 |
-| 附录 | [参数附录](./appendix-parameters.md) | 全部精确参数的唯一事实源。 |
+| 附录 | [参数附录](./appendix-parameters.md) | 唯一记录全部精确参数与数值。 |
 
 ## 事实所有权矩阵
 
@@ -52,7 +52,7 @@
 - 交付证据：05 拥有 Evidence 结构、hash 与变化事件；02 拥有交付快照、Selection 冻结与验收失效。
 - Artifact：02 拥有业务状态与扫描分支结果，07 拥有对象、Object Version 与双账本预占，08 拥有扫描与保留机制。
 - Gate：11 拥有三类 Gate 的分类与语义，12 记录具体 Release Gate 与阶段选择，10 持久化 Activation Record。
-- Deployed State 不属于任何文档，只由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
+- Deployed State 不属于任何文档，仅由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
 
 ## 维护规则
 
