@@ -81,15 +81,15 @@ function createDeferred() {
   return { promise, resolve };
 }
 
-function submitValidForm() {
+function submitForm(input = loginInput) {
   fireEvent.change(screen.getByLabelText('员工编号'), {
-    target: { value: loginInput.employeeId },
+    target: { value: input.employeeId },
   });
   fireEvent.change(screen.getByLabelText('密码'), {
-    target: { value: loginInput.password },
+    target: { value: input.password },
   });
   fireEvent.change(screen.getByLabelText('TOTP 动态码'), {
-    target: { value: loginInput.totp },
+    target: { value: input.totp },
   });
   fireEvent.click(screen.getByRole('button', { name: /登\s*录/ }));
 }
@@ -128,7 +128,7 @@ describe('LoginPage', () => {
     mocks.setInitialState.mockReturnValueOnce(stateRefresh.promise);
     render(<LoginPage />);
 
-    submitValidForm();
+    submitForm();
 
     await waitFor(() => expect(mocks.login).toHaveBeenCalledWith(loginInput));
     await waitFor(() => {
@@ -152,7 +152,7 @@ describe('LoginPage', () => {
   it('只在 initialState 已完成 React commit 后进入首页', async () => {
     render(<LoginPage />);
 
-    submitValidForm();
+    submitForm();
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/home'));
     expect(mocks.pushObservedMe).toHaveBeenCalledWith(me);
@@ -162,7 +162,7 @@ describe('LoginPage', () => {
     mocks.login.mockRejectedValueOnce(new Error('账号或凭据错误'));
     render(<LoginPage />);
 
-    submitValidForm();
+    submitForm();
 
     await waitFor(() =>
       expect(mocks.messageError).toHaveBeenCalledWith('账号或凭据错误'),
@@ -177,7 +177,7 @@ describe('LoginPage', () => {
     mocks.fetchMe.mockResolvedValueOnce(null);
     render(<LoginPage />);
 
-    submitValidForm();
+    submitForm();
 
     await waitFor(() =>
       expect(mocks.messageError).toHaveBeenCalledWith('登录状态刷新失败'),
@@ -185,5 +185,25 @@ describe('LoginPage', () => {
     expect(mocks.fetchNavigation).toHaveBeenCalledOnce();
     expect(mocks.setInitialState).not.toHaveBeenCalled();
     expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      caseName: '8 位非数字员工编号',
+      input: { ...loginInput, employeeId: 'abcdefgh' },
+      message: '员工编号为 8 位数字',
+    },
+    {
+      caseName: '6 位非数字动态码',
+      input: { ...loginInput, totp: 'abcdef' },
+      message: '动态码为 6 位数字',
+    },
+  ])('$caseName由真实表单拦截且不调用 login', async ({ input, message }) => {
+    render(<LoginPage />);
+
+    submitForm(input);
+
+    expect(await screen.findByText(message)).toBeInTheDocument();
+    expect(mocks.login).not.toHaveBeenCalled();
   });
 });

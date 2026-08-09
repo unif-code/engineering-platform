@@ -117,6 +117,29 @@ describe('mock API session assembly', () => {
     expect(response.cookieCall).toBeUndefined();
   });
 
+  it.each([
+    { caseName: 'body 为 undefined', body: undefined },
+    { caseName: 'body 为数组', body: [] },
+    {
+      caseName: '缺少 password',
+      body: { employeeId: '00000000', totp: '123456' },
+    },
+    {
+      caseName: 'password 类型错误',
+      body: { employeeId: '00000000', password: null, totp: '123456' },
+    },
+  ])('login route 在$caseName时返回精确 422 且不建立 session', ({ body }) => {
+    const response = runRoute('POST /api/v1/auth/login', { body });
+
+    expect(response.statusCode).toBe(422);
+    expect(response.body).toEqual({
+      code: 422,
+      data: null,
+      message: 'Validation failed',
+    });
+    expect(response.cookieCall).toBeUndefined();
+  });
+
   it('携带合法 session 后 me 与 navigation 返回现有精确信封', () => {
     const request = {
       headers: { cookie: 'engineering-platform-session=authenticated' },
