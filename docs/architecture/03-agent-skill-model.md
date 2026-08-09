@@ -139,6 +139,7 @@ Child Build Execution 使用独立状态机，不复用 Parent Attempt 状态：
 | [02 Requirement Workflow](./02-requirement-workflow.md) | Requirement/WorkItem 业务上下文、Route→Skill 定义、Artifact Contract、人工 Gate 与业务终止命令 | Run/Attempt 执行事实、Child 状态、Skill 内部方法与 Evaluation Evidence |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | 隔离物化、Capacity Lease 与 Fencing、资源准入、网络、短期 Secret 注入、Preview 与清理结果 | 不可变 Execution Binding、Parent/Child 生命周期语义，以及 `ParentContinuationReservation` 的创建与释放请求 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | `RepositoryBranchBinding`、任务分支 Push Effect 与交付证据收敛 | Attempt 引用、Agent 的分支写权限边界与 Execution Binding 语义 |
+| [06 平台应用与集成](./06-platform-application-integration.md) | Platform Orchestrator Worker 与 Model Gateway 的 Deployable 边界及稳定 Port/Adapter 装配 | Workflow 编排事实、Agent 与 Model 的执行与路由 Contract |
 | [07 数据、消息与存储](./07-data-messaging-storage.md) | Artifact 对象、消息投递与 Temporal/NATS 运行支撑 | Attempt 日志、评测与执行证据的 Artifact 引用条件 |
 | [08 安全、审计与治理](./08-security-audit-governance.md) | Secret 注入、Audit Envelope、脱敏与保留 Contract | 本领域的 Audit Trigger（Binding、状态转换、模型回退、取消、权限吊销）与业务摘要 |
 | [10 Configuration Governance](./10-configuration-governance.md) | Model、Route、Tool/Context/Network Policy 与执行等待期限的 Draft、发布、回滚与 Effective Snapshot 生命周期 | Agent 与 Model Namespace 的 Schema、默认值与业务解释 |

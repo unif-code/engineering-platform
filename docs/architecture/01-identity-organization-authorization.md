@@ -25,9 +25,9 @@
 
 ### 认证材料与 Session
 
-认证路径由四类材料组成：一次展示的一次性**临时密码**（创建账号或重置密码时签发，用于换取只能完成初始化的受限 **Bootstrap Session**）、**正式密码**、强制 **TOTP**，以及服务端可撤销的**人员 Session**。Session 在连续 60 分钟无用户操作后失效。
+认证路径由四类材料组成：一次展示的一次性**临时密码**（创建账号或重置密码时签发，用于换取只能完成初始化的受限 **Bootstrap Session**）、**正式密码**、强制 **TOTP**，以及服务端可撤销的**人员 Session**。人员 Session 在连续无用户操作达到版本化空闲期限后失效。
 
-临时密码有效期、密码过期周期（永不过期或有限周期）与同账号有效 Session 上限都是版本化 `PLATFORM_POLICY`：取值与范围见[参数附录](./appendix-parameters.md#platform-policy-key)，每个 Policy Version 自服务端成功发布并成为当前 Effective Policy 时生效，不由 Frontend、客户端或脚本解释。密码年龄以最近一次成功设置正式密码的服务端时间事实 `passwordSetAt` 起算，有限周期下 `now >= passwordSetAt + period` 即到期。
+临时密码有效期、Session 空闲失效期限、登录失败退避、TOTP 尝试上限、密码过期周期（永不过期或有限周期）与同账号有效 Session 上限都是版本化 `PLATFORM_POLICY`：取值与范围见[参数附录](./appendix-parameters.md#platform-policy-key)，每个 Policy Version 自服务端成功发布并成为当前 Effective Policy 时生效，不由 Frontend、客户端或脚本解释。密码年龄以最近一次成功设置正式密码的服务端时间事实 `passwordSetAt` 起算，有限周期下 `now >= passwordSetAt + period` 即到期。
 
 ### Organization
 
@@ -51,7 +51,7 @@ FormalMembers(W) = L(W) UNION (UNION R(l), l IN L(W))
 
 ### 授权对象与服务端判定
 
-Capability 是独立于 UI 文案、URL 与岗位名称的稳定原子动作；Scope 是动作适用的资源范围，可为 Platform、Workspace、Project、Requirement 或 Repository；Assignment 是某项未完成责任的当前承担者，记录责任类型、目标对象、当前主体、来源 Policy Version 与创建或转派原因与版本。三者分别表达资格、范围与责任，实际授权以成对 Grant 保存和校验：
+Capability 是独立于 UI 文案、URL 与岗位名称的稳定原子动作；Scope 是动作适用的资源范围，可为 Platform、Workspace、Project、Requirement 或 Repository；Assignment 是某项未完成责任的当前承担者，记录责任类型、目标对象、当前主体、来源 Policy Version 与创建或转派原因与版本。三者分别表达资格、范围与责任；Assignment 的权威业务事实与生命周期命令由其业务 owner（[02](./02-requirement-workflow.md) 的责任 Assignment、[05](./05-source-control-delivery.md) 的 Review Assignment）持久化，本文只定义其参与授权判定的通用语义。实际授权以成对 Grant 保存和校验：
 
 ```text
 Grant = (principal, capability, scope, source, validFrom?, validTo?, status, version)
@@ -86,7 +86,7 @@ platform.super_admin.manage
 - 新账号与密码重置始终签发该账号唯一、密码学安全随机、一次展示的临时密码，不使用固定默认密码——可预测的初始凭据等于没有凭据。
 - 临时密码在首次成功使用时原子消费，只签发仅能设置正式密码、完成或校验 TOTP、确认结果与退出的 Bootstrap Session；初始化中断后已消费的临时密码不得复用，必须重新签发——一次性凭据的一次性只能由服务端强制。
 - 未完成正式密码与 TOTP 初始化的账号不能进入业务能力，也不能读取或修改 Workspace、Requirement、配置或其他业务资源——初始化期的账号还没有可信认证事实。
-- 正式密码始终满足 15～32 位长度、大小写与特殊字符复杂度、弱密码、已知泄露密码与账号上下文检查，平台只保存足以安全验证的受保护派生结果，绝不保存或回读明文——这是不可由 Policy 下调的 Security Floor。
+- 正式密码始终满足 15～64 位长度、大小写与特殊字符复杂度、弱密码、已知泄露密码与账号上下文检查，平台只保存足以安全验证的受保护派生结果，绝不保存或回读明文——这是不可由 Policy 下调的 Security Floor。
 - 所有用户必须绑定并在登录时验证 TOTP，不因岗位、Capability 或 Super Admin 身份豁免——第二因子的价值来自没有例外。
 - 密码重置使旧正式密码与未使用的旧临时密码失效并撤销现有 Session，但不自动重置 TOTP——重置的是被怀疑的因子，不是整套认证事实。
 - TOTP 的二维码与一次性 Secret 只在受限初始化或受控重置流程中展示，确认后不能查询明文，当前架构基线也不提供恢复码——可事后读取的 Secret 与可自助绕过的恢复码都会把第二因子降级为第一因子。
@@ -136,13 +136,14 @@ platform.super_admin.manage
 | 模块 | 消费 | 提供 |
 | --- | --- | --- |
 | [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | 责任链起点的 Principal、Session 与授权判定 |
-| [02 Requirement Workflow](./02-requirement-workflow.md) | Requirement、WorkItem、Gate 与业务责任的领域语义（用于解释被授权的动作） | 每次受保护命令的账号状态、Capability、Scope、Membership 判定与责任 Assignment 语义 |
+| [02 Requirement Workflow](./02-requirement-workflow.md) | Requirement、WorkItem、Gate 与责任 Assignment 的权威业务事实（作为授权判定的责任输入） | 每次受保护命令的账号状态、Capability、Scope 与 Membership 判定，以及 Assignment 参与授权链的通用判定语义 |
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | 已启动 Attempt 的不可变执行 Contract 边界 | 发起与控制执行的人员资格判定；Workload Identity 与 Human Assignment 的区分 |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | — | Sandbox 准入 Policy 等受保护配置命令的发布资格与 Super Admin 边界 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | 仓库、分支、MR 与 Merge 的外部交付语义 | 仓库绑定、MR 创建与 Merge 等动作的人员资格判定 |
 | [06 平台应用与集成](./06-platform-application-integration.md) | Session Bootstrap、导航与静态 Route Registry 装配、受保护 API 的统一入口 | 当前授权上下文与服务端授权判定入口；受控 Console 入口的人员资格判定；菜单与可见性不作为授权结论的规则 |
+| [07 数据、消息与存储](./07-data-messaging-storage.md) | Session 热索引、撤销索引、缓存与限流的可重建承载，以及回源与 Fail Closed 的缓存基线 | Session、撤销索引与授权投影的领域语义及回源判定条件 |
 | [08 安全、审计与治理](./08-security-audit-governance.md) | Audit Envelope、可靠提交、脱敏、WORM、Retention 与安全恢复 Contract | 身份事实；本领域的 Audit Trigger（账号与状态、临时密码签发或消费、密码与 TOTP 重置、Session 撤销、组织与 Owner/Leader 变化、成员投影与协作关系变化、Grant 与 Assignment 变化、Super Admin 生命周期、配置授权命令与带外恢复）及业务摘要 |
 | [09 基础设施与运维](./09-infrastructure-operations.md) | Platform Environment 隔离边界 | 平台 Capability 与 Super Admin 边界：平台身份不继承 GitOps/IaC 写权限与合并资格 |
 | [10 Configuration Governance](./10-configuration-governance.md) | Draft、ChangeSet、Effective Snapshot 与 Promotion 的通用配置生命周期语义 | 受保护配置命令的发起资格、TOTP Challenge 与恢复资格判定 |
 | [12 实施路线图](./12-implementation-roadmap.md) | V0.2 访问治理闭环的 Release Scope、Release Gate、验收证据与激活边界 | 服务端授权判定、Session、Super Admin 与 Bootstrap 边界，以及 Production Promotion Approval 的审批资格 Contract |
-| [参数附录](./appendix-parameters.md) | 一次性临时密码有效期、密码过期周期与同账号有效 Session 上限 | 本文正文中的定性规则 |
+| [参数附录](./appendix-parameters.md) | 一次性临时密码有效期、Session 空闲失效期限、登录失败退避、TOTP 尝试上限、密码过期周期与同账号有效 Session 上限 | 本文正文中的定性规则 |

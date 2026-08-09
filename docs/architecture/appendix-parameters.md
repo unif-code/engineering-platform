@@ -83,7 +83,7 @@ V1.0 后 DEV 仍保留 `3 × core + 1 × sandbox-worker`，用于开发、集成
 | Network | 私网至少 `1 Gbps` |
 | OS | x86_64 Linux；关闭 Swap |
 | GPU | 不需要；模型推理由外部百炼平台承担 |
-| Backup | 写入当前 Cluster 和数据盘故障域之外的 OSS/S3-compatible Repository |
+| Backup 与过渡对象存储 | 组件 Backup 及 `requirement-attachments`、`agent-artifacts` Bucket Class 写入当前 Cluster 和数据盘故障域之外的 OSS/S3-compatible Repository，Contract 见 [07](./07-data-messaging-storage.md) |
 
 该 Node 允许部署：
 
@@ -198,9 +198,9 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 
 满足下列任一条件时，应形成新的 Capacity Candidate，并评估增加 Sandbox Node、拆分 Platform/Storage 或进入 Hardened Target Profile：
 
-- Agent Queue 等待时间持续越过已批准 SLO；
-- `CAPACITY_UNAVAILABLE` 比例持续越过已批准阈值；
-- Sandbox CPU、Memory 或 Runtime Disk 的滚动 p95 持续达到 70%；
+- Agent Queue 等待 p95 在滚动 `7` 天窗口内持续超过 `10` 分钟（初始已批准 SLO，可经治理调整）；
+- `CAPACITY_UNAVAILABLE` 占准入请求比例在滚动 `7` 天窗口内持续超过 `5%`（初始已批准阈值，可经治理调整）；
+- Sandbox CPU、Memory 或 Runtime Disk 的滚动 `7` 天 p95 持续达到 `70%`；
 - 单 Sandbox Node 故障造成的执行中断不再满足业务 SLO；
 - Core CPU、Memory、数据库 IO 或 Ceph Recovery 明显影响平台 API 延迟；
 - 融合 Node 无法保留滚动发布、升级或故障恢复所需 Headroom；
@@ -273,6 +273,8 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 | `PLATFORM_DLQ` | `LimitsPolicy` | 最多保留 `90` 天 | `2 GiB` | `DiscardNew` 并告警 |
 
 时间与容量限制同时生效；单条消息上限为 `256 KiB`，超限内容只以 Object Reference 传递。
+
+业务 Consumer 初始默认值：`AckWait=30s`、`MaxDeliver=5`（超出后进入 `PLATFORM_DLQ`）、`MaxAckPending=1000`；具体 Consumer 只能在 GitOps 配置中按 Subject 收紧。
 
 #### Temporal Server 与 Worker
 
@@ -381,10 +383,16 @@ V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw �
 | 一次性临时密码有效期 | 默认 `24` 小时 | 由版本化 `PLATFORM_POLICY` 管理，不由客户端或脚本固定 | [01](./01-identity-organization-authorization.md) |
 | 密码过期周期 | 永不过期、`90` 天、`180` 天或受约束的自定义周期 | 每个 Policy Version 自服务端成功发布并成为当前 Effective Policy 时生效 | [01](./01-identity-organization-authorization.md) |
 | 同账号有效 Session 上限 | 默认 `3`，可在 `1～10` 范围内调整 | 密码重置、TOTP 重置、账号停用和安全事件都可以撤销 Session | [01](./01-identity-organization-authorization.md) |
+| Session 空闲失效期限 | 默认 `60` 分钟，可在 `15～240` 分钟内调整 | 人员 Session 连续无用户操作达到期限即失效；仅受认证 API 活动或受控心跳续期，后台 Agent 执行不刷新 | [01](./01-identity-organization-authorization.md) |
+| 登录失败退避 | 默认同账号连续 `5` 次失败后指数退避，`30s` 起、上限 `15min`；成功登录或 `24` 小时后清零 | 服务端按账号与来源计数并写入安全 Audit，客户端行为不影响判定 | [01](./01-identity-organization-authorization.md) |
+| TOTP 验证尝试上限 | 默认同一 Challenge 连续 `5` 次失败后作废，须重新完成密码认证发起新 Challenge | 防在线暴力猜测；失败与作废写入安全 Audit | [01](./01-identity-organization-authorization.md) |
 | Agent 执行等待输入期限 | 默认 `24h` | 在 Binding 时保存有效值与 Policy Version；期限内答复回到 `QUEUED`，逾期经 `CANCELING` 进入 `TIMED_OUT` | [03](./03-agent-skill-model.md) |
 | 用户附件额度 | 单文件 `50 MiB`；每 Requirement 合计 `200 MiB` | 使用量达到 `80%` 预警 | [02](./02-requirement-workflow.md) |
-| Agent Artifact 额度 | 单 Object `100 MiB`；单 Attempt 合计 `500 MiB`；单 Requirement 全部 Attempt 合计 `1 GiB` | 超限时 Attempt 安全停止为 `FAILED`，记录 `failureCode=RESOURCE_EXHAUSTED` 与 `failureDimension=ARTIFACT_QUOTA`，不截断证据 | [02](./02-requirement-workflow.md) |
+| Agent Artifact 额度 | 单 Object `100 MiB`；单 Attempt 合计 `500 MiB`；单 Requirement 全部 Attempt 合计 `1 GiB` | 使用量达到 `80%` 预警；超限时 Attempt 安全停止为 `FAILED`，记录 `failureCode=RESOURCE_EXHAUSTED` 与 `failureDimension=ARTIFACT_QUOTA`，不截断证据 | [02](./02-requirement-workflow.md) |
 | Artifact Presigned Request 有效期 | 默认 `5min` | 只对应单一 Object Version，不持久化也不写入日志；Policy 可收紧但不得延长为长期可复用 URL | [02](./02-requirement-workflow.md) |
+| Artifact 上传完成等待期限 | 默认 `24` 小时 | 自签发上传起计；超时未完成完整性确认的精确 Object Version 进入 `UPLOAD_FAILED` 终态，只能重新上传形成新 Version | [02](./02-requirement-workflow.md) |
+| Artifact 允许文件类型 | 初始 Allowlist：文本与结构化证据（`md/txt/log/json/yaml/xml/csv/patch/diff`）、图片（`png/jpg/jpeg/gif/webp`）、文档（`pdf`）、压缩包（`zip/tar/gz`）；可执行文件与未知类型默认拒绝 | 由服务端按版本化 Source/Media Policy 判定并绑定 Policy Version，Frontend、调用者与 Agent 的自声明不作数 | [02](./02-requirement-workflow.md) |
+| Artifact 技术垃圾清理时间 | 未完成 Multipart 与无业务引用的 `ORPHANED` 精确 Version 默认 `7` 天后清理 | 由 [07](./07-data-messaging-storage.md) 的 Reconciler 按精确 Object Version 幂等执行；已接受业务数据不物理清理 | [02](./02-requirement-workflow.md) |
 | Draft 自动归档等待期 | 默认连续 `30` 天无 Meaningful Activity | 由 Super Admin 修改并按 `NEXT_SCHEDULE` 生效，不得写死在 Frontend、任务或镜像 | [10](./10-configuration-governance.md) |
 | Promotion Bundle 首次导入有效期 | 默认 `30` 天 | 按 `NEW_OBJECT` 只影响后续导出；PROD 当前 Import Policy 可缩短但不可越过签名覆盖的 `notAfter` | [10](./10-configuration-governance.md) |
 
@@ -436,12 +444,14 @@ Scanner 的 `100 MiB` 单对象安全 Envelope 是独立 Security Floor，不是
 provisionMaterialization
 getMaterializationStatus
 publishPreview
-collectArtifacts
-checkpoint
-cancelMaterialization
-destroyMaterialization
+checkpointAndRelease
+handoffToChild
+finalizeExecution
+cancelExecution
 reconcileLease
 ```
+
+方法名与 [04](./04-sandbox-runtime.md) 正文的 `ProvisionMaterialization`、`CheckpointAndRelease`、`HandoffToChild`、`FinalizeExecution`、`CancelExecution` 命令一一对应；`finalizeExecution` 统一承担证据固化、Artifact 收集与 Materialization 销毁，`cancelExecution` 覆盖取消与超时路径。
 
 ### `SourceControlPort`
 

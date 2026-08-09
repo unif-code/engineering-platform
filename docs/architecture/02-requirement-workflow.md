@@ -86,7 +86,7 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 异常终态：上传失败、隔离（`QUARANTINED`）、扫描失败
 ```
 
-用户附件与 Agent Artifact 的额度、预警比例、等待期限、文件类型、清理时间与 Presigned 有效期都是版本化 Platform Policy，Scanner 的单对象安全 Envelope 是独立 Security Floor 而非产品额度；额度、预警比例与 Presigned 有效期的当前数值见[参数附录](./appendix-parameters.md#platform-policy-key)，异常终态与配额失败的结构化错误码见[参数附录的错误码](./appendix-parameters.md#错误码)。
+用户附件与 Agent Artifact 的额度、预警比例、等待期限、文件类型、清理时间与 Presigned 有效期都是版本化 Platform Policy，Scanner 的单对象安全 Envelope 是独立 Security Floor 而非产品额度；额度、预警比例、上传等待期限、允许文件类型、清理时间与 Presigned 有效期的当前数值见[参数附录](./appendix-parameters.md#platform-policy-key)，异常终态与配额失败的结构化错误码见[参数附录的错误码](./appendix-parameters.md#错误码)。
 
 ## 关键不变量
 
@@ -138,7 +138,7 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 | 模块 | 消费 | 提供 |
 | --- | --- | --- |
 | [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | 责任链中段的业务编排与人工 Gate 事实 |
-| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 账号状态、Session、Capability、Scope、Membership 与服务端授权判定 | Requirement、WorkItem、Gate 与责任 Assignment 的业务语义，供解释被授权的动作 |
+| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 账号状态、Session、Capability、Scope、Membership 与服务端授权判定 | Requirement、WorkItem、Gate 与责任 Assignment 的权威业务事实和生命周期命令，供授权判定消费 |
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | Run/Attempt 执行事实、Child 状态与 Skill 内部方法 | Requirement/WorkItem 业务上下文、Route→Skill 定义与 Artifact Contract |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | Requirement 级 Sandbox Environment、Preview 引用与可重建证据 | Requirement/WorkItem 的稳定标识与业务终止、归档、删除命令 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | 分支命名与 Binding Saga、Integration/Formal MR、Merge、`IntegrationBaselineEvidence` 结构与变化事件、Formal MR 默认路由与 Review Assignment、`headSha` 失效规则 | 稳定 Requirement/WorkItem 标识、`RequirementDeliverySnapshot`、Selection 冻结与 Acceptance 失效判定 |

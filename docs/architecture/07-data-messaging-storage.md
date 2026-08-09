@@ -61,7 +61,7 @@ Object       精确 Object Version + 经验证 Manifest → 引用、Lock 与保
 
 ### Bucket Class 与对象保护
 
-Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-compatible 对象服务；实时 Stateful PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 与容量由 [09](./09-infrastructure-operations.md) 拥有。Rook-Ceph 尚未激活的早期单节点阶段，仅组件 Backup 允许使用 Cluster 外 OSS/S3-compatible Repository 作为过渡通道，该通道不承载附件、Artifact、WORM Audit 或 Observability Object；Rook-Ceph 激活后新对象一律写入环境内 RGW，过渡 Repository 中的既有 Backup 按其保留策略继续可用于恢复而不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变。Bucket Class 固定为下表八类，每类使用独立 Policy、Credential、Quota 与 Capacity Ledger：
+Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-compatible 对象服务；实时 Stateful PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 与容量由 [09](./09-infrastructure-operations.md) 拥有。Rook-Ceph 尚未激活的早期阶段，Cluster 外 OSS/S3-compatible Repository 作为受完整 Contract 约束的过渡 Object Storage Primary：承载组件 Backup 与 `requirement-attachments`、`agent-artifacts` 两类业务 Bucket Class，`audit-worm` 与 Observability Object 仍分别按 [08](./08-security-audit-governance.md) 与 [09](./09-infrastructure-operations.md) 的激活语义推迟；Rook-Ceph 激活后新对象一律写入环境内 RGW，过渡 Repository 中的既有对象与 Backup 按其保留策略继续可读、可恢复而不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变。Bucket Class 固定为下表八类，每类使用独立 Policy、Credential、Quota 与 Capacity Ledger：
 
 | Bucket Class | Versioning / Object Lock | 保留与清理语义 |
 | --- | --- | --- |
@@ -97,7 +97,7 @@ Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-co
 - 已启用组件无论 Profile 都必须具备 TLS 与最小 Workload Identity、显式硬 Request/Limit、存储与队列上限、Cluster 外 Backup、真实 Restore 验证、容量不足时拒绝或背压，以及依赖不可证明时 Fail Closed——Launch 的单实例只降低可用性目标，不降低安全与证据门槛。
 - 单实例故障允许受影响能力安全停止，但不得丢失已确认事实、伪造成功证据或回退到明文、匿名、无限资源与未受保护存储——服务可以重启，被伪造的证据无法恢复。
 - 业务流量经 PgBouncer Transaction Pooling 进入 PostgreSQL 且所有连接池有界，只有 Alembic、DDL Job、DBA 与受控 Break-glass 可直连 rw service——连接边界同时是资源保护与审计入口。
-- 每个模块拥有独立 Schema、迁移目录与数据访问账号，任何模块不得直接读写其他模块内部表——数据边界是模块可提取性与责任归属的前提。
+- 每个模块拥有独立 Schema、迁移目录与数据访问账号，任何模块不得直接读写其他模块内部表；Schema 迁移按 `EXPAND → MIGRATE → CONTRACT` 推进，回滚镜像必须仍能读取当前数据形态——数据边界是模块可提取性与责任归属的前提，先收缩的迁移会毁掉回退能力。
 - Hardened Target 的 PostgreSQL 使用 quorum 同步复制，Standby 不足时不得自动降级为异步写入，Failover 候选必须证明包含全部已确认事务——降级确认等于悄悄放弃已经承诺的持久性。
 - 数据库恢复只能来自经验证的 Base Backup 与连续 WAL 链，不得把任意 PVC/CSI Snapshot 声明为一致性数据库恢复源，且恢复后先验证数据与服务再开放应用流量——块级快照是崩溃一致而不是应用一致的。
 - Valkey 只保存可重建的 Session 热索引、撤销索引、缓存、限流、幂等键与短期锁；缓存不可用、版本未知或安全写无法回源时必须回查 PostgreSQL 或 Fail Closed，绝不放行陈旧授权、绕过撤销或把缓存升级为事实源；内存达到上限时按 `noeviction` 拒绝新写并告警而不淘汰既有键——可重建数据一旦被当作权威，撤销与授权就会静默失效，而静默淘汰幂等键与短期锁会直接破坏一致性保证。
@@ -137,6 +137,7 @@ Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-co
 | 模块 | 消费 | 提供 |
 | --- | --- | --- |
 | [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | 责任链中权威数据、消息、缓存与对象事实的持久化基线 |
+| [01 身份、组织与授权](./01-identity-organization-authorization.md) | Session、撤销索引与授权投影的领域语义及回源判定条件 | Session 热索引、撤销索引、缓存与限流的可重建承载，以及回源与 Fail Closed 的缓存基线 |
 | [02 Requirement Workflow](./02-requirement-workflow.md) | Artifact 业务状态、扫描分支结果与对象引用条件 | Artifact 对象、Object Version、双账本预占、技术垃圾清理与 Retention 执行 |
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | Attempt 日志、评测与执行证据的 Artifact 引用条件 | Artifact 对象、消息投递与 Temporal/NATS 运行支撑 |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | 需持久化的执行证据及其校验 Hash | Artifact 对象与 Checkpoint、日志、构建证据的存储 Contract |

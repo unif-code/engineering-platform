@@ -8,7 +8,7 @@
 
 本文为各业务模块与基础设施提供统一的安全 Contract，却不拥有人员、权限、Requirement、Agent、Sandbox、GitLab 或数据服务的领域状态：身份、Session、Capability 与 Super Admin 语义属于 [01](./01-identity-organization-authorization.md)，Console Access、External Provider Envelope 与 Ingest 算法属于 [06](./06-platform-application-integration.md)，Configuration 生命周期与 Promotion 属于 [10](./10-configuration-governance.md)，数据服务拓扑、数据语义与组件恢复属于 [07](./07-data-messaging-storage.md)。完整归属见 [README 所有权矩阵](./README.md#事实所有权矩阵)。DEV 与 PROD 使用同源代码、Contract、GitOps 与 PCS 在独立 Account、VPC 与 Cluster 中实例化，不共享运行实例、Session、数据、凭据、密钥或故障域；实际 Trust、Image、配置、拓扑与恢复证据由环境 GitOps Desired State、PCS、Audit 与 Restore Drill 证明。
 
-精确参数不在正文：OpenBao、Agent Injector、File/Image Scanner 的 Replica、资源、PVC、阈值、Snapshot 调度与 DR 目标见[参数附录的组件资源包络](./appendix-parameters.md#组件资源包络)，Scanner 的单对象安全 Envelope 与引擎上限见[参数附录](./appendix-parameters.md#platform-policy-key)，扫描投递的结构化异常终态见[参数附录的错误码](./appendix-parameters.md#错误码)。
+精确参数不在正文：OpenBao、Agent Injector、File/Image Scanner 的 Replica、资源、PVC、阈值、Snapshot 调度与 DR 目标见[参数附录的组件资源包络](./appendix-parameters.md#组件资源包络)，Scanner 的引擎并发与扫描上限同在该节；Scanner 的单对象安全 Envelope 见[参数附录](./appendix-parameters.md#platform-policy-key)，扫描投递的结构化异常终态见[参数附录的错误码](./appendix-parameters.md#错误码)。
 
 ## 核心模型
 

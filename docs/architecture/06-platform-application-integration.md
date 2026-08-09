@@ -31,11 +31,11 @@ Browser
 
 ### Umi Web 与 Session Bootstrap
 
-同一 Umi Max、React、TypeScript 应用承载用户端与平台管理后台两个路由空间，共用 Design Token、Layout、API Client 与当前环境 Session。目录边界为 `src/pages/`（路由装配）、`src/features/{auth,navigation,chat,requirements,workflows,runs,agents,administration}/`、`src/components/`（跨 Feature UI）、`src/services/{generated,transport}/` 以及 `src/models/`、`src/hooks/`、`src/types/`、`src/utils/`。
+同一 Umi Max、React、TypeScript 应用承载用户端与平台管理后台两个路由空间，共用 Design Token、Layout、API Client 与当前环境 Session。目录边界为 `src/pages/`（路由装配）、`src/features/{auth,navigation,chat,requirements,workflows,runs,agents,administration}/`、`src/components/`（跨 Feature UI）、`src/services/{generated,transport}/` 以及 `src/models/`、`src/hooks/`、`src/types/`、`src/utils/`、`src/constants/`、`src/assets/`。
 
 状态边界固定为：路由、筛选与对象标识使用 URL；服务端数据由 React Query 管理；当前用户、当前 Workspace 与轻量 UI 偏好使用 Umi Initial State/Model；表单使用 ProForm 或 Ant Design Form；对话界面复用已锁定的 `@ant-design/x` 的 `Bubble`、`Conversations`、`Sender`、`Attachments` 与 `ThoughtChain`；临时交互状态保留在组件内。
 
-Session Bootstrap 固定为：Secure + HttpOnly + SameSite Cookie → 当前环境 `me`（Principal、组织摘要、Workspace、有效 Capability）→ `navigation`（预注册 routeKey、Capability、Scope、排序、元数据）→ 静态 Route Registry → 受保护 API 的服务端实时授权。
+Session Bootstrap 固定为：Secure + HttpOnly + SameSite=Lax Cookie → 当前环境 `me`（Principal、组织摘要、Workspace、有效 Capability）→ `navigation`（预注册 routeKey、Capability、Scope、排序、元数据）→ 静态 Route Registry → 受保护 API 的服务端实时授权；受保护写请求另行校验 Origin/Fetch Metadata（或等价 CSRF Token），SameSite 不作为唯一 CSRF 防线。
 
 ### Control Plane 模块与独立 Deployable
 
@@ -90,7 +90,7 @@ External Provider Contract 只治理平台外的 Cloud/Operations Plane Binding�
 - 后端不能下发任意模块路径、脚本或 URL，可加载页面由静态 Route Registry 决定；Umi Access、菜单与按钮只控制体验，受保护 API 仍调用 [01](./01-identity-organization-authorization.md) 的当前授权判定——可见性是体验结果，不是授权结论。
 - 同一 Umi Web 构建产物承载用户端与 `/admin` 管理路由，`/admin` 只是路由前缀而不是第二个工程；对话交互复用 `@ant-design/x` 组件而不引入独立 Chat 应用，该组件库不拥有登录、权限、对话事实、Model Route 或独立服务端——UI 组件库不得升级为事实源。
 - 前端依赖方向固定为 `pages → features → services/generated`，共享组件不得依赖具体业务 service，Feature 之间只能使用公开入口——反向依赖会让页面装配决定业务语义。
-- `services/generated` 的 OpenAPI 客户端不得手改，其生成输入只来自后端仓发布的版本化 OpenAPI Artifact，双仓 CI 各自校验兼容性，两仓不共享代码内部结构也不以相对路径互相引用——跨仓契约必须是可版本化的 Artifact 而不是共享目录。
+- `services/generated` 的 OpenAPI 客户端不得手改，其生成输入只来自后端仓发布的版本化 OpenAPI Artifact，双仓 CI 各自校验兼容性，两仓不共享代码内部结构也不以相对路径互相引用；成功响应结构、分页与筛选、错误码、幂等键与并发条件（ETag/If-Match）的全局 API 约定由该 OpenAPI 基线统一定义，前端与单个接口不得自行发明——跨仓契约必须是可版本化的 Artifact 而不是共享目录。
 - transport 把服务端错误归一为 Problem Details，页面不得依赖底层 HTTP 客户端异常；SSE/WebSocket 更新必须携带实体版本，旧事件不得覆盖新状态——传输细节与乱序事件都不应改写页面已知事实。
 - 目标 Control Plane 的交付边界始终是模块化单体：模块可在未来连同 Domain、Application、Schema、Migration、本领域 Policy 数据与配置语义、Audit 责任和公开 Contract 一起提取，但在提取发生前仍运行在同一部署单元内，独立 Deployable 与可提取模块都不得被描述为已存在的领域微服务——可提取性来自边界纪律，不是当前拓扑。
 - 模块只能调用其他模块公开的 Application Facade 或消费领域事件，禁止导入其 ORM Model、Repository 或内部 Entity；API 只返回显式 DTO，架构测试必须验证依赖方向与禁止导入规则——边界要由自动化证明，否则会被逐次例外侵蚀。

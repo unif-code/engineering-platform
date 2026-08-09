@@ -110,7 +110,7 @@ task branch（from main）
 - 本领域只发布证据结构与变化事实；当前 `RequirementIntegrationBaselineSelection`、Acceptance Decision 对 `integrationBaselineId/hash` 的绑定与失效，以及任何 Requirement/WorkItem 业务动作都由 02 owner 决定——证据与验收分属两个 owner 才能各自独立演进。
 - Model 只能生成 Formal MR 的 title 与 description，不能选择 Repository、source/target、Reviewer 或执行 Merge；重复创建请求返回同一 MR，Connector 只返回 `FormalMergeRequestCreated` 或 `FormalMergeRequestBlocked` 事实而不推进业务状态——生成内容不得成为授权或路由决定。
 - Formal MR 使用 squash merge，合并后应删除 source branch；删除失败不回退已完成的 Merge 事实，而是形成独立运维待办——已成立的外部事实不能因清理失败被撤销。
-- `FORMAL_MR_REVIEW` 是 02 owner 的稳定 Gate Type，本领域只规定其 Formal MR 绑定与默认 Assignment：按当前 WorkItem `humanOwnerId` 解析，普通开发人员的默认审核人为其直属 Leader，Leader 的默认审核人为本人，并保存 `defaultReviewerId`、`currentReviewerId`、组织解析快照、Review Policy Version 与准确 `headSha`——默认路由必须可解释、可审计，而 Gate 语义仍归业务 owner。
+- `FORMAL_MR_REVIEW` 是 02 owner 的稳定 Gate Type，本领域只规定其 Formal MR 绑定与默认 Assignment：按当前 WorkItem `humanOwnerId` 解析，普通开发人员的默认审核人为其直属 Leader，Leader 的默认审核人为本人，并保存 `defaultReviewerId`、`currentReviewerId`、组织解析快照、Review Policy Version（Review Policy 属 [02](./02-requirement-workflow.md) 的 Gate Policy Namespace，本领域只保存解析时的版本快照）与准确 `headSha`——默认路由必须可解释、可审计，而 Gate 语义仍归业务 owner。
 - Reviewer 必须同时是当前 Assignment assignee，并实时具备 `merge_request.review`、有效 Scope、Membership 与账号状态——审核资格按当前事实判定，历史分配不构成权限。
 - 默认审核人可在最终 Decision 前改派给任意合格候选人，被选审核人不能继续转派（除非其本身也是默认审核人）；Agent、Connector 与 Bot 不能成为人工审核人——责任链必须收敛到可追责的人。
 - 允许作者本人在被合法分配且资格有效时自审；`merge_request.review` 不授予 Merge 权，`merge_request.merge` 是独立 Capability——审核与合并是两个可分别授予、可分别撤销的动作。
