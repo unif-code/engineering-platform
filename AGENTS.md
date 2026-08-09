@@ -17,7 +17,7 @@
 
 ## 共享 Skill 与组件知识查询
 
-本仓的开发约定 skill 不内联，统一来自 `@unif` 共享 marketplace（`unif-design/skills`），由仓库的 `.claude/settings.json` 声明——克隆并信任目录后自动安装：`umi` 提供所有 umi 项目的通用基线（代码归位、组件与页面内部结构、`services/` 信封、React Query、路由与权限、命名、导入、工具链），`ant-design` 提供 PC/Web 专属约定（antd 6 与 pro-components 3 用法、ProComponents 铁律、桌面样式），`antd` 提供组件知识查询 CLI。未自动安装时手动执行 `npx skills add unif-design/skills --skill umi --skill ant-design --skill antd`，或 `/plugin install umi@unif-skills`（另加 `ant-design`、`antd`）。新增或修改代码前先查 `umi`（通用）与 `ant-design`（PC）skill；写 antd 代码前先用 `npx antd info <组件>` 查询当前版本 API，不凭记忆写组件属性。
+本仓的开发约定 skill 不内联，统一来自 `@unif` 共享 marketplace（`unif-design/skills`），当前需手动安装：`umi` 提供所有 umi 项目的通用基线（代码归位、组件与页面内部结构、`services/` 信封、React Query、路由与权限、命名、导入、工具链），`ant-design` 提供 PC/Web 专属约定（antd 6 与 pro-components 3 用法、ProComponents 铁律、桌面样式），`antd` 提供组件知识查询 CLI。安装执行 `npx skills add unif-design/skills --skill umi --skill ant-design --skill antd`，或 `/plugin install umi@unif-skills`（另加 `ant-design`、`antd`）；仓库尚未提交声明这些 skill 的 `.claude/settings.json`，一旦提交，克隆并信任目录后即可自动安装。新增或修改代码前先查 `umi`（通用）与 `ant-design`（PC）skill；写 antd 代码前先用 `npx antd info <组件>` 查询当前版本 API，不凭记忆写组件属性。
 
 ## 编码风格与命名约定
 
@@ -33,7 +33,7 @@ Vitest 在 `happy-dom` 环境中运行，并结合 Testing Library 与 `jest-dom
 
 ## 提交与 Pull Request 规范
 
-仓库目前没有提交历史。按照项目工具要求使用 Conventional Commits，例如 `feat(table): add user filtering` 或 `fix(access): handle missing role`。每个提交只处理一个明确主题。Pull Request 应说明行为变化、关联相关 issue、列出验证命令，并为 UI 改动附上截图。路由、代理、依赖或环境配置变更必须明确标注。
+仓库使用线性提交历史。按照项目工具要求使用 Conventional Commits，例如 `feat(table): add user filtering` 或 `fix(access): handle missing role`。每个提交只处理一个明确主题。Pull Request 应说明行为变化、关联相关 issue、列出验证命令，并为 UI 改动附上截图。路由、代理、依赖或环境配置变更必须明确标注。
 
 ## 配置与安全
 
