@@ -1,6 +1,6 @@
 # 内部研发平台架构文档
 
-本目录是平台架构的唯一文档入口：13 篇主题文档（00～12）+ 1 篇参数附录。
+本目录是平台架构的唯一文档入口：13 篇主题文档（00～12）+ 1 篇参数附录 + 1 篇治理例外记录。
 每篇主题固定四节：目标与边界 / 核心模型 / 关键不变量 / 与其他模块的关系。
 离线导航：[平台架构地图](./visuals/platform-architecture-map.html)（只导航，不承载事实）。
 
@@ -22,6 +22,7 @@
 | 11 | [架构基线](./11-architecture-baseline.md) | 索引跨模块不变量、质量场景和三类 Gate。 |
 | 12 | [实施路线图](./12-implementation-roadmap.md) | 唯一记录 Release Scope、实施状态、环境 Promotion 与 Profile 选择。 |
 | 附录 | [参数附录](./appendix-parameters.md) | 唯一记录全部精确参数与数值。 |
+| 例外 | [治理例外记录](./deviations.md) | 唯一记录已批准的目标契约偏差、影响与关闭条件。 |
 
 ## 事实所有权矩阵
 
@@ -43,6 +44,7 @@
 | 跨模块不变量、依赖边界、质量场景、三类 Gate 与 Evolution Trigger 的分类与语义 | [11](./11-architecture-baseline.md) |
 | Release Scope、Release Gate 与验收证据、实施状态、环境 Promotion、Capability 阶段选择与 Activation 归属、Profile 选择 | [12](./12-implementation-roadmap.md) |
 | 全部精确参数：资源数值、Policy Key、错误码、Port 方法清单、Runtime 组件、容量场景、服务器矩阵与分阶段采购计划 | [附录](./appendix-parameters.md) |
+| 已批准的目标契约偏差、影响评估与关闭条件 | [例外](./deviations.md) |
 
 跨 owner 拆分的事实必须双向确认，不能只改一侧：
 
