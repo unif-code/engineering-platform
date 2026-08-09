@@ -30,8 +30,15 @@ const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
 const readLock = () => {
   const lock = JSON.parse(fs.readFileSync(LOCK_PATH, 'utf8'));
-  const pinned = Boolean(lock.source && lock.version && lock.sha256);
-  return { ...lock, pinned };
+  const filled = [lock.source, lock.version, lock.sha256].filter(
+    Boolean,
+  ).length;
+  if (filled > 0 && filled < 3) {
+    fail(
+      'openapi/artifact.lock.json 填写不完整：source、version、sha256 必须同时提供，部分填写一律失败。',
+    );
+  }
+  return { ...lock, pinned: filled === 3 };
 };
 
 const requirePinned = (lock) => {
@@ -68,8 +75,63 @@ const HTTP_METHODS = [
   'trace',
 ];
 
-// 前端侧的最小兼容检查：删除的 path/operation 视为 breaking；
-// 完整语义兼容 diff 由后端仓 CI 承担（见 docs/architecture/06）。
+// 前端侧的结构化兼容检查，覆盖：删除的 path/operation、删除或转必填的参数、
+// 新增必填参数、requestBody 转必填、删除的响应状态码。
+// Schema/枚举/Security 级别的完整语义 diff 由后端仓 CI 承担（见 docs/architecture/06）。
+const opParams = (pathItem, op) =>
+  [...(pathItem?.parameters ?? []), ...(op?.parameters ?? [])].filter(
+    (p) => p?.name,
+  );
+
+function breakingChanges(oldSpec, newSpec) {
+  const breaking = [];
+  for (const [p, oldItem] of Object.entries(oldSpec.paths ?? {})) {
+    const newItem = newSpec.paths?.[p];
+    if (!newItem) {
+      breaking.push(`删除 path ${p}`);
+      continue;
+    }
+    for (const m of HTTP_METHODS) {
+      const oldOp = oldItem?.[m];
+      if (!oldOp) continue;
+      const newOp = newItem[m];
+      const label = `${m.toUpperCase()} ${p}`;
+      if (!newOp) {
+        breaking.push(`删除 operation ${label}`);
+        continue;
+      }
+      const oldParams = new Map(
+        opParams(oldItem, oldOp).map((x) => [`${x.in}:${x.name}`, x]),
+      );
+      const newParams = new Map(
+        opParams(newItem, newOp).map((x) => [`${x.in}:${x.name}`, x]),
+      );
+      for (const [key, oldParam] of oldParams) {
+        const newParam = newParams.get(key);
+        if (!newParam) breaking.push(`${label} 删除参数 ${key}`);
+        else if (!oldParam.required && newParam.required)
+          breaking.push(`${label} 参数 ${key} 转为必填`);
+      }
+      for (const [key, newParam] of newParams) {
+        if (newParam.required && !oldParams.has(key))
+          breaking.push(`${label} 新增必填参数 ${key}`);
+      }
+      if (!oldOp.requestBody?.required && newOp.requestBody?.required)
+        breaking.push(`${label} requestBody 转为必填`);
+      for (const code of Object.keys(oldOp.responses ?? {})) {
+        if (!newOp.responses?.[code])
+          breaking.push(`${label} 删除响应 ${code}`);
+      }
+    }
+  }
+  return breaking;
+}
+
+const majorOf = (version) => {
+  const major = Number.parseInt(String(version ?? ''), 10);
+  return Number.isNaN(major) ? null : major;
+};
+
 function assertCompatible(oldBuf, newBuf) {
   const oldSpec = JSON.parse(oldBuf.toString('utf8'));
   const newSpec = JSON.parse(newBuf.toString('utf8'));
@@ -78,20 +140,10 @@ function assertCompatible(oldBuf, newBuf) {
       `构件内容变化但 info.version 未变（${newSpec.info?.version}）：Artifact 必须随内容演进版本。`,
     );
   }
-  const removed = [];
-  for (const [p, ops] of Object.entries(oldSpec.paths ?? {})) {
-    const next = newSpec.paths?.[p];
-    if (!next) {
-      removed.push(p);
-      continue;
-    }
-    for (const m of HTTP_METHODS) {
-      if (ops?.[m] && !next[m]) removed.push(`${m.toUpperCase()} ${p}`);
-    }
-  }
-  if (removed.length > 0 && !process.argv.includes('--allow-breaking')) {
+  const breaking = breakingChanges(oldSpec, newSpec);
+  if (breaking.length > 0 && !process.argv.includes('--allow-breaking')) {
     fail(
-      `检测到 breaking change（已删除的 path/operation）：${removed.join('、')}。确认已按 Contract 兼容演进后可加 --allow-breaking 覆盖。`,
+      `检测到 breaking change：${breaking.join('；')}。确认已按 Contract 兼容演进后可加 --allow-breaking 覆盖（CI 的 openapi:check 仍要求主版本升级）。`,
     );
   }
 }
@@ -187,9 +239,47 @@ function cmdGenerate() {
   );
 }
 
+// 在 CI/干净检出中以 git 基线（默认 HEAD，可用 --base <ref> 指定）重建兼容比较：
+// 相对基线的 breaking change 必须由 Artifact 主版本升级显式声明，无旗标可绕过。
+function checkBaselineCompatibility() {
+  const baseIdx = process.argv.indexOf('--base');
+  const baseRef = baseIdx > -1 ? process.argv[baseIdx + 1] : 'HEAD';
+  let baseBuf;
+  try {
+    baseBuf = execFileSync('git', ['show', `${baseRef}:openapi/spec.json`], {
+      cwd: ROOT,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    return; // 基线中尚无 spec（首个构件），无可比较对象
+  }
+  const currentBuf = fs.readFileSync(SPEC_PATH);
+  if (baseBuf.equals(currentBuf)) return;
+  const baseSpec = JSON.parse(baseBuf.toString('utf8'));
+  const currentSpec = JSON.parse(currentBuf.toString('utf8'));
+  const breaking = breakingChanges(baseSpec, currentSpec);
+  if (breaking.length === 0) return;
+  const baseMajor = majorOf(baseSpec.info?.version);
+  const newMajor = majorOf(currentSpec.info?.version);
+  if (baseMajor !== null && newMajor !== null && newMajor > baseMajor) {
+    console.log(
+      `[openapi] 相对 ${baseRef} 存在 breaking change，已由主版本升级（${baseSpec.info?.version} → ${currentSpec.info?.version}）显式声明。`,
+    );
+    return;
+  }
+  fail(
+    `相对 ${baseRef} 检测到 breaking change 但主版本未升级（${baseSpec.info?.version} → ${currentSpec.info?.version}）：${breaking.join('；')}。breaking 变更必须以 Artifact 主版本发布，审批随后端 Release 流程。`,
+  );
+}
+
 function cmdCheck() {
   const lock = readLock();
   if (!lock.pinned) {
+    if (process.argv.includes('--require-pinned')) {
+      fail(
+        'Release 模式（--require-pinned）要求已锁定的 OpenAPI Artifact：当前 lock 为空。',
+      );
+    }
     if (listFiles(OUT_DIR).length > 0) {
       fail(
         'Artifact 未锁定但 src/services/generated 存在生成物：来源不可追溯，请锁定构件后重新生成。',
@@ -201,6 +291,7 @@ function cmdCheck() {
     return;
   }
   verifySpec(lock);
+  checkBaselineCompatibility();
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'openapi-check-'));
   try {
     generateInto(tmp, lock);
