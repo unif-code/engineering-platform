@@ -21,5 +21,5 @@ export default defineConfig({
   routes,
   proxy: proxy[REACT_APP_ENV],
   npmClient: 'pnpm',
-  utoopack: {},
+  esbuildMinifyIIFE: true,
 });
