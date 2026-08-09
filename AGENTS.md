@@ -15,9 +15,17 @@
 - `pnpm test:watch` / `pnpm test:coverage`：监听测试或生成覆盖率报告。
 - `pnpm doctor`：检查 React 代码中的常见问题。
 
+## 共享 Skill 与组件知识查询
+
+本仓的开发约定 skill 不内联，统一来自 `@unif` 共享 marketplace（`unif-design/skills`），由仓库的 `.claude/settings.json` 声明——克隆并信任目录后自动安装：`umi` 提供所有 umi 项目的通用基线（代码归位、组件与页面内部结构、`services/` 信封、React Query、路由与权限、命名、导入、工具链），`ant-design` 提供 PC/Web 专属约定（antd 6 与 pro-components 3 用法、ProComponents 铁律、桌面样式），`antd` 提供组件知识查询 CLI。未自动安装时手动执行 `npx skills add unif-design/skills --skill umi --skill ant-design --skill antd`，或 `/plugin install umi@unif-skills`（另加 `ant-design`、`antd`）。新增或修改代码前先查 `umi`（通用）与 `ant-design`（PC）skill；写 antd 代码前先用 `npx antd info <组件>` 查询当前版本 API，不凭记忆写组件属性。
+
 ## 编码风格与命名约定
 
-使用 TypeScript、两空格缩进和单引号，并交由 Biome 统一格式化。React 组件及其目录采用 PascalCase（如 `Guide/Guide.tsx`），变量和函数采用 camelCase，hook 以 `use` 开头。引用 `src` 内容时优先使用 `@/` 别名，Umi API 从 `@umijs/max` 导入。页面私有文件应就近存放，仅在多处复用时提升到公共目录。UI 优先采用 Pro Components，其次使用 Ant Design；样式使用 `antd-style` token 或 Tailwind 工具类，避免 Less 和硬编码主题色。
+使用 TypeScript、两空格缩进和单引号，并交由 Biome 统一格式化。React 组件及其目录采用 PascalCase（如 `Guide/Guide.tsx`），变量和函数采用 camelCase，hook 以 `use` 开头。引用 `src` 内容时优先使用 `@/` 别名；Umi API 一律 `from '@umijs/max'` 导入，禁止从 `'umi'` 导入。页面私有文件应就近存放并采用单数命名（`hook.ts`、`util.ts`、`constant.ts`、`type.ts`），私有子组件平铺存放而不再套一层 `components/`，组件样式统一写在 `index.style.ts`；外部只从 `index` 引用，仅在多处（≥2 处）复用时提升到公共目录。UI 优先采用 Pro Components，其次使用 Ant Design，禁止重复实现已有组件（自定义组件也基于 antd 改造）；样式使用 `antd-style` token 或 Tailwind 工具类，避免 Less 和硬编码主题色。
+
+## 接口与数据获取
+
+接口客户端手写在 `src/services/<domain>/`，统一使用 `@umijs/max` 导出的 `request`。后端响应固定为 `{ code, data, message }` 信封：`code === 200` 视为成功并取 `data`，其他取值一律按失败处理并使用 `message` 提示，不得把整个信封当作业务数据。服务端数据获取统一使用 React Query（从 `@umijs/max` 导入 `useQuery` / `useMutation`），表格数据走 ProTable 的 `request`；明确禁止使用 `useRequest`。
 
 ## 测试规范
 
