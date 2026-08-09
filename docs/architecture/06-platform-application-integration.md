@@ -58,7 +58,7 @@ Control Plane 之外的独立 Deployable 按信任、高风险或独立扩缩容
 | Platform Orchestrator Worker | Temporal Workflow、Timer、Activity 与 Agent 编排 | Requirement、用户与权限主数据 |
 | Model Gateway | Model Catalog、能力映射、Route、配额、Usage 与 Provider 兼容 | Requirement Workflow |
 | Sandbox Controller | Resource/Runtime Profile 的物化、Lease/Fencing、回收 | 业务审批 |
-| GitLab Connector | `SourceControlPort` 的协议转换与外部效果收敛 | 平台 Capability 或业务状态 |
+| GitLab Connector | `SourceControlPort` 的协议转换、外部效果收敛与 Source Control Credential Broker（分支写凭据与代理 Push） | 平台 Capability 或业务状态 |
 | File Security Worker | 文件检查与规范化 Verdict | Artifact 领域归属 |
 | Operations Adapter | 受限查询与外部状态投影 | 基础设施 Desired State |
 

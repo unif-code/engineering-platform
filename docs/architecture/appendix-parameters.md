@@ -83,7 +83,7 @@ V1.0 后 DEV 仍保留 `3 × core + 1 × sandbox-worker`，用于开发、集成
 | Network | 私网至少 `1 Gbps` |
 | OS | x86_64 Linux；关闭 Swap |
 | GPU | 不需要；模型推理由外部百炼平台承担 |
-| Backup 与过渡对象存储 | 组件 Backup 及 `requirement-attachments`、`agent-artifacts` Bucket Class 写入当前 Cluster 和数据盘故障域之外的 OSS/S3-compatible Repository，Contract 见 [07](./07-data-messaging-storage.md) |
+| Backup 与过渡对象存储 | 组件 Backup 及 `audit-worm`、`requirement-attachments`、`agent-artifacts` Bucket Class 写入当前 Cluster 和数据盘故障域之外的 OSS/S3-compatible Repository（Versioning、`COMPLIANCE` Lock、独立凭据与真实恢复见 [07](./07-data-messaging-storage.md)） |
 
 该 Node 允许部署：
 
@@ -181,7 +181,7 @@ Cluster 外 Backup Repository、NLB、NAT/EIP、WAF、KMS、GitLab、Jenkins、V
 
 ### 8. Storage 规划
 
-人数不能可靠预测 Object Storage。Artifact、附件、365 天 Audit WORM、PostgreSQL/NATS/OpenBao Backup、Log/Trace、Versioning、Object Lock、Multipart 和 GC 延迟共同决定容量。
+人数不能可靠预测 Object Storage。Artifact、附件、Log/Trace、Versioning、Object Lock、Multipart 和 GC 延迟共同决定环境内 RGW 容量；365 天 Audit WORM 与 PostgreSQL/NATS/OpenBao Backup 位于 Cluster 外 Repository，其增长与费用在 Environment TCO Snapshot 中单列。
 
 V1.0 每环境以 `3 × 1 TiB Raw OSD` 起步。采用三副本并以 50% Raw 作为规划边界时，约有 `512 GiB` 规划逻辑容量。以下任一条件成立时必须扩容，而不是缩短 Audit Retention 或绕过 Object Lock：
 

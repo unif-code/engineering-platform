@@ -20,7 +20,7 @@
 | Valkey | 可重建 Session 热索引、撤销索引、缓存、限流、幂等键与短期锁 | 权威身份、安全或业务事实 |
 | NATS JetStream | 可靠命令/事件传输、Consumer 位置与短期重放 | 永久业务主存储 |
 | Temporal | Durable Workflow 进度、Timer、Activity 与编排历史 | Requirement、Attempt 或授权主数据 |
-| Ceph RGW/Object Storage | 版本化 Artifact、WORM Audit、应用一致性 Backup 与诊断对象 | Stateful 实时数据库 PVC |
+| Object Storage（Cluster 外 Repository 与 Ceph RGW） | 版本化 Artifact、WORM Audit、应用一致性 Backup 与诊断对象 | Stateful 实时数据库 PVC |
 
 ### 数据流与一致性
 
@@ -61,7 +61,7 @@ Object       精确 Object Version + 经验证 Manifest → 引用、Lock 与保
 
 ### Bucket Class 与对象保护
 
-Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-compatible 对象服务；实时 Stateful PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 与容量由 [09](./09-infrastructure-operations.md) 拥有。Rook-Ceph 尚未激活的早期阶段，Cluster 外 OSS/S3-compatible Repository 作为受完整 Contract 约束的过渡 Object Storage Primary：承载组件 Backup 与 `requirement-attachments`、`agent-artifacts` 两类业务 Bucket Class，`audit-worm` 与 Observability Object 仍分别按 [08](./08-security-audit-governance.md) 与 [09](./09-infrastructure-operations.md) 的激活语义推迟；Rook-Ceph 激活后新对象一律写入环境内 RGW，过渡 Repository 中的既有对象与 Backup 按其保留策略继续可读、可恢复而不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变。Bucket Class 固定为下表八类，每类使用独立 Policy、Credential、Quota 与 Capacity Ledger：
+Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-compatible 对象服务；实时 Stateful PVC 一律使用逻辑 StorageClass `stateful-rwo-lowlatency`，其 Provider Mapping、Node 与容量由 [09](./09-infrastructure-operations.md) 拥有。每个 Bucket Class 在每个环境绑定版本化 `StorageBinding`（`storageBindingId + generation`，绑定目标 Endpoint/Bucket、凭据引用、加密与 Object Lock 能力证明），对象元数据记录写入时的 Binding Generation，读取与删除按记录的 Binding 定位：`audit-worm` 与 Backup 类（`postgres-backup`、`nats-backup`、`openbao-recovery`）自 V0.1 起始终绑定 Cluster 外 OSS/S3-compatible Repository——Cluster 外 Backup 与 WORM 审计归档不因 Rook-Ceph 激活迁回集群内；`requirement-attachments` 与 `agent-artifacts` 在 Rook-Ceph 激活前同样绑定该 Cluster 外 Repository 作为受完整 Contract 约束的过渡 Primary（Observability Object 仍按 [09](./09-infrastructure-operations.md) 推迟），激活后以新 Binding Generation 写入环境内 RGW，既有对象按原 Binding 继续可读、可恢复而不自动回迁。无论处于哪个阶段与拓扑，S3-compatible API、精确 Object Version、独立 Bucket Class、TLS/身份、加密、硬 Quota/Capacity Ledger、Backup/Restore、Retention 与 Fail Closed Contract 都不变。Bucket Class 固定为下表八类，每类使用独立 Policy、Credential、Quota 与 Capacity Ledger：
 
 | Bucket Class | Versioning / Object Lock | 保留与清理语义 |
 | --- | --- | --- |
@@ -120,7 +120,7 @@ Object Storage 的目标实现是每环境的 Rook-Ceph RGW，职责仅限 S3-co
 - 每次写入或 Backup 预占依次验证 Product Quota（适用时）、Class Operating/Admission、物理 RGW Size/Object Guard、Cluster Raw 与最满 OSD Gate；Class 的 30 天预测按“当前全部占用 + p95/p99 预期写入 + Locked/Multipart 上界 − 已由权威 Reconciler 证明可安全释放的对象”计算，未验证 Backup、只有 Delete Marker 的 Version、失败 Reconcile 与未完成 GC 都不得计作可回收——乐观回收会在真实写入时耗尽容量。
 - 容量维度失败与产品配额维度失败是两个不同错误码：容量失败保留失败 Gate、Class、Effective Revision 与 Reservation ID 并触发 Operations Incident，提高产品配额也不能突破 Environment Capacity、[08](./08-security-audit-governance.md) 的 Security Contract 或 File Security Scanner Envelope——把容量问题当作配额问题会让扩容决策失去依据。
 - Requirement Attachment 与 Agent Artifact 在开始上传前，必须为精确 Object Version 在同一受控准入事务中同时预占 Product Quota Ledger 与 Environment Bucket-Class Capacity Ledger，任何一侧失败都不形成可用预占；两本账本由同一个存储准入 owner 在其自有 Schema 内持久化，因此该双账本预占是单模块本地事务而不违反[平台应用与集成](./06-platform-application-integration.md)的事务边界，额度与容量参数仍分别按其 Policy owner 的 Effective Snapshot 只读解析；物理 RGW native quota 只作为最后后备保护，不能替代双账本准入——两本账同时成立才能既守住产品承诺又守住物理容量，同 owner 持久化让它无需分布式事务，而后备保护无法产生可解释、可审计的业务拒绝原因。
-- Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以 RGW 保存对象本体；上传与下载只能由应用授权签发绑定精确版本的短期 Presigned Request——对象访问必须由业务授权判定，而不是由谁持有 URL 决定。
+- Artifact 以 PostgreSQL 保存元数据、引用、Object Version、访问状态与配额预占，以当前 `StorageBinding` 指向的对象存储保存对象本体；上传与下载只能由应用授权签发绑定精确版本的短期 Presigned Request——对象访问必须由业务授权判定，而不是由谁持有 URL 决定。
 - 文件检查由应用 `FileSecurityPort` 处理，需要扫描的对象只有合格 Verdict 才可用，由 [02](./02-requirement-workflow.md)/[08](./08-security-audit-governance.md) 的版本化 Source/Media Policy 合法跳过扫描的受信内部纯文本可在完整性验证后不带 Verdict 进入可用状态；本模块不决定扫描分支、Verdict 或 Artifact 业务状态——存储执行与业务判定必须分属不同 owner。
 - 归档、逻辑删除与 Requirement 恢复都不释放 Object Storage 容量，已被业务接受的附件与 Agent Artifact 不进入业务数据物理清理，只有未完成 Multipart Abort 与无业务引用的 `ORPHANED` 技术垃圾可按精确 Object Version 受控清理——逻辑状态变化不等于物理释放。
 - `Object Retention Reconciler` 只清理 Audit 与 Backup 类 Bucket 中超过各自权威保留期的精确 Object Version：`audit-worm` 的策略级资格由 [08](./08-security-audit-governance.md) 产生且不得被重新解释或缩短，对象执行还须证明 Object Lock 已到期且无恢复/业务引用，Backup 类还须证明存在满足 Recovery Window 与恢复链的更新有效副本；Reconciler 使用专用最小权限身份，不具备 Retention Bypass、跨 Bucket 或通配 Prefix 删除能力；`GOVERNANCE` Lock 不授予普通服务 Retention Bypass，`COMPLIANCE` Lock 也不可由 Super Admin、Reconciler 或普通运维缩短——删除权限必须小于它可能造成的损失，可被绕过的保留期不是保留期。

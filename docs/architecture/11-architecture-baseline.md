@@ -72,7 +72,6 @@ Release Gate 与 Capability Activation Gate 按各自 Scope 组合下列维度�
 | S3-compatible Object Storage | 其他自建或云托管实现 | 07 |
 | 精简 Observability | 分布式 Observability | 09 |
 | Sandbox Node Pool | 独立 Sandbox Cluster | 04、09 |
-| Sandbox 内短期凭据直接注入 | Credential Broker/签名代理，Raw Token 不入 Guest | 04、05 |
 | Cluster DR | Site DR | 09 |
 
 ## 关键不变量

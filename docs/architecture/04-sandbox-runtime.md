@@ -45,7 +45,7 @@ Requirement Sandbox Environment
 | 独立物理 Host 与 KVM/Kata | 使用独立物理 Sandbox Host/服务器作为专用 `sandbox-worker`，不承载 Platform、Storage 或 Control Plane 工作负载；通过 KVM/Node Gate，并以独立 Kata Guest 运行。共享物理 Host 上的独立 Kubernetes Node 或 VM 仍是同机联调，只能标记为 `LAB_ONLY`。 |
 | Resource 与 Capacity | CPU、Memory、Ephemeral Storage 的 Request/Limit、Pod Overhead、Capacity Ledger 与当前有效 Capacity Profile 的物理 Ceiling 全部可验证。 |
 | Deadline 与 Fencing | Binding Deadline 有效；Lease、Generation、Fencing Token、取消、超时和旧实例副作用能够安全收敛。 |
-| Repository、Network 与 Secret | 只挂载绑定分支，Network default-deny 后按 Binding 放行，短期 Secret 只注入 `tmpfs` 且可吊销。 |
+| Repository、Network 与 Secret | 只挂载绑定分支，Network default-deny 后按 Binding 放行，短期 Secret 只注入 `tmpfs` 且可吊销，Source Control 分支写凭据不入 Guest。 |
 | Fail Closed 与恢复 | 任一隔离、容量、凭据、证据或清理条件未知时拒绝物化或安全停止；只能从权威 Git、Checkpoint 与 Artifact 重建。 |
 
 Release Gate 不替代本 Gate，路线图选中 Agent Capability 也不表示自动激活。Gate 通过只允许在批准的 Environment、Scope、Binding 与有效 Capacity Profile 内运行；边界变化必须重新验证。
@@ -90,7 +90,7 @@ Release Gate 不替代本 Gate，路线图选中 Agent Capability 也不表示�
 - Agent 产生的有效代码必须 Commit 并 Push 到当前 `RepositoryBranchBinding` 的任务分支；测试与 Review 以固定 Commit 创建只读 Materialization，Formal MR 只能使用 GitLab 中的 Commit/`headSha` 而不能依赖 Sandbox 本地快照；Controller 在确认销毁前必须把仍需保留却尚未提交的状态固化为受控 Patch/Checkpoint Artifact，恢复以 Git Commit 为主、Patch/Checkpoint 为辅，不得依赖旧 Pod、Node、本地目录或 Runtime Disk——权威代码在 GitLab，本地状态随时可能消失。
 - Sandbox 的 NetworkPolicy 默认拒绝东西向与公网 Egress，只按 Binding 放行当前 GitLab Source/Registry、批准的依赖源与镜像源、Artifact Store、Model Gateway、必要平台 API 以及明确批准的测试服务或 Connector Endpoint；Sandbox 不能访问生产域名、生产数据库、NATS、Kubernetes API、Cloud Metadata/Admin API、其他环境或其他 Attempt——default-deny 是唯一能随 Binding 精确收紧的网络姿态。
 - Deployment 原生的 Model Search Capability 与批准的 Search Connector 是独立受控路径，都不代表 Sandbox 获得任意 DNS、IP、HTTP Proxy 或公网出口；依赖源故障时只可使用已验证缓存或有界重试，不能关闭 NetworkPolicy 或扩大 Egress——可用性压力不能成为打开出口的理由。
-- OpenBao 保存 Secret 与 Lease 事实，Agent Injector 只把当前执行的短期 Secret 写入 Pod `tmpfs` 内存文件；Secret Lease 必须绑定 Platform Environment、Attempt/Build、Repository/Branch、Tool、Scope 与有效期，禁止写入 Deployment YAML、Environment Variable、镜像、代码、Commit、Prompt、日志、Trace、Artifact、Cache 或持久磁盘，收到释放、结束、取消、归档或删除的清理命令即刻吊销——落盘或落日志的凭据无法被吊销。
+- OpenBao 保存 Secret 与 Lease 事实，Agent Injector 只把当前执行的短期 Secret 写入 Pod `tmpfs` 内存文件；Secret Lease 必须绑定 Platform Environment、Attempt/Build、Repository/Branch、Tool、Scope 与有效期，禁止写入 Deployment YAML、Environment Variable、镜像、代码、Commit、Prompt、日志、Trace、Artifact、Cache 或持久磁盘，收到释放、结束、取消、归档或删除的清理命令即刻吊销；Source Control 的任务分支写凭据不注入 Guest，Push 经 Guest 外的 Credential Broker 完成（Contract 见 [05](./05-source-control-delivery.md)）——落盘或落日志的凭据无法被吊销，进入不可信执行面的写凭据等于交出交付事实。
 - Preview 是受保护的稳定访问引用而不是 Pod 地址：浏览器应用使用 URL Preview，其他运行形态可由受控 Adapter 产出构建 Artifact、二维码或远程设备入口；Preview Gateway 在每次访问校验当前平台 Session、Capability、Scope、Workspace Membership 与 Requirement 访问权，并支持到期、撤销与审计——Preview 是一个受授权的平台入口，不是可分享的网络地址。
 - Image Build 不是普通 Agent Container 内的 Privileged 操作：Parent 通过稳定 Idempotency Key 创建独立 Child Build Execution，并必须按统一清理顺序先固化 Checkpoint、日志与 Artifact，Fence 并吊销 Secret，再销毁自己的 Materialization 并释放 Agent Lease；只有能够证明 Parent Lease 已释放时，Child 才能取得自己的 Build Lease——特权构建会击穿 Sandbox 隔离，父子同时持有容量会突破已验证 Ceiling。
 - Child 使用独立 Kata Materialization、Rootless BuildKit、Binding、Credential、Workspace 与 Fencing Token，收到结束或取消清理命令时先固化 Image Digest、SBOM、Provenance、扫描结果、日志与结构化结果再释放资源；Handoff 成功后 Parent 不持有 Unit、不共享本地目录或凭据，同一 Parent 同时最多一个活动 Child，故障恢复前必须 Fence 旧 Builder，Parent/Child 的状态与后续调度由 Agent owner 定义——构建证据必须先落地，旧 Builder 必须先失效。
