@@ -53,9 +53,14 @@ describe('auth service', () => {
       message: 'Validation failed',
     });
 
-    await expect(
-      authenticate({ employeeId: '123', password: 'x', totp: '1' }),
-    ).rejects.toThrow('Validation failed');
+    const error = await authenticate({
+      employeeId: '123',
+      password: 'x',
+      totp: '1',
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe('Validation failed');
   });
 
   it('HTTP 422 rejection 使用 response.data 的 envelope message', async () => {
@@ -70,8 +75,13 @@ describe('auth service', () => {
       },
     });
 
-    await expect(
-      authenticate({ employeeId: '123', password: 'x', totp: '1' }),
-    ).rejects.toThrow('Validation failed');
+    const error = await authenticate({
+      employeeId: '123',
+      password: 'x',
+      totp: '1',
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe('Validation failed');
   });
 });

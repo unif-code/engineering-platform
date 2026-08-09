@@ -50,8 +50,13 @@ describe('auth feature service', () => {
       new Error('Validation failed'),
     );
 
-    await expect(
-      login({ employeeId: '123', password: 'x', totp: '1' }),
-    ).rejects.toThrow('Validation failed');
+    const error = await login({
+      employeeId: '123',
+      password: 'x',
+      totp: '1',
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(Error);
+    expect((error as Error).message).toBe('Validation failed');
   });
 });
