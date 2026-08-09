@@ -107,7 +107,7 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 - 每一份实际启用的 Product、Backend 或 Frontend SDD 都独立经历确认与失效，上游确认不能跳过下游实际启用 SDD 的 Gate——Gate 的覆盖面必须与实际交付面一致。
 - Workflow 固定 Route、阶段输入输出、Artifact、Gate 与恢复，Skill 的内部方法归[Agent、Skill 与 Model](./03-agent-skill-model.md)并在执行时使用版本化 Superpowers Runtime Bundle；Route 类型、Bundle、Skill、Artifact 或 Policy 变化不得改写运行中的 Attempt，需要新产品能力时创建关联 `feat` Requirement——运行中的执行只按启动时的 Contract 收敛。
 - 后端 WorkItem 新增或变更 API 时必须交付版本化、机器可读且已校验的 API Contract，覆盖输入输出、错误、认证授权、幂等与重试、枚举与空值、示例、Schema Version 与兼容性；前端 WorkItem 使用当前确认的 Route Baseline 与适用 Contract、不重写已完成的产品 SDD，Mock 与实际 Contract 出现阻塞差异时必须更新 Artifact、Contract 与受影响 Gate——跨端协作只能依靠可校验的 Contract，差异必须回到基线而不是留在实现里。
-- 所有类型的 SDD/Baseline Confirmation 都默认以 Requirement 创建人为审核人：创建时按有效 Gate Policy 同步解析 `defaultReviewerId`、保存解析快照与 Policy Version 并初始化 `currentReviewerId`，因此不存在无审核人的空状态——Gate 必须始终有明确的当前责任人。
+- 所有类型的 SDD/Baseline Confirmation 都默认以 Requirement 创建人为审核人：创建时按有效 Gate Policy 同步解析 `defaultReviewerId`、保存解析快照与 Policy Version 并以 `defaultReviewerId` 初始化 `currentReviewerId`，因此不存在无审核人的空状态——Gate 必须始终有明确的当前责任人。
 - 正常路径只有 `defaultReviewerId` 对应人员可以改派当前审核人，实际被选审核人只负责 Decision 而不能继续转派（除非其本身就是默认审核人），候选人必须实时满足 Gate 所需 Capability、Scope 与 Membership；最终 Decision 形成后不得改派，新的 Artifact 版本必须形成新的 Gate 与 Decision 关系——无界转派与事后编辑都会让人工判断无法追溯。
 - 默认审核人停用、离职或失去有效 Scope 时，具有 `sdd.reviewer.override` 的管理员可填写原因作恢复性改派，但该能力不能跳过 Gate、资格、版本绑定或修改已完成 Decision——恢复性能力只解决“找不到人”，不降低门槛。
 - 人工 Gate 只能由当前 assignee 在资格实时有效时签署：允许创建人或 Artifact 作者自审，但 Agent、AI Review、确定性检查、Connector Service Account 与系统管理员身份都不能代签，岗位也不能编码进 Gate Type 或 Decision 结果（新增结果属于 Contract 变更）——人工 Gate 的价值完全来自人的责任，而不是称谓或自动化结论。

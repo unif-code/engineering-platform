@@ -137,7 +137,7 @@ Image Security 状态独立于 Build 状态；文件扫描 Verdict 固定为 `CL
 | --- | --- | --- |
 | [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | 责任链各环节共同遵守的 Trust、Secret、加密、供应链、Audit 与 Break-glass 的 Fail Closed Contract |
 | [01 身份、组织与授权](./01-identity-organization-authorization.md) | 本地身份、Session、Capability、Super Admin 与受限 Recovery Port 语义，以及本领域相关的 Audit Trigger 与业务摘要 | 密码 pepper 与认证材料保护、Audit Envelope、可靠提交、脱敏、WORM、Retention 与安全恢复 Contract，以及 Break-glass 的执行边界 |
-| [02 Requirement Workflow](./02-requirement-workflow.md) | 需要扫描的 Source/Media 判定输入、Artifact 业务状态与扫描分支归属 | 文件扫描机制与 Verdict 语义、Object Lock、Audit Envelope、脱敏与保留 Contract |
+| [02 Requirement Workflow](./02-requirement-workflow.md) | 需要扫描的 Source/Media 判定输入、Artifact 业务状态与扫描分支归属，以及本领域的 Audit Trigger 与业务摘要 | 文件扫描机制与 Verdict 语义、Object Lock、Audit Envelope、脱敏与保留 Contract |
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | 本领域的 Audit Trigger（Binding、状态转换、模型回退、取消、权限吊销）与业务摘要 | Secret 注入、Audit Envelope、脱敏与保留 Contract |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | 本领域的 Audit Trigger（物化、Lease、Fence、凭据吊销、清理结果）与业务摘要 | Secret 与 Lease 事实、`tmpfs` 注入、供应链与扫描机制、Audit 保留与访问规则 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | 本领域的 Audit Trigger（Binding、SHA、外部 Effect、Review Decision、Merge、Reconciliation）与业务摘要 | Secret Reference 与短期凭据机制、Audit Envelope、脱敏与保留规则 |

@@ -42,7 +42,7 @@ V0.5 已在 DEV 验收的同一 Image Digest/Bundle
                          V1.0 只执行 Promotion，不重新构建
 ```
 
-V0.1～V0.5 依次形成可验收的纵向能力；每个里程碑的前置依赖固定包含前一个里程碑 `ACCEPTED`、本 Release 入选 Capability 的领域 Contract 已批准，以及选定 Profile 的环境条件成立，各版本的额外前置见下方 Scope 表。V1.0 的 Capability Scope 与 V0.5 Production Candidate 相同，只把 DEV 已验收的候选制品与兼容配置 Promotion 到独立 PROD，并完成 PROD Release Gate。
+V0.1～V0.5 依次形成可验收的纵向能力；V0.2 起，每个里程碑的前置依赖固定包含前一个里程碑 `ACCEPTED`，每个里程碑还固定要求本 Release 入选 Capability 的领域 Contract 已批准以及选定 Profile 的环境条件成立，各版本的额外前置见下方 Scope 表。V1.0 的 Capability Scope 与 V0.5 Production Candidate 相同，只把 DEV 已验收的候选制品与兼容配置 Promotion 到独立 PROD，并完成 PROD Release Gate。
 
 ### Release 状态与 Profile 选择
 
@@ -153,7 +153,7 @@ V1.0 不拥有新的 Capability Activation 行，只 Promotion V0.5 已在 DEV �
 - 未进入 V1.0 Scope 的增强能力以及容量文档中的 Hardened Target Profile 当前为 `DEFERRED_POST_LAUNCH`，完整目标架构仍保留在 00～11——推迟是交付决策，不是从目标架构中删除。
 - 上线后只有在明确业务需求或上线后的容量、可靠性、成本与运维证据使[容量 Evolution Trigger](./appendix-parameters.md#9-evolution-trigger)成立、形成新的 Capability/Capacity Candidate，并重新通过对应 Release Gate、Capability Activation Gate、兼容、迁移、回退、容量、安全和恢复验证后，才能改变当前 Release 或 Profile；在此之前保持当前已验证 Profile，并通过排队、拒绝或安全停止守住其 Ceiling，Operations Read Model 的告警与测量是触发证据，不是自动扩权或自动部署命令——测量信号是评估输入，不是批准。
 - 本文只做定性 Profile 选择并链接[容量与服务器规划](./appendix-parameters.md#容量与服务器规划)，不复制服务器数量、SKU、人数档位或容量数值——参数只有单一来源才不会出现两套采购与验收口径。
-- Promotion 与部署结论必须由 GitOps Desired State、PCS 与 Operations Read Model 证据支持，不能由版本名称、代码合并或页面显示推断——路线图状态是交付决策，不是运行证据。
+- Promotion 与部署结论只能由 GitOps Desired State、PCS 与 Operations Read Model 证据支持，不能由版本名称、代码合并或页面显示推断——路线图状态是交付决策，不是运行证据。
 
 ## 与其他模块的关系
 

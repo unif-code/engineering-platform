@@ -8,7 +8,7 @@
 
 Core Platform 负责本地身份、组织与 Workspace、授权，Requirement 到交付的业务编排，Agent/Skill/Model 控制，Sandbox Runtime，Source Control 交付，平台应用与集成，数据与存储，安全与 Audit，基础设施运维以及 Configuration Governance；它通过稳定的 Port/Adapter 使用 GitLab、Model Provider、Sandbox、对象存储和运维系统，既不重建这些外部系统的专业能力，也不把它们的实现细节纳入业务领域。平台的核心价值由三件事构成：以明确的责任、权限和人工 Gate 管理研发交付；把人、Agent、代码变更、交付证据和 Audit 关联为可解释的业务事实；让环境隔离、受控执行和可替换集成共同约束平台演进。
 
-本文只定义 System Context、总体责任分工和依赖边界，不重复各领域的内部规则，也不定义组件精确版本、领域状态机全集、Release Scope、实施状态、环境 Promotion 或容量数值。业务状态、代码事实与审计规则的归属见 [README 所有权矩阵](./README.md#事实所有权矩阵)，精确参数见[参数附录](./appendix-parameters.md)；实际 Deployed State 不属于任何文档，须由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
+本文只定义 System Context、总体责任分工和依赖边界，不重复各领域的内部规则，也不定义组件精确版本、领域状态机全集、Release Scope、实施状态、环境 Promotion 或容量数值。业务状态、代码事实与审计规则的归属见 [README 所有权矩阵](./README.md#事实所有权矩阵)，精确参数见[参数附录](./appendix-parameters.md)；实际 Deployed State 不属于任何文档，只能由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
 
 ## 核心模型
 
@@ -134,11 +134,11 @@ Profile 的 Release 选择、实施状态与环境 Promotion 见[实施路线图
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | 01 授权、02 业务上下文、04 执行能力、10 配置快照 | Agent Definition、Skill/Model 路由、Evaluation、Run/Attempt 与不可变 Execution Binding |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | 03 Execution Binding、08 短期凭据、09 Node 与物理容量边界 | 隔离执行、lease、资源准入、网络、Preview、清理与恢复 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | 01 授权、02 责任链引用、06 Adapter 与一致性 Contract | GitLab Binding、分支、MR、Artifact 与稳定交付 Evidence |
-| [06 平台应用与集成](./06-platform-application-integration.md) | 01～05、07～10 的领域与技术 Contract | Web 与 Control Plane 边界、业务 API、Port/Adapter、跨模块一致性、Operations Read Model 与运维 Console 可见性 |
+| [06 平台应用与集成](./06-platform-application-integration.md) | 01～05、07～10 的领域与技术 Contract | Web 与 Control Plane 边界、业务 API、Port/Adapter、跨模块一致性、Operations Read Model 与 Console Access |
 | [07 数据、消息与存储](./07-data-messaging-storage.md) | 09 的运行、存储与备份能力 | 权威数据、消息、缓存、Artifact 对象与配额账本、Retention、备份与组件恢复支撑 |
 | [08 安全、审计与治理](./08-security-audit-governance.md) | 01 身份事实、07 存储与保留能力 | Trust、Secret、加密、供应链、Audit Envelope、Break-glass 与安全恢复的 Fail Closed Contract |
 | [09 基础设施与运维](./09-infrastructure-operations.md) | 10 的 GitOps 配置治理协议 | Platform Environment、GitOps Desired State、Kubernetes、网络、可观测性、物理容量准入与环境恢复 |
-| [10 Configuration Governance](./10-configuration-governance.md) | 01 的配置命令资格、各领域 Namespace 的 Schema、默认值与业务解释 | 配置分类、版本、Effective Snapshot、兼容性演进与 DEV→PROD Promotion 协议 |
-| [11 架构基线](./11-architecture-baseline.md) | 00～10 的目标 Contract | 跨模块不变量、依赖与写入边界、Quality Scenario 以及三类 Gate 的分类与语义 |
+| [10 Configuration Governance](./10-configuration-governance.md) | 01 的配置命令资格、各领域 Namespace 的 Schema、默认值与业务解释 | 配置分类、版本、Effective Snapshot、兼容性演进、DEV→PROD Promotion 协议与 `CapabilityActivationRecord` 持久化 |
+| [11 架构基线](./11-architecture-baseline.md) | 00～10 的目标 Contract | 跨模块不变量、依赖与写入边界、Quality Scenario 以及三类 Gate 与 Evolution Trigger 的分类与语义 |
 | [12 实施路线图](./12-implementation-roadmap.md) | 00～11 的目标 Contract、附录的容量场景与数值 | Release Scope、Release Gate 与验收证据、实施状态、环境 Promotion 与 Profile 选择 |
 | [参数附录](./appendix-parameters.md) | 各模块正文中的定性规则 | 全部精确参数：资源数值、Policy Key、错误码、Port 方法清单、Runtime 组件、容量场景与服务器矩阵 |

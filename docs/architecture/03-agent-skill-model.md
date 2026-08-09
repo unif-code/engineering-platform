@@ -73,7 +73,7 @@ Attempt：CREATED → BINDING → QUEUED → PROVISIONING → RUNNING → FINALI
       FINALIZING →（固化失败，记录证据缺口）FAILED
 Child Build Execution 使用独立状态机，不复用 Parent Attempt 状态：
       CREATED → QUEUED → PROVISIONING → RUNNING → FINALIZING → SUCCEEDED
-      失败与取消路径同上；Build 准入 Policy 关闭时 QUEUED → CANCELING → CANCELED
+      失败与取消路径同上（Child 无 BINDING 阶段）；Build 准入 Policy 关闭时 QUEUED → CANCELING → CANCELED
 ```
 
 `CREATED` 表示已记录但尚未形成 Binding；`BINDING` 解析并持久化 Agent、模型、Skill、权限、仓库与资源输入；`QUEUED` 表示 Binding 已校验、正在等待唯一 Fenced Capacity Lease；`PROVISIONING` 通过 Sandbox Port 准备物化、固定分支与短期凭据；`RUNNING` 表示 Agent 运行中；`WAITING_INPUT` 表示结构化问题与 Checkpoint 已持久化、等待用户输入；`WAITING_CHILD` 表示 Parent 已完成 Handoff、正在等待独立 Child 的持久化结果；`FINALIZING` 固化结果、Commit、Artifact、日志与 Checkpoint 并清理副作用；`CANCELING` 幂等终止 Parent/Child、Fence 副作用并回收资源；`SUCCEEDED`、`CANCELED`、`FAILED`、`TIMED_OUT` 是不可逆终态。`WAITING_INPUT` 与 `WAITING_CHILD` 只属于 Parent Attempt，不能写入 Child Build Execution；Child 的四个终态是供 Parent 消费的结构化结果。

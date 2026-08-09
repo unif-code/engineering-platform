@@ -33,16 +33,16 @@
 | 身份、组织、Workspace、成员投影、服务端授权、Super Admin 与 Bootstrap、配置命令资格、Identity 恢复 | [01](./01-identity-organization-authorization.md) |
 | Requirement、WorkItem、Route、人工 Gate、责任 Assignment、Decision、Artifact 业务状态、验收与 Baseline Selection | [02](./02-requirement-workflow.md) |
 | Agent Definition、Skill Bundle、Model Catalog/Capability/Route、Run/Attempt、Execution Binding、Child 状态与等待、评测工具链、Context/Tool/Network Policy | [03](./03-agent-skill-model.md) |
-| Sandbox Environment、Kata 物理隔离、Materialization、Capacity Lease 与账本、短期 Secret、Preview、Image Build、清理 | [04](./04-sandbox-runtime.md) |
+| Sandbox Environment、Kata 物理隔离、Materialization、资源准入、Capacity Lease 与账本、Sandbox 网络与 Egress、短期 Secret、Preview、Image Build、清理 | [04](./04-sandbox-runtime.md) |
 | GitLab Binding、任务分支、Integration/Formal MR、`IntegrationBaselineEvidence`、Review Assignment、Merge 与多仓语义、GitLab 外部事实收敛 | [05](./05-source-control-delivery.md) |
 | 前端与 Control Plane 边界、Deployable、Port/Adapter、跨模块一致性、External Provider Binding、Operations Read Model、Console Access、安全公告与外部 Feed Envelope | [06](./06-platform-application-integration.md) |
 | PostgreSQL/Valkey/NATS/Temporal/对象存储事实、Artifact 对象与配额账本、Backup、Retention 执行、组件故障恢复 | [07](./07-data-messaging-storage.md) |
 | Trust、Secret、PKI、加密、供应链与文件扫描机制、Provider 信任材料、Audit Envelope 与保留、Break-glass、安全恢复 | [08](./08-security-audit-governance.md) |
-| Platform Environment 与 Cloud Binding、PCS、GitOps Desired State、Kubernetes 与 Node Role、物理放置与容量准入、可观测性与告警、Cluster DR、TCO | [09](./09-infrastructure-operations.md) |
-| 配置分类、Draft/Publish/Rollback/Rebase、Effective Snapshot、`PLATFORM_POLICY` 有效值、Promotion 与 Divergence、Activation Record 持久化 | [10](./10-configuration-governance.md) |
+| Platform Environment 与 Cloud Binding、PCS、GitOps Desired State、Kubernetes 与 Node Role、网络与 Gateway、存储物理拓扑、物理放置与容量准入、可观测性与告警、Cluster DR、TCO | [09](./09-infrastructure-operations.md) |
+| 配置分类、Catalog、Draft/Publish/Rollback/Rebase、Effective Snapshot、`PLATFORM_POLICY` 有效值、Schema 兼容演进、Promotion 与 Divergence、Source Lineage/High-water、Activation Record 持久化 | [10](./10-configuration-governance.md) |
 | 跨模块不变量、依赖边界、质量场景、三类 Gate 与 Evolution Trigger 的分类与语义 | [11](./11-architecture-baseline.md) |
 | Release Scope、Release Gate 与验收证据、实施状态、环境 Promotion、Capability 阶段选择与 Activation 归属、Profile 选择 | [12](./12-implementation-roadmap.md) |
-| 全部精确参数：资源数值、Policy Key、错误码、Port 方法清单、Runtime 组件、容量场景与服务器矩阵 | [附录](./appendix-parameters.md) |
+| 全部精确参数：资源数值、Policy Key、错误码、Port 方法清单、Runtime 组件、容量场景、服务器矩阵与分阶段采购计划 | [附录](./appendix-parameters.md) |
 
 跨 owner 拆分的事实必须双向确认，不能只改一侧：
 
@@ -52,7 +52,7 @@
 - 交付证据：05 拥有 Evidence 结构、hash 与变化事件；02 拥有交付快照、Selection 冻结与验收失效。
 - Artifact：02 拥有业务状态与扫描分支结果，07 拥有对象、Object Version 与双账本预占，08 拥有扫描与保留机制。
 - Gate：11 拥有三类 Gate 的分类与语义，12 记录具体 Release Gate 与阶段选择，10 持久化 Activation Record。
-- Deployed State 不属于任何文档，仅由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
+- Deployed State 不属于任何文档，只能由环境 GitOps Desired State、PCS 与 Operations Read Model 证据证明。
 
 ## 维护规则
 

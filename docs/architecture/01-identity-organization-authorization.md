@@ -21,13 +21,13 @@
 | 初始化受限 | 尚未完成正式密码与 TOTP 初始化，只能用 Bootstrap Session 完成初始化或安全退出。 |
 | 启用 | Session、Capability、Scope 与资源条件均有效时可访问受保护能力。 |
 | 停用 | 不能登录或发起新的 API 操作，不再是有效正式成员；历史事实仍保留原 actor。 |
-| 受限 | 独立的非完整访问状态，不得视为启用；允许的操作必须由当前受限规则明确声明。 |
+| 受限 | 独立的非完整访问状态，不得视为启用；允许的操作必须由当前受限规则明确声明，未明确允许的受保护业务动作一律拒绝。 |
 
 ### 认证材料与 Session
 
 认证路径由四类材料组成：一次展示的一次性**临时密码**（创建账号或重置密码时签发，用于换取只能完成初始化的受限 **Bootstrap Session**）、**正式密码**、强制 **TOTP**，以及服务端可撤销的**人员 Session**。Session 在连续 60 分钟无用户操作后失效。
 
-临时密码有效期、密码过期周期（永不过期或有限周期）与同账号有效 Session 上限都是版本化 `PLATFORM_POLICY`：取值与范围见[参数附录](./appendix-parameters.md#platform-policy-key)，每个 Policy Version 自服务端成功发布并成为当前 Effective Policy 时生效，不由 Frontend、客户端或脚本解释。密码年龄以最近一次成功设置正式密码的服务端时间事实 `passwordSetAt` 起算。
+临时密码有效期、密码过期周期（永不过期或有限周期）与同账号有效 Session 上限都是版本化 `PLATFORM_POLICY`：取值与范围见[参数附录](./appendix-parameters.md#platform-policy-key)，每个 Policy Version 自服务端成功发布并成为当前 Effective Policy 时生效，不由 Frontend、客户端或脚本解释。密码年龄以最近一次成功设置正式密码的服务端时间事实 `passwordSetAt` 起算，有限周期下 `now >= passwordSetAt + period` 即到期。
 
 ### Organization
 

@@ -31,7 +31,7 @@ Browser
 
 ### Umi Web 与 Session Bootstrap
 
-同一 Umi Max、React、TypeScript 应用承载用户端与平台管理后台两个路由空间，共用 Design Token、Layout、API Client 与当前环境 Session。目录边界为 `pages/`（路由装配）、`features/{auth,navigation,chat,requirements,workflows,runs,agents,administration}/`、`components/`（跨 Feature UI）、`services/{generated,transport}/` 以及 `models/ hooks/ types/ utils/`。
+同一 Umi Max、React、TypeScript 应用承载用户端与平台管理后台两个路由空间，共用 Design Token、Layout、API Client 与当前环境 Session。目录边界为 `src/pages/`（路由装配）、`src/features/{auth,navigation,chat,requirements,workflows,runs,agents,administration}/`、`src/components/`（跨 Feature UI）、`src/services/{generated,transport}/` 以及 `src/models/`、`src/hooks/`、`src/types/`、`src/utils/`。
 
 状态边界固定为：路由、筛选与对象标识使用 URL；服务端数据由 React Query 管理；当前用户、当前 Workspace 与轻量 UI 偏好使用 Umi Initial State/Model；表单使用 ProForm 或 Ant Design Form；对话界面复用已锁定的 `@ant-design/x` 的 `Bubble`、`Conversations`、`Sender`、`Attachments` 与 `ThoughtChain`；临时交互状态保留在组件内。
 
