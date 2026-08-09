@@ -108,8 +108,7 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 - Workflow 固定 Route、阶段输入输出、Artifact、Gate 与恢复，Skill 的内部方法归[Agent、Skill 与 Model](./03-agent-skill-model.md)并在执行时使用版本化 Superpowers Runtime Bundle；Route 类型、Bundle、Skill、Artifact 或 Policy 变化不得改写运行中的 Attempt，需要新产品能力时创建关联 `feat` Requirement——运行中的执行只按启动时的 Contract 收敛。
 - 后端 WorkItem 新增或变更 API 时必须交付版本化、机器可读且已校验的 API Contract，覆盖输入输出、错误、认证授权、幂等与重试、枚举与空值、示例、Schema Version 与兼容性；前端 WorkItem 使用当前确认的 Route Baseline 与适用 Contract、不重写已完成的产品 SDD，Mock 与实际 Contract 出现阻塞差异时必须更新 Artifact、Contract 与受影响 Gate——跨端协作只能依靠可校验的 Contract，差异必须回到基线而不是留在实现里。
 - 所有类型的 SDD/Baseline Confirmation 都默认以 Requirement 创建人为审核人：创建时按有效 Gate Policy 同步解析 `defaultReviewerId`、保存解析快照与 Policy Version 并以 `defaultReviewerId` 初始化 `currentReviewerId`，因此不存在无审核人的空状态——Gate 必须始终有明确的当前责任人。
-- 正常路径只有 `defaultReviewerId` 对应人员可以改派当前审核人，实际被选审核人只负责 Decision 而不能继续转派（除非其本身就是默认审核人），候选人必须实时满足 Gate 所需 Capability、Scope 与 Membership；最终 Decision 形成后不得改派，新的 Artifact 版本必须形成新的 Gate 与 Decision 关系——无界转派与事后编辑都会让人工判断无法追溯。
-- 默认审核人停用、离职或失去有效 Scope 时，具有 `sdd.reviewer.override` 的管理员可填写原因作恢复性改派，但该能力不能跳过 Gate、资格、版本绑定或修改已完成 Decision——恢复性能力只解决“找不到人”，不降低门槛。
+- 正常路径只有 `defaultReviewerId` 对应人员可以改派当前审核人，实际被选审核人只负责 Decision 而不能继续转派（除非其本身就是默认审核人），候选人必须实时满足 Gate 所需 Capability、Scope 与 Membership；最终 Decision 形成后不得改派，新的 Artifact 版本必须形成新的 Gate 与 Decision 关系；默认审核人停用、离职或失去有效 Scope 时，具有 `sdd.reviewer.override` 的管理员可填写原因作恢复性改派，但该能力不能跳过 Gate、资格、版本绑定或修改已完成 Decision——无界转派与事后编辑都会让人工判断无法追溯；恢复性能力只解决“找不到人”，不降低门槛。
 - 人工 Gate 只能由当前 assignee 在资格实时有效时签署：允许创建人或 Artifact 作者自审，但 Agent、AI Review、确定性检查、Connector Service Account 与系统管理员身份都不能代签，岗位也不能编码进 Gate Type 或 Decision 结果（新增结果属于 Contract 变更）——人工 Gate 的价值完全来自人的责任，而不是称谓或自动化结论。
 - 最终验收的默认责任人是 Requirement 创建人并可按同一 Assignment 语义异步改派，但只有 Current Acceptance Assignment 的 assignee 且具备所需 Capability、Scope 与 Membership 才可提交验收 Decision，创建人不具资格时必须改派给合格候选人——默认责任人不等于有效资格。
 - SDD 确认、WorkItem 实现、最终验收、MR Review 与 Merge 是相互独立的责任——合并它们会让一次动作同时完成本应互相制约的判断。
@@ -117,8 +116,7 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 - Attempt、Model、Adapter 或 Sandbox 的失败只产生可处置的阻塞，不把 Requirement 或 WorkItem 直接标为失败；验收拒绝使 Requirement 返回 `IN_PROGRESS`，基线或交付代码变化按影响回到 `IN_PROGRESS` 或 `VERIFYING`，MR 要求修改使 WorkItem 回到 `IN_PROGRESS` 且旧 Review 结论失效，多仓库仅部分合并时 Requirement 留在 `AWAITING_MERGE`——业务责任状态不由运行资源的故障决定，返工必须回到能重新形成证据的阶段。
 - 受控取消是除 `COMPLETED` 外任意状态都可到达的安全终止，且必须在相关活动执行确实停止后才成立——取消不能只改状态而留下仍在运行的副作用。
 - Jenkins 保持独立平台：用户手动运行和查看，平台不调用、不读取其状态，也不将其当作自动 Gate，用户只能提交带提交人、时间、目标 Commit、引用与说明的外部验证证据——平台 Gate 只能由平台自身的证据与人工 Decision 支撑。
-- WorkItem 交付按任务分支、`dev` 集成、外部人工验证、选定 Evidence、验收与 Formal MR 的顺序进行；所有必需 WorkItem 完成集成、测试与外部人工验证后，先由本领域冻结当前 `RequirementDeliverySnapshot`（至少含 `requirementId`、当前 `requirementVersion`、`requiredWorkItemSetVersion/hash` 与全部必需 WorkItem 稳定 ID），再由[Source Control 与交付](./05-source-control-delivery.md)据此生成不可变 `IntegrationBaselineEvidence`，不能绑定持续移动的分支 HEAD——移动的 HEAD 不能作为验收对象。
-- 任一必需项的 Commit、Artifact、测试证据或必需集合变化都会形成新的 Evidence；本领域把旧 Selection 标记为不再当前并使旧验收失效，随后基于当前快照重新选择并再次验收——证据变了，结论必须重做。
+- WorkItem 交付按任务分支、`dev` 集成、外部人工验证、选定 Evidence、验收与 Formal MR 的顺序进行；所有必需 WorkItem 完成集成、测试与外部人工验证后，先由本领域冻结当前 `RequirementDeliverySnapshot`（至少含 `requirementId`、当前 `requirementVersion`、`requiredWorkItemSetVersion/hash` 与全部必需 WorkItem 稳定 ID），再由[Source Control 与交付](./05-source-control-delivery.md)据此生成不可变 `IntegrationBaselineEvidence`，不能绑定持续移动的分支 HEAD；任一必需项的 Commit、Artifact、测试证据或必需集合变化都会形成新的 Evidence，本领域把旧 Selection 标记为不再当前并使旧验收失效，随后基于当前快照重新选择并再次验收——移动的 HEAD 不能作为验收对象；证据变了，结论必须重做。
 - 只有验收通过且仍对当前 Selection 有效时才允许创建各 WorkItem 的 Formal MR；Requirement 进入 `COMPLETED` 要求验收有效、所有必需 WorkItem 的 Formal MR 已合并 `main`、且没有仍应计入的未完成 WorkItem——交付完成是三项事实同时成立，不是任一项的推断。
 - 所有仍实际保留的 Object Version 都计入相应额度（含待验证、待扫描、隔离、归档、逻辑删除与待对账对象），上传必须先同时原子预占 Product Quota 与环境 Bucket-Class Capacity 两类 Ledger，任一失败都不得签发上传请求——只要占用存储就必须计入，双账本任一失守都会让容量准入形同虚设。
 - 超过 Agent Artifact 限额时 Attempt 安全停止并记录结构化失败原因与失败维度，不截断证据——证据被截断后事故就无法复盘。
@@ -142,8 +140,11 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 | [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | 责任链中段的业务编排与人工 Gate 事实 |
 | [01 身份、组织与授权](./01-identity-organization-authorization.md) | 账号状态、Session、Capability、Scope、Membership 与服务端授权判定 | Requirement、WorkItem、Gate 与责任 Assignment 的业务语义，供解释被授权的动作 |
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | Run/Attempt 执行事实、Child 状态与 Skill 内部方法 | Requirement/WorkItem 业务上下文、Route→Skill 定义与 Artifact Contract |
+| [04 Sandbox Runtime](./04-sandbox-runtime.md) | Requirement 级 Sandbox Environment、Preview 引用与可重建证据 | Requirement/WorkItem 的稳定标识与业务终止、归档、删除命令 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | 分支命名与 Binding Saga、Integration/Formal MR、Merge、`IntegrationBaselineEvidence` 结构与变化事件、Formal MR 默认路由与 Review Assignment、`headSha` 失效规则 | 稳定 Requirement/WorkItem 标识、`RequirementDeliverySnapshot`、Selection 冻结与 Acceptance 失效判定 |
+| [06 平台应用与集成](./06-platform-application-integration.md) | 业务 API 与模块边界、单模块事务与 Outbox 一致性、前端装配约束 | Requirement、WorkItem 与 Artifact 业务状态的公开 Contract |
 | [07 数据、消息与存储](./07-data-messaging-storage.md) | Artifact 对象、Object Version、双账本预占、技术垃圾清理与 Retention 执行 | Artifact 业务状态、扫描分支结果与对象引用条件 |
 | [08 安全、审计与治理](./08-security-audit-governance.md) | 文件扫描机制、Object Lock、Audit Envelope、脱敏与保留 Contract | 本领域的 Audit Trigger 与业务摘要，以及需要扫描的 Source/Media 判定输入 |
 | [10 Configuration Governance](./10-configuration-governance.md) | Gate Policy 与 Artifact Policy 的 Draft、发布、回滚与 Effective Snapshot 生命周期 | Gate 与 Artifact Namespace 的 Schema、默认值与业务解释 |
 | [12 实施路线图](./12-implementation-roadmap.md) | V0.3 人工交付闭环的 Release Scope、Release Gate、验收证据与激活边界 | Requirement、WorkItem、人工 Gate、Decision、Acceptance 与 Artifact 业务状态 Contract |
+| [参数附录](./appendix-parameters.md) | 用户附件与 Agent Artifact 额度、预警比例、Presigned 有效期与 Artifact/扫描的结构化错误码 | 本文正文中的定性规则 |

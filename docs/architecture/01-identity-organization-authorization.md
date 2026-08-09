@@ -140,8 +140,9 @@ platform.super_admin.manage
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | 已启动 Attempt 的不可变执行 Contract 边界 | 发起与控制执行的人员资格判定；Workload Identity 与 Human Assignment 的区分 |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | — | Sandbox 准入 Policy 等受保护配置命令的发布资格与 Super Admin 边界 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | 仓库、分支、MR 与 Merge 的外部交付语义 | 仓库绑定、MR 创建与 Merge 等动作的人员资格判定 |
-| [06 平台应用与集成](./06-platform-application-integration.md) | Web 与 Control Plane 边界、稳定 Port/Adapter 装配 | 当前授权上下文与服务端授权判定入口；受控 Console 入口的人员资格判定；菜单与可见性不作为授权结论的规则 |
+| [06 平台应用与集成](./06-platform-application-integration.md) | Session Bootstrap、导航与静态 Route Registry 装配、受保护 API 的统一入口 | 当前授权上下文与服务端授权判定入口；受控 Console 入口的人员资格判定；菜单与可见性不作为授权结论的规则 |
 | [08 安全、审计与治理](./08-security-audit-governance.md) | Audit Envelope、可靠提交、脱敏、WORM、Retention 与安全恢复 Contract | 身份事实；本领域的 Audit Trigger（账号与状态、临时密码签发或消费、密码与 TOTP 重置、Session 撤销、组织与 Owner/Leader 变化、成员投影与协作关系变化、Grant 与 Assignment 变化、Super Admin 生命周期、配置授权命令与带外恢复）及业务摘要 |
 | [09 基础设施与运维](./09-infrastructure-operations.md) | Platform Environment 隔离边界 | 平台 Capability 与 Super Admin 边界：平台身份不继承 GitOps/IaC 写权限与合并资格 |
 | [10 Configuration Governance](./10-configuration-governance.md) | Draft、ChangeSet、Effective Snapshot 与 Promotion 的通用配置生命周期语义 | 受保护配置命令的发起资格、TOTP Challenge 与恢复资格判定 |
 | [12 实施路线图](./12-implementation-roadmap.md) | V0.2 访问治理闭环的 Release Scope、Release Gate、验收证据与激活边界 | 服务端授权判定、Session、Super Admin 与 Bootstrap 边界，以及 Production Promotion Approval 的审批资格 Contract |
+| [参数附录](./appendix-parameters.md) | 一次性临时密码有效期、密码过期周期与同账号有效 Session 上限 | 本文正文中的定性规则 |
