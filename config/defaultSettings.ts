@@ -6,7 +6,7 @@ const defaultSettings = {
   contentWidth: 'Fluid',
   fixedHeader: false,
   fixSiderbar: true,
-  title: '@umijs/max',
+  title: '内部研发平台',
 } as const;
 
 export default defaultSettings;

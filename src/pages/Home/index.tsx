@@ -1,18 +1,11 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { useModel } from '@umijs/max';
-import Guide from '@/components/Guide';
-import QueryDemo from '@/components/QueryDemo';
-import { trim } from '@/utils/format';
 
 const HomePage: React.FC = () => {
-  const { name } = useModel('global');
   return (
     <PageContainer ghost>
-      {/* Tailwind: 布局/间距原子类 */}
-      <div className="pt-20">
-        <Guide name={trim(name)} />
-        <QueryDemo />
-      </div>
+      <p className="pt-4 text-base">
+        内部研发平台 Web 骨架已就绪，业务能力按 docs/architecture 的实施路线图逐步交付。
+      </p>
     </PageContainer>
   );
 };

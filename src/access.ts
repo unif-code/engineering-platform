@@ -1,10 +1,4 @@
-export default (initialState: API.UserInfo) => {
-  // 在这里按照初始化数据定义项目中的权限，统一管理
-  // 参考文档 https://umijs.org/docs/max/access
-  const canSeeAdmin = !!(
-    initialState && initialState.name !== 'dontHaveAccess'
-  );
-  return {
-    canSeeAdmin,
-  };
+// 前端可见性开关集中在此定义；可见性只是体验结果，授权结论一律以服务端判定为准
+export default () => {
+  return {};
 };
