@@ -61,3 +61,4 @@
 3. 每篇保持四节模板；主题文档 ≤150 行（00、12 ≤180）。
 4. 不在 README、HTML 地图或外部系统复制规范事实；HTML 地图只做导航（其节点与 Profile 摘要中的数字仅为导航提示，以参数附录为准）。
 5. 过期规则直接删除，不保留方案比较、对话记录或历史规则。
+6. 本目录任何 `.md` 变化后运行 `pnpm baseline:update` 刷新 [baseline-manifest.json](./baseline-manifest.json)（架构基线号与文档 SHA-256 的唯一事实源），`pnpm lint` 内的 `baseline:check` 会校验一致性。

@@ -1,6 +1,6 @@
 # 平台总览
 
-> 架构基线：`2026-08-06.175`
+> 架构基线：见 [baseline-manifest.json](./baseline-manifest.json)（基线号与全部文档 SHA-256 的唯一事实源，`pnpm baseline:update` 维护、`pnpm baseline:check` 校验）。
 
 ## 目标与边界
 
