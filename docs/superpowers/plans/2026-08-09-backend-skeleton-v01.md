@@ -77,7 +77,7 @@ select = ["E", "F", "I", "UP", "B"]
 
 [tool.mypy]
 strict = true
-files = ["control_plane", "scripts", "tests"]
+files = ["control_plane", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -1083,6 +1083,7 @@ git commit -m "chore(arch): enforce module boundaries with import-linter contrac
 
 **Files:**
 - Create: `scripts/__init__.py`（空）、`scripts/export_openapi.py`、`openapi.json`（由脚本生成）、`tests/test_openapi_export.py`
+- Modify: `pyproject.toml`（`[tool.mypy] files` 加回 `"scripts"`——目录自本任务起存在）
 
 **Interfaces:**
 - Consumes: `create_app()`（Task 2）。
