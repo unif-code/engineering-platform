@@ -75,12 +75,42 @@ const HTTP_METHODS = [
   'trace',
 ];
 
-// 前端侧的结构化兼容检查，覆盖：删除的 path/operation、删除或转必填的参数、
-// 新增必填参数、requestBody 转必填、删除的响应状态码。
-// Schema/枚举/Security 级别的完整语义 diff 由后端仓 CI 承担（见 docs/architecture/06）。
+// 前端侧的保守结构化兼容检查，覆盖：删除的 path/operation、删除或转必填的参数、
+// 新增必填参数、requestBody 转必填、删除的响应状态码、operation 新增认证要求、
+// components.schemas 的删除/类型变化/枚举收窄/新增必填字段、securityScheme 删除。
+// 内联 operation Schema、$ref 解析与 allOf/oneOf 组合语义仍由后端仓 CI 的完整 diff 承担（见 docs/architecture/06）。
 const opParams = (pathItem, op) =>
   [...(pathItem?.parameters ?? []), ...(op?.parameters ?? [])].filter(
     (p) => p?.name,
+  );
+
+function walkSchema(oldS, newS, ptr, breaking) {
+  if (!oldS || typeof oldS !== 'object') return;
+  if (newS === undefined || newS === null) {
+    breaking.push(`删除 Schema ${ptr}`);
+    return;
+  }
+  if (typeof newS !== 'object') return;
+  if (oldS.type && newS.type && oldS.type !== newS.type)
+    breaking.push(`Schema ${ptr} 类型 ${oldS.type} → ${newS.type}`);
+  if (Array.isArray(oldS.enum) && Array.isArray(newS.enum)) {
+    const removed = oldS.enum.filter((v) => !newS.enum.includes(v));
+    if (removed.length > 0)
+      breaking.push(`Schema ${ptr} 枚举收窄（移除 ${removed.join('/')}）`);
+  }
+  const oldRequired = new Set(oldS.required ?? []);
+  for (const r of newS.required ?? []) {
+    if (!oldRequired.has(r)) breaking.push(`Schema ${ptr} 新增必填字段 ${r}`);
+  }
+  for (const [k, v] of Object.entries(oldS.properties ?? {})) {
+    walkSchema(v, newS.properties?.[k], `${ptr}.${k}`, breaking);
+  }
+  if (oldS.items) walkSchema(oldS.items, newS.items, `${ptr}[]`, breaking);
+}
+
+const hasAuthRequirement = (op, spec) =>
+  (op.security ?? spec.security ?? []).some(
+    (s) => Object.keys(s ?? {}).length > 0,
   );
 
 function breakingChanges(oldSpec, newSpec) {
@@ -122,7 +152,27 @@ function breakingChanges(oldSpec, newSpec) {
         if (!newOp.responses?.[code])
           breaking.push(`${label} 删除响应 ${code}`);
       }
+      if (
+        !hasAuthRequirement(oldOp, oldSpec) &&
+        hasAuthRequirement(newOp, newSpec)
+      )
+        breaking.push(`${label} 新增认证要求`);
     }
+  }
+  const newSchemas = newSpec.components?.schemas ?? {};
+  for (const [name, oldSchema] of Object.entries(
+    oldSpec.components?.schemas ?? {},
+  )) {
+    walkSchema(
+      oldSchema,
+      newSchemas[name],
+      `#/components/schemas/${name}`,
+      breaking,
+    );
+  }
+  for (const name of Object.keys(oldSpec.components?.securitySchemes ?? {})) {
+    if (!newSpec.components?.securitySchemes?.[name])
+      breaking.push(`删除 securityScheme ${name}`);
   }
   return breaking;
 }
@@ -158,6 +208,12 @@ async function cmdFetch() {
       `Digest 不匹配：锁定 ${lock.sha256}，实际 ${digest}。拒绝写入未受信构件。`,
     );
   }
+  const specVersion = JSON.parse(buf.toString('utf8')).info?.version;
+  if (specVersion !== lock.version) {
+    fail(
+      `lock.version（${lock.version}）与构件 info.version（${specVersion}）不一致：锁定版本必须与构件自述版本绑定。`,
+    );
+  }
   if (fs.existsSync(SPEC_PATH)) {
     const prev = fs.readFileSync(SPEC_PATH);
     if (!prev.equals(buf)) assertCompatible(prev, buf);
@@ -176,6 +232,13 @@ const verifySpec = (lock) => {
   if (digest !== lock.sha256) {
     fail(
       `openapi/spec.json 与锁定摘要不一致（${digest} ≠ ${lock.sha256}）：重新运行 pnpm openapi:fetch。`,
+    );
+  }
+  const specVersion = JSON.parse(fs.readFileSync(SPEC_PATH, 'utf8')).info
+    ?.version;
+  if (specVersion !== lock.version) {
+    fail(
+      `lock.version（${lock.version}）与 spec info.version（${specVersion}）不一致：锁定版本必须与构件自述版本绑定。`,
     );
   }
 };
@@ -239,21 +302,87 @@ function cmdGenerate() {
   );
 }
 
-// 在 CI/干净检出中以 git 基线（默认 HEAD，可用 --base <ref> 指定）重建兼容比较：
+// 在 CI/干净检出中以 git 基线重建兼容比较：--base <ref> 显式指定；默认工作区与 HEAD
+// 不同时以 HEAD 为基线，相同（已提交）时以 spec.json 最近一次变更之前的版本为基线，
+// 避免与自身比较。git 读取异常一律 Fail Closed，只有"基线中确实无 spec"才按首个构件跳过。
 // 相对基线的 breaking change 必须由 Artifact 主版本升级显式声明，无旗标可绕过。
-function checkBaselineCompatibility() {
-  const baseIdx = process.argv.indexOf('--base');
-  const baseRef = baseIdx > -1 ? process.argv[baseIdx + 1] : 'HEAD';
-  let baseBuf;
+function gitSpecAt(ref) {
+  execFileSync('git', ['rev-parse', '--verify', `${ref}^{commit}`], {
+    cwd: ROOT,
+    stdio: 'ignore',
+  });
   try {
-    baseBuf = execFileSync('git', ['show', `${baseRef}:openapi/spec.json`], {
+    execFileSync('git', ['cat-file', '-e', `${ref}:openapi/spec.json`], {
       cwd: ROOT,
-      stdio: ['ignore', 'pipe', 'ignore'],
+      stdio: 'ignore',
     });
   } catch {
-    return; // 基线中尚无 spec（首个构件），无可比较对象
+    return null; // ref 存在但其中没有 spec —— 首个 Artifact
   }
+  return execFileSync('git', ['show', `${ref}:openapi/spec.json`], {
+    cwd: ROOT,
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+}
+
+function resolveBaseline(currentBuf) {
+  const baseIdx = process.argv.indexOf('--base');
+  if (baseIdx > -1) {
+    const ref = process.argv[baseIdx + 1];
+    if (!ref) fail('--base 需要一个 git ref 参数。');
+    try {
+      return { ref, buf: gitSpecAt(ref) };
+    } catch {
+      return fail(
+        `基线 ref 不可解析或读取失败：${ref}。基线异常按 Fail Closed 处理。`,
+      );
+    }
+  }
+  let headBuf;
+  try {
+    headBuf = gitSpecAt('HEAD');
+  } catch {
+    return fail('无法读取 HEAD 基线（git 异常）：按 Fail Closed 处理。');
+  }
+  if (headBuf === null || !headBuf.equals(currentBuf)) {
+    return { ref: 'HEAD', buf: headBuf };
+  }
+  let lastChange;
+  try {
+    lastChange = execFileSync(
+      'git',
+      ['log', '-n', '1', '--format=%H', '--', 'openapi/spec.json'],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] },
+    ).trim();
+  } catch {
+    return fail(
+      '无法定位 spec.json 的最近变更提交（git 异常）：按 Fail Closed 处理。',
+    );
+  }
+  if (!lastChange) {
+    return fail(
+      'spec.json 与 HEAD 一致但无变更历史（git 状态异常）：按 Fail Closed 处理。',
+    );
+  }
+  try {
+    return {
+      ref: `${lastChange.slice(0, 12)}^`,
+      buf: gitSpecAt(`${lastChange}^`),
+    };
+  } catch {
+    return { ref: `${lastChange.slice(0, 12)}^`, buf: null }; // 变更即首提交，无更早基线
+  }
+}
+
+function checkBaselineCompatibility() {
   const currentBuf = fs.readFileSync(SPEC_PATH);
+  const { ref, buf: baseBuf } = resolveBaseline(currentBuf);
+  if (baseBuf === null) {
+    console.log(
+      `[openapi] 基线 ${ref} 中不存在 spec（首个 Artifact），跳过兼容比较。`,
+    );
+    return;
+  }
   if (baseBuf.equals(currentBuf)) return;
   const baseSpec = JSON.parse(baseBuf.toString('utf8'));
   const currentSpec = JSON.parse(currentBuf.toString('utf8'));

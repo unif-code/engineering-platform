@@ -9,12 +9,13 @@
 - `pnpm install`：安装依赖并生成 Umi 配置文件。
 - `pnpm dev`：启动本地开发服务器。
 - `pnpm build`：生成生产构建。
-- `pnpm lint`：运行 Biome 检查、TypeScript 类型检查与 OpenAPI 生成一致性检查。
+- `pnpm lint`：运行 Biome 检查、TypeScript 类型检查、OpenAPI 生成一致性与架构基线清单检查。
 - `pnpm format`：使用 Biome 格式化代码并应用安全修复。
 - `pnpm test`：单次运行 Vitest 测试套件。
 - `pnpm test:watch` / `pnpm test:coverage`：监听测试或生成覆盖率报告。
 - `pnpm doctor`：检查 React 代码中的常见问题。
-- `pnpm openapi:fetch` / `pnpm openapi:generate` / `pnpm openapi:check`：按 `openapi/artifact.lock.json` 锁定的后端 OpenAPI Artifact 取回并校验 Digest、生成 `src/services/generated`、做兼容性（git 基线，breaking 需主版本升级）与 dirty-diff 检查；Release 门使用 `pnpm openapi:check:release`（要求已锁定构件）。
+- `pnpm openapi:fetch` / `pnpm openapi:generate` / `pnpm openapi:check`：按 `openapi/artifact.lock.json` 锁定的后端 OpenAPI Artifact 取回并校验 Digest、生成 `src/services/generated`、做兼容性（git 基线，breaking 需主版本升级）与 dirty-diff 检查；Release 门使用 `pnpm openapi:check:release`（要求已锁定构件，随 CI 的 tag 触发执行）。
+- `pnpm baseline:update` / `pnpm baseline:check`：架构文档变化后刷新/校验 `docs/architecture/baseline-manifest.json`（架构基线号与文档 SHA-256 的唯一事实源）。
 
 ## 共享 Skill 与组件知识查询
 
