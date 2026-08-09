@@ -12,7 +12,7 @@ export default defineConfig({
   access: {},
   model: {},
   initialState: {},
-  request: {},
+  request: { dataField: '' },
   mock: { exclude: ['**/*.test.ts', '**/handlers.ts'] },
   reactQuery: {},
   tailwindcss: {},
