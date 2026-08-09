@@ -86,7 +86,7 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 异常终态：上传失败、隔离（`QUARANTINED`）、扫描失败
 ```
 
-用户附件与 Agent Artifact 的额度、预警比例、等待期限、文件类型、清理时间与 Presigned 有效期都是版本化 Platform Policy，Scanner 的单对象安全 Envelope 是独立 Security Floor 而非产品额度；数值见[参数附录](./appendix-parameters.md#platform-policy-key)，异常终态与配额失败的结构化错误码见[参数附录的错误码](./appendix-parameters.md#错误码)。
+用户附件与 Agent Artifact 的额度、预警比例、等待期限、文件类型、清理时间与 Presigned 有效期都是版本化 Platform Policy，Scanner 的单对象安全 Envelope 是独立 Security Floor 而非产品额度；额度、预警比例与 Presigned 有效期的当前数值见[参数附录](./appendix-parameters.md#platform-policy-key)，异常终态与配额失败的结构化错误码见[参数附录的错误码](./appendix-parameters.md#错误码)。
 
 ## 关键不变量
 
