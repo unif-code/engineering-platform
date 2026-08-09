@@ -8,7 +8,7 @@
 
 00～11 拥有稳定的目标架构与领域 Contract，本文只引用它们，不复制其状态机、参数或安全机制：三类 Gate 的分类语义、验证维度与跨模块不变量属于[架构基线](./11-architecture-baseline.md)，`CapabilityActivationRecord` 的持久化属于 [Configuration Governance](./10-configuration-governance.md)，容量不变量、物理准入与 Hardened Target 目标拓扑属于[基础设施与运维](./09-infrastructure-operations.md)，容量场景、Profile 数值与分阶段采购计划属于[参数附录](./appendix-parameters.md#容量与服务器规划)。完整归属见 [README 所有权矩阵](./README.md#事实所有权矩阵)。
 
-精确参数不在正文：人数容量场景、服务器矩阵、单机 SKU 与采购数值见[容量与服务器规划](./appendix-parameters.md#容量与服务器规划)，本文只做定性选择并链接选定 Profile，不抄写服务器表。GitOps Desired State、Platform Compatibility Set（PCS）与 Operations Read Model 是运行状态证据；本文记录的 Environment Promotion 状态必须由这些证据支持，不能根据版本名称、代码合并或页面显示推断实际部署，路线图状态也不替代运行证据。
+精确参数不在正文：人数容量场景、服务器矩阵、单机 SKU 与采购数值见[容量与服务器规划](./appendix-parameters.md#容量与服务器规划)，本文只做定性选择并链接选定 Profile，不抄写服务器表。GitOps Desired State、Platform Compatibility Set（PCS）与 Operations Read Model 是运行状态证据；本文记录的 Environment Promotion 状态只能由这些证据支持，不能根据版本名称、代码合并或页面显示推断实际部署，路线图状态也不替代运行证据。
 
 ## 核心模型
 

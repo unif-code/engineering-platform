@@ -146,3 +146,4 @@ PENDING_UPLOAD → PENDING_VERIFICATION
 | [07 数据、消息与存储](./07-data-messaging-storage.md) | Artifact 对象、Object Version、双账本预占、技术垃圾清理与 Retention 执行 | Artifact 业务状态、扫描分支结果与对象引用条件 |
 | [08 安全、审计与治理](./08-security-audit-governance.md) | 文件扫描机制、Object Lock、Audit Envelope、脱敏与保留 Contract | 本领域的 Audit Trigger 与业务摘要，以及需要扫描的 Source/Media 判定输入 |
 | [10 Configuration Governance](./10-configuration-governance.md) | Gate Policy 与 Artifact Policy 的 Draft、发布、回滚与 Effective Snapshot 生命周期 | Gate 与 Artifact Namespace 的 Schema、默认值与业务解释 |
+| [12 实施路线图](./12-implementation-roadmap.md) | V0.3 人工交付闭环的 Release Scope、Release Gate、验收证据与激活边界 | Requirement、WorkItem、人工 Gate、Decision、Acceptance 与 Artifact 业务状态 Contract |

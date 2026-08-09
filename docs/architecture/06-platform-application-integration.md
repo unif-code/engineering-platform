@@ -137,7 +137,7 @@ External Provider Contract 只治理平台外的 Cloud/Operations Plane Binding�
 | 模块 | 消费 | 提供 |
 | --- | --- | --- |
 | [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | Web 与 Control Plane 的应用边界及跨模块集成 Contract |
-| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 当前 Principal、Workspace 摘要、有效 Capability 与服务端授权判定；配置命令资格与 Super Admin 边界 | Session Bootstrap、导航与静态 Route Registry 装配、受保护 API 的统一入口 |
+| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 当前 Principal、Workspace 摘要、有效 Capability 与服务端授权判定；受控 Console 入口的人员资格判定；配置命令资格与 Super Admin 边界 | Session Bootstrap、导航与静态 Route Registry 装配、受保护 API 的统一入口 |
 | [02 Requirement Workflow](./02-requirement-workflow.md) | Requirement、WorkItem 与 Artifact 业务状态的公开 Contract | 业务 API 与模块边界、单模块事务与 Outbox 一致性、前端装配约束 |
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | Workflow 编排事实、Agent 与 Model 的执行与路由 Contract | Platform Orchestrator Worker 与 Model Gateway 的 Deployable 边界及稳定 Port/Adapter 装配 |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | `SandboxPort` 契约与 Preview Gateway 的访问校验要求 | Sandbox Controller 的 Deployable 边界与平台应用入口 |

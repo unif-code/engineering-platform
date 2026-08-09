@@ -138,7 +138,7 @@ Evolution Trigger 必须绑定 Environment、Profile/Policy Revision、观察窗
 | 模块 | 消费 | 提供 |
 | --- | --- | --- |
 | [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | 责任链运行所需的 Platform Environment、GitOps Desired State、Kubernetes、网络、可观测性、物理容量准入与环境恢复 |
-| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 专业运维 Console 访问的人员资格判定 | Platform Environment 隔离边界 |
+| [01 身份、组织与授权](./01-identity-organization-authorization.md) | 平台 Capability 与 Super Admin 边界：平台身份不继承 GitOps/IaC 写权限与合并资格 | Platform Environment 隔离边界 |
 | [04 Sandbox Runtime](./04-sandbox-runtime.md) | 隔离执行对 Node、RuntimeClass、网络与磁盘的 Contract 要求 | Node Role、物理放置、已验证的 Aggregate Physical Ceiling、Provider Mapping 与准入验证方法 |
 | [06 平台应用与集成](./06-platform-application-integration.md) | Operations Read Model 的只读投影边界、Flux 单向 Reconcile 约束与告警关联 | Cluster、Node、组件版本、PCS、GitOps Desired State、可观测性与总容量事实 |
 | [07 数据、消息与存储](./07-data-messaging-storage.md) | 组件数据、故障与恢复 Contract，以及 Bucket Class 与 Backup 的容量账本证据 | Cluster、Node、StorageClass Provider Mapping、物理放置与 Aggregate Physical Ceiling、Cluster DR 与 Log/Trace Retention |

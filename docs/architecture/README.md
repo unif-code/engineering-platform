@@ -35,11 +35,11 @@
 | Agent Definition、Skill Bundle、Model Catalog/Capability/Route、Run/Attempt、Execution Binding、Child 状态与等待、评测工具链、Context/Tool/Network Policy | [03](./03-agent-skill-model.md) |
 | Sandbox Environment、Kata 物理隔离、Materialization、资源准入、Capacity Lease 与账本、Sandbox 网络与 Egress、短期 Secret、Preview、Image Build、清理 | [04](./04-sandbox-runtime.md) |
 | GitLab Binding、任务分支、Integration/Formal MR、`IntegrationBaselineEvidence`、Review Assignment、Merge 与多仓语义、GitLab 外部事实收敛 | [05](./05-source-control-delivery.md) |
-| 前端与 Control Plane 边界、Deployable、Port/Adapter、跨模块一致性、External Provider Binding、Operations Read Model、Console Access、安全公告与外部 Feed Envelope | [06](./06-platform-application-integration.md) |
+| 前端与 Control Plane 边界、Deployable、Port/Adapter、跨模块一致性、External Provider Binding、Operations Read Model、Console Access、安全公告与外部 Feed Envelope、External Feed Lineage/High-water | [06](./06-platform-application-integration.md) |
 | PostgreSQL/Valkey/NATS/Temporal/对象存储事实、Artifact 对象与配额账本、Backup、Retention 执行、组件故障恢复 | [07](./07-data-messaging-storage.md) |
 | Trust、Secret、PKI、加密、供应链与文件扫描机制、Provider 信任材料、Audit Envelope 与保留、Break-glass、安全恢复 | [08](./08-security-audit-governance.md) |
 | Platform Environment 与 Cloud Binding、PCS、GitOps Desired State、Kubernetes 与 Node Role、网络与 Gateway、存储物理拓扑、物理放置与容量准入、可观测性与告警、Cluster DR、TCO | [09](./09-infrastructure-operations.md) |
-| 配置分类、Catalog、Draft/Publish/Rollback/Rebase、Effective Snapshot、`PLATFORM_POLICY` 有效值、Schema 兼容演进、Promotion 与 Divergence、Source Lineage/High-water、Activation Record 持久化 | [10](./10-configuration-governance.md) |
+| 配置分类、Catalog、Draft/Publish/Rollback/Rebase、Effective Snapshot、`PLATFORM_POLICY` 有效值、Schema 兼容演进、Promotion 与 Divergence、配置 Source Lineage/High-water、Activation Record 持久化 | [10](./10-configuration-governance.md) |
 | 跨模块不变量、依赖边界、质量场景、三类 Gate 与 Evolution Trigger 的分类与语义 | [11](./11-architecture-baseline.md) |
 | Release Scope、Release Gate 与验收证据、实施状态、环境 Promotion、Capability 阶段选择与 Activation 归属、Profile 选择 | [12](./12-implementation-roadmap.md) |
 | 全部精确参数：资源数值、Policy Key、错误码、Port 方法清单、Runtime 组件、容量场景、服务器矩阵与分阶段采购计划 | [附录](./appendix-parameters.md) |
@@ -59,5 +59,5 @@
 1. 改动前先在所有权矩阵定位 owner，只在 owner 文档修改，再更新引用处链接。
 2. 参数数值只改参数附录；正文不复制数值，只写定性规则。
 3. 每篇保持四节模板；主题文档 ≤150 行（00、12 ≤180）。
-4. 不在 README、HTML 地图或外部系统复制规范事实；HTML 地图只做导航。
+4. 不在 README、HTML 地图或外部系统复制规范事实；HTML 地图只做导航（其节点摘要中的 Profile 数字仅为导航提示，以参数附录为准）。
 5. 过期规则直接删除，不保留方案比较、对话记录或历史规则。

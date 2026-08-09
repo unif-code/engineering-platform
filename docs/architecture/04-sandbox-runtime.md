@@ -106,6 +106,7 @@ Release Gate 不替代本 Gate，路线图选中 Agent Capability 也不表示�
 | 模块 | 消费 | 提供 |
 | --- | --- | --- |
 | [00 平台总览](./00-platform-overview.md) | 模块边界、依赖方向与端到端责任链约定 | 责任链中受控执行的隔离资源语义 |
+| [01 身份、组织与授权](./01-identity-organization-authorization.md) | Sandbox 准入 Policy 等受保护配置命令的发布资格与 Super Admin 边界 | — |
 | [02 Requirement Workflow](./02-requirement-workflow.md) | Requirement/WorkItem 的稳定标识与业务终止、归档、删除命令 | Requirement 级 Sandbox Environment、Preview 引用与可重建证据 |
 | [03 Agent、Skill 与 Model](./03-agent-skill-model.md) | 不可变 Execution Binding、Attempt/Child 状态与等待语义、Continuation Queue 优先级与 Reservation TTL、`ParentContinuationReservation` 的创建与释放请求 | 隔离物化、Capacity Lease 与 Fencing、资源准入、网络、Preview、清理与恢复结果 |
 | [05 Source Control 与交付](./05-source-control-delivery.md) | `RepositoryBranchBinding`、分支创建与保护、MR 与 GitLab 外部对账 | 固定 Checkout 的挂载与写执行边界、Sandbox 内 Commit/Push 的清理与 Fence 事实 |

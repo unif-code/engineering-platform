@@ -93,7 +93,7 @@ Core Platform 负责本地身份、组织与 Workspace、授权，Requirement �
 | 概念 | 在 Target Architecture 中的含义 | 选择与启用规则 |
 | --- | --- | --- |
 | Core Platform | 01～10 全部逻辑模块、跨模块责任链、安全边界及其完整目标 Contract 与 Port/Adapter Contract。 | 始终作为设计与评审边界；不等同于某次 Release 的启用清单，也不表示全部 Capability 同时运行。 |
-| Launch Profile | 从 Core Platform 中选出的首发 Capability 组合，以满足目标 Contract 的最小可运营拓扑启用。 | 入选 Capability 必须满足对应目标 Contract；未被选入或未通过 Capability Activation Gate 的能力保持关闭。 |
+| Launch Profile | 从 Core Platform 中选出的首发 Capability 组合，以满足目标 Contract 的最小可运营拓扑启用。 | 入选 Capability 必须满足对应目标 Contract；启用与关闭门禁见本文关键不变量。 |
 | Hardened Target Profile | 完整 Node Role、冗余、隔离、可观测性、恢复和规模化目标。 | 由已批准的 Evolution Trigger 与容量证据驱动候选评估，不是 Launch Profile 的默认采购或部署状态。 |
 | Future Evolution | 通过独立演进 Port/Adapter、数据边界、Deployable 与基础设施实现来提升规模与韧性的方向。 | 每项分别验证兼容、迁移、回退、恢复、安全和 Observability，不借演进重写无关领域，也不自动启用目标能力。 |
 

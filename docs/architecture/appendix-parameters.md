@@ -2,6 +2,7 @@
 
 > 本文是全部精确参数的唯一事实源：正文只写定性规则并链接到这里。
 > 修改参数只改本文；新增参数必须归入下列章节之一。
+> 收录范围：可调的容量、尺寸、并发、版本与调度数值；固定的安全底线与信任新鲜度语义值（如证书有效期、锁定期、密钥规格）留在 owner 正文。
 
 ## 容量与服务器规划
 
@@ -116,7 +117,7 @@ V1.0 后 DEV 仍保留 `3 × core + 1 × sandbox-worker`，用于开发、集成
 | Server | `16 vCPU / 64 GiB` | `48 vCPU / 192 GiB` |
 | OS / etcd Disk | `256 GiB ESSD` | `768 GiB` |
 | Object Storage Raw OSD | 独立 `1 TiB` SSD | `3 TiB Raw` |
-| Stateful RWO PVC | 由逻辑 `stateful-rwo-lowlatency` StorageClass 提供 | DEV 初始约 `200 GiB`；PROD 初始约 `300 GiB` |
+| Stateful RWO PVC | 由逻辑 `stateful-rwo-lowlatency` StorageClass 提供 | DEV 初始约 `200 GiB`；PROD 初始约 `300 GiB`（Launch Profile 初始值；Hardened Target 各组件包络合计见[组件资源包络](#组件资源包络)） |
 | Network | 按 PCS 验证；Storage Recovery 不得挤占平台 SLO | 三 Node 同一受控私网 |
 
 三个 Core Node 承载相同逻辑组件，但通过 Replica、Anti-affinity、PDB、Resource Request/Limit 和 Capacity Gate 控制放置。Launch Profile 允许非关键组件先以单 Replica 运行；安全、授权、Audit、Secret、备份恢复和容量 Fail Closed 不能因此弱化。
@@ -395,7 +396,7 @@ Scanner 的 `100 MiB` 单对象安全 Envelope 是独立 Security Floor，不是
 
 | 参数 | 默认值 | 生效与约束 |
 | --- | --- | --- |
-| 增量采集并运行 `OSV-Scanner` | 每周日 `02:00 Asia/Shanghai` | 采集必须先于发布完成；调度与时区都是注册的版本化配置 |
+| 增量采集并运行 `OSV-Scanner` | 每周日 `02:00 Asia/Shanghai` | 调度与时区都是注册的版本化配置 |
 | 公告自动发布 | 每周一 `07:00 Asia/Shanghai` | 必需来源失败或扫描为 `FAILED/EXPIRED` 时阻止本期自动发布并保留上一期 |
 | 单个失败来源或扫描 Job 的重试 | 最多 `3` 次有界重试 | 超过上限后告警，不发布空公告 |
 
