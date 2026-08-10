@@ -19,6 +19,15 @@ export interface InitialState {
   navigation: NavigationItem[];
 }
 
+const DEFAULT_COLLAPSED_MAX_VIEWPORT_WIDTH = 1280;
+
+function shouldCollapseSiderByDefault(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.innerWidth <= DEFAULT_COLLAPSED_MAX_VIEWPORT_WIDTH
+  );
+}
+
 export async function getInitialState(): Promise<InitialState> {
   const [me, navigation] = await Promise.all([fetchMe(), fetchNavigation()]);
   return { me, navigation };
@@ -40,6 +49,8 @@ export const layout = (({ initialState }: { initialState?: InitialState }) => {
     logo: false,
     title: false,
     siderWidth: 208,
+    defaultCollapsed: shouldCollapseSiderByDefault(),
+    breakpoint: false,
     fixedHeader: true,
     fixSiderbar: true,
     menu: {

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { theme } from 'antd';
 import { createElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import defaultSettings from '../config/defaultSettings';
 
 const featureMocks = vi.hoisted(() => ({
@@ -34,6 +34,10 @@ beforeEach(() => {
   delete window.__ENGINEERING_PLATFORM_THEME__;
 });
 
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
 describe('getInitialState', () => {
   it('聚合 auth 与 navigation Feature 的精确结果', async () => {
     const me = { employeeId: '00000000', name: 'V0.1 Stub' };
@@ -48,6 +52,25 @@ describe('getInitialState', () => {
 });
 
 describe('layout', () => {
+  it.each([
+    { viewportWidth: 1440, expected: false },
+    { viewportWidth: 1280, expected: true },
+    { viewportWidth: 1024, expected: true },
+  ])('视口宽度为 $viewportWidth 时初始折叠状态为 $expected', ({
+    viewportWidth,
+    expected,
+  }) => {
+    vi.stubGlobal('window', { innerWidth: viewportWidth });
+
+    expect(layout({}).defaultCollapsed).toBe(expected);
+  });
+
+  it('SSR 环境默认保持展开且不访问 window', () => {
+    vi.stubGlobal('window', undefined);
+
+    expect(layout({}).defaultCollapsed).toBe(false);
+  });
+
   it('提供品牌化 mix 布局、固定尺寸和 header 接缝', () => {
     const config = layout({
       initialState: {
@@ -65,6 +88,7 @@ describe('layout', () => {
     expect(config.layout).toBe('mix');
     expect(config).toHaveProperty('navTheme', undefined);
     expect(config.siderWidth).toBe(208);
+    expect(config.breakpoint).toBe(false);
     expect(config.fixedHeader).toBe(true);
     expect(config.fixSiderbar).toBe(true);
     expect(config.menu).toEqual({
