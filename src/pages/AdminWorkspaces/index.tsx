@@ -138,7 +138,6 @@ export default function AdminWorkspacesPage() {
 
         <ProTable<WorkspaceRow, WorkspaceQueryParams>
           columns={columns}
-          key={JSON.stringify(queryParams)}
           options={false}
           pagination={{ pageSize: 10, showSizeChanger: false }}
           params={queryParams}
