@@ -1,12 +1,27 @@
 # V0.2 访问治理闭环 · 前端设计
 
 - 日期：2026-08-10　状态：设计已批准，待实施计划
+- 修订：2026-08-10 补"现状基线与改造原则"——对齐原型 UI 重建已交付的管理端页面，消除与本设计的平行建设
 - 仓库：`engineering-platform`　对应后端 spec：`engineering-platform-backend` 仓 `docs/superpowers/specs/2026-08-10-backend-access-governance-v02-design.md`
 - 契约依据：架构仓 `architecture/{01,06,12}`；接口形状以后端 spec 的 API 面为准，最终以 `api-v0.2.0` OpenAPI Artifact 冻结
 
 ## 目标
 
-登录、初始化、Session 管理与动态导航全部真实化；`/admin` 提供账号、组织、Workspace、Grant、Policy 发布与审计查询六个管理页；可见性只做体验（RouteGuard/菜单），授权结论永远来自服务端。UI 全量可先行（mock 驱动），`api-v0.2.0` 发布后锁定构件切 generated client。
+登录、初始化、Session 管理与动态导航全部真实化；提供账号、组织、Workspace、Grant、Policy 发布与审计查询六个管理页；可见性只做体验（RouteGuard/菜单），授权结论永远来自服务端。UI 全量可先行（mock 驱动），`api-v0.2.0` 发布后锁定构件切 generated client。
+
+## 现状基线与改造原则
+
+仓内已有一批管理端页面（`src/pages/AdminUsers`、`AdminRoles`、`AdminWorkspaces`、`AdminMenus`、`AdminModels`、`AdminSkills`、`Audit` 等），是**静态原型壳**：数据来自页面目录内 frozen 常量，动作经 `useStaticPrototypeAction` 提示"未保存任何业务数据"，不发起任何网络请求。本设计与之重叠的部分一律**就地接契约**，不另建平行页面。
+
+- **路径与目录**：沿用已有平铺命名（`src/pages/AdminXxx/`，路由 `/admin/xxx`），页面私有文件就近（`constant.ts`/`type.ts`/`util.ts`/`index.style.ts`/子组件平铺）。仅当逻辑被 ≥2 个页面复用（变更请求封装、原因确认框、Problem 呈现）才提升到 `src/features/administration/`。不做目录搬家。
+- **改造动作**：frozen 常量 → mock 端点 + ProTable `request`／React Query；`useStaticPrototypeAction` → 真实变更请求（带 `Idempotency-Key` 与原因），成功/失败按 Problem Details 呈现。页面接入真实数据后不得再引用 `useStaticPrototypeAction`。
+- **审计页**：沿用既有 `/audit` 路径，不迁入 `/admin`。可见性由 navigation 投影与 capability 决定，不靠路径前缀。
+
+### 不在 V0.2 契约内的原型页
+
+`AdminRoles`（角色能力矩阵）对应 Capability Template，本版本已缓办——V0.2 授权模型是直接 Grant（principal × capability × scope），因此**不以 AdminRoles 为 Grant 页基础**，Grant 页新建；AdminRoles 页面保留不删，其 `CapabilityMatrix` 可作为展示 primitive 被 Grant 页复用。`AdminMenus`（菜单管理）与 V0.2 的服务端导航投影冲突——菜单由授权投影生成，不存在前端可编辑的菜单配置，同样保留不删但不接契约。`AdminModels`/`AdminSkills`/`TeamBoard`/`Messages`/`Tasks` 属 V0.3+ 范围，V0.2 不动。
+
+这些页面在 V0.2 的处理规则见下节 Route Registry 的 `prototype` 标记。
 
 ## 范围
 
@@ -20,18 +35,21 @@
 
 - Initial State 改为调 generated client 的 `me` + `navigation`（构件锁定前走 mock，形状按后端 spec 冻结）。
 - 动态菜单：按 `navigation` 投影（routeKey/排序/元数据）渲染；RouteGuard 以 routeKey+capability 控制路由可达性——纯体验层，页面内敏感动作仍以服务端响应为准。
-- 静态 Route Registry：routeKey → 组件映射表；后端不下发路径或组件。
+- 静态 Route Registry：routeKey → 组件映射表；后端不下发路径或组件。Registry 必须为仓内**每条已有路由**登记条目，未登记路由一律 403。
+- **`prototype` 标记**：不在 V0.2 契约内的原型页（见上节）在 Registry 中标 `prototype: true`。这类路由不出现在菜单（后端不投影其 routeKey），但 RouteGuard 放行渲染——它们没有任何服务端数据，打黑无收益却会让 V0.1 已交付的 UI 全部不可达。约束：`prototype` 路由不得发起任何 `/api/v1` 请求（测试断言）；一旦某页接入真实接口，必须在同一批次纳入投影并移除该标记。
 
-### `/admin` 管理区六页（features/administration）
+### 管理区六页
 
-| 页面 | 关键交互 |
-| --- | --- |
-| 账号 | ProTable 列表 + 创建（成功弹一次性临时密码，明示"仅此一次"）+ 重置密码/启停/TOTP 重置（均带确认与原因输入） |
-| 组织 | 树形展示 + 设置上级（经理/Leader 归属）操作，变更前置校验错误按 Problem 呈现 |
-| Workspace | 列表 + 创建 + Leader 邀请/移除 + Owner 转让 + 成员投影只读查看 |
-| Grant | 列表（按 principal/capability 过滤）+ 授予/撤销（带原因） |
-| Policy 发布 | catalog+当前值 → Draft 编辑（ETag 并发冲突提示）→ Validate/Preview（前后值对照表）→ Publish 弹 TOTP Challenge + 原因 → 结果反馈；Rollback 从版本历史发起 |
-| 审计 | 时间/actor/target 过滤 + cursor 分页列表，展示 requestId 便于关联排查 |
+沿用已有页面就地改造，仅缺失的三页新建。所有页面的可达性由 navigation 投影决定，路径前缀不承担授权语义。
+
+| 页面 | 落点 | 关键交互 |
+| --- | --- | --- |
+| 账号 | 改造 `src/pages/AdminUsers`（`/admin/users`） | ProTable 列表 + 创建（成功弹一次性临时密码，明示"仅此一次"）+ 重置密码/启停/TOTP 重置（均带确认与原因输入）；既有 `UserModal` 与筛选/排序 `util.ts` 复用 |
+| 组织 | 新建 `src/pages/AdminOrganization`（`/admin/organization`） | 树形展示 + 设置上级（经理/Leader 归属）操作，变更前置校验错误按 Problem 呈现 |
+| Workspace | 改造 `src/pages/AdminWorkspaces`（`/admin/workspaces`） | 列表 + 创建 + Leader 邀请/移除 + Owner 转让 + 成员投影只读查看；既有 `WorkspaceModal` 与筛选逻辑复用 |
+| Grant | 新建 `src/pages/AdminGrants`（`/admin/grants`） | 列表（按 principal/capability 过滤）+ 授予/撤销（带原因）；可复用 `AdminRoles/CapabilityMatrix` 作展示 primitive |
+| Policy 发布 | 新建 `src/pages/AdminPolicies`（`/admin/policies`） | catalog+当前值 → Draft 编辑（ETag 并发冲突提示）→ Validate/Preview（前后值对照表）→ Publish 弹 TOTP Challenge + 原因 → 结果反馈；Rollback 从版本历史发起 |
+| 审计 | 改造 `src/pages/Audit`（`/audit`，路径不变） | 时间/actor/target 过滤 + cursor 分页列表，展示 requestId 便于关联排查；既有详情抽屉与图表复用 |
 
 ### transport 增强（src/services/transport）
 
@@ -49,14 +67,15 @@
 
 ## 测试策略
 
-Testing Library 行为测试：登录两步流（含错误/退避文案）、Bootstrap 向导逐步推进与中断、401 拦截跳转、菜单按 navigation 数据渲染、RouteGuard 拒绝未授权 routeKey、六管理页关键交互（创建账号弹临时密码、Publish 的 TOTP 弹窗、ETag 冲突提示）、audit 分页。mock 层校验请求带 Idempotency-Key/If-Match。
+Testing Library 行为测试：登录两步流（含错误/退避文案）、Bootstrap 向导逐步推进与中断、401 拦截跳转、菜单按 navigation 数据渲染、RouteGuard 拒绝未登记/未授权 routeKey 且放行 `prototype` 路由、六管理页关键交互（创建账号弹临时密码、Publish 的 TOTP 弹窗、ETag 冲突提示）、audit 分页。mock 层校验请求带 Idempotency-Key/If-Match。改造页面的既有测试全部保留并随契约接入改写，不允许整体删除重写。
 
 ## 验收标准
 
 1. `pnpm lint` / `pnpm test` / `pnpm build` 全绿。
 2. mock 模式端到端可走：初始化向导 → 登录 → 动态菜单 → 六管理页操作 → 审计可查。
 3. 构件锁定后：generated client 接管全部接口调用，mock 不再被生产路径引用。
-4. UI 截图随 PR（登录、向导、Policy 发布 TOTP 弹窗、审计页）。
+4. 六页均不再引用 `useStaticPrototypeAction`；`prototype` 标记路由无 `/api/v1` 请求。
+5. UI 截图随 PR（登录、向导、Policy 发布 TOTP 弹窗、审计页）。
 
 ## 非目标
 
