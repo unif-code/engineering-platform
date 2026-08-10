@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import access from './access';
 
-function createInitialState(routeKeys: string[]) {
+const loggedInUser = { employeeId: '00000000', name: 'V0.1 Stub' };
+
+function createInitialState(
+  routeKeys: string[],
+  me: { employeeId: string; name: string } | null = loggedInUser,
+) {
   return {
-    me: null,
+    me,
     navigation: routeKeys.map((routeKey, order) => ({
       routeKey,
       name: routeKey,
@@ -39,7 +44,11 @@ describe('access', () => {
     ).toBe(false);
   });
 
-  it('缺少 initialState 时默认拒绝管理端', () => {
+  it('缺少 initialState 时 fail-closed 拒绝管理端', () => {
     expect(access().canAccessAdmin).toBe(false);
+  });
+
+  it('initialState 已加载但未登录时让父 RouteGuard 接管跳转', () => {
+    expect(access(createInitialState([], null)).canAccessAdmin).toBe(true);
   });
 });

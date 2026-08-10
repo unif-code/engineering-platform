@@ -4,8 +4,10 @@ import { getRouteRegistration } from './features/navigation';
 
 export default function access(initialState?: InitialState) {
   return {
-    canAccessAdmin: (initialState?.navigation ?? []).some(
-      (item) => getRouteRegistration(item.routeKey)?.group === 'admin',
-    ),
+    canAccessAdmin:
+      initialState?.me === null ||
+      (initialState?.navigation ?? []).some(
+        (item) => getRouteRegistration(item.routeKey)?.group === 'admin',
+      ),
   };
 }
