@@ -127,6 +127,23 @@ describe('createAntdThemeConfig', () => {
 });
 
 describe('ThemeProvider', () => {
+  it('bootstrap 为 system/light 但订阅时系统已是暗色时立即收敛', async () => {
+    window.__ENGINEERING_PLATFORM_THEME__ = {
+      mode: 'system',
+      resolvedTheme: 'light',
+    };
+    installMatchMedia(true);
+
+    render(<ThemeProbe />, { wrapper: TestThemeProvider });
+
+    await waitFor(() =>
+      expect(screen.getByLabelText('当前主题')).toHaveTextContent(
+        'system/dark',
+      ),
+    );
+    expect(document.documentElement.style.colorScheme).toBe('dark');
+  });
+
   it('system 模式随系统偏好变化并同步文档主题', async () => {
     const media = installMatchMedia(false);
     render(<ThemeProbe />, { wrapper: TestThemeProvider });
@@ -152,6 +169,24 @@ describe('ThemeProvider', () => {
 
     act(() => media.emit(false));
     act(() => media.emit(true));
+
+    expect(screen.getByLabelText('当前主题')).toHaveTextContent('light/light');
+  });
+
+  it('已排队的 system 事件不覆盖最新手动选择', () => {
+    const media = installMatchMedia(false);
+    render(<ThemeProbe />, { wrapper: TestThemeProvider });
+    const queuedListener = media.addEventListener.mock.calls[0]?.[1] as (
+      event: MediaQueryListEvent,
+    ) => void;
+
+    fireEvent.click(screen.getByRole('button', { name: '设为浅色' }));
+    act(() =>
+      queuedListener({
+        matches: true,
+        media: THEME_MEDIA_QUERY,
+      } as MediaQueryListEvent),
+    );
 
     expect(screen.getByLabelText('当前主题')).toHaveTextContent('light/light');
   });

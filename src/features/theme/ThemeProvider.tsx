@@ -66,10 +66,21 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     }
 
     const mediaQueryList = window.matchMedia(THEME_MEDIA_QUERY);
+    const reconcileSystemTheme = (prefersDark: boolean) => {
+      setSnapshot((current) => {
+        if (current.mode !== 'system') {
+          return current;
+        }
+
+        const next = createThemeSnapshot(null, prefersDark);
+        return current.resolvedTheme === next.resolvedTheme ? current : next;
+      });
+    };
     const handleChange = (event: MediaQueryListEvent) => {
-      setSnapshot(createThemeSnapshot(null, event.matches));
+      reconcileSystemTheme(event.matches);
     };
     mediaQueryList.addEventListener('change', handleChange);
+    reconcileSystemTheme(mediaQueryList.matches);
 
     return () => {
       mediaQueryList.removeEventListener('change', handleChange);
