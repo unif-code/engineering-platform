@@ -1,17 +1,30 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authServiceMock = vi.hoisted(() => ({
+  confirmBootstrapTotp: vi.fn(),
+  enrollBootstrapTotp: vi.fn(),
   getCurrentUser: vi.fn(),
+  setBootstrapPassword: vi.fn(),
   startLogin: vi.fn(),
   verifyTotp: vi.fn(),
 }));
 
 vi.mock('@/services/auth', () => authServiceMock);
 
-import { fetchMe, login, verifyTotp } from './service';
+import {
+  confirmBootstrapTotp,
+  enrollBootstrapTotp,
+  fetchMe,
+  login,
+  setBootstrapPassword,
+  verifyTotp,
+} from './service';
 
 beforeEach(() => {
   authServiceMock.getCurrentUser.mockReset();
+  authServiceMock.confirmBootstrapTotp.mockReset();
+  authServiceMock.enrollBootstrapTotp.mockReset();
+  authServiceMock.setBootstrapPassword.mockReset();
   authServiceMock.startLogin.mockReset();
   authServiceMock.verifyTotp.mockReset();
 });
@@ -75,5 +88,39 @@ describe('auth feature service', () => {
 
     await expect(verifyTotp(input)).resolves.toEqual({ ok: true });
     expect(authServiceMock.verifyTotp).toHaveBeenCalledWith(input);
+  });
+
+  it('setBootstrapPassword 把 token 与正式密码委托给下层 service', async () => {
+    authServiceMock.setBootstrapPassword.mockResolvedValue({ ok: true });
+    const input = {
+      bootstrapToken: 'bootstrap-00000009',
+      password: 'New-Valid-Password!2026',
+    };
+
+    await expect(setBootstrapPassword(input)).resolves.toEqual({ ok: true });
+    expect(authServiceMock.setBootstrapPassword).toHaveBeenCalledWith(input);
+  });
+
+  it('enrollBootstrapTotp 把 token 委托给下层 service 并返回 provisioning URI', async () => {
+    const result = {
+      provisioningUri:
+        'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP',
+    };
+    authServiceMock.enrollBootstrapTotp.mockResolvedValue(result);
+    const input = { bootstrapToken: 'bootstrap-00000009' };
+
+    await expect(enrollBootstrapTotp(input)).resolves.toEqual(result);
+    expect(authServiceMock.enrollBootstrapTotp).toHaveBeenCalledWith(input);
+  });
+
+  it('confirmBootstrapTotp 把 token 与动态码委托给下层 service', async () => {
+    authServiceMock.confirmBootstrapTotp.mockResolvedValue({ ok: true });
+    const input = {
+      bootstrapToken: 'bootstrap-00000009',
+      code: '123456',
+    };
+
+    await expect(confirmBootstrapTotp(input)).resolves.toEqual({ ok: true });
+    expect(authServiceMock.confirmBootstrapTotp).toHaveBeenCalledWith(input);
   });
 });

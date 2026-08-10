@@ -1,5 +1,6 @@
 export default [
   { path: '/login', component: './Login', layout: false },
+  { path: '/bootstrap', component: './Bootstrap', layout: false },
   {
     path: '/',
     wrappers: ['@/features/auth/RouteGuard'],

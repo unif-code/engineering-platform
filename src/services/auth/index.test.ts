@@ -4,7 +4,14 @@ const requestMock = vi.hoisted(() => vi.fn());
 
 vi.mock('@umijs/max', () => ({ request: requestMock }));
 
-import { getCurrentUser, startLogin, verifyTotp } from './index';
+import {
+  confirmBootstrapTotp,
+  enrollBootstrapTotp,
+  getCurrentUser,
+  setBootstrapPassword,
+  startLogin,
+  verifyTotp,
+} from './index';
 
 beforeEach(() => {
   requestMock.mockReset();
@@ -64,6 +71,106 @@ describe('auth service', () => {
         'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
       },
       method: 'POST',
+    });
+  });
+
+  it('POST /api/v1/auth/bootstrap/password 时发送 bootstrap token、正式密码与幂等键', async () => {
+    requestMock.mockResolvedValue({ ok: true });
+    const input = {
+      bootstrapToken: 'bootstrap-00000009',
+      password: 'New-Valid-Password!2026',
+    };
+
+    await expect(setBootstrapPassword(input)).resolves.toEqual({ ok: true });
+    expect(requestMock).toHaveBeenCalledWith(
+      '/api/v1/auth/bootstrap/password',
+      {
+        data: input,
+        headers: {
+          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        },
+        method: 'POST',
+      },
+    );
+  });
+
+  it('POST /api/v1/auth/bootstrap/totp/enroll 时返回 provisioning URI', async () => {
+    requestMock.mockResolvedValue({
+      provisioningUri:
+        'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP',
+    });
+    const input = { bootstrapToken: 'bootstrap-00000009' };
+
+    await expect(enrollBootstrapTotp(input)).resolves.toEqual({
+      provisioningUri:
+        'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP',
+    });
+    expect(requestMock).toHaveBeenCalledWith(
+      '/api/v1/auth/bootstrap/totp/enroll',
+      {
+        data: input,
+        headers: {
+          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        },
+        method: 'POST',
+      },
+    );
+  });
+
+  it('POST /api/v1/auth/bootstrap/totp/confirm 时发送 bootstrap token、动态码与幂等键', async () => {
+    requestMock.mockResolvedValue({ ok: true });
+    const input = {
+      bootstrapToken: 'bootstrap-00000009',
+      code: '123456',
+    };
+
+    await expect(confirmBootstrapTotp(input)).resolves.toEqual({ ok: true });
+    expect(requestMock).toHaveBeenCalledWith(
+      '/api/v1/auth/bootstrap/totp/confirm',
+      {
+        data: input,
+        headers: {
+          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        },
+        method: 'POST',
+      },
+    );
+  });
+
+  it('bootstrap 请求将底层 422 rejection 归一为带字段错误的 ApiError', async () => {
+    requestMock.mockRejectedValue({
+      response: {
+        data: {
+          title: 'VALIDATION_ERROR',
+          status: 422,
+          detail: '正式密码不满足 Security Floor',
+          errors: [
+            {
+              field: 'password',
+              reason: '密码需为 15～64 位，并包含大写字母、小写字母和特殊字符',
+            },
+          ],
+        },
+        status: 422,
+      },
+    });
+
+    const error = await setBootstrapPassword({
+      bootstrapToken: 'bootstrap-00000009',
+      password: 'weak',
+    }).catch((caught: unknown) => caught);
+
+    expect(error).toMatchObject({
+      name: 'ApiError',
+      problem: {
+        status: 422,
+        errors: [
+          {
+            field: 'password',
+            reason: '密码需为 15～64 位，并包含大写字母、小写字母和特殊字符',
+          },
+        ],
+      },
     });
   });
 

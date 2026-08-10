@@ -3,10 +3,18 @@
 // 本 Feature service、页面、hooks 与公开 Feature API 均无需改动。
 import {
   getCurrentUser,
+  setBootstrapPassword as requestBootstrapPassword,
+  confirmBootstrapTotp as requestBootstrapTotpConfirmation,
+  enrollBootstrapTotp as requestBootstrapTotpEnrollment,
   verifyTotp as requestTotp,
   startLogin,
 } from '@/services/auth';
 import type {
+  BootstrapPasswordInput,
+  BootstrapResult,
+  BootstrapTokenInput,
+  BootstrapTotpConfirmInput,
+  BootstrapTotpEnrollment,
   CurrentUser,
   LoginInput,
   LoginResult,
@@ -28,4 +36,22 @@ export async function login(input: LoginInput): Promise<LoginResult> {
 
 export async function verifyTotp(input: TotpInput): Promise<TotpResult> {
   return requestTotp(input);
+}
+
+export async function setBootstrapPassword(
+  input: BootstrapPasswordInput,
+): Promise<BootstrapResult> {
+  return requestBootstrapPassword(input);
+}
+
+export async function enrollBootstrapTotp(
+  input: BootstrapTokenInput,
+): Promise<BootstrapTotpEnrollment> {
+  return requestBootstrapTotpEnrollment(input);
+}
+
+export async function confirmBootstrapTotp(
+  input: BootstrapTotpConfirmInput,
+): Promise<BootstrapResult> {
+  return requestBootstrapTotpConfirmation(input);
 }

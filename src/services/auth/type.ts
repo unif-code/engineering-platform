@@ -26,3 +26,23 @@ export interface TotpInput {
 export interface TotpResult {
   ok: true;
 }
+
+export interface BootstrapTokenInput {
+  bootstrapToken: string;
+}
+
+export interface BootstrapPasswordInput extends BootstrapTokenInput {
+  password: string;
+}
+
+export interface BootstrapTotpConfirmInput extends BootstrapTokenInput {
+  code: string;
+}
+
+export interface BootstrapResult {
+  ok: true;
+}
+
+export interface BootstrapTotpEnrollment {
+  provisioningUri: string;
+}

@@ -17,6 +17,7 @@ interface RouteConfig {
 
 const expectedComponents = {
   '/login': './Login',
+  '/bootstrap': './Bootstrap',
   '/home': './Home',
   '/tasks': './Tasks',
   '/tasks/archived': './Tasks/Archived',
@@ -72,8 +73,8 @@ describe('route registry integration', () => {
       componentRoutes.map(({ component, path }) => [path, component]),
     );
 
-    expect(componentRoutes).toHaveLength(16);
-    expect(new Set(componentRoutes.map(({ path }) => path))).toHaveLength(16);
+    expect(componentRoutes).toHaveLength(17);
+    expect(new Set(componentRoutes.map(({ path }) => path))).toHaveLength(17);
     expect(components).toEqual(expectedComponents);
   });
 
@@ -105,8 +106,12 @@ describe('route registry integration', () => {
     }
   });
 
-  it('登录页绕过布局，根路由受 RouteGuard 保护并重定向到工作台', () => {
-    expect(getRoute('/login')).toMatchObject({ layout: false });
+  it('登录与初始化页绕过布局，根路由受 RouteGuard 保护并重定向到工作台', () => {
+    expect(
+      allRoutes
+        .filter(({ component, layout }) => component && layout === false)
+        .map(({ path }) => path),
+    ).toEqual(['/login', '/bootstrap']);
 
     const protectedRoot = routes.find(
       (route) => route.path === '/' && route.wrappers,
