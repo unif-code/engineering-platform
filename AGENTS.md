@@ -37,6 +37,8 @@ Vitest 在 `happy-dom` 环境中运行，并结合 Testing Library 与 `jest-dom
 
 仓库使用线性提交历史。按照项目工具要求使用 Conventional Commits，例如 `feat(table): add user filtering` 或 `fix(access): handle missing role`。每个提交只处理一个明确主题。Pull Request 应说明行为变化、关联相关 issue、列出验证命令，并为 UI 改动附上截图。路由、代理、依赖或环境配置变更必须明确标注。
 
+治理例外先登记后引用：任何 `DEV-xxx` 编号必须先存在于 `engineering-platform-docs` 仓 `architecture/deviations.md` 的登记条目，才可在本仓 runbook、文档、清单或注释中引用；铸造新编号的一方负责在同一工作批次内完成 docs 仓登记。
+
 ## 配置与安全
 
 通过 `REACT_APP_ENV` 和 `config/proxy.ts` 选择代理配置。禁止提交凭据；敏感值应保存在本地环境配置中，并在 Pull Request 中说明所需环境变量名称。
