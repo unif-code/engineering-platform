@@ -9,7 +9,7 @@
 - `pnpm install`：安装依赖并生成 Umi 配置文件。
 - `pnpm dev`：启动本地开发服务器。
 - `pnpm build`：生成生产构建。
-- `pnpm lint`：运行 Biome 检查、TypeScript 类型检查、OpenAPI 生成一致性与架构基线清单检查。
+- `pnpm lint`：运行 Biome 检查、TypeScript 类型检查、依赖方向、OpenAPI 生成一致性与架构基线清单检查。
 - `pnpm format`：使用 Biome 格式化代码并应用安全修复。
 - `pnpm test`：单次运行 Vitest 测试套件。
 - `pnpm test:watch` / `pnpm test:coverage`：监听测试或生成覆盖率报告。

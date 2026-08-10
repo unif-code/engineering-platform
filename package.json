@@ -3,7 +3,7 @@
   "author": "qq382724925 <382724935@qq.com>",
   "packageManager": "pnpm@10.30.3",
   "engines": {
-    "node": ">=22.12.0",
+    "node": "^22.13.0 || ^24.0.0 || >=26.0.0",
     "pnpm": ">=10"
   },
   "scripts": {
@@ -12,10 +12,11 @@
     "start": "npm run dev",
     "format": "biome check --write",
     "biome:lint": "biome lint",
-    "lint": "npm run biome:lint && npm run tsc && npm run openapi:check && npm run baseline:check",
+    "lint": "npm run biome:lint && npm run tsc && npm run depcruise && npm run openapi:check && npm run baseline:check",
     "baseline:update": "node scripts/baseline.mjs update",
     "baseline:check": "node scripts/baseline.mjs check",
     "tsc": "tsc --noEmit",
+    "depcruise": "depcruise src && node scripts/dependency-contract.mjs",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
@@ -54,6 +55,7 @@
     "@types/react-dom": "^19.2.3",
     "@vitest/coverage-v8": "^4.1.8",
     "@vitest/ui": "^4.1.8",
+    "dependency-cruiser": "^18.1.1",
     "happy-dom": "^20.10.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.2",

@@ -1,15 +1,28 @@
 // 运行时配置：https://umijs.org/docs/api/runtime-config
+import type { RunTimeLayoutConfig } from '@umijs/max';
+import { type CurrentUser, fetchMe } from '@/features/auth';
+import {
+  buildMenuData,
+  fetchNavigation,
+  type NavigationItem,
+} from '@/features/navigation';
 
-// 全局初始化数据，用于 Layout 用户信息与前端可见性初始化
-export async function getInitialState(): Promise<{ name: string }> {
-  return { name: '内部研发平台' };
+export interface InitialState {
+  me: CurrentUser | null;
+  navigation: NavigationItem[];
 }
 
-export const layout = () => {
+export async function getInitialState(): Promise<InitialState> {
+  const [me, navigation] = await Promise.all([fetchMe(), fetchNavigation()]);
+  return { me, navigation };
+}
+
+export const layout = (({ initialState }: { initialState?: InitialState }) => {
   return {
     logo: false,
     menu: {
       locale: false,
     },
+    menuDataRender: () => buildMenuData(initialState?.navigation ?? []),
   };
-};
+}) satisfies RunTimeLayoutConfig;

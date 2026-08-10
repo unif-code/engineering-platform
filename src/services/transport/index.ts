@@ -1,5 +1,7 @@
 import createClient, { type Middleware } from 'openapi-fetch';
 
+export { resolveApiEnvelope } from './envelope';
+
 /** RFC 9457 Problem Details for HTTP APIs */
 export interface ProblemDetails {
   type?: string;

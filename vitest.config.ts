@@ -13,7 +13,10 @@ export default defineConfig({
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./tests/setupTests.ts'],
-    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    include: [
+      'src/**/*.{test,spec}.{ts,tsx}',
+      'mock/**/*.{test,spec}.{ts,tsx}',
+    ],
     exclude: ['node_modules', 'dist', '.umi'],
     coverage: {
       provider: 'v8',
