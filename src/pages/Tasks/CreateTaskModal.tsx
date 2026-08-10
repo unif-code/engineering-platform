@@ -48,6 +48,7 @@ export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
         rules={[{ required: true, message: '请输入标题' }]}
       />
       <ProFormSelect
+        fieldProps={{ virtual: false }}
         label="Workspace"
         name="workspace"
         options={WORKSPACE_OPTIONS.map((option) => ({ ...option }))}
@@ -55,6 +56,7 @@ export function CreateTaskModal({ open, onClose }: CreateTaskModalProps) {
         rules={[{ required: true, message: '请选择 Workspace' }]}
       />
       <ProFormSelect
+        fieldProps={{ virtual: false }}
         label="目标仓库"
         name="repository"
         options={REPOSITORY_OPTIONS.map((option) => ({ ...option }))}

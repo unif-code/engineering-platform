@@ -37,6 +37,7 @@ export function AssignTaskSteps({ open, task, onClose }: AssignTaskStepsProps) {
         >
           <StepsForm.StepForm name="member" title="选择成员">
             <ProFormSelect
+              fieldProps={{ virtual: false }}
               label="选择成员"
               name="employeeId"
               options={EMPLOYEE_OPTIONS.map((option) => ({ ...option }))}
@@ -46,6 +47,7 @@ export function AssignTaskSteps({ open, task, onClose }: AssignTaskStepsProps) {
           </StepsForm.StepForm>
           <StepsForm.StepForm name="repository" title="确认仓库">
             <ProFormSelect
+              fieldProps={{ virtual: false }}
               label="确认仓库"
               name="repository"
               options={REPOSITORY_OPTIONS.map((option) => ({ ...option }))}

@@ -167,6 +167,7 @@ export function TaskListPage({ mode }: TaskListPageProps) {
               onChange={setStatus}
               options={TASK_STATUS_OPTIONS.map((option) => ({ ...option }))}
               value={status}
+              virtual={false}
             />
           }
           search={
