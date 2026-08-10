@@ -3,6 +3,7 @@ import {
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components';
+import { Link } from '@umijs/max';
 import { Button, Input, Segmented, Select, Space, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { FilterToolbar } from '@/components/FilterToolbar';
@@ -71,7 +72,11 @@ export function TaskListPage({ mode }: TaskListPageProps) {
     () => [
       {
         dataIndex: 'id',
-        render: (_, row) => <span className={styles.code}>{row.id}</span>,
+        render: (_, row) => (
+          <Link className={styles.code} to={`/tasks/${row.id}`}>
+            {row.id}
+          </Link>
+        ),
         title: '编号',
         width: 150,
       },

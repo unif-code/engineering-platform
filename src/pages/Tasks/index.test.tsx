@@ -4,12 +4,28 @@ import userEvent, {
   type UserEvent,
 } from '@testing-library/user-event';
 import { App } from 'antd';
-import { useState } from 'react';
-import { describe, expect, it } from 'vitest';
+import { type ReactNode, useState } from 'react';
+import { describe, expect, it, vi } from 'vitest';
 import ArchivedTasksPage from './Archived';
 import { AssignTaskSteps } from './AssignTaskSteps';
 import { TASK_ROWS } from './constant';
 import TasksPage from './index';
+
+vi.mock('@umijs/max', () => ({
+  Link: ({
+    children,
+    className,
+    to,
+  }: {
+    children: ReactNode;
+    className?: string;
+    to: string;
+  }) => (
+    <a className={className} href={to}>
+      {children}
+    </a>
+  ),
+}));
 
 function renderPage(page: React.ReactNode) {
   return render(<App>{page}</App>);
@@ -68,6 +84,18 @@ describe('TasksPage', () => {
     expect(await screen.findByText('REQ-2026-0142')).toBeInTheDocument();
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(screen.getByText('统一任务创建链路')).toBeInTheDocument();
+  });
+
+  it('每个任务编号都提供对应的详情链接', async () => {
+    renderPage(<TasksPage />);
+    await screen.findByText('REQ-2026-0142');
+
+    for (const row of TASK_ROWS) {
+      expect(screen.getByRole('link', { name: row.id })).toHaveAttribute(
+        'href',
+        `/tasks/${row.id}`,
+      );
+    }
   });
 
   it('切换看板后只呈现阶段列，切回列表仍保留原任务', async () => {
