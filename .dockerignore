@@ -1,0 +1,11 @@
+.git
+node_modules
+dist
+coverage
+src/.umi
+src/.umi-production
+src/.umi-test
+.agents
+.superpowers
+Dockerfile
+.github
