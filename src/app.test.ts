@@ -2,6 +2,7 @@ import { render, screen } from '@testing-library/react';
 import { theme } from 'antd';
 import { createElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import defaultSettings from '../config/defaultSettings';
 
 const featureMocks = vi.hoisted(() => ({
   fetchMe: vi.fn(),
@@ -47,10 +48,10 @@ describe('getInitialState', () => {
 });
 
 describe('layout', () => {
-  it('保留布局配置并用真实菜单装配逻辑生成排序后的可见菜单', () => {
+  it('提供品牌化 mix 布局、固定尺寸和 header 接缝', () => {
     const config = layout({
       initialState: {
-        me: null,
+        me: { employeeId: '00000000', name: '平台用户' },
         navigation: [
           { routeKey: 'admin', name: '管理后台', order: 3 },
           { routeKey: 'ghost', name: '未知菜单', order: 1 },
@@ -60,11 +61,74 @@ describe('layout', () => {
     });
 
     expect(config.logo).toBe(false);
-    expect(config.menu).toEqual({ locale: false });
-    expect(config.menuDataRender?.()).toEqual([
-      { path: '/home', name: '首页' },
-      { path: '/admin', name: '管理后台' },
+    expect(config.title).toBe(false);
+    expect(config.layout).toBe('mix');
+    expect(config).toHaveProperty('navTheme', undefined);
+    expect(config.siderWidth).toBe(208);
+    expect(config.fixedHeader).toBe(true);
+    expect(config.fixSiderbar).toBe(true);
+    expect(config.menu).toEqual({
+      locale: false,
+      type: 'group',
+      collapsedWidth: 64,
+    });
+    expect(config.headerTitleRender).toBe(false);
+    expect(config.menuHeaderRender).toEqual(expect.any(Function));
+    expect(config.headerContentRender).toEqual(expect.any(Function));
+    expect(config.actionsRender).toEqual(expect.any(Function));
+    expect(config.token).toEqual({
+      header: { heightLayoutHeader: 52 },
+      pageContainer: {
+        paddingBlockPageContainerContent: 20,
+        paddingInlinePageContainerContent: 24,
+      },
+    });
+  });
+
+  it('用真实 Registry 生成分组后的可见菜单', () => {
+    const config = layout({
+      initialState: {
+        me: null,
+        navigation: [
+          { routeKey: 'admin', name: '管理概览', order: 3 },
+          { routeKey: 'ghost', name: '未知菜单', order: 1 },
+          { routeKey: 'home', name: '首页', order: 2 },
+        ],
+      },
+    });
+    const groups = config.menuDataRender?.() ?? [];
+
+    expect(
+      groups.map(({ key, name, children }) => ({
+        key,
+        name,
+        children: children?.map(({ key: childKey, path }) => ({
+          key: childKey,
+          path,
+        })),
+      })),
+    ).toEqual([
+      {
+        key: 'group-user',
+        name: '用户端',
+        children: [{ key: 'home', path: '/home' }],
+      },
+      {
+        key: 'group-admin',
+        name: '管理端',
+        children: [{ key: 'admin', path: '/admin' }],
+      },
     ]);
+  });
+
+  it('静态 defaultSettings 使用品牌橙和固定 mix 布局且不锁定 navTheme', () => {
+    expect(defaultSettings).toMatchObject({
+      colorPrimary: '#EB6E00',
+      layout: 'mix',
+      fixedHeader: true,
+      fixSiderbar: true,
+    });
+    expect(defaultSettings).not.toHaveProperty('navTheme');
   });
 });
 

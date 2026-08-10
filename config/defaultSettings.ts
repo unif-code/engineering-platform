@@ -1,10 +1,11 @@
+import { BRAND_ORANGE } from '../src/constants/theme';
+
 /** ProLayout 默认布局设置 */
 const defaultSettings = {
-  navTheme: 'light',
-  colorPrimary: '#1677ff',
+  colorPrimary: BRAND_ORANGE,
   layout: 'mix',
   contentWidth: 'Fluid',
-  fixedHeader: false,
+  fixedHeader: true,
   fixSiderbar: true,
   title: '内部研发平台',
 } as const;

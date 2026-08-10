@@ -1,3 +1,4 @@
+import { ProProvider } from '@ant-design/pro-components';
 import {
   act,
   fireEvent,
@@ -6,7 +7,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { theme } from 'antd';
-import type { PropsWithChildren } from 'react';
+import { type PropsWithChildren, useContext } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { THEME_MEDIA_QUERY, THEME_STORAGE_KEY } from '@/constants/theme';
 import { createAntdThemeConfig } from './config';
@@ -84,11 +85,20 @@ function ThemeProbe() {
       <button type="button" onClick={() => setMode('light')}>
         设为浅色
       </button>
+      <button type="button" onClick={() => setMode('dark')}>
+        设为深色
+      </button>
       <button type="button" onClick={() => setMode('system')}>
         设为系统
       </button>
     </div>
   );
+}
+
+function ProThemeProbe() {
+  const { dark } = useContext(ProProvider);
+
+  return <output aria-label="ProComponents 暗色状态">{String(dark)}</output>;
 }
 
 function TestThemeProvider({ children }: PropsWithChildren) {
@@ -235,6 +245,40 @@ describe('ThemeProvider', () => {
     );
 
     expect(mocks.setAntdConfig).toHaveBeenCalledOnce();
+  });
+
+  it('把 system、light、dark 的同一解析结果投影到 ProProvider.dark', () => {
+    const media = installMatchMedia(false);
+    render(
+      <ThemeProvider>
+        <ThemeProbe />
+        <ProThemeProbe />
+      </ThemeProvider>,
+    );
+
+    expect(screen.getByLabelText('ProComponents 暗色状态')).toHaveTextContent(
+      'false',
+    );
+
+    act(() => media.emit(true));
+    expect(screen.getByLabelText('ProComponents 暗色状态')).toHaveTextContent(
+      'true',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '设为浅色' }));
+    expect(screen.getByLabelText('ProComponents 暗色状态')).toHaveTextContent(
+      'false',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '设为深色' }));
+    expect(screen.getByLabelText('ProComponents 暗色状态')).toHaveTextContent(
+      'true',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '设为系统' }));
+    expect(screen.getByLabelText('ProComponents 暗色状态')).toHaveTextContent(
+      'true',
+    );
   });
 });
 

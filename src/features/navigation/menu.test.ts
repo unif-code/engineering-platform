@@ -1,39 +1,98 @@
 import { describe, expect, it } from 'vitest';
 import { buildMenuData } from './menu';
+import { ROUTE_REGISTRY } from './registry';
 
 describe('buildMenuData', () => {
-  it('按 order 升序排序并把已知 routeKey 映射为 path', () => {
-    expect(
-      buildMenuData([
-        { routeKey: 'admin', name: '管理后台', order: 2 },
-        { routeKey: 'home', name: '首页', order: 1 },
-      ]),
-    ).toEqual([
-      { path: '/home', name: '首页' },
-      { path: '/admin', name: '管理后台' },
+  it('过滤未知 key 后按分组和 order 输出菜单，且管理概览固定在管理组首位', () => {
+    const items = [
+      { routeKey: 'adminMenus', name: '菜单管理', order: 5 },
+      { routeKey: 'tasks', name: '任务', order: 4 },
+      { routeKey: 'admin', name: '管理概览', order: 99 },
+      { routeKey: 'constructor', name: '原型属性', order: 0 },
+      { routeKey: 'home', name: '首页', order: 2 },
+      { routeKey: 'ghost', name: '未知菜单', order: 1 },
+      { routeKey: 'adminUsers', name: '用户管理', order: 3 },
+    ];
+    const original = items.map((item) => ({ ...item }));
+
+    expect(buildMenuData(items)).toEqual([
+      {
+        key: 'group-user',
+        name: '用户端',
+        type: 'group',
+        children: [
+          {
+            key: 'home',
+            path: '/home',
+            name: '首页',
+            icon: ROUTE_REGISTRY.home.icon,
+          },
+          {
+            key: 'tasks',
+            path: '/tasks',
+            name: '任务',
+            icon: ROUTE_REGISTRY.tasks.icon,
+          },
+        ],
+      },
+      {
+        key: 'group-admin',
+        name: '管理端',
+        type: 'group',
+        children: [
+          {
+            key: 'admin',
+            path: '/admin',
+            name: '管理概览',
+            icon: ROUTE_REGISTRY.admin.icon,
+          },
+          {
+            key: 'adminUsers',
+            path: '/admin/users',
+            name: '用户管理',
+            icon: ROUTE_REGISTRY.adminUsers.icon,
+          },
+          {
+            key: 'adminMenus',
+            path: '/admin/menus',
+            name: '菜单管理',
+            icon: ROUTE_REGISTRY.adminMenus.icon,
+          },
+        ],
+      },
     ]);
+
+    expect(items).toEqual(original);
   });
 
-  it('丢弃未知 routeKey', () => {
+  it('不输出空分组，未知 key 也不能借原型属性进入菜单', () => {
+    expect(
+      buildMenuData([
+        { routeKey: 'home', name: '首页', order: 1 },
+        { routeKey: 'ghost', name: '未知菜单', order: 2 },
+        { routeKey: 'constructor', name: '原型属性', order: 3 },
+      ]),
+    ).toEqual([
+      {
+        key: 'group-user',
+        name: '用户端',
+        type: 'group',
+        children: [
+          {
+            key: 'home',
+            path: '/home',
+            name: '首页',
+            icon: ROUTE_REGISTRY.home.icon,
+          },
+        ],
+      },
+    ]);
+
     expect(
       buildMenuData([
         { routeKey: 'ghost', name: '未知菜单', order: 1 },
         { routeKey: 'constructor', name: '原型属性', order: 2 },
       ]),
     ).toEqual([]);
-  });
-
-  it('不改变输入数组', () => {
-    const items = [
-      { routeKey: 'admin', name: '管理后台', order: 2 },
-      { routeKey: 'home', name: '首页', order: 1 },
-    ];
-
-    buildMenuData(items);
-
-    expect(items).toEqual([
-      { routeKey: 'admin', name: '管理后台', order: 2 },
-      { routeKey: 'home', name: '首页', order: 1 },
-    ]);
   });
 });

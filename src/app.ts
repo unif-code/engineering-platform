@@ -7,6 +7,7 @@ import {
   fetchNavigation,
   type NavigationItem,
 } from '@/features/navigation';
+import { HeaderActions, HeaderTitle, MenuBrand } from '@/features/shell';
 import {
   createAntdThemeConfig,
   getInitialThemeSnapshot,
@@ -34,10 +35,35 @@ export function rootContainer(container: ReactNode): ReactNode {
 
 export const layout = (({ initialState }: { initialState?: InitialState }) => {
   return {
+    layout: 'mix',
+    navTheme: undefined,
     logo: false,
+    title: false,
+    siderWidth: 208,
+    fixedHeader: true,
+    fixSiderbar: true,
     menu: {
       locale: false,
+      type: 'group',
+      collapsedWidth: 64,
     },
+    menuHeaderRender: (_logo, _title, props) =>
+      createElement(MenuBrand, { collapsed: props?.collapsed }),
+    headerTitleRender: false,
+    headerContentRender: () => createElement(HeaderTitle),
+    actionsRender: () => [
+      createElement(HeaderActions, {
+        key: 'platform-actions',
+        user: initialState?.me,
+      }),
+    ],
     menuDataRender: () => buildMenuData(initialState?.navigation ?? []),
+    token: {
+      header: { heightLayoutHeader: 52 },
+      pageContainer: {
+        paddingBlockPageContainerContent: 20,
+        paddingInlinePageContainerContent: 24,
+      },
+    },
   };
 }) satisfies RunTimeLayoutConfig;

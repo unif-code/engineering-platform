@@ -1,3 +1,4 @@
+import { ProProvider } from '@ant-design/pro-components';
 import { useAntdConfigSetter } from '@umijs/max';
 import {
   createContext,
@@ -35,6 +36,7 @@ function getCurrentSystemPreference(): boolean {
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const setAntdConfig = useAntdConfigSetter();
+  const parentProConfig = useContext(ProProvider);
   const setAntdConfigRef = useRef(setAntdConfig);
   setAntdConfigRef.current = setAntdConfig;
   const [snapshot, setSnapshot] = useState(getInitialThemeSnapshot);
@@ -91,9 +93,18 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     () => ({ ...snapshot, setMode }),
     [setMode, snapshot],
   );
+  const proConfig = useMemo(
+    () => ({
+      ...parentProConfig,
+      dark: snapshot.resolvedTheme === 'dark',
+    }),
+    [parentProConfig, snapshot.resolvedTheme],
+  );
 
   return (
-    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
+    <ThemeContext.Provider value={value}>
+      <ProProvider.Provider value={proConfig}>{children}</ProProvider.Provider>
+    </ThemeContext.Provider>
   );
 }
 

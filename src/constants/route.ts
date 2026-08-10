@@ -1,0 +1,17 @@
+export const APP_PATHS = {
+  home: '/home',
+  tasks: '/tasks',
+  workspaces: '/workspaces',
+  messages: '/messages',
+  teamBoard: '/team-board',
+  audit: '/audit',
+  admin: '/admin',
+  adminWorkspaces: '/admin/workspaces',
+  adminSkills: '/admin/skills',
+  adminModels: '/admin/models',
+  adminRoles: '/admin/roles',
+  adminUsers: '/admin/users',
+  adminMenus: '/admin/menus',
+} as const;
+
+export type RouteKey = keyof typeof APP_PATHS;
