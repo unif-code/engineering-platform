@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import api from './api';
+import auth, { createAuthMock } from './auth';
 
 interface MockRequest {
   body?: unknown;
-  headers: { cookie?: string };
+  headers: Record<string, string | undefined>;
 }
 
 interface CookieCall {
@@ -15,6 +16,8 @@ interface CookieCall {
 interface MockResponse {
   body?: unknown;
   cookieCall?: CookieCall;
+  ended: boolean;
+  headers: Headers;
   statusCode: number;
   cookie: (
     name: string,
@@ -22,16 +25,23 @@ interface MockResponse {
     options: Record<string, unknown>,
   ) => MockResponse;
   json: (body: unknown) => MockResponse;
+  end: () => MockResponse;
+  setHeader: (
+    name: string,
+    value: string | number | readonly string[],
+  ) => MockResponse;
   status: (statusCode: number) => MockResponse;
 }
 
-type MockRouteHandler = (
-  request: MockRequest,
-  response: MockResponse,
-) => void;
+type MockRouteHandler = (request: MockRequest, response: MockResponse) => void;
 
-function getRouteHandler(route: string): MockRouteHandler {
-  const handler = api[route];
+type MockRoutes = Record<string, unknown>;
+
+function getRouteHandler(
+  route: string,
+  routes: MockRoutes = api,
+): MockRouteHandler {
+  const handler = routes[route];
   if (typeof handler !== 'function') {
     throw new Error(`Missing mock route handler: ${route}`);
   }
@@ -41,8 +51,11 @@ function getRouteHandler(route: string): MockRouteHandler {
 function runRoute(
   route: string,
   request: Partial<MockRequest> = {},
+  routes: MockRoutes = api,
 ): MockResponse {
   const response: MockResponse = {
+    ended: false,
+    headers: new Headers(),
     statusCode: 200,
     cookie(name, value, options) {
       this.cookieCall = { name, value, options };
@@ -52,12 +65,23 @@ function runRoute(
       this.body = body;
       return this;
     },
+    end() {
+      this.ended = true;
+      return this;
+    },
+    setHeader(name, value) {
+      this.headers.set(
+        name,
+        Array.isArray(value) ? value.join(', ') : String(value),
+      );
+      return this;
+    },
     status(statusCode) {
       this.statusCode = statusCode;
       return this;
     },
   };
-  getRouteHandler(route)(
+  getRouteHandler(route, routes)(
     { body: request.body, headers: request.headers ?? {} },
     response,
   );
@@ -69,51 +93,65 @@ const unauthenticatedEnvelope = {
   data: null,
   message: 'Unauthenticated',
 };
+const idempotencyHeaders = {
+  'idempotency-key': '00000000-0000-4000-8000-000000000001',
+};
 
 describe('mock API session assembly', () => {
-  it.each(['GET /api/v1/me', 'GET /api/v1/navigation'])(
-    'fresh %s 返回完整 401 信封',
-    (route) => {
-      const response = runRoute(route);
+  it('基础会话与 V0.2 auth mock 不重复注册路由', () => {
+    expect(Object.keys(api).filter((route) => route in auth)).toEqual([]);
+  });
 
-      expect(response.statusCode).toBe(401);
-      expect(response.body).toEqual(unauthenticatedEnvelope);
-    },
-  );
+  it.each([
+    'GET /api/v1/me',
+    'GET /api/v1/navigation',
+  ])('fresh %s 返回完整 401 信封', (route) => {
+    const response = runRoute(route);
 
-  it('合法登录设置 dev session cookie 并保留成功信封', () => {
-    const response = runRoute('POST /api/v1/auth/login', {
-      body: {
-        employeeId: '00000000',
-        password: 'x',
-        totp: '123456',
+    expect(response.statusCode).toBe(401);
+    expect(response.body).toEqual(unauthenticatedEnvelope);
+  });
+
+  it('合法登录由 auth mock 签发 TOTP challenge，尚不建立 session', () => {
+    const response = runRoute(
+      'POST /api/v1/auth/login',
+      {
+        body: {
+          employeeNo: '00000001',
+          password: 'Valid-Password!2026',
+        },
+        headers: idempotencyHeaders,
       },
-    });
+      createAuthMock(),
+    );
 
     expect(response.statusCode).toBe(200);
     expect(response.body).toEqual({
-      code: 200,
-      data: { ok: true },
-      message: 'ok',
+      challengeToken: 'challenge-00000001',
+      stage: 'TOTP',
     });
-    expect(response.cookieCall).toEqual({
-      name: 'engineering-platform-session',
-      value: 'authenticated',
-      options: { httpOnly: true, path: '/', sameSite: 'lax' },
-    });
+    expect(response.cookieCall).toBeUndefined();
   });
 
-  it('非法登录不建立 session', () => {
-    const response = runRoute('POST /api/v1/auth/login', {
-      body: { employeeId: '123', password: '', totp: '12' },
-    });
+  it('密码错误返回 Problem 且不建立 session', () => {
+    const response = runRoute(
+      'POST /api/v1/auth/login',
+      {
+        body: { employeeNo: '00000001', password: 'wrong-password' },
+        headers: idempotencyHeaders,
+      },
+      createAuthMock(),
+    );
 
-    expect(response.statusCode).toBe(422);
-    expect(response.body).toEqual({
-      code: 422,
-      data: null,
-      message: 'Validation failed',
+    expect(response.statusCode).toBe(401);
+    expect(response.body).toMatchObject({
+      detail: '员工号或密码错误',
+      requestId: expect.any(String),
+      status: 401,
     });
+    expect(response.headers.get('content-type')).toBe(
+      'application/problem+json',
+    );
     expect(response.cookieCall).toBeUndefined();
   });
 
@@ -122,27 +160,35 @@ describe('mock API session assembly', () => {
     { caseName: 'body 为数组', body: [] },
     {
       caseName: '缺少 password',
-      body: { employeeId: '00000000', totp: '123456' },
+      body: { employeeNo: '00000001' },
     },
     {
       caseName: 'password 类型错误',
-      body: { employeeId: '00000000', password: null, totp: '123456' },
+      body: { employeeNo: '00000001', password: null },
     },
-  ])('login route 在$caseName时返回精确 422 且不建立 session', ({ body }) => {
-    const response = runRoute('POST /api/v1/auth/login', { body });
+  ])('login route 在$caseName时返回 422 Problem 且不建立 session', ({
+    body,
+  }) => {
+    const response = runRoute(
+      'POST /api/v1/auth/login',
+      { body, headers: idempotencyHeaders },
+      createAuthMock(),
+    );
 
     expect(response.statusCode).toBe(422);
-    expect(response.body).toEqual({
-      code: 422,
-      data: null,
-      message: 'Validation failed',
+    expect(response.body).toMatchObject({
+      requestId: expect.any(String),
+      status: 422,
     });
+    expect(response.headers.get('content-type')).toBe(
+      'application/problem+json',
+    );
     expect(response.cookieCall).toBeUndefined();
   });
 
   it('携带合法 session 后 me 与 navigation 返回现有精确信封', () => {
     const request = {
-      headers: { cookie: 'engineering-platform-session=authenticated' },
+      headers: { cookie: 'ep_session=mock-session' },
     };
 
     const meResponse = runRoute('GET /api/v1/me', request);
@@ -153,10 +199,7 @@ describe('mock API session assembly', () => {
       message: 'ok',
     });
 
-    const navigationResponse = runRoute(
-      'GET /api/v1/navigation',
-      request,
-    );
+    const navigationResponse = runRoute('GET /api/v1/navigation', request);
     expect(navigationResponse.statusCode).toBe(200);
     expect(navigationResponse.body).toEqual({
       code: 200,

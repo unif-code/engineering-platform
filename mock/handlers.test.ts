@@ -32,42 +32,35 @@ describe('mock handlers', () => {
     });
   });
 
-  it('login 格式合法时返回完整成功信封', () => {
+  it('login 为已初始化账号返回 TOTP challenge 决策', () => {
     expect(
-      loginHandler({ employeeId: '00000000', password: 'x', totp: '123456' }),
+      loginHandler({
+        employeeNo: '00000001',
+        password: 'Valid-Password!2026',
+      }),
     ).toEqual({
-      code: 200,
-      data: { ok: true },
-      message: 'ok',
+      data: {
+        challengeToken: 'challenge-00000001',
+        stage: 'TOTP',
+      },
+      employeeNo: '00000001',
+      kind: 'success',
     });
   });
 
-  it.each([
-    {
-      caseName: '员工号不是 8 位数字',
-      body: { employeeId: '123', password: 'x', totp: '123456' },
-    },
-    {
-      caseName: '员工号长度正确但包含非数字',
-      body: { employeeId: 'abcdefgh', password: 'x', totp: '123456' },
-    },
-    {
-      caseName: '密码为空',
-      body: { employeeId: '00000000', password: '', totp: '123456' },
-    },
-    {
-      caseName: '动态口令不是 6 位数字',
-      body: { employeeId: '00000000', password: 'x', totp: '12' },
-    },
-    {
-      caseName: '动态口令长度正确但包含非数字',
-      body: { employeeId: '00000000', password: 'x', totp: 'abcdef' },
-    },
-  ])('login 在$caseName时返回完整校验失败信封', ({ body }) => {
-    expect(loginHandler(body)).toEqual({
-      code: 422,
-      data: null,
-      message: 'Validation failed',
+  it('login 为待初始化账号返回 BOOTSTRAP token 决策', () => {
+    expect(
+      loginHandler({
+        employeeNo: '00000009',
+        password: 'Temporary-Password!2026',
+      }),
+    ).toEqual({
+      data: {
+        bootstrapToken: 'bootstrap-00000009',
+        stage: 'BOOTSTRAP',
+      },
+      employeeNo: '00000009',
+      kind: 'success',
     });
   });
 
@@ -76,26 +69,31 @@ describe('mock handlers', () => {
     { caseName: 'body 为 null', body: null },
     { caseName: 'body 为数组', body: [] },
     {
-      caseName: '缺少 totp',
-      body: { employeeId: '00000000', password: 'x' },
+      caseName: '员工号不是 8 位数字',
+      body: { employeeNo: '123', password: 'Valid-Password!2026' },
     },
     {
-      caseName: 'employeeId 不是 string',
-      body: { employeeId: 0, password: 'x', totp: '123456' },
+      caseName: 'employeeNo 不是 string',
+      body: { employeeNo: 1, password: 'Valid-Password!2026' },
     },
     {
       caseName: 'password 不是 string',
-      body: { employeeId: '00000000', password: null, totp: '123456' },
+      body: { employeeNo: '00000001', password: null },
     },
     {
-      caseName: 'totp 不是 string',
-      body: { employeeId: '00000000', password: 'x', totp: 123456 },
+      caseName: 'password 为空',
+      body: { employeeNo: '00000001', password: '' },
     },
-  ])('login 在$caseName时稳定返回完整 422 信封', ({ body }) => {
-    expect(loginHandler(body)).toEqual({
-      code: 422,
-      data: null,
-      message: 'Validation failed',
+  ])('login 在$caseName时返回 validation 决策', ({ body }) => {
+    expect(loginHandler(body)).toEqual({ kind: 'validation' });
+  });
+
+  it('login 密码错误时保留员工号供退避计数', () => {
+    expect(
+      loginHandler({ employeeNo: '00000001', password: 'wrong-password' }),
+    ).toEqual({
+      employeeNo: '00000001',
+      kind: 'invalidCredentials',
     });
   });
 });

@@ -1,13 +1,20 @@
-import type {
-  ApiEnvelope,
-  ApiSuccessEnvelope,
-} from '../src/types/api';
+import type { ApiSuccessEnvelope } from '../src/types/api';
 
 export interface LoginBody {
-  employeeId: string;
+  employeeNo: string;
   password: string;
-  totp: string;
 }
+
+type LoginHandlerResult =
+  | { kind: 'validation' }
+  | { employeeNo: string; kind: 'invalidCredentials' }
+  | {
+      data:
+        | { bootstrapToken: string; stage: 'BOOTSTRAP' }
+        | { challengeToken: string; stage: 'TOTP' };
+      employeeNo: string;
+      kind: 'success';
+    };
 
 interface Principal {
   employeeId: string;
@@ -20,24 +27,15 @@ interface NavigationItem {
   order: number;
 }
 
-interface LoginResult {
-  ok: true;
-}
-
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
 const isLoginBody = (body: unknown): body is LoginBody =>
   isRecord(body) &&
-  typeof body.employeeId === 'string' &&
+  typeof body.employeeNo === 'string' &&
+  /^\d{8}$/.test(body.employeeNo) &&
   typeof body.password === 'string' &&
-  typeof body.totp === 'string';
-
-const validationFailure = (): ApiEnvelope<LoginResult> => ({
-  code: 422,
-  data: null,
-  message: 'Validation failed',
-});
+  body.password.length > 0;
 
 export const meHandler = (): ApiSuccessEnvelope<Principal> => ({
   code: 200,
@@ -65,19 +63,37 @@ export const navigationHandler = (): ApiSuccessEnvelope<NavigationItem[]> => ({
   message: 'ok',
 });
 
-export const loginHandler = (body: unknown): ApiEnvelope<LoginResult> => {
+export const loginHandler = (body: unknown): LoginHandlerResult => {
   if (!isLoginBody(body)) {
-    return validationFailure();
+    return { kind: 'validation' };
   }
 
-  const valid =
-    /^\d{8}$/.test(body.employeeId) &&
-    body.password.length >= 1 &&
-    /^\d{6}$/.test(body.totp);
+  const expectedPassword =
+    body.employeeNo === '00000009'
+      ? 'Temporary-Password!2026'
+      : 'Valid-Password!2026';
 
-  if (!valid) {
-    return validationFailure();
+  if (body.password !== expectedPassword) {
+    return { employeeNo: body.employeeNo, kind: 'invalidCredentials' };
   }
 
-  return { code: 200, data: { ok: true }, message: 'ok' };
+  if (body.employeeNo === '00000009') {
+    return {
+      data: {
+        bootstrapToken: 'bootstrap-00000009',
+        stage: 'BOOTSTRAP',
+      },
+      employeeNo: body.employeeNo,
+      kind: 'success',
+    };
+  }
+
+  return {
+    data: {
+      challengeToken: `challenge-${body.employeeNo}`,
+      stage: 'TOTP',
+    },
+    employeeNo: body.employeeNo,
+    kind: 'success',
+  };
 };

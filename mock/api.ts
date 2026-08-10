@@ -1,8 +1,8 @@
 import { defineMock } from '@umijs/max';
-import { loginHandler, meHandler, navigationHandler } from './handlers';
+import { meHandler, navigationHandler } from './handlers';
 
-const SESSION_COOKIE_NAME = 'engineering-platform-session';
-const SESSION_COOKIE_VALUE = 'authenticated';
+const SESSION_COOKIE_NAME = 'ep_session';
+const SESSION_COOKIE_VALUE = 'mock-session';
 const UNAUTHENTICATED_ENVELOPE = {
   code: 401,
   data: null,
@@ -31,18 +31,5 @@ export default defineMock({
       return;
     }
     response.json(navigationHandler());
-  },
-  'POST /api/v1/auth/login': (request, response) => {
-    const result = loginHandler(request.body);
-    if (result.data === null) {
-      response.status(result.code).json(result);
-      return;
-    }
-    response.cookie(SESSION_COOKIE_NAME, SESSION_COOKIE_VALUE, {
-      httpOnly: true,
-      path: '/',
-      sameSite: 'lax',
-    });
-    response.json(result);
   },
 });
