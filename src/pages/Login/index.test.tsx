@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ThemeProvider } from '@/features/theme';
 
 const mocks = vi.hoisted(() => ({
   committedMe: null as null | { employeeId: string; name: string },
@@ -47,6 +48,7 @@ vi.mock('@umijs/max', async () => {
       }, []);
       return { initialState, setInitialState };
     },
+    useAntdConfigSetter: () => vi.fn(),
   };
 });
 
@@ -79,6 +81,14 @@ function createDeferred() {
     resolve = resolvePromise;
   });
   return { promise, resolve };
+}
+
+function renderLoginPage() {
+  return render(
+    <ThemeProvider>
+      <LoginPage />
+    </ThemeProvider>,
+  );
 }
 
 function submitForm(input = loginInput) {
@@ -114,8 +124,44 @@ beforeEach(() => {
 });
 
 describe('LoginPage', () => {
+  it('呈现交付链路 Hero、平台品牌与主题入口', () => {
+    renderLoginPage();
+
+    expect(
+      screen.getByRole('heading', {
+        name: '从需求到交付，一套可追溯的研发工作台',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('img', { name: '内部研发平台' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('Requirement')).toBeInTheDocument();
+    expect(screen.getByText('Artifact')).toBeInTheDocument();
+    expect(screen.getByText('Agent Attempt')).toBeInTheDocument();
+    expect(screen.getByText('Merge Request')).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '主题设置' }),
+    ).toBeInTheDocument();
+  });
+
+  it('只保留三个既有字段且不提供未接入的认证流程', () => {
+    renderLoginPage();
+
+    expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
+    expect(screen.getByLabelText('密码')).toBeInTheDocument();
+    expect(screen.getByLabelText('TOTP 动态码')).toBeInTheDocument();
+    expect(
+      Array.from(document.querySelectorAll('form label'), (label) =>
+        label.textContent?.trim(),
+      ),
+    ).toEqual(['员工编号', '密码', 'TOTP 动态码']);
+    expect(screen.queryByText(/重置密码/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/首次(?:登录)?初始化/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/绑定\s*TOTP/)).not.toBeInTheDocument();
+  });
+
   it('渲染三个带标签的字段与登录按钮', () => {
-    render(<LoginPage />);
+    renderLoginPage();
 
     expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
     expect(screen.getByLabelText('密码')).toBeInTheDocument();
@@ -126,7 +172,7 @@ describe('LoginPage', () => {
   it('合法提交刷新完整初始状态后才进入首页', async () => {
     const stateRefresh = createDeferred();
     mocks.setInitialState.mockReturnValueOnce(stateRefresh.promise);
-    render(<LoginPage />);
+    renderLoginPage();
 
     submitForm();
 
@@ -150,7 +196,7 @@ describe('LoginPage', () => {
   });
 
   it('只在 initialState 已完成 React commit 后进入首页', async () => {
-    render(<LoginPage />);
+    renderLoginPage();
 
     submitForm();
 
@@ -160,7 +206,7 @@ describe('LoginPage', () => {
 
   it('登录失败展示原始错误且不刷新状态、不导航', async () => {
     mocks.login.mockRejectedValueOnce(new Error('账号或凭据错误'));
-    render(<LoginPage />);
+    renderLoginPage();
 
     submitForm();
 
@@ -175,7 +221,7 @@ describe('LoginPage', () => {
 
   it('登录后无法取得当前用户时 fail closed', async () => {
     mocks.fetchMe.mockResolvedValueOnce(null);
-    render(<LoginPage />);
+    renderLoginPage();
 
     submitForm();
 
@@ -199,7 +245,7 @@ describe('LoginPage', () => {
       message: '动态码为 6 位数字',
     },
   ])('$caseName由真实表单拦截且不调用 login', async ({ input, message }) => {
-    render(<LoginPage />);
+    renderLoginPage();
 
     submitForm(input);
 
