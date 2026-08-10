@@ -3,7 +3,7 @@ import {
   type ProDescriptionsProps,
 } from '@ant-design/pro-components';
 import { Drawer, type DrawerProps } from 'antd';
-import type { ReactNode } from 'react';
+import type { ReactNode, RefObject } from 'react';
 
 export interface DetailDrawerProps<TRecord extends Record<string, any>> {
   open: boolean;
@@ -14,6 +14,7 @@ export interface DetailDrawerProps<TRecord extends Record<string, any>> {
   columns: NonNullable<ProDescriptionsProps<TRecord>['columns']>;
   column?: ProDescriptionsProps<TRecord>['column'];
   extra?: DrawerProps['extra'];
+  focusReturnRef?: RefObject<HTMLElement | null>;
 }
 
 export function DetailDrawer<TRecord extends Record<string, any>>({
@@ -25,11 +26,18 @@ export function DetailDrawer<TRecord extends Record<string, any>>({
   columns,
   column = 1,
   extra,
+  focusReturnRef,
 }: DetailDrawerProps<TRecord>) {
   return (
     <Drawer
+      afterOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          focusReturnRef?.current?.focus({ preventScroll: true });
+        }
+      }}
       destroyOnHidden
       extra={extra}
+      focusable={focusReturnRef ? { focusTriggerAfterClose: false } : undefined}
       onClose={onClose}
       open={open}
       size={size}

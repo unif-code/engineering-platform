@@ -1,4 +1,12 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import {
+  act,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from 'antd';
 import { describe, expect, it, vi } from 'vitest';
@@ -21,6 +29,15 @@ function renderPage() {
       <TaskDetailPage />
     </App>,
   );
+}
+
+function pressKeyboardKey(element: Element, key: string, which: number) {
+  const event = createEvent.keyDown(element, { code: key, key });
+  Object.defineProperties(event, {
+    keyCode: { value: which },
+    which: { value: which },
+  });
+  fireEvent(element, event);
 }
 
 async function chooseMoreAction(
@@ -108,6 +125,60 @@ describe('TaskDetailPage', () => {
         screen.queryByRole('dialog', { name: '代码 Diff' }),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it('从菜单打开 Artifact 并按 Escape 关闭后焦点回到更多操作', async () => {
+    // rc-component 的 test ID 会让嵌套 Portal 共用同一个 Escape stack ID。
+    // 使用运行时 ID 分支，才能覆盖浏览器中的真实键盘路径。
+    vi.stubEnv('NODE_ENV', 'development');
+    try {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
+
+      const actions = screen.getByRole('group', { name: '任务操作' });
+      const moreActionsButton = within(actions).getByRole('button', {
+        name: '更多操作',
+      });
+      moreActionsButton.focus();
+      await user.keyboard('{Enter}');
+
+      const artifactMenuItem = await screen.findByRole('menuitem', {
+        name: '查看 Artifact',
+      });
+      await act(async () => {
+        artifactMenuItem.focus();
+      });
+      expect(artifactMenuItem).toHaveFocus();
+      await act(async () => {
+        pressKeyboardKey(artifactMenuItem, 'Enter', 13);
+      });
+
+      const artifactDrawer = await screen.findByRole('dialog', {
+        name: 'Artifact 文档',
+      });
+      const artifactDrawerWrapper = artifactDrawer.closest(
+        '.ant-drawer-content-wrapper',
+      );
+      expect(artifactDrawerWrapper).not.toBeNull();
+      await waitFor(() => {
+        expect(artifactDrawerWrapper?.className).not.toMatch(
+          /ant-drawer-panel-motion/,
+        );
+      });
+      within(artifactDrawer)
+        .getByRole('button', { name: /关闭|close/i })
+        .focus();
+      await user.keyboard('{Escape}');
+      await waitFor(() => {
+        expect(moreActionsButton).toHaveFocus();
+      });
+      await waitFor(() => {
+        expect(artifactDrawer).not.toBeInTheDocument();
+      });
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 
   it('驳回审批必须填写原因，提交后仅提示且任务与对话不变', async () => {

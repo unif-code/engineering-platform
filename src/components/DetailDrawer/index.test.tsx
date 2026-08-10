@@ -2,7 +2,7 @@ import type { ProDescriptionsProps } from '@ant-design/pro-components';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App, Button } from 'antd';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { DetailDrawer } from '.';
 
@@ -49,16 +49,20 @@ const artifact: ArtifactSummary = {
 function DetailDrawerHarness() {
   const [open, setOpen] = useState(false);
   const [closeCount, setCloseCount] = useState(0);
+  const openButtonRef = useRef<HTMLAnchorElement | HTMLButtonElement>(null);
 
   return (
     <App>
-      <Button onClick={() => setOpen(true)}>打开详情</Button>
+      <Button onClick={() => setOpen(true)} ref={openButtonRef}>
+        打开详情
+      </Button>
       <p aria-label="关闭次数" role="status">
         {closeCount}
       </p>
       <DetailDrawer<ArtifactSummary>
         columns={artifactColumns}
         dataSource={artifact}
+        focusReturnRef={openButtonRef}
         onClose={() => {
           setCloseCount((current) => current + 1);
           setOpen(false);
@@ -71,6 +75,21 @@ function DetailDrawerHarness() {
 }
 
 describe('DetailDrawer', () => {
+  it('初始关闭时不抢占页面已有焦点', () => {
+    const existingFocus = document.createElement('button');
+    existingFocus.textContent = '页面原焦点';
+    document.body.append(existingFocus);
+    existingFocus.focus();
+
+    try {
+      render(<DetailDrawerHarness />);
+
+      expect(existingFocus).toHaveFocus();
+    } finally {
+      existingFocus.remove();
+    }
+  });
+
   it('仅在打开后呈现结构化只读详情', async () => {
     const user = userEvent.setup();
     render(<DetailDrawerHarness />);
@@ -98,6 +117,11 @@ describe('DetailDrawer', () => {
 
     await user.click(screen.getByRole('button', { name: '打开详情' }));
     const dialog = await screen.findByRole('dialog', { name: '制品详情' });
+    const drawerWrapper = dialog.closest('.ant-drawer-content-wrapper');
+    expect(drawerWrapper).not.toBeNull();
+    await waitFor(() => {
+      expect(drawerWrapper?.className).not.toMatch(/ant-drawer-panel-motion/);
+    });
     await user.click(
       within(dialog).getByRole('button', { name: '交互次数 0' }),
     );
@@ -117,6 +141,9 @@ describe('DetailDrawer', () => {
     expect(screen.getByRole('status', { name: '关闭次数' })).toHaveTextContent(
       '1',
     );
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '打开详情' })).toHaveFocus();
+    });
 
     await user.click(screen.getByRole('button', { name: '打开详情' }));
     const reopenedDialog = await screen.findByRole('dialog', {

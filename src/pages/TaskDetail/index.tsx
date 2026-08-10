@@ -2,7 +2,7 @@ import { MoreOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { useParams } from '@umijs/max';
 import { Button, Drawer, Dropdown, type MenuProps, Space } from 'antd';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DetailDrawer } from '@/components/DetailDrawer';
 import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
 import { ConversationPane } from './ConversationPane';
@@ -33,6 +33,9 @@ export default function TaskDetailPage() {
   const [selectedArtifact, setSelectedArtifact] = useState<ArtifactRecord>();
   const [diffOpen, setDiffOpen] = useState(false);
   const [rejectOpen, setRejectOpen] = useState(false);
+  const moreActionsButtonRef = useRef<HTMLAnchorElement | HTMLButtonElement>(
+    null,
+  );
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
     if (key === 'assign') {
@@ -62,7 +65,11 @@ export default function TaskDetailPage() {
         menu={{ items: actionItems, onClick: handleMenuClick }}
         trigger={['click']}
       >
-        <Button aria-label="更多操作" icon={<MoreOutlined />}>
+        <Button
+          aria-label="更多操作"
+          icon={<MoreOutlined />}
+          ref={moreActionsButtonRef}
+        >
           更多操作
         </Button>
       </Dropdown>
@@ -81,6 +88,7 @@ export default function TaskDetailPage() {
       <DetailDrawer<ArtifactRecord>
         columns={artifactColumns}
         dataSource={selectedArtifact}
+        focusReturnRef={moreActionsButtonRef}
         onClose={() => setSelectedArtifact(undefined)}
         open={selectedArtifact !== undefined}
         size={560}
