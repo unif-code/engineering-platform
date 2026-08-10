@@ -22,6 +22,7 @@ export default defineConfig({
   layout: {
     title: defaultSettings.title,
   },
+  mfsu: false,
   routes,
   proxy: proxy[REACT_APP_ENV],
   npmClient: 'pnpm',
