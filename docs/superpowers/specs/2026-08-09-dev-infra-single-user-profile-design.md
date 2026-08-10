@@ -1,7 +1,7 @@
 # V0.1 DEV 单用户 Kubernetes Profile 与决策登记重构设计
 
 日期：2026-08-09
-状态：待书面审阅
+状态：已确认
 范围：`engineering-platform` 架构决策文档与 `engineering-platform-gitops` DEV Desired State
 前置设计：`docs/superpowers/specs/2026-08-09-dev-infra-v01-design.md`
 
