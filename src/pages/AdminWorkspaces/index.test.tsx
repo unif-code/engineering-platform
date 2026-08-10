@@ -1,8 +1,80 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App } from 'antd';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import AdminWorkspacesPage from '.';
+
+type Deferred = {
+  promise: Promise<void>;
+  resolve: () => void;
+};
+
+type ControlledRequest = {
+  completed: Deferred;
+  release: Deferred;
+  started: Deferred;
+};
+
+const controlledRequests = vi.hoisted(
+  () => new Map<string, ControlledRequest>(),
+);
+
+function createDeferred(): Deferred {
+  let resolve!: () => void;
+  const promise = new Promise<void>((done) => {
+    resolve = done;
+  });
+
+  return { promise, resolve };
+}
+
+function deferRequest(params: { keyword: string; status: string }) {
+  const request = {
+    completed: createDeferred(),
+    release: createDeferred(),
+    started: createDeferred(),
+  };
+  controlledRequests.set(
+    JSON.stringify([params.keyword, params.status]),
+    request,
+  );
+
+  return {
+    async resolve() {
+      request.release.resolve();
+      await request.completed.promise;
+    },
+    started: request.started.promise,
+  };
+}
+
+vi.mock('./util', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./util')>();
+
+  return {
+    ...actual,
+    queryWorkspaceRows: async (
+      ...args: Parameters<typeof actual.queryWorkspaceRows>
+    ) => {
+      const key = JSON.stringify([args[0].keyword, args[0].status]);
+      const request = controlledRequests.get(key);
+
+      if (!request) {
+        return actual.queryWorkspaceRows(...args);
+      }
+
+      controlledRequests.delete(key);
+      request.started.resolve();
+      await request.release.promise;
+
+      try {
+        return await actual.queryWorkspaceRows(...args);
+      } finally {
+        request.completed.resolve();
+      }
+    },
+  };
+});
 
 function renderPage() {
   return render(
@@ -16,6 +88,17 @@ async function selectOption(user: UserEvent, label: string, option: string) {
   await user.click(screen.getByRole('combobox', { name: label }));
   await user.click(await screen.findByRole('option', { name: option }));
 }
+
+afterEach(() => {
+  for (const request of controlledRequests.values()) {
+    request.completed.resolve();
+    request.release.resolve();
+    request.started.resolve();
+  }
+  controlledRequests.clear();
+  vi.clearAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('AdminWorkspacesPage', () => {
   it('呈现三个固定工作区、筛选工具栏和 1050px 横向表格', async () => {
@@ -39,7 +122,18 @@ describe('AdminWorkspacesPage', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(4);
   });
 
-  it('快速连续更新搜索与状态时只呈现最新筛选结果', async () => {
+  it('下游无法取消旧请求时，快速连续筛选只呈现最新结果', async () => {
+    const NativeAbortController = globalThis.AbortController;
+    // 保留原生 AbortSignal，仅模拟下游无法取消已在途的旧请求。
+    vi.stubGlobal(
+      'AbortController',
+      class NonCancellingAbortController extends NativeAbortController {
+        override abort() {
+          return undefined;
+        }
+      },
+    );
+
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole('row', { name: /Platform Core/ });
@@ -59,12 +153,25 @@ describe('AdminWorkspacesPage', () => {
       ).not.toBeInTheDocument();
     });
 
+    const staleRequest = deferRequest({
+      keyword: '',
+      status: 'all',
+    });
+    const latestRequest = deferRequest({
+      keyword: '',
+      status: 'restricted',
+    });
+
     await user.clear(search);
+    await staleRequest.started;
     await selectOption(user, '工作区状态', '受限');
+    await latestRequest.started;
 
     expect(
       screen.getByRole('toolbar', { name: '工作区筛选与操作' }),
     ).toHaveTextContent('共 1 个工作区');
+
+    await act(() => latestRequest.resolve());
 
     await waitFor(() => {
       expect(
@@ -77,6 +184,18 @@ describe('AdminWorkspacesPage', () => {
         screen.queryByRole('row', { name: /Agent Runtime/ }),
       ).not.toBeInTheDocument();
     });
+
+    await act(() => staleRequest.resolve());
+
+    expect(
+      screen.getByRole('row', { name: /Delivery Governance.*受限/ }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('row', { name: /Platform Core/ }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('row', { name: /Agent Runtime/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('创建 Modal 包含规定字段，合法提交只提示且不新增工作区', async () => {
