@@ -24,7 +24,7 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
       include: ['src/**/*.{ts,tsx}'],
-      exclude: ['src/.umi/**', 'src/**/*.d.ts'],
+      exclude: ['src/.umi/**', 'src/.umi-production/**', 'src/**/*.d.ts'],
     },
     passWithNoTests: true,
     testTimeout: 15000,

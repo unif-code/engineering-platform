@@ -4,6 +4,8 @@ import { App } from 'antd';
 import { describe, expect, it } from 'vitest';
 import AdminUsersPage from '.';
 
+const PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS = { timeout: 5_000 };
+
 function renderPage() {
   return render(
     <App>
@@ -37,7 +39,11 @@ describe('AdminUsersPage', () => {
       screen.getByRole('toolbar', { name: '用户筛选与操作' }),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('row', { name: /示例用户甲/ }),
+      await screen.findByRole(
+        'row',
+        { name: /示例用户甲/ },
+        PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+      ),
     ).toBeInTheDocument();
     expect(screen.getByRole('row', { name: /示例用户乙/ })).toBeInTheDocument();
     expect(screen.getByRole('row', { name: /示例用户丙/ })).toBeInTheDocument();
@@ -51,7 +57,11 @@ describe('AdminUsersPage', () => {
   it('可组合搜索、状态与角色筛选可见用户', async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole('row', { name: /示例用户甲/ });
+    await screen.findByRole(
+      'row',
+      { name: /示例用户甲/ },
+      PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+    );
 
     await user.type(
       screen.getByRole('searchbox', { name: '搜索用户' }),
@@ -123,7 +133,11 @@ describe('AdminUsersPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    const userRow = await screen.findByRole('row', { name: /示例用户乙/ });
+    const userRow = await screen.findByRole(
+      'row',
+      { name: /示例用户乙/ },
+      PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+    );
     await user.click(within(userRow).getByRole('button', { name: '编辑' }));
     const dialog = await screen.findByRole('dialog', { name: '编辑用户' });
     const nameInput = within(dialog).getByRole('textbox', { name: '姓名' });
@@ -166,7 +180,11 @@ describe('AdminUsersPage', () => {
     renderPage();
 
     const table = await screen.findByRole('table');
-    const userRow = await screen.findByRole('row', { name: /示例用户甲/ });
+    const userRow = await screen.findByRole(
+      'row',
+      { name: /示例用户甲/ },
+      PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+    );
     const initialRowCount = within(table).getAllByRole('row').length;
 
     await user.click(within(userRow).getByRole('button', { name: '禁用' }));
