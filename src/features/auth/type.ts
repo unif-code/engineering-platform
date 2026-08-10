@@ -1,1 +1,7 @@
-export type { CurrentUser, LoginInput } from '@/services/auth';
+export type {
+  CurrentUser,
+  LoginInput,
+  LoginResult,
+  TotpInput,
+  TotpResult,
+} from '@/services/auth';

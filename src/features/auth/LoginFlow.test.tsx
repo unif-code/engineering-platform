@@ -1,0 +1,224 @@
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '@/services/transport';
+
+const mocks = vi.hoisted(() => ({
+  login: vi.fn(),
+  onAuthenticated: vi.fn(),
+  push: vi.fn(),
+  verifyTotp: vi.fn(),
+}));
+
+vi.mock('@umijs/max', () => ({
+  history: { push: mocks.push },
+}));
+
+vi.mock('./service', () => ({
+  login: mocks.login,
+  verifyTotp: mocks.verifyTotp,
+}));
+
+import { LoginFlow } from './LoginFlow';
+
+async function fillCredentials(
+  user: ReturnType<typeof userEvent.setup>,
+  employeeNo = '00000000',
+  password = 'Valid-Password!2026',
+) {
+  await user.type(screen.getByLabelText('员工编号'), employeeNo);
+  await user.type(screen.getByLabelText('密码'), password);
+}
+
+beforeEach(() => {
+  mocks.login.mockReset();
+  mocks.onAuthenticated.mockReset();
+  mocks.push.mockReset();
+  mocks.verifyTotp.mockReset();
+  mocks.login.mockResolvedValue({
+    challengeToken: 'challenge-00000000',
+    stage: 'TOTP',
+  });
+  mocks.verifyTotp.mockResolvedValue({ ok: true });
+  mocks.onAuthenticated.mockResolvedValue(undefined);
+});
+
+describe('LoginFlow', () => {
+  it('完成凭据与 TOTP 两步后才通知页面刷新 Session', async () => {
+    const user = userEvent.setup();
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: /继\s*续/ }));
+
+    expect(mocks.login).toHaveBeenCalledWith({
+      employeeNo: '00000000',
+      password: 'Valid-Password!2026',
+    });
+    expect(mocks.onAuthenticated).not.toHaveBeenCalled();
+
+    const totpInput = await screen.findByLabelText('TOTP 动态码');
+    await waitFor(() => expect(totpInput).toHaveFocus());
+    await user.click(totpInput);
+    await user.paste('123456');
+    expect(totpInput).toHaveValue('123456');
+
+    await user.click(
+      screen.getByRole('button', { name: /验\s*证\s*并\s*登\s*录/ }),
+    );
+
+    await waitFor(() =>
+      expect(mocks.verifyTotp).toHaveBeenCalledWith({
+        challengeToken: 'challenge-00000000',
+        code: '123456',
+      }),
+    );
+    expect(mocks.onAuthenticated).toHaveBeenCalledOnce();
+    expect(mocks.push).not.toHaveBeenCalled();
+  });
+
+  it('密码错误时展示服务端 Problem detail 原文并留在凭据步骤', async () => {
+    const user = userEvent.setup();
+    mocks.login.mockRejectedValue(
+      new ApiError({
+        detail: '员工号或密码错误',
+        status: 401,
+        title: 'INVALID_CREDENTIALS',
+      }),
+    );
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: /继\s*续/ }));
+
+    expect(await screen.findByText('员工号或密码错误')).toBeInTheDocument();
+    expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
+    expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
+    expect(mocks.onAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('429 时禁用凭据提交且只展示服务端等待文案', async () => {
+    const user = userEvent.setup();
+    mocks.login.mockRejectedValue(
+      new ApiError({
+        detail: '登录失败次数过多，请在 30 秒后重试',
+        status: 429,
+        title: 'LOGIN_BACKOFF',
+      }),
+    );
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    await fillCredentials(user);
+    const submit = screen.getByRole('button', { name: /继\s*续/ });
+    await user.click(submit);
+
+    expect(
+      await screen.findByText('登录失败次数过多，请在 30 秒后重试'),
+    ).toBeInTheDocument();
+    expect(submit).toBeDisabled();
+    expect(
+      screen.queryByText(/倒计时|剩余\s*\d+\s*秒/),
+    ).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: /切\s*换\s*账\s*号\s*\/\s*重\s*新\s*登\s*录/,
+      }),
+    );
+
+    expect(
+      screen.queryByText('登录失败次数过多，请在 30 秒后重试'),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText('员工编号')).toHaveValue('');
+    expect(screen.getByLabelText('密码')).toHaveValue('');
+    expect(screen.getByRole('button', { name: /继\s*续/ })).toBeEnabled();
+  });
+
+  it('BOOTSTRAP 阶段携 token 跳向初始化向导', async () => {
+    const user = userEvent.setup();
+    mocks.login.mockResolvedValue({
+      bootstrapToken: 'bootstrap-00000009',
+      stage: 'BOOTSTRAP',
+    });
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    await fillCredentials(user, '00000009', 'Temporary-Password!2026');
+    await user.click(screen.getByRole('button', { name: /继\s*续/ }));
+
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/bootstrap?token=bootstrap-00000009',
+      ),
+    );
+    expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
+    expect(mocks.onAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('TOTP 错误时展示 Problem detail 原文并保留 challenge 步骤', async () => {
+    const user = userEvent.setup();
+    mocks.verifyTotp.mockRejectedValue(
+      new ApiError({
+        detail: 'TOTP 验证码错误，剩余 4 次',
+        status: 401,
+        title: 'INVALID_TOTP',
+      }),
+    );
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: /继\s*续/ }));
+    const totpInput = await screen.findByLabelText('TOTP 动态码');
+    await user.type(totpInput, '000000');
+    await user.click(
+      screen.getByRole('button', { name: /验\s*证\s*并\s*登\s*录/ }),
+    );
+
+    expect(
+      await screen.findByText('TOTP 验证码错误，剩余 4 次'),
+    ).toBeInTheDocument();
+    expect(totpInput).toHaveValue('000000');
+    expect(
+      screen.getByRole('button', { name: /验\s*证\s*并\s*登\s*录/ }),
+    ).toBeEnabled();
+    expect(
+      screen.queryByRole('button', { name: /重\s*新\s*登\s*录/ }),
+    ).not.toBeInTheDocument();
+    expect(mocks.onAuthenticated).not.toHaveBeenCalled();
+  });
+
+  it('TOTP challenge 失效时禁用提交并可重新登录清空状态', async () => {
+    const user = userEvent.setup();
+    mocks.verifyTotp.mockRejectedValue(
+      new ApiError({
+        challengeExpired: true,
+        detail: 'TOTP challenge 已失效，请等待 30 秒后重新登录',
+        status: 401,
+        title: 'TOTP_CHALLENGE_EXPIRED',
+      }),
+    );
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: /继\s*续/ }));
+    const totpInput = await screen.findByLabelText('TOTP 动态码');
+    await user.type(totpInput, '000000');
+    const submit = screen.getByRole('button', {
+      name: /验\s*证\s*并\s*登\s*录/,
+    });
+    await user.click(submit);
+
+    expect(
+      await screen.findByText('TOTP challenge 已失效，请等待 30 秒后重新登录'),
+    ).toBeInTheDocument();
+    expect(submit).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: /重\s*新\s*登\s*录/ }));
+
+    expect(screen.getByLabelText('员工编号')).toHaveValue('');
+    expect(screen.getByLabelText('密码')).toHaveValue('');
+    expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('TOTP challenge 已失效，请等待 30 秒后重新登录'),
+    ).not.toBeInTheDocument();
+  });
+});

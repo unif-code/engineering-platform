@@ -27,6 +27,55 @@ export class ApiError extends Error {
   }
 }
 
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+const isAbort = (error: unknown): boolean =>
+  error instanceof Error && error.name === 'AbortError';
+
+/**
+ * 将 Umi/Axios rejection、network 与 abort 错误纯转换为统一 ApiError。
+ * 该函数不触发 401 Session 回调，认证端点可安全复用。
+ */
+export function normalizeApiError(error: unknown): ApiError {
+  if (error instanceof ApiError) {
+    return error;
+  }
+
+  if (isRecord(error) && isRecord(error.response)) {
+    const { data, status, statusText } = error.response;
+    if (typeof status === 'number') {
+      const title =
+        typeof statusText === 'string' && statusText.length > 0
+          ? statusText
+          : `HTTP ${status}`;
+      const problem: ProblemDetails = isRecord(data)
+        ? {
+            ...data,
+            ...(typeof data.status === 'number' ? {} : { status }),
+          }
+        : {
+            status,
+            title,
+            ...(typeof data === 'string' && data.length > 0
+              ? { detail: data }
+              : {}),
+          };
+      return new ApiError(problem, { cause: error });
+    }
+  }
+
+  const aborted = isAbort(error);
+  return new ApiError(
+    {
+      type: aborted ? 'about:blank#aborted' : 'about:blank#network',
+      title: aborted ? 'REQUEST_ABORTED' : 'NETWORK_ERROR',
+      detail: error instanceof Error ? error.message : String(error),
+    },
+    { cause: error },
+  );
+}
+
 let unauthorizedHandler: (() => void) | undefined;
 
 export function onUnauthorized(handler: () => void): void {
@@ -48,9 +97,6 @@ const toProblem = (text: string, response: Response): ProblemDetails => {
   return problem;
 };
 
-const isAbort = (error: unknown): boolean =>
-  error instanceof Error && error.name === 'AbortError';
-
 const normalize: Middleware = {
   async onResponse({ response }) {
     if (response.ok) {
@@ -66,18 +112,7 @@ const normalize: Middleware = {
     throw new ApiError(toProblem(await response.clone().text(), response));
   },
   onError({ error }) {
-    if (error instanceof ApiError) {
-      return error;
-    }
-    const aborted = isAbort(error);
-    return new ApiError(
-      {
-        type: aborted ? 'about:blank#aborted' : 'about:blank#network',
-        title: aborted ? 'REQUEST_ABORTED' : 'NETWORK_ERROR',
-        detail: error instanceof Error ? error.message : String(error),
-      },
-      { cause: error },
-    );
+    return normalizeApiError(error);
   },
 };
 

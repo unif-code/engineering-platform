@@ -1,3 +1,10 @@
-export { fetchMe, login } from './service';
-export type { CurrentUser, LoginInput } from './type';
+export { LoginFlow, type LoginFlowProps } from './LoginFlow';
 export { default as RouteGuard } from './RouteGuard';
+export { fetchMe, login, verifyTotp } from './service';
+export type {
+  CurrentUser,
+  LoginInput,
+  LoginResult,
+  TotpInput,
+  TotpResult,
+} from './type';

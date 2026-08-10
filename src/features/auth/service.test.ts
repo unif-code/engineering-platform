@@ -1,17 +1,19 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const authServiceMock = vi.hoisted(() => ({
-  authenticate: vi.fn(),
   getCurrentUser: vi.fn(),
+  startLogin: vi.fn(),
+  verifyTotp: vi.fn(),
 }));
 
 vi.mock('@/services/auth', () => authServiceMock);
 
-import { fetchMe, login } from './service';
+import { fetchMe, login, verifyTotp } from './service';
 
 beforeEach(() => {
-  authServiceMock.authenticate.mockReset();
   authServiceMock.getCurrentUser.mockReset();
+  authServiceMock.startLogin.mockReset();
+  authServiceMock.verifyTotp.mockReset();
 });
 
 describe('auth feature service', () => {
@@ -33,30 +35,45 @@ describe('auth feature service', () => {
     await expect(fetchMe()).resolves.toBeNull();
   });
 
-  it('login 把输入委托给下层 service', async () => {
-    authServiceMock.authenticate.mockResolvedValue(undefined);
+  it('login 把员工凭据委托给下层 service 并返回认证阶段', async () => {
+    authServiceMock.startLogin.mockResolvedValue({
+      challengeToken: 'challenge-00000000',
+      stage: 'TOTP',
+    });
     const input = {
-      employeeId: '00000000',
-      password: 'secret',
-      totp: '123456',
+      employeeNo: '00000000',
+      password: 'Valid-Password!2026',
     };
 
-    await expect(login(input)).resolves.toBeUndefined();
-    expect(authServiceMock.authenticate).toHaveBeenCalledWith(input);
+    await expect(login(input)).resolves.toEqual({
+      challengeToken: 'challenge-00000000',
+      stage: 'TOTP',
+    });
+    expect(authServiceMock.startLogin).toHaveBeenCalledWith(input);
   });
 
   it('login 传播下层 service 归一化后的错误', async () => {
-    authServiceMock.authenticate.mockRejectedValue(
+    authServiceMock.startLogin.mockRejectedValue(
       new Error('Validation failed'),
     );
 
     const error = await login({
-      employeeId: '123',
+      employeeNo: '123',
       password: 'x',
-      totp: '1',
     }).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(Error);
     expect((error as Error).message).toBe('Validation failed');
+  });
+
+  it('verifyTotp 把 challenge 与动态码委托给下层 service', async () => {
+    authServiceMock.verifyTotp.mockResolvedValue({ ok: true });
+    const input = {
+      challengeToken: 'challenge-00000000',
+      code: '123456',
+    };
+
+    await expect(verifyTotp(input)).resolves.toEqual({ ok: true });
+    expect(authServiceMock.verifyTotp).toHaveBeenCalledWith(input);
   });
 });

@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createApiClient, onUnauthorized } from './index';
+import {
+  ApiError,
+  createApiClient,
+  normalizeApiError,
+  onUnauthorized,
+} from './index';
 
 const stubFetch = (impl: () => Promise<Response>) => {
   vi.stubGlobal('fetch', vi.fn(impl));
@@ -11,6 +16,100 @@ afterEach(() => {
 });
 
 describe('transport', () => {
+  it('normalizeApiError 原样返回既有 ApiError', () => {
+    const existing = new ApiError({
+      detail: 'keep me',
+      status: 409,
+      title: 'CONFLICT',
+    });
+
+    expect(normalizeApiError(existing)).toBe(existing);
+  });
+
+  it('normalizeApiError 从 Umi rejection 提取 Problem 并合并 HTTP status', () => {
+    const normalized = normalizeApiError({
+      response: {
+        data: {
+          detail: '员工号或密码错误',
+          requestId: 'req-auth-1',
+          title: 'INVALID_CREDENTIALS',
+        },
+        status: 401,
+      },
+    });
+
+    expect(normalized).toMatchObject({
+      name: 'ApiError',
+      problem: {
+        detail: '员工号或密码错误',
+        requestId: 'req-auth-1',
+        status: 401,
+        title: 'INVALID_CREDENTIALS',
+      },
+      requestId: 'req-auth-1',
+    });
+  });
+
+  it.each([
+    {
+      data: 'upstream unavailable',
+      expected: {
+        detail: 'upstream unavailable',
+        status: 502,
+        title: 'Bad Gateway',
+      },
+    },
+    {
+      data: '',
+      expected: { status: 502, title: 'Bad Gateway' },
+    },
+  ])('normalizeApiError 将文本或空 HTTP 响应归一为 ApiError', ({
+    data,
+    expected,
+  }) => {
+    const normalized = normalizeApiError({
+      response: { data, status: 502, statusText: 'Bad Gateway' },
+    });
+
+    expect(normalized).toMatchObject({
+      name: 'ApiError',
+      problem: expected,
+    });
+  });
+
+  it.each([
+    {
+      error: new TypeError('fetch failed'),
+      expected: { detail: 'fetch failed', title: 'NETWORK_ERROR' },
+    },
+    {
+      error: new DOMException('The operation was aborted.', 'AbortError'),
+      expected: {
+        detail: 'The operation was aborted.',
+        title: 'REQUEST_ABORTED',
+      },
+    },
+  ])('normalizeApiError 归一 network 与 abort 错误', ({ error, expected }) => {
+    expect(normalizeApiError(error)).toMatchObject({
+      name: 'ApiError',
+      problem: expected,
+    });
+  });
+
+  it('normalizeApiError 对 401 只做纯转换，不触发 unauthorized handler', () => {
+    const handler = vi.fn();
+    onUnauthorized(handler);
+
+    normalizeApiError({
+      response: {
+        data: { detail: '登录失败', title: 'INVALID_CREDENTIALS' },
+        status: 401,
+      },
+    });
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
   it('normalizes non-2xx responses to ProblemDetails ApiError', async () => {
     stubFetch(
       async () =>

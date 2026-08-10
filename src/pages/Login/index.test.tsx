@@ -4,18 +4,20 @@ import { ThemeProvider } from '@/features/theme';
 
 const mocks = vi.hoisted(() => ({
   committedMe: null as null | { employeeId: string; name: string },
-  fetchMe: vi.fn(),
   fetchNavigation: vi.fn(),
-  login: vi.fn(),
+  getCurrentUser: vi.fn(),
   messageError: vi.fn(),
   push: vi.fn(),
   pushObservedMe: vi.fn(),
   setInitialState: vi.fn(),
+  startLogin: vi.fn(),
+  verifyTotp: vi.fn(),
 }));
 
-vi.mock('@/features/auth', () => ({
-  fetchMe: mocks.fetchMe,
-  login: mocks.login,
+vi.mock('@/services/auth', () => ({
+  getCurrentUser: mocks.getCurrentUser,
+  startLogin: mocks.startLogin,
+  verifyTotp: mocks.verifyTotp,
 }));
 
 vi.mock('@/features/navigation', () => ({
@@ -70,9 +72,8 @@ const navigation = [
   { routeKey: 'admin', name: '管理后台', order: 2 },
 ];
 const loginInput = {
-  employeeId: '00000000',
-  password: 'secret',
-  totp: '123456',
+  employeeNo: '00000000',
+  password: 'Valid-Password!2026',
 };
 
 function createDeferred() {
@@ -91,34 +92,45 @@ function renderLoginPage() {
   );
 }
 
-function submitForm(input = loginInput) {
+function submitCredentials(input = loginInput) {
   fireEvent.change(screen.getByLabelText('员工编号'), {
-    target: { value: input.employeeId },
+    target: { value: input.employeeNo },
   });
   fireEvent.change(screen.getByLabelText('密码'), {
     target: { value: input.password },
   });
-  fireEvent.change(screen.getByLabelText('TOTP 动态码'), {
-    target: { value: input.totp },
-  });
-  fireEvent.click(screen.getByRole('button', { name: /登\s*录/ }));
+  fireEvent.click(screen.getByRole('button', { name: /继\s*续/ }));
+}
+
+async function submitForm(input = loginInput, totp = '123456') {
+  submitCredentials(input);
+  const totpInput = await screen.findByLabelText('TOTP 动态码');
+  fireEvent.change(totpInput, { target: { value: totp } });
+  fireEvent.click(
+    screen.getByRole('button', { name: /验\s*证\s*并\s*登\s*录/ }),
+  );
 }
 
 beforeEach(() => {
   for (const mock of [
-    mocks.fetchMe,
     mocks.fetchNavigation,
-    mocks.login,
+    mocks.getCurrentUser,
     mocks.messageError,
     mocks.push,
     mocks.pushObservedMe,
     mocks.setInitialState,
+    mocks.startLogin,
+    mocks.verifyTotp,
   ]) {
     mock.mockReset();
   }
   mocks.committedMe = null;
-  mocks.login.mockResolvedValue(undefined);
-  mocks.fetchMe.mockResolvedValue(me);
+  mocks.startLogin.mockResolvedValue({
+    challengeToken: 'challenge-00000000',
+    stage: 'TOTP',
+  });
+  mocks.verifyTotp.mockResolvedValue({ ok: true });
+  mocks.getCurrentUser.mockResolvedValue(me);
   mocks.fetchNavigation.mockResolvedValue(navigation);
   mocks.setInitialState.mockResolvedValue(undefined);
 });
@@ -144,29 +156,32 @@ describe('LoginPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('只保留三个既有字段且不提供未接入的认证流程', () => {
+  it('分步呈现既有认证字段且不同时暴露凭据与动态码', async () => {
     renderLoginPage();
 
     expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
     expect(screen.getByLabelText('密码')).toBeInTheDocument();
-    expect(screen.getByLabelText('TOTP 动态码')).toBeInTheDocument();
+    expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
     expect(
       Array.from(document.querySelectorAll('form label'), (label) =>
         label.textContent?.trim(),
       ),
-    ).toEqual(['员工编号', '密码', 'TOTP 动态码']);
+    ).toEqual(['员工编号', '密码']);
+
+    submitCredentials();
+
+    expect(await screen.findByLabelText('TOTP 动态码')).toBeInTheDocument();
+    expect(screen.queryByLabelText('员工编号')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('密码')).not.toBeInTheDocument();
     expect(screen.queryByText(/重置密码/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/首次(?:登录)?初始化/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/绑定\s*TOTP/)).not.toBeInTheDocument();
   });
 
-  it('渲染三个带标签的字段与登录按钮', () => {
+  it('渲染凭据步骤与继续按钮', () => {
     renderLoginPage();
 
     expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
     expect(screen.getByLabelText('密码')).toBeInTheDocument();
-    expect(screen.getByLabelText('TOTP 动态码')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /登\s*录/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /继\s*续/ })).toBeInTheDocument();
   });
 
   it('合法提交刷新完整初始状态后才进入首页', async () => {
@@ -174,18 +189,24 @@ describe('LoginPage', () => {
     mocks.setInitialState.mockReturnValueOnce(stateRefresh.promise);
     renderLoginPage();
 
-    submitForm();
+    await submitForm();
 
-    await waitFor(() => expect(mocks.login).toHaveBeenCalledWith(loginInput));
+    await waitFor(() =>
+      expect(mocks.startLogin).toHaveBeenCalledWith(loginInput),
+    );
+    expect(mocks.verifyTotp).toHaveBeenCalledWith({
+      challengeToken: 'challenge-00000000',
+      code: '123456',
+    });
     await waitFor(() => {
-      expect(mocks.fetchMe).toHaveBeenCalledOnce();
+      expect(mocks.getCurrentUser).toHaveBeenCalledOnce();
       expect(mocks.fetchNavigation).toHaveBeenCalledOnce();
       expect(mocks.setInitialState).toHaveBeenCalledWith({ me, navigation });
     });
-    expect(mocks.login.mock.invocationCallOrder[0]).toBeLessThan(
-      mocks.fetchMe.mock.invocationCallOrder[0],
+    expect(mocks.verifyTotp.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.getCurrentUser.mock.invocationCallOrder[0],
     );
-    expect(mocks.login.mock.invocationCallOrder[0]).toBeLessThan(
+    expect(mocks.verifyTotp.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.fetchNavigation.mock.invocationCallOrder[0],
     );
     expect(mocks.push).not.toHaveBeenCalled();
@@ -198,32 +219,41 @@ describe('LoginPage', () => {
   it('只在 initialState 已完成 React commit 后进入首页', async () => {
     renderLoginPage();
 
-    submitForm();
+    await submitForm();
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/home'));
     expect(mocks.pushObservedMe).toHaveBeenCalledWith(me);
   });
 
-  it('登录失败展示原始错误且不刷新状态、不导航', async () => {
-    mocks.login.mockRejectedValueOnce(new Error('账号或凭据错误'));
+  it('initialState 提交失败时展示原始错误并 fail closed', async () => {
+    mocks.setInitialState.mockRejectedValueOnce(new Error('初始状态提交失败'));
     renderLoginPage();
 
-    submitForm();
+    await submitForm();
 
-    await waitFor(() =>
-      expect(mocks.messageError).toHaveBeenCalledWith('账号或凭据错误'),
-    );
-    expect(mocks.fetchMe).not.toHaveBeenCalled();
+    expect(await screen.findByText('初始状态提交失败')).toBeInTheDocument();
+    expect(mocks.push).not.toHaveBeenCalledWith('/home');
+  });
+
+  it('登录失败展示原始错误且不刷新状态、不导航', async () => {
+    mocks.startLogin.mockRejectedValueOnce(new Error('账号或凭据错误'));
+    renderLoginPage();
+
+    submitCredentials();
+
+    expect(await screen.findByText('账号或凭据错误')).toBeInTheDocument();
+    expect(mocks.messageError).not.toHaveBeenCalled();
+    expect(mocks.getCurrentUser).not.toHaveBeenCalled();
     expect(mocks.fetchNavigation).not.toHaveBeenCalled();
     expect(mocks.setInitialState).not.toHaveBeenCalled();
     expect(mocks.push).not.toHaveBeenCalled();
   });
 
   it('登录后无法取得当前用户时 fail closed', async () => {
-    mocks.fetchMe.mockResolvedValueOnce(null);
+    mocks.getCurrentUser.mockResolvedValueOnce(null);
     renderLoginPage();
 
-    submitForm();
+    await submitForm();
 
     await waitFor(() =>
       expect(mocks.messageError).toHaveBeenCalledWith('登录状态刷新失败'),
@@ -236,20 +266,34 @@ describe('LoginPage', () => {
   it.each([
     {
       caseName: '8 位非数字员工编号',
-      input: { ...loginInput, employeeId: 'abcdefgh' },
+      input: { ...loginInput, employeeNo: 'abcdefgh' },
       message: '员工编号为 8 位数字',
     },
     {
       caseName: '6 位非数字动态码',
-      input: { ...loginInput, totp: 'abcdef' },
+      input: loginInput,
       message: '动态码为 6 位数字',
+      totp: 'abcdef',
     },
-  ])('$caseName由真实表单拦截且不调用 login', async ({ input, message }) => {
+  ])('$caseName由真实表单拦截且不调用对应 service', async ({
+    input,
+    message,
+    totp,
+  }) => {
     renderLoginPage();
 
-    submitForm(input);
+    if (totp === undefined) {
+      submitCredentials(input);
+    } else {
+      await submitForm(input, totp);
+    }
 
     expect(await screen.findByText(message)).toBeInTheDocument();
-    expect(mocks.login).not.toHaveBeenCalled();
+    if (totp === undefined) {
+      expect(mocks.startLogin).not.toHaveBeenCalled();
+    } else {
+      expect(mocks.startLogin).toHaveBeenCalledWith(input);
+      expect(mocks.verifyTotp).not.toHaveBeenCalled();
+    }
   });
 });
