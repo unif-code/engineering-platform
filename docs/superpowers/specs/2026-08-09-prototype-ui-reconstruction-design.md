@@ -44,7 +44,7 @@
 
 - 不实现真实新增、编辑、删除、审批、归档或角色授权。
 - 不实现真实 Agent、Chat、模型、评测、审计、代码 Diff 或 Sandbox Preview 数据流。
-- 不接入后端 OpenAPI Artifact 或 generated client。
+- UI 重构 Task 1–17 不接入后端 OpenAPI Artifact 或 generated client；用户追加的队尾 Task 18–19 在页面完成后单独锁定 `api-v0.1.0` 并仅切换 Feature service 数据缝。
 - 不实现移动端或 1280px 以下的独立布局。
 - 不实现原型的右下角演示角色切换器、清空数据或重置演示数据。
 - 不复制原型的首次登录初始化、密码重置、TOTP 绑定流程。

@@ -24,6 +24,7 @@
 - 继续使用 Umi ProLayout；展开侧栏 208px、折叠约 64px、顶栏 52px、页面 padding 20px 24px；桌面支持下限 1280px，不实现移动端布局。
 - 页面组件优先 ProComponents，其次 Ant Design；只有至少两个页面复用的展示 primitive 才提升到 `src/components/`；页面私有组件平铺，样式写 `index.style.ts`，fixture 写 `constant.ts`。
 - API client 不在本计划新增；页面不得直达 `services`，不得使用 `useRequest`，不得接入 OpenAPI generated client。
+- 上一条约束适用于 UI Task 1–17；用户后续追加的 Task 18 负责锁定已发布的 `api-v0.1.0` file-channel Artifact，Task 19 仅在 Feature service 边界切换 generated `api`，页面层仍不得直达 `services`。
 - ProTable 必须使用就近静态 `request` adapter，返回 `{ data, success, total }`；adapter 不发网络请求、不修改 fixture，并显式配置 `scroll.x`。
 - Modal、Drawer、Tab、Segmented、筛选和按钮反馈可操作；所有提交类动作只提示 `静态原型操作：<动作>，未保存任何业务数据。`，随后关闭浮层，不修改持久示例数据。
 - Artifact 与 Audit 的只读详情统一使用公共 `DetailDrawer`，组件内部只组合 Ant Design `Drawer` 与 `ProDescriptions`；Diff 直接使用 Ant Design `Drawer`，不得把只读详情误做成 `DrawerForm`。
@@ -1872,9 +1873,257 @@ git add config/routes.ts src/routes.test.ts mock/handlers.ts mock/handlers.test.
 git commit -m "feat(routes): expose reconstructed pages by navigation access"
 ```
 
-- [ ] **Step 11: 最终独立审查**
+- [ ] **Step 11: Task 17 独立审查**
 
 使用 `superpowers:requesting-code-review` 派发独立规格审查与代码质量审查。审查输入必须包含本计划、已批准 spec、完整提交范围和 Step 6–9 验证证据；Critical/Important finding 必须使用 `superpowers:receiving-code-review` 验真并在交付前关闭。
+
+---
+
+### Task 18: 锁定后端 OpenAPI file-channel Artifact 并生成 client
+
+**Files:**
+- Modify: `openapi/artifact.lock.json`
+- Create (generated): `openapi/spec.json`
+- Delete (generated): `src/services/generated/.gitkeep`
+- Create (generated): `src/services/generated/schema.d.ts`
+- Create (generated): `src/services/generated/client.ts`
+- Create (generated): `src/services/generated/index.ts`
+- Create (generated): `src/services/generated/ARTIFACT.json`
+
+**Interfaces:**
+- Consumes: 同级后端仓已发布的 `../engineering-platform-backend/openapi.json`；只读取，不修改后端仓。
+- Produces: `import { api } from '@/services/generated'`，以及 generated `paths`/`components` types。
+- Pins: `source = file:../engineering-platform-backend/openapi.json`、`version = 0.1.0`、`sha256 = ff55588debfae8b4684b9db3a446cf6f5401b34ee8a1317ca51a27a6d120abf3`。
+
+- [ ] **Step 1: 验证后端构件与当前 fail-closed 基线**
+
+Run:
+
+```bash
+test -f ../engineering-platform-backend/openapi.json
+shasum -a 256 ../engineering-platform-backend/openapi.json
+pnpm openapi:check:release
+```
+
+Expected: `shasum` 精确输出 `ff55588debfae8b4684b9db3a446cf6f5401b34ee8a1317ca51a27a6d120abf3`；当 lock 仍为三个 `null` 时 release check exit 1，证明未锁定 Artifact 不能误通过发布门。
+
+- [ ] **Step 2: 写入精确 Artifact 锁**
+
+`openapi/artifact.lock.json` 保留 `$comment`，并将三个空值覆盖为：
+
+```json
+{
+  "source": "file:../engineering-platform-backend/openapi.json",
+  "version": "0.1.0",
+  "sha256": "ff55588debfae8b4684b9db3a446cf6f5401b34ee8a1317ca51a27a6d120abf3"
+}
+```
+
+Expected: 不使用运行时命令重新计算或改写用户已锁定的三元组。
+
+- [ ] **Step 3: 取回、生成并校验**
+
+Run:
+
+```bash
+pnpm openapi:fetch
+pnpm openapi:generate
+pnpm openapi:check
+```
+
+Expected: 三条均 exit 0；`openapi/spec.json` 与 lock digest 一致；`src/services/generated/` 出现 `schema.d.ts` / `client.ts` / `index.ts` / `ARTIFACT.json`，`.gitkeep` 由 generator 删除。
+
+- [ ] **Step 4: 验证 generated 边界和发布门**
+
+Run:
+
+```bash
+test ! -e src/services/generated/.gitkeep
+rg -n "identity_me|identity_navigation|/api/v1/me|/api/v1/navigation" src/services/generated/schema.d.ts
+pnpm openapi:check:release
+pnpm tsc
+```
+
+Expected: schema 包含两个 identity read operation；`api` 可编译；release check 由原先的 fail-closed 转为 exit 0。
+
+- [ ] **Step 5: 运行全量验证**
+
+Run:
+
+```bash
+pnpm lint
+pnpm test
+pnpm build
+```
+
+Expected: 全绿；lint 中的 soft OpenAPI check 和 baseline check 同时通过。
+
+- [ ] **Step 6: 精确提交 Artifact 产物**
+
+```bash
+git add openapi/ src/services/generated/
+git commit -m "feat(services): pin first backend OpenAPI artifact (file channel)"
+```
+
+Expected: 提交不包含个人 Skill cache、同级后端/GitOps 仓或任何 UI 文件；禁止 `git add -A`。
+
+---
+
+### Task 19: Feature service 切换 generated identity API 与联调闭环
+
+**Files:**
+- Modify: `src/services/transport/index.ts`
+- Modify: `src/services/transport/index.test.ts`
+- Modify: `src/features/auth/service.ts`
+- Modify: `src/features/auth/service.test.ts`
+- Modify: `src/features/navigation/service.ts`
+- Modify: `src/features/navigation/service.test.ts`
+
+**Interfaces:**
+- Consumes: Task 18 的 `api.GET('/api/v1/me')` 与 `api.GET('/api/v1/navigation')`。
+- Preserves: `fetchMe(): Promise<CurrentUser | null>`、`fetchNavigation(): Promise<NavigationItem[]>`、`login(input): Promise<void>` 与页面/Initial State 调用方零改动。
+- Preserves: `/api/v1/auth/login` 未出现在 `api-v0.1.0` Artifact，因此 `login` 继续委托现有 `authenticate`，不伪造 generated operation。
+- Adapts: generated client 默认 base URL 为空字符串，避免 Artifact 已含 `/api/v1/*` 时变成 `/api/api/v1/*`；当前 mock 成功信封在 transport 边界解包，后端 Artifact 的 plain JSON 保持原样。
+
+- [ ] **Step 1: 先写 transport 契约的失败测试**
+
+`src/services/transport/index.test.ts` 新增可观察用例：
+
+```ts
+import type { paths } from '@/services/generated';
+
+it('generated client 不重复追加 /api 前缀', async () => {
+  const fetchMock = vi.fn(async () =>
+    Response.json({ employeeId: '00000000', name: 'V0.1 Stub' }),
+  );
+  vi.stubGlobal('fetch', fetchMock);
+  const client = createApiClient<paths>();
+
+  await client.GET('/api/v1/me');
+
+  const request = fetchMock.mock.calls[0]?.[0];
+  const url = request instanceof Request ? request.url : String(request);
+  expect(url).toContain('/api/v1/me');
+  expect(url).not.toContain('/api/api/v1/me');
+});
+
+it('generated client 兼容解包当前 code/data/message 成功信封', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => Response.json({
+    code: 200,
+    data: { employeeId: '00000000', name: 'V0.1 Stub' },
+    message: 'ok',
+  })));
+  const client = createApiClient<paths>();
+
+  await expect(client.GET('/api/v1/me')).resolves.toMatchObject({
+    data: { employeeId: '00000000', name: 'V0.1 Stub' },
+  });
+});
+```
+
+另保留并扩展既有非 2xx / network / Abort `ApiError` 测试，断言 plain JSON 200 不被二次包装。
+
+- [ ] **Step 2: 运行 transport 测试确认 RED**
+
+Run: `pnpm exec vitest run src/services/transport/index.test.ts`
+
+Expected: 当前默认 `baseUrl = '/api'` 造成重复前缀，且 200 信封尚未解包，新用例 FAIL；原有错误归一化用例仍绿。
+
+- [ ] **Step 3: 最小修正 generated transport 边界**
+
+`createApiClient<Paths>()` 的默认 `baseUrl` 改为 `''`。在现有 normalize middleware 中只对具有精确 `{ code, data, message }` 形状的 2xx JSON 执行：
+
+```ts
+code === 200 ? data : throw new ApiError({ status: code, title: message })
+```
+
+plain JSON 、非 JSON 与 RFC 9457 错误按现有路径处理；仅通过 `response.clone()` 读取判定，返回新 `Response` 时移除旧 `content-length`，不在 Feature 重复信封判定。
+
+- [ ] **Step 4: 先写 Feature 切换的失败测试**
+
+`auth/service.test.ts` 改为 mock `@/services/generated` 的 `api.GET`和 `@/services/auth` 的 `authenticate`；断言：
+
+```ts
+expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/me');
+expect(authServiceMock.authenticate).toHaveBeenCalledWith(input);
+```
+
+`navigation/service.test.ts` mock generated `api.GET`，断言精确 path `/api/v1/navigation`。两个 Feature 仍要覆盖 data 成功、空 data 与 throw 时的 fail-closed `null` / `[]`；不删除 login 错误传播测试。
+
+- [ ] **Step 5: 运行 Feature 测试确认 RED**
+
+Run:
+
+```bash
+pnpm exec vitest run src/features/auth/service.test.ts src/features/navigation/service.test.ts
+```
+
+Expected: 新的 generated `api.GET` 调用断言 FAIL，因为当前 Feature 仍委托手写 `getCurrentUser/getNavigation`。
+
+- [ ] **Step 6: 切换两个 Feature read seam**
+
+`auth/service.ts` 使用：
+
+```ts
+import { api } from '@/services/generated';
+import { authenticate } from '@/services/auth';
+
+export async function fetchMe(): Promise<CurrentUser | null> {
+  try {
+    const { data } = await api.GET('/api/v1/me');
+    return data ?? null;
+  } catch {
+    return null;
+  }
+}
+```
+
+`navigation/service.ts` 使用：
+
+```ts
+import { api } from '@/services/generated';
+
+export async function fetchNavigation(): Promise<NavigationItem[]> {
+  try {
+    const { data } = await api.GET('/api/v1/navigation');
+    return data ?? [];
+  } catch {
+    return [];
+  }
+}
+```
+
+`login` 保持现有 `authenticate(input)` 委托与错误传播。页面、Initial State、React Query 和 layout 不修改。
+
+- [ ] **Step 7: 运行 focused 与全量门禁**
+
+Run:
+
+```bash
+pnpm exec vitest run src/services/transport/index.test.ts src/features/auth/service.test.ts src/features/navigation/service.test.ts src/pages/Login/index.test.tsx src/app.test.ts
+pnpm depcruise
+pnpm openapi:check:release
+pnpm lint
+pnpm test
+pnpm build
+```
+
+Expected: generated path/base URL、mock 成功信封、plain backend JSON、ProblemDetails 与 Feature fail-closed 全部通过；登录编排与 Initial State 零改动。
+
+- [ ] **Step 8: 运行一次 fresh-session 联调 smoke**
+
+Run: `pnpm dev`
+
+用 fresh profile 确认：无 Cookie 进 `/home` 转 `/login`；`00000000 / 非空密码 / 123456` 登录后 generated `/api/v1/me` 与 `/api/v1/navigation` 均只请求一次、URL 不含 `/api/api/`，最终进 `/home`并显示动态菜单；Console 无 Runtime error。
+
+- [ ] **Step 9: 精确提交 Feature 切换**
+
+```bash
+git add src/services/transport/index.ts src/services/transport/index.test.ts src/features/auth/service.ts src/features/auth/service.test.ts src/features/navigation/service.ts src/features/navigation/service.test.ts
+git commit -m "feat(features): consume generated identity API"
+```
+
+Expected: 不重新提交 generated Artifact，不修改后端/GitOps 仓，不使用 `git add -A`。
 
 ---
 
@@ -1894,10 +2143,12 @@ git commit -m "feat(routes): expose reconstructed pages by navigation access"
 | Admin Workspaces/Skills/Models | Task 11、Task 12、Task 13 |
 | Admin Roles/Users/Menus | Task 14、Task 15、Task 16 |
 | 16 routes、13 menu keys、1280/1440、lint/test/build/doctor/coverage | Task 17 |
+| `api-v0.1.0` file-channel Artifact 锁定、generated client 与 release gate | Task 18 |
+| `fetchMe/fetchNavigation` generated seam、base URL/信封兼容与 fresh-session 联调 | Task 19 |
 
 ## 计划执行注意事项
 
 - 每个任务由全新实现 Agent 执行，再由独立规格 reviewer 和代码质量 reviewer 审查；不要让同一子 Agent同时实现与批准自己的任务。
 - reviewer 只读期间不得编辑；修复由原实现 Agent 或新的 fix Agent 完成，并重新运行该任务 focused/full gate。
 - 若 Umi/AntD 当前类型与计划代码片段冲突，以已安装版本类型和官方 API 为准，但不得改变已批准的可观察行为；使用 `superpowers:systematic-debugging` 取证后向 controller 报告。
-- 不运行 `git add -A`；每次按任务文件清单精确暂存，始终排除 `engineering-platform-gitops/`、个人 Skill 缓存、生成目录、浏览器 profile 与其他并发改动。
+- 不运行 `git add -A`；每次按任务文件清单精确暂存，始终排除同级后端/GitOps 仓、个人 Skill 缓存、浏览器 profile 与其他并发改动；只有 Task 18 按其精确清单提交 `openapi/` 与 `src/services/generated/`。
