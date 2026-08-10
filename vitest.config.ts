@@ -10,6 +10,8 @@ export default defineConfig({
     },
   },
   test: {
+    // ProComponents + happy-dom 的高资源页面套件并发时会造成资源饥饿，需串行执行测试文件。
+    fileParallelism: false,
     environment: 'happy-dom',
     globals: true,
     setupFiles: ['./tests/setupTests.ts'],
