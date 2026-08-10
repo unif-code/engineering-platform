@@ -4,7 +4,7 @@
 
 **Goal:** 在保留 V0.1 登录、Session、Initial State、路由守卫与数据边界的前提下，用 Ant Design token、ProLayout 和 ProComponents 将原型覆盖的全部用户端/管理端页面重建为可导航、可切主题、具备视觉交互的桌面 UI 骨架。
 
-**Architecture:** Umi Max 继续拥有路由和 ProLayout；`features/theme` 负责 `system | light | dark` 状态并通过 Umi 官方 AntD runtime setter 更新唯一 ConfigProvider，`features/navigation` 以静态 Route Registry 解释后端 `routeKey`。页面 UI、静态 fixtures、局部 adapter 与交互 state 就近放在 `src/pages/<Page>/`；不把静态数据伪装为 API，也不复制原型业务状态机。
+**Architecture:** Umi Max 继续拥有路由和 ProLayout；`features/theme` 负责 `system | light | dark` 状态，通过 Umi 官方 AntD runtime setter 更新唯一应用级 ConfigProvider，并把同一 `resolvedTheme` 投影到 ProComponents 公开 `ProProvider.dark`；`features/navigation` 以静态 Route Registry 解释后端 `routeKey`。页面 UI、静态 fixtures、局部 adapter 与交互 state 就近放在 `src/pages/<Page>/`；不把静态数据伪装为 API，也不复制原型业务状态机。
 
 **Tech Stack:** Umi Max 4.6、React 19、Ant Design 6、ProComponents 3、Ant Design X 2、antd-style 4、Vitest + Testing Library、dependency-cruiser。
 
@@ -19,7 +19,8 @@
 - 原型只作为视觉、布局与信息密度参考；登录、Session、Initial State、路由守卫、信封解包和 `pages → features → services` 是唯一逻辑事实源。
 - 视觉参考的绝对路径为 `/Users/liulijun/Downloads/untitled/project/研发协作平台.dc.html`；只读取该原型，不修改其文件，也不照搬其中的业务逻辑或示例数据。
 - 产品名固定为“内部研发平台”；Brand Orange 为 `#EB6E00`，白字主要操作色为 `#C25700`；禁止页面硬编码主题色、`!important` 暗色补丁、emoji/Unicode 菜单图标。
-- 主题固定为 `system | light | dark`，storage key 固定为 `engineering-platform.theme.v1`；首次跟随系统，手动 light/dark 持久化，恢复 system 时删除 override。
+- 主题固定为 `system | light | dark`，storage key 固定为 `engineering-platform.theme.v1`；首次跟随系统，仅手动 light/dark 模式持久化，恢复 system 时删除 override；禁止持久化 token、主题色或 ProLayout settings。
+- 不向用户渲染 Ant Design Pro `SettingDrawer`，不把主题复制到 `initialState.settings`；`ThemeProvider` 同时驱动 Umi AntD theme 和 `ProProvider.dark`，是唯一主题状态源。
 - 继续使用 Umi ProLayout；展开侧栏 208px、折叠约 64px、顶栏 52px、页面 padding 20px 24px；桌面支持下限 1280px，不实现移动端布局。
 - 页面组件优先 ProComponents，其次 Ant Design；只有至少两个页面复用的展示 primitive 才提升到 `src/components/`；页面私有组件平铺，样式写 `index.style.ts`，fixture 写 `constant.ts`。
 - API client 不在本计划新增；页面不得直达 `services`，不得使用 `useRequest`，不得接入 OpenAPI generated client。
@@ -229,13 +230,15 @@ git commit -m "feat(theme): add persistent system-aware color mode"
 - Modify: `src/app.ts`
 - Modify: `src/app.test.ts`
 - Modify: `config/defaultSettings.ts`
+- Modify: `src/features/theme/ThemeProvider.tsx`
+- Modify: `src/features/theme/ThemeProvider.test.tsx`
 
 **Interfaces:**
 - Produces: `APP_PATHS`、`RouteKey`、`ROUTE_REGISTRY`、`isRouteKey(value)`、`getRouteRegistration(value)`。
 - Produces: `buildMenuData(items): MenuDataItem[]`，输出“用户端”“管理端”两个 group；未知 key 双重防御过滤。
 - Produces: `canAccessAdmin`，只由后端 `navigation` 中已知管理端 routeKey 派生；普通用户不显示管理分组且后续路由 access 拒绝 `/admin/*`。
 - Produces: `BrandMark`（登录和侧栏共用）、`HeaderActions`、`HeaderTitle`、`MenuBrand`。
-- Consumes: Task 1 的 `ThemeSelector` 与 `ResolvedTheme`，不另建主题状态。
+- Consumes: Task 1 的 `ThemeSelector` 与 `ResolvedTheme`，不另建主题状态；仅将 `ResolvedTheme` 投影为 ProComponents `ProProvider.dark`。
 
 - [ ] **Step 1: 查询壳层用到的当前 API**
 
@@ -252,6 +255,7 @@ NO_UPDATE_CHECK=1 pnpm exec antd --version 6.4.4 --lang zh info Tooltip --format
 
 ```bash
 rg -n "actionsRender|avatarProps|menuHeaderRender|headerContentRender|siderWidth" node_modules/@ant-design/pro-components -g '*.d.ts'
+rg -n "ProConfigProvider|ProProvider" node_modules/@ant-design/pro-components/es/provider -g '*.d.ts' -g '*.js'
 ```
 
 Expected: 只采用当前类型存在的 ProLayout prop；不使用已无效的 `rightContentRender`。
@@ -348,6 +352,7 @@ export interface BrandMarkProps {
 ```ts
 {
   layout: 'mix',
+  navTheme: undefined,
   logo: false,
   title: false,
   siderWidth: 208,
@@ -362,7 +367,7 @@ export interface BrandMarkProps {
 }
 ```
 
-用 ProLayout token 把 header height 设为 52、PageContainer padding 设为 20/24。`defaultSettings` 改为橙色、`layout: 'mix'`、固定 header/sider，并删除固定 `navTheme: 'light'`；ProLayout 在唯一 ConfigProvider 下消费同一 algorithm/token，不在 layout 配置建立第二套 light/dark 状态。Task 17 必须用浏览器验证侧栏和 Portal 同步变色。
+用 ProLayout token 把 header height 设为 52、PageContainer padding 设为 20/24。`defaultSettings` 改为橙色、`layout: 'mix'`、固定 header/sider，并删除固定 `navTheme: 'light'`。runtime 显式返回 `navTheme: undefined` 以覆盖 Umi 生成层的静态默认值；`ThemeProvider` 从公开 `ProProvider` 读取父值后只更新 `dark` 字段，不额外创建 `ConfigProvider`。ProLayout 因而继承同一 resolved theme/algorithm/token，layout 配置不建立第二套 light/dark 状态，也不渲染 `SettingDrawer`。测试要用 `ProProvider` probe 验证 system/light/dark 切换时 `dark` 同步；Task 17 必须用浏览器验证侧栏和 Portal 同步变色。
 
 - [ ] **Step 6: 运行 focused、架构与全量门禁**
 
@@ -381,7 +386,7 @@ Expected: Registry/menu/shell 全绿；20-edge dependency contract 继续通过�
 - [ ] **Step 7: Commit**
 
 ```bash
-git add config/defaultSettings.ts src/access.ts src/access.test.ts src/app.ts src/app.test.ts src/constants/route.ts src/components/BrandMark src/features/navigation src/features/shell
+git add config/defaultSettings.ts src/access.ts src/access.test.ts src/app.ts src/app.test.ts src/constants/route.ts src/components/BrandMark src/features/navigation src/features/shell src/features/theme/ThemeProvider.tsx src/features/theme/ThemeProvider.test.tsx
 git commit -m "feat(shell): add branded navigation and route registry"
 ```
 

@@ -22,7 +22,7 @@
 | 页面范围 | 原型全部用户端与管理端页面均建立独立路由和静态 UI 骨架 |
 | 交互范围 | 路由、主题、Tab、Segmented、Modal、Drawer、筛选外观和按钮反馈可用；不模拟真实业务状态机 |
 | 适配范围 | 桌面优先，支持 1280px 及以上；侧栏可折叠 |
-| 主题 | `system | light | dark`；首次跟随系统，手动选择后写入 localStorage，可恢复跟随系统 |
+| 主题 | `system | light | dark`；首次跟随系统，仅手动选择的 light/dark 模式写入 localStorage，可恢复跟随系统；不持久化 token、主题色或 ProLayout settings |
 | 登录 | 仅重构现有员工编号 + 密码 + TOTP 登录视觉，不加入首次初始化、重置密码或 TOTP 绑定流程 |
 | 内容口径 | 使用当前 `docs/architecture` 术语和中性静态示例；原型仅提供视觉与信息密度参考 |
 | 导航 | 全部页面进入现有动态菜单；用户端与“管理端”分组展示 |
@@ -83,6 +83,8 @@
 5. 顶栏右侧提供三态主题入口。
 6. ConfigProvider、ProLayout、App、Modal、Drawer、Dropdown、Tooltip、Select 和 message 使用同一主题上下文，禁止通过局部 `data-*` 和 `!important` 补丁实现暗色。
 7. 首屏绘制前同步解析已保存模式或系统偏好，避免页面出现 light/dark 闪烁。
+8. 不渲染 Ant Design Pro `SettingDrawer`，不把整套 `settings` 写入 Initial State 或 localStorage；`ThemeProvider` 是唯一状态源。
+9. `ThemeProvider` 将同一 `resolvedTheme` 投影到 Umi AntD runtime theme 与 ProComponents 公开 `ProProvider.dark` 上；不新建第二个 ConfigProvider，ProLayout 不另存 `navTheme`。
 
 ## 4. 全局外壳
 
