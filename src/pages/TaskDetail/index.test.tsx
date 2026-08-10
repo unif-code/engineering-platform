@@ -1,14 +1,6 @@
-import {
-  act,
-  createEvent,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { App } from 'antd';
+import { App, ConfigProvider } from 'antd';
 import { describe, expect, it, vi } from 'vitest';
 import TaskDetailPage from '.';
 
@@ -25,19 +17,12 @@ vi.mock('@umijs/max', () => ({
 
 function renderPage() {
   return render(
-    <App>
-      <TaskDetailPage />
-    </App>,
+    <ConfigProvider theme={{ token: { motion: false } }}>
+      <App>
+        <TaskDetailPage />
+      </App>
+    </ConfigProvider>,
   );
-}
-
-function pressKeyboardKey(element: Element, key: string, which: number) {
-  const event = createEvent.keyDown(element, { code: key, key });
-  Object.defineProperties(event, {
-    keyCode: { value: which },
-    which: { value: which },
-  });
-  fireEvent(element, event);
 }
 
 async function chooseMoreAction(
@@ -127,9 +112,16 @@ describe('TaskDetailPage', () => {
     });
   });
 
-  it('从菜单打开 Artifact 并按 Escape 关闭后焦点回到更多操作', async () => {
-    // rc-component 的 test ID 会让嵌套 Portal 共用同一个 Escape stack ID。
-    // 使用运行时 ID 分支，才能覆盖浏览器中的真实键盘路径。
+  it.each([
+    { actionName: '查看 Artifact', dialogName: 'Artifact 文档' },
+    { actionName: '查看完整 Diff', dialogName: '代码 Diff' },
+    { actionName: '驳回审批', dialogName: '驳回审批' },
+  ])('从菜单打开 $actionName 并按 Escape 关闭后焦点回到更多操作', async ({
+    actionName,
+    dialogName,
+  }) => {
+    // rc-component 在 test 环境为所有 Portal 生成相同 ID；development
+    // 分支使用真实唯一 ID，才能复现浏览器的 Overlay Escape 栈。
     vi.stubEnv('NODE_ENV', 'development');
     try {
       const user = userEvent.setup();
@@ -140,41 +132,20 @@ describe('TaskDetailPage', () => {
       const moreActionsButton = within(actions).getByRole('button', {
         name: '更多操作',
       });
-      moreActionsButton.focus();
-      await user.keyboard('{Enter}');
+      await user.click(moreActionsButton);
+      const menuItem = await screen.findByRole('menuitem', {
+        name: actionName,
+      });
+      await user.click(menuItem);
 
-      const artifactMenuItem = await screen.findByRole('menuitem', {
-        name: '查看 Artifact',
-      });
-      await act(async () => {
-        artifactMenuItem.focus();
-      });
-      expect(artifactMenuItem).toHaveFocus();
-      await act(async () => {
-        pressKeyboardKey(artifactMenuItem, 'Enter', 13);
-      });
-
-      const artifactDrawer = await screen.findByRole('dialog', {
-        name: 'Artifact 文档',
-      });
-      const artifactDrawerWrapper = artifactDrawer.closest(
-        '.ant-drawer-content-wrapper',
-      );
-      expect(artifactDrawerWrapper).not.toBeNull();
-      await waitFor(() => {
-        expect(artifactDrawerWrapper?.className).not.toMatch(
-          /ant-drawer-panel-motion/,
-        );
-      });
-      within(artifactDrawer)
-        .getByRole('button', { name: /关闭|close/i })
-        .focus();
+      const dialog = await screen.findByRole('dialog', { name: dialogName });
       await user.keyboard('{Escape}');
+
+      await waitFor(() => {
+        expect(dialog).not.toBeInTheDocument();
+      });
       await waitFor(() => {
         expect(moreActionsButton).toHaveFocus();
-      });
-      await waitFor(() => {
-        expect(artifactDrawer).not.toBeInTheDocument();
       });
     } finally {
       vi.unstubAllEnvs();

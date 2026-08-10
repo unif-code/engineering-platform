@@ -96,7 +96,13 @@ export default function TaskDetailPage() {
       />
 
       <Drawer
+        afterOpenChange={(nextOpen) => {
+          if (!nextOpen) {
+            moreActionsButtonRef.current?.focus({ preventScroll: true });
+          }
+        }}
         destroyOnHidden
+        focusable={{ focusTriggerAfterClose: false }}
         onClose={() => setDiffOpen(false)}
         open={diffOpen}
         size={880}
@@ -105,9 +111,11 @@ export default function TaskDetailPage() {
         <DiffContent />
       </Drawer>
 
-      {rejectOpen ? (
-        <RejectApprovalModal onClose={() => setRejectOpen(false)} open />
-      ) : null}
+      <RejectApprovalModal
+        focusReturnRef={moreActionsButtonRef}
+        onClose={() => setRejectOpen(false)}
+        open={rejectOpen}
+      />
     </PageContainer>
   );
 }

@@ -1,7 +1,7 @@
 import type { ProDescriptionsProps } from '@ant-design/pro-components';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { App, Button } from 'antd';
+import { App, Button, ConfigProvider } from 'antd';
 import { useRef, useState } from 'react';
 import { describe, expect, it } from 'vitest';
 import { DetailDrawer } from '.';
@@ -52,25 +52,27 @@ function DetailDrawerHarness() {
   const openButtonRef = useRef<HTMLAnchorElement | HTMLButtonElement>(null);
 
   return (
-    <App>
-      <Button onClick={() => setOpen(true)} ref={openButtonRef}>
-        打开详情
-      </Button>
-      <p aria-label="关闭次数" role="status">
-        {closeCount}
-      </p>
-      <DetailDrawer<ArtifactSummary>
-        columns={artifactColumns}
-        dataSource={artifact}
-        focusReturnRef={openButtonRef}
-        onClose={() => {
-          setCloseCount((current) => current + 1);
-          setOpen(false);
-        }}
-        open={open}
-        title="制品详情"
-      />
-    </App>
+    <ConfigProvider theme={{ token: { motion: false } }}>
+      <App>
+        <Button onClick={() => setOpen(true)} ref={openButtonRef}>
+          打开详情
+        </Button>
+        <p aria-label="关闭次数" role="status">
+          {closeCount}
+        </p>
+        <DetailDrawer<ArtifactSummary>
+          columns={artifactColumns}
+          dataSource={artifact}
+          focusReturnRef={openButtonRef}
+          onClose={() => {
+            setCloseCount((current) => current + 1);
+            setOpen(false);
+          }}
+          open={open}
+          title="制品详情"
+        />
+      </App>
+    </ConfigProvider>
   );
 }
 
@@ -117,11 +119,6 @@ describe('DetailDrawer', () => {
 
     await user.click(screen.getByRole('button', { name: '打开详情' }));
     const dialog = await screen.findByRole('dialog', { name: '制品详情' });
-    const drawerWrapper = dialog.closest('.ant-drawer-content-wrapper');
-    expect(drawerWrapper).not.toBeNull();
-    await waitFor(() => {
-      expect(drawerWrapper?.className).not.toMatch(/ant-drawer-panel-motion/);
-    });
     await user.click(
       within(dialog).getByRole('button', { name: '交互次数 0' }),
     );
