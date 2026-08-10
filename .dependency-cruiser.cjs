@@ -1,4 +1,4 @@
-/** 依赖方向契约（见 docs/architecture/06 与 AGENTS.md）。 */
+/** 依赖方向契约（见 ../engineering-platform-docs/architecture/06 与 AGENTS.md）。 */
 module.exports = {
   forbidden: [
     {

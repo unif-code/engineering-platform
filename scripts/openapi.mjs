@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// OpenAPI Artifact 链（见 docs/architecture/06 与 AGENTS.md）：
+// OpenAPI Artifact 链（见 ../engineering-platform-docs/architecture/06 与 AGENTS.md）：
 //   fetch    按 openapi/artifact.lock.json 取回构件并校验 sha256，写入 openapi/spec.json
 //   generate 从已校验的 spec 生成 src/services/generated（类型 + 版本戳），不得手改
 //   check    校验 spec 与锁定摘要一致，并 dirty-diff 生成目录（手改或漂移即失败）
@@ -78,7 +78,7 @@ const HTTP_METHODS = [
 // 前端侧的保守结构化兼容检查，覆盖：删除的 path/operation、删除或转必填的参数、
 // 新增必填参数、requestBody 转必填、删除的响应状态码、operation 新增认证要求、
 // components.schemas 的删除/类型变化/枚举收窄/新增必填字段、securityScheme 删除。
-// 内联 operation Schema、$ref 解析与 allOf/oneOf 组合语义仍由后端仓 CI 的完整 diff 承担（见 docs/architecture/06）。
+// 内联 operation Schema、$ref 解析与 allOf/oneOf 组合语义仍由后端仓 CI 的完整 diff 承担（见 ../engineering-platform-docs/architecture/06）。
 const opParams = (pathItem, op) =>
   [...(pathItem?.parameters ?? []), ...(op?.parameters ?? [])].filter(
     (p) => p?.name,
