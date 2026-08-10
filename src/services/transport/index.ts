@@ -1,6 +1,7 @@
 import createClient, { type Middleware } from 'openapi-fetch';
 
 export { resolveApiEnvelope } from './envelope';
+export { mutationHeaders } from './mutation';
 
 /** RFC 9457 Problem Details for HTTP APIs */
 export interface ProblemDetails {
@@ -15,12 +16,21 @@ export interface ProblemDetails {
 /** 服务端与传输层错误的统一形态：页面与 Feature 只依赖它，不依赖底层 HTTP 客户端异常 */
 export class ApiError extends Error {
   readonly problem: ProblemDetails;
+  readonly requestId: string | undefined;
 
   constructor(problem: ProblemDetails, options?: ErrorOptions) {
     super(problem.title ?? `HTTP ${problem.status ?? 'error'}`, options);
     this.name = 'ApiError';
     this.problem = problem;
+    this.requestId =
+      typeof problem.requestId === 'string' ? problem.requestId : undefined;
   }
+}
+
+let unauthorizedHandler: (() => void) | undefined;
+
+export function onUnauthorized(handler: () => void): void {
+  unauthorizedHandler = handler;
 }
 
 const toProblem = (text: string, response: Response): ProblemDetails => {
@@ -45,6 +55,13 @@ const normalize: Middleware = {
   async onResponse({ response }) {
     if (response.ok) {
       return undefined;
+    }
+    if (response.status === 401) {
+      try {
+        unauthorizedHandler?.();
+      } catch {
+        // 认证失效通知不得遮蔽服务端返回的 Problem Details。
+      }
     }
     throw new ApiError(toProblem(await response.clone().text(), response));
   },
