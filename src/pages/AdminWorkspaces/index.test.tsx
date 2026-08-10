@@ -39,7 +39,7 @@ describe('AdminWorkspacesPage', () => {
     expect(within(table).getAllByRole('row')).toHaveLength(4);
   });
 
-  it('可通过搜索与状态筛选可见工作区', async () => {
+  it('快速连续更新搜索与状态时只呈现最新筛选结果', async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole('row', { name: /Platform Core/ });
@@ -62,9 +62,13 @@ describe('AdminWorkspacesPage', () => {
     await user.clear(search);
     await selectOption(user, '工作区状态', '受限');
 
+    expect(
+      screen.getByRole('toolbar', { name: '工作区筛选与操作' }),
+    ).toHaveTextContent('共 1 个工作区');
+
     await waitFor(() => {
       expect(
-        screen.getByRole('row', { name: /Delivery Governance/ }),
+        screen.getByRole('row', { name: /Delivery Governance.*受限/ }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole('row', { name: /Platform Core/ }),
