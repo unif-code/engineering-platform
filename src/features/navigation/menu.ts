@@ -21,11 +21,26 @@ const GROUPS: Array<{
   { group: 'admin', key: 'group-admin', name: '管理端' },
 ];
 
+const GROUP_RANK: Record<NavigationGroupKey, number> = {
+  user: 0,
+  admin: 1,
+};
+
 function compareNavigationItems(
   first: RegisteredNavigationItem,
   second: RegisteredNavigationItem,
 ): number {
-  if (first.registration.group === 'admin') {
+  const groupDifference =
+    GROUP_RANK[first.registration.group] -
+    GROUP_RANK[second.registration.group];
+  if (groupDifference !== 0) {
+    return groupDifference;
+  }
+
+  if (
+    first.registration.group === 'admin' &&
+    second.registration.group === 'admin'
+  ) {
     if (first.item.routeKey === 'admin') {
       return second.item.routeKey === 'admin' ? 0 : -1;
     }
@@ -34,7 +49,16 @@ function compareNavigationItems(
     }
   }
 
-  return first.item.order - second.item.order;
+  const orderDifference = first.item.order - second.item.order;
+  if (orderDifference !== 0) {
+    return orderDifference;
+  }
+
+  if (first.item.routeKey === second.item.routeKey) {
+    return 0;
+  }
+
+  return first.item.routeKey < second.item.routeKey ? -1 : 1;
 }
 
 export function buildMenuData(items: NavigationItem[]): MenuDataItem[] {

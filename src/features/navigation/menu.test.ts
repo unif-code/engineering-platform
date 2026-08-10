@@ -2,6 +2,18 @@ import { describe, expect, it } from 'vitest';
 import { buildMenuData } from './menu';
 import { ROUTE_REGISTRY } from './registry';
 
+function permutations<T>(items: readonly T[]): T[][] {
+  if (items.length <= 1) {
+    return [[...items]];
+  }
+
+  return items.flatMap((item, index) =>
+    permutations(items.filter((_, itemIndex) => itemIndex !== index)).map(
+      (rest) => [item, ...rest],
+    ),
+  );
+}
+
 describe('buildMenuData', () => {
   it('过滤未知 key 后按分组和 order 输出菜单，且管理概览固定在管理组首位', () => {
     const items = [
@@ -94,5 +106,29 @@ describe('buildMenuData', () => {
         { routeKey: 'constructor', name: '原型属性', order: 2 },
       ]),
     ).toEqual([]);
+  });
+
+  it('任意用户端与管理端混合排列都生成同一确定顺序', () => {
+    const items = [
+      { routeKey: 'admin', name: '管理概览', order: 99 },
+      { routeKey: 'home', name: '首页', order: 2 },
+      { routeKey: 'adminUsers', name: '用户管理', order: 3 },
+      { routeKey: 'tasks', name: '任务', order: 4 },
+      { routeKey: 'adminMenus', name: '菜单管理', order: 5 },
+    ];
+
+    for (const permutation of permutations(items)) {
+      const groupChildren = buildMenuData(permutation).map((group) =>
+        group.children?.map(({ key }) => key),
+      );
+
+      expect(
+        groupChildren,
+        permutation.map(({ routeKey }) => routeKey).join(', '),
+      ).toEqual([
+        ['home', 'tasks'],
+        ['admin', 'adminUsers', 'adminMenus'],
+      ]);
+    }
   });
 });
