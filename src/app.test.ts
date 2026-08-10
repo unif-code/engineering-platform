@@ -145,6 +145,41 @@ describe('layout', () => {
     ]);
   });
 
+  it('只按后端 navigation 决定是否生成管理端分组', () => {
+    const userOnlyNavigation = [
+      { routeKey: 'home', name: '工作台', order: 1 },
+      { routeKey: 'tasks', name: '任务', order: 2 },
+      { routeKey: 'workspaces', name: '工作区', order: 3 },
+      { routeKey: 'messages', name: '消息中心', order: 4 },
+      { routeKey: 'teamBoard', name: '团队看板', order: 5 },
+      { routeKey: 'audit', name: '审计看板', order: 6 },
+    ];
+    const adminNavigation = [
+      ...userOnlyNavigation,
+      { routeKey: 'admin', name: '管理概览', order: 7 },
+      { routeKey: 'adminWorkspaces', name: '工作区管理', order: 8 },
+      { routeKey: 'adminSkills', name: '技能管理', order: 9 },
+      { routeKey: 'adminModels', name: '模型管理', order: 10 },
+      { routeKey: 'adminRoles', name: '角色管理', order: 11 },
+      { routeKey: 'adminUsers', name: '用户管理', order: 12 },
+      { routeKey: 'adminMenus', name: '菜单管理', order: 13 },
+    ];
+
+    const userMenu = layout({
+      initialState: { me: null, navigation: userOnlyNavigation },
+    }).menuDataRender?.();
+    const adminMenu = layout({
+      initialState: { me: null, navigation: adminNavigation },
+    }).menuDataRender?.();
+
+    expect(userMenu).not.toContainEqual(
+      expect.objectContaining({ name: '管理端' }),
+    );
+    expect(adminMenu).toContainEqual(
+      expect.objectContaining({ name: '管理端' }),
+    );
+  });
+
   it('静态 defaultSettings 使用品牌橙和固定 mix 布局且不锁定 navTheme', () => {
     expect(defaultSettings).toMatchObject({
       colorPrimary: '#EB6E00',

@@ -161,8 +161,19 @@ describe('mock API session assembly', () => {
     expect(navigationResponse.body).toEqual({
       code: 200,
       data: [
-        { routeKey: 'home', name: '首页', order: 1 },
-        { routeKey: 'admin', name: '管理后台', order: 2 },
+        { routeKey: 'home', name: '工作台', order: 1 },
+        { routeKey: 'tasks', name: '任务', order: 2 },
+        { routeKey: 'workspaces', name: '工作区', order: 3 },
+        { routeKey: 'messages', name: '消息中心', order: 4 },
+        { routeKey: 'teamBoard', name: '团队看板', order: 5 },
+        { routeKey: 'audit', name: '审计看板', order: 6 },
+        { routeKey: 'admin', name: '管理概览', order: 7 },
+        { routeKey: 'adminWorkspaces', name: '工作区管理', order: 8 },
+        { routeKey: 'adminSkills', name: '技能管理', order: 9 },
+        { routeKey: 'adminModels', name: '模型管理', order: 10 },
+        { routeKey: 'adminRoles', name: '角色管理', order: 11 },
+        { routeKey: 'adminUsers', name: '用户管理', order: 12 },
+        { routeKey: 'adminMenus', name: '菜单管理', order: 13 },
       ],
       message: 'ok',
     });

@@ -15,6 +15,43 @@ function permutations<T>(items: readonly T[]): T[][] {
 }
 
 describe('buildMenuData', () => {
+  it('普通用户 navigation 不生成管理端分组', () => {
+    const userOnlyNavigation = [
+      { routeKey: 'home', name: '工作台', order: 1 },
+      { routeKey: 'tasks', name: '任务', order: 2 },
+      { routeKey: 'workspaces', name: '工作区', order: 3 },
+      { routeKey: 'messages', name: '消息中心', order: 4 },
+      { routeKey: 'teamBoard', name: '团队看板', order: 5 },
+      { routeKey: 'audit', name: '审计看板', order: 6 },
+    ];
+
+    expect(buildMenuData(userOnlyNavigation)).not.toContainEqual(
+      expect.objectContaining({ name: '管理端' }),
+    );
+  });
+
+  it('管理员 navigation 生成管理端分组', () => {
+    const adminNavigation = [
+      { routeKey: 'home', name: '工作台', order: 1 },
+      { routeKey: 'tasks', name: '任务', order: 2 },
+      { routeKey: 'workspaces', name: '工作区', order: 3 },
+      { routeKey: 'messages', name: '消息中心', order: 4 },
+      { routeKey: 'teamBoard', name: '团队看板', order: 5 },
+      { routeKey: 'audit', name: '审计看板', order: 6 },
+      { routeKey: 'admin', name: '管理概览', order: 7 },
+      { routeKey: 'adminWorkspaces', name: '工作区管理', order: 8 },
+      { routeKey: 'adminSkills', name: '技能管理', order: 9 },
+      { routeKey: 'adminModels', name: '模型管理', order: 10 },
+      { routeKey: 'adminRoles', name: '角色管理', order: 11 },
+      { routeKey: 'adminUsers', name: '用户管理', order: 12 },
+      { routeKey: 'adminMenus', name: '菜单管理', order: 13 },
+    ];
+
+    expect(buildMenuData(adminNavigation)).toContainEqual(
+      expect.objectContaining({ name: '管理端' }),
+    );
+  });
+
   it('过滤未知 key 后按分组和 order 输出菜单，且管理概览固定在管理组首位', () => {
     const items = [
       { routeKey: 'adminMenus', name: '菜单管理', order: 5 },
