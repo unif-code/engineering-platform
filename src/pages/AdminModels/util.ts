@@ -1,6 +1,11 @@
 import type { ProTableProps } from '@ant-design/pro-components';
-import { MODEL_ROWS } from './constant';
-import type { ModelQueryParams, ModelRow } from './type';
+import { MODEL_EVALUATION_ROWS, MODEL_ROWS } from './constant';
+import type {
+  ModelEvaluationQueryParams,
+  ModelEvaluationRow,
+  ModelQueryParams,
+  ModelRow,
+} from './type';
 
 type ModelRequest = NonNullable<
   ProTableProps<ModelRow, ModelQueryParams>['request']
@@ -68,3 +73,11 @@ export const queryModelRows: NonNullable<
     total: selected.length,
   };
 };
+
+export const queryModelEvaluationRows: NonNullable<
+  ProTableProps<ModelEvaluationRow, ModelEvaluationQueryParams>['request']
+> = async () => ({
+  data: MODEL_EVALUATION_ROWS.map((row) => ({ ...row })),
+  success: true,
+  total: MODEL_EVALUATION_ROWS.length,
+});

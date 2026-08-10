@@ -43,3 +43,5 @@ export interface ModelEvaluationRow {
   status: 'passed' | 'review';
   evaluatedAt: string;
 }
+
+export type ModelEvaluationQueryParams = Record<string, never>;

@@ -1,14 +1,10 @@
 import { type ProColumns, ProTable } from '@ant-design/pro-components';
 import { useMemo } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
-import {
-  MODEL_EVALUATION_ROWS,
-  MODEL_EVALUATION_STATUS_META,
-} from './constant';
+import { MODEL_EVALUATION_STATUS_META } from './constant';
 import { useStyles } from './index.style';
-import type { ModelEvaluationRow } from './type';
-
-type EvaluationTableParams = Record<string, never>;
+import type { ModelEvaluationQueryParams, ModelEvaluationRow } from './type';
+import { queryModelEvaluationRows } from './util';
 
 export function ModelEvaluationPanel() {
   const { styles } = useStyles();
@@ -42,11 +38,11 @@ export function ModelEvaluationPanel() {
 
   return (
     <section aria-label="模型评测内容" className={styles.tabPanel}>
-      <ProTable<ModelEvaluationRow, EvaluationTableParams>
+      <ProTable<ModelEvaluationRow, ModelEvaluationQueryParams>
         columns={columns}
-        dataSource={MODEL_EVALUATION_ROWS.map((row) => ({ ...row }))}
         options={false}
         pagination={false}
+        request={queryModelEvaluationRows}
         rowKey="id"
         scroll={{ x: 880 }}
         search={false}

@@ -136,7 +136,7 @@ describe('AdminModelsPage', () => {
     });
     expect(within(evaluation).getByRole('table')).toBeInTheDocument();
     expect(
-      within(evaluation).getByRole('row', {
+      await within(evaluation).findByRole('row', {
         name: /Qwen3-Coder.*Internal Code Eval/,
       }),
     ).toBeInTheDocument();

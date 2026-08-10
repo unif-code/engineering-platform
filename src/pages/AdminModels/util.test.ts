@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { MODEL_ROWS } from './constant';
+import { MODEL_EVALUATION_ROWS, MODEL_ROWS } from './constant';
 import type { ModelQueryParams } from './type';
-import { queryModelRows } from './util';
+import { queryModelEvaluationRows, queryModelRows } from './util';
 
 async function runQuery(
   params: ModelQueryParams = {},
@@ -146,6 +146,21 @@ describe('queryModelRows', () => {
       { updatedAt: 'descend' },
     );
 
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('queryModelEvaluationRows', () => {
+  it('返回本地评测信封且不调用 fetch 或修改 fixture', async () => {
+    const fetchSpy = vi.fn();
+    vi.stubGlobal('fetch', fetchSpy);
+    const before = MODEL_EVALUATION_ROWS.map((row) => ({ ...row }));
+
+    const result = await queryModelEvaluationRows({}, {}, {});
+
+    expect(result).toEqual({ data: before, success: true, total: 3 });
+    expect(result.data).not.toBe(MODEL_EVALUATION_ROWS);
+    expect(MODEL_EVALUATION_ROWS).toEqual(before);
     expect(fetchSpy).not.toHaveBeenCalled();
   });
 });
