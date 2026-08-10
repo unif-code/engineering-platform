@@ -7,16 +7,27 @@ import defaultSettings from '../config/defaultSettings';
 const featureMocks = vi.hoisted(() => ({
   fetchMe: vi.fn(),
   fetchNavigation: vi.fn(),
+  logout: vi.fn(),
+  replace: vi.fn(),
   setAntdConfig: vi.fn(),
 }));
 
 vi.mock('@umijs/max', () => ({
+  history: {
+    location: {
+      hash: '#member',
+      pathname: '/admin/users',
+      search: '?status=enabled',
+    },
+    replace: featureMocks.replace,
+  },
   useAntdConfigSetter: () => featureMocks.setAntdConfig,
 }));
 
 vi.mock('@/features/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/auth')>()),
   fetchMe: featureMocks.fetchMe,
+  logout: featureMocks.logout,
 }));
 
 vi.mock('@/features/navigation', async (importOriginal) => ({
@@ -25,29 +36,96 @@ vi.mock('@/features/navigation', async (importOriginal) => ({
 }));
 
 import { usePlatformTheme } from '@/features/theme';
-import { antd, getInitialState, layout, rootContainer } from './app';
+import {
+  createApiClient,
+  normalizeApiError,
+  onUnauthorized,
+} from '@/services/transport';
+import { antd, getInitialState, layout, request, rootContainer } from './app';
 
 beforeEach(() => {
   featureMocks.fetchMe.mockReset();
   featureMocks.fetchNavigation.mockReset();
+  featureMocks.logout.mockReset();
+  featureMocks.replace.mockReset();
   featureMocks.setAntdConfig.mockReset();
+  featureMocks.logout.mockResolvedValue(undefined);
   delete window.__ENGINEERING_PLATFORM_THEME__;
 });
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  onUnauthorized(() => undefined);
 });
 
 describe('getInitialState', () => {
   it('聚合 auth 与 navigation Feature 的精确结果', async () => {
-    const me = { employeeId: '00000000', name: 'V0.1 Stub' };
-    const navigation = [{ routeKey: 'home', name: '首页', order: 1 }];
+    const me = {
+      capabilities: ['identity.account.manage', 'audit.read'],
+      employeeId: '00000000',
+      name: '平台管理员',
+    };
+    const navigation = [
+      {
+        meta: { section: 'workspace' },
+        name: '首页',
+        order: 1,
+        routeKey: 'home',
+        sort: 10,
+      },
+    ];
     featureMocks.fetchMe.mockResolvedValue(me);
     featureMocks.fetchNavigation.mockResolvedValue(navigation);
 
-    await expect(getInitialState()).resolves.toEqual({ me, navigation });
+    await expect(getInitialState()).resolves.toEqual({
+      capabilities: me.capabilities,
+      navigation,
+      principal: { employeeId: '00000000', name: '平台管理员' },
+    });
     expect(featureMocks.fetchMe).toHaveBeenCalledTimes(1);
     expect(featureMocks.fetchNavigation).toHaveBeenCalledTimes(1);
+  });
+
+  it('首屏 navigation 401 在 layout 注册前也归为空 Session', async () => {
+    featureMocks.fetchMe.mockResolvedValue({
+      capabilities: ['identity.account.manage'],
+      employeeId: '00000000',
+      name: '平台管理员',
+    });
+    featureMocks.fetchNavigation.mockRejectedValue(
+      normalizeApiError({
+        config: { url: '/api/v1/navigation' },
+        response: {
+          data: { detail: 'Session 已失效', status: 401 },
+          status: 401,
+        },
+      }),
+    );
+
+    await expect(getInitialState()).resolves.toEqual({
+      capabilities: [],
+      navigation: [],
+      principal: null,
+    });
+  });
+
+  it('首屏 me 为匿名时丢弃不一致的 navigation 投影', async () => {
+    featureMocks.fetchMe.mockResolvedValue(null);
+    featureMocks.fetchNavigation.mockResolvedValue([
+      {
+        meta: {},
+        name: '首页',
+        order: 1,
+        routeKey: 'home',
+        sort: 10,
+      },
+    ]);
+
+    await expect(getInitialState()).resolves.toEqual({
+      capabilities: [],
+      navigation: [],
+      principal: null,
+    });
   });
 });
 
@@ -74,12 +152,31 @@ describe('layout', () => {
   it('提供品牌化 mix 布局、固定尺寸和 header 接缝', () => {
     const config = layout({
       initialState: {
-        me: { employeeId: '00000000', name: '平台用户' },
+        capabilities: ['identity.account.manage'],
         navigation: [
-          { routeKey: 'admin', name: '管理后台', order: 3 },
-          { routeKey: 'ghost', name: '未知菜单', order: 1 },
-          { routeKey: 'home', name: '首页', order: 2 },
+          {
+            meta: {},
+            name: '管理后台',
+            order: 3,
+            routeKey: 'admin',
+            sort: 30,
+          },
+          {
+            meta: {},
+            name: '未知菜单',
+            order: 1,
+            routeKey: 'ghost',
+            sort: 10,
+          },
+          {
+            meta: {},
+            name: '首页',
+            order: 2,
+            routeKey: 'home',
+            sort: 20,
+          },
         ],
+        principal: { employeeId: '00000000', name: '平台用户' },
       },
     });
 
@@ -112,12 +209,31 @@ describe('layout', () => {
   it('用真实 Registry 生成分组后的可见菜单', () => {
     const config = layout({
       initialState: {
-        me: null,
+        capabilities: [],
         navigation: [
-          { routeKey: 'admin', name: '管理概览', order: 3 },
-          { routeKey: 'ghost', name: '未知菜单', order: 1 },
-          { routeKey: 'home', name: '首页', order: 2 },
+          {
+            meta: {},
+            name: '管理概览',
+            order: 3,
+            routeKey: 'admin',
+            sort: 30,
+          },
+          {
+            meta: {},
+            name: '未知菜单',
+            order: 1,
+            routeKey: 'ghost',
+            sort: 10,
+          },
+          {
+            meta: {},
+            name: '首页',
+            order: 2,
+            routeKey: 'home',
+            sort: 20,
+          },
         ],
+        principal: null,
       },
     });
     const groups = config.menuDataRender?.() ?? [];
@@ -147,29 +263,59 @@ describe('layout', () => {
 
   it('只按后端 navigation 决定是否生成管理端分组', () => {
     const userOnlyNavigation = [
-      { routeKey: 'home', name: '工作台', order: 1 },
-      { routeKey: 'tasks', name: '任务', order: 2 },
-      { routeKey: 'workspaces', name: '工作区', order: 3 },
-      { routeKey: 'messages', name: '消息中心', order: 4 },
-      { routeKey: 'teamBoard', name: '团队看板', order: 5 },
-      { routeKey: 'audit', name: '审计看板', order: 6 },
+      {
+        meta: {},
+        name: '工作台',
+        order: 1,
+        routeKey: 'home',
+        sort: 10,
+      },
+      {
+        meta: {},
+        name: '工作区',
+        order: 2,
+        routeKey: 'workspaces',
+        sort: 20,
+      },
+      {
+        meta: {},
+        name: '审计看板',
+        order: 3,
+        routeKey: 'audit',
+        sort: 30,
+      },
     ];
     const adminNavigation = [
       ...userOnlyNavigation,
-      { routeKey: 'admin', name: '管理概览', order: 7 },
-      { routeKey: 'adminWorkspaces', name: '工作区管理', order: 8 },
-      { routeKey: 'adminSkills', name: '技能管理', order: 9 },
-      { routeKey: 'adminModels', name: '模型管理', order: 10 },
-      { routeKey: 'adminRoles', name: '角色管理', order: 11 },
-      { routeKey: 'adminUsers', name: '用户管理', order: 12 },
-      { routeKey: 'adminMenus', name: '菜单管理', order: 13 },
+      {
+        meta: {},
+        name: '管理概览',
+        order: 4,
+        routeKey: 'admin',
+        sort: 40,
+      },
+      {
+        meta: {},
+        name: '账号管理',
+        order: 5,
+        routeKey: 'admin.users',
+        sort: 50,
+      },
     ];
 
     const userMenu = layout({
-      initialState: { me: null, navigation: userOnlyNavigation },
+      initialState: {
+        capabilities: [],
+        navigation: userOnlyNavigation,
+        principal: null,
+      },
     }).menuDataRender?.();
     const adminMenu = layout({
-      initialState: { me: null, navigation: adminNavigation },
+      initialState: {
+        capabilities: [],
+        navigation: adminNavigation,
+        principal: null,
+      },
     }).menuDataRender?.();
 
     expect(userMenu).not.toContainEqual(
@@ -178,6 +324,150 @@ describe('layout', () => {
     expect(adminMenu).toContainEqual(
       expect.objectContaining({ name: '管理端' }),
     );
+  });
+
+  it('transport 401 先清 Session Initial State，再 replace 到带安全回跳的登录页', async () => {
+    const setInitialState = vi.fn().mockResolvedValue(undefined);
+    layout({ setInitialState });
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              detail: 'Session 已过期',
+              status: 401,
+              title: 'UNAUTHORIZED',
+            }),
+            {
+              headers: { 'Content-Type': 'application/problem+json' },
+              status: 401,
+            },
+          ),
+      ),
+    );
+
+    await expect(
+      createApiClient('/api').GET('/api/v1/me' as never),
+    ).rejects.toMatchObject({ problem: { status: 401 } });
+
+    await vi.waitFor(() => {
+      expect(setInitialState).toHaveBeenCalledWith({
+        capabilities: [],
+        navigation: [],
+        principal: null,
+      });
+      expect(featureMocks.replace).toHaveBeenCalledWith(
+        '/login?redirect=%2Fadmin%2Fusers%3Fstatus%3Denabled%23member',
+      );
+    });
+    expect(setInitialState.mock.invocationCallOrder[0]).toBeLessThan(
+      featureMocks.replace.mock.invocationCallOrder[0],
+    );
+  });
+
+  it('Umi request 401 桥接同一 Session 清理，auth 业务 401 不误触发', async () => {
+    const setInitialState = vi.fn().mockResolvedValue(undefined);
+    layout({ setInitialState });
+    const errorHandler = request.errorConfig?.errorHandler;
+    expect(errorHandler).toEqual(expect.any(Function));
+
+    expect(() =>
+      errorHandler?.(
+        {
+          config: { url: '/api/v1/auth/login' },
+          response: {
+            data: { detail: '员工号或密码错误', status: 401 },
+            status: 401,
+          },
+        } as never,
+        {} as never,
+      ),
+    ).toThrow();
+    expect(setInitialState).not.toHaveBeenCalled();
+
+    expect(() =>
+      errorHandler?.(
+        {
+          config: { url: '/api/v1/admin/accounts' },
+          response: {
+            data: { detail: 'Session 已撤销', status: 401 },
+            status: 401,
+          },
+        } as never,
+        {} as never,
+      ),
+    ).toThrow();
+
+    await vi.waitFor(() => expect(setInitialState).toHaveBeenCalledOnce());
+  });
+
+  it('并发 protected 401 合并为一次 Session 清理与跳转', async () => {
+    let resolveState!: () => void;
+    const stateCommit = new Promise<void>((resolve) => {
+      resolveState = resolve;
+    });
+    const setInitialState = vi.fn().mockReturnValue(stateCommit);
+    layout({ setInitialState });
+    const errorHandler = request.errorConfig?.errorHandler;
+    const failure = {
+      config: { url: '/api/v1/admin/accounts' },
+      response: {
+        data: { detail: 'Session 已撤销', status: 401 },
+        status: 401,
+      },
+    } as never;
+
+    expect(() => errorHandler?.(failure, {} as never)).toThrow();
+    expect(() => errorHandler?.(failure, {} as never)).toThrow();
+    expect(setInitialState).toHaveBeenCalledOnce();
+    expect(featureMocks.replace).not.toHaveBeenCalled();
+
+    resolveState();
+    await vi.waitFor(() => expect(featureMocks.replace).toHaveBeenCalledOnce());
+  });
+
+  it('退出成功后清 Session 并 replace 登录页，失败时保留当前状态', async () => {
+    const setInitialState = vi.fn().mockResolvedValue(undefined);
+    const config = layout({
+      initialState: {
+        capabilities: ['identity.account.manage'],
+        navigation: [],
+        principal: { employeeId: '00000000', name: '平台管理员' },
+      },
+      setInitialState,
+    });
+    const headerActions = config.actionsRender?.()?.[0];
+    if (!headerActions || typeof headerActions !== 'object') {
+      throw new Error('Missing HeaderActions element');
+    }
+
+    await headerActions.props.onLogout();
+
+    expect(featureMocks.logout).toHaveBeenCalledOnce();
+    expect(setInitialState).toHaveBeenCalledWith({
+      capabilities: [],
+      navigation: [],
+      principal: null,
+    });
+    expect(featureMocks.replace).toHaveBeenCalledWith('/login');
+
+    featureMocks.logout.mockRejectedValueOnce(
+      normalizeApiError({
+        response: {
+          data: { detail: '退出失败，请重试', status: 503 },
+          status: 503,
+        },
+      }),
+    );
+    setInitialState.mockClear();
+    featureMocks.replace.mockClear();
+
+    await expect(headerActions.props.onLogout()).rejects.toMatchObject({
+      problem: { detail: '退出失败，请重试' },
+    });
+    expect(setInitialState).not.toHaveBeenCalled();
+    expect(featureMocks.replace).not.toHaveBeenCalled();
   });
 
   it('静态 defaultSettings 使用品牌橙和固定 mix 布局且不锁定 navTheme', () => {

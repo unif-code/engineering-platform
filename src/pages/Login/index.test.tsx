@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   committedMe: null as null | { employeeId: string; name: string },
   fetchNavigation: vi.fn(),
   getCurrentUser: vi.fn(),
+  locationSearch: '',
   messageError: vi.fn(),
   push: vi.fn(),
   pushObservedMe: vi.fn(),
@@ -20,15 +21,23 @@ vi.mock('@/services/auth', () => ({
   verifyTotp: mocks.verifyTotp,
 }));
 
-vi.mock('@/features/navigation', () => ({
+vi.mock('@/features/navigation', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/navigation')>()),
   fetchNavigation: mocks.fetchNavigation,
 }));
 
 vi.mock('@umijs/max', async () => {
   const { useCallback, useEffect, useState } = await import('react');
   type InitialState = {
-    me: null | { employeeId: string; name: string };
-    navigation: Array<{ routeKey: string; name: string; order: number }>;
+    capabilities: string[];
+    navigation: Array<{
+      meta: Record<string, unknown>;
+      name: string;
+      order: number;
+      routeKey: string;
+      sort: number;
+    }>;
+    principal: null | { employeeId: string; name: string };
   };
 
   return {
@@ -41,7 +50,7 @@ vi.mock('@umijs/max', async () => {
     useModel: () => {
       const [initialState, commitInitialState] = useState<InitialState>();
       useEffect(() => {
-        mocks.committedMe = initialState?.me ?? null;
+        mocks.committedMe = initialState?.principal ?? null;
       }, [initialState]);
       const setInitialState = useCallback(async (nextState: InitialState) => {
         const completion = mocks.setInitialState(nextState);
@@ -50,6 +59,11 @@ vi.mock('@umijs/max', async () => {
       }, []);
       return { initialState, setInitialState };
     },
+    useLocation: () => ({
+      hash: '',
+      pathname: '/login',
+      search: mocks.locationSearch,
+    }),
     useAntdConfigSetter: () => vi.fn(),
   };
 });
@@ -66,11 +80,32 @@ vi.mock('antd', async (importOriginal) => {
 
 import LoginPage from './index';
 
-const me = { employeeId: '00000000', name: 'V0.1 Stub' };
+const me = {
+  capabilities: ['identity.account.manage', 'audit.read'],
+  employeeId: '00000000',
+  name: '平台管理员',
+};
 const navigation = [
-  { routeKey: 'home', name: '首页', order: 1 },
-  { routeKey: 'admin', name: '管理后台', order: 2 },
+  {
+    meta: {},
+    name: '首页',
+    order: 1,
+    routeKey: 'home',
+    sort: 10,
+  },
+  {
+    meta: {},
+    name: '管理后台',
+    order: 2,
+    routeKey: 'admin',
+    sort: 20,
+  },
 ];
+const initialState = {
+  capabilities: me.capabilities,
+  navigation,
+  principal: { employeeId: me.employeeId, name: me.name },
+};
 const loginInput = {
   employeeNo: '00000000',
   password: 'Valid-Password!2026',
@@ -125,6 +160,7 @@ beforeEach(() => {
     mock.mockReset();
   }
   mocks.committedMe = null;
+  mocks.locationSearch = '';
   mocks.startLogin.mockResolvedValue({
     challengeToken: 'challenge-00000000',
     stage: 'TOTP',
@@ -201,7 +237,7 @@ describe('LoginPage', () => {
     await waitFor(() => {
       expect(mocks.getCurrentUser).toHaveBeenCalledOnce();
       expect(mocks.fetchNavigation).toHaveBeenCalledOnce();
-      expect(mocks.setInitialState).toHaveBeenCalledWith({ me, navigation });
+      expect(mocks.setInitialState).toHaveBeenCalledWith(initialState);
     });
     expect(mocks.verifyTotp.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.getCurrentUser.mock.invocationCallOrder[0],
@@ -222,7 +258,21 @@ describe('LoginPage', () => {
     await submitForm();
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/home'));
-    expect(mocks.pushObservedMe).toHaveBeenCalledWith(me);
+    expect(mocks.pushObservedMe).toHaveBeenCalledWith(initialState.principal);
+  });
+
+  it('登录后只接受经过校验的站内 redirect', async () => {
+    mocks.locationSearch =
+      '?redirect=%2Fadmin%2Fusers%3Fstatus%3Denabled%23member';
+    renderLoginPage();
+
+    await submitForm();
+
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith(
+        '/admin/users?status=enabled#member',
+      ),
+    );
   });
 
   it('initialState 提交失败时展示原始错误并 fail closed', async () => {

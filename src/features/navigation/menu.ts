@@ -9,7 +9,7 @@ import {
 
 interface RegisteredNavigationItem {
   item: NavigationItem;
-  registration: RouteRegistration;
+  registration: RouteRegistration & { group: NavigationGroupKey };
 }
 
 const GROUPS: Array<{
@@ -37,21 +37,9 @@ function compareNavigationItems(
     return groupDifference;
   }
 
-  if (
-    first.registration.group === 'admin' &&
-    second.registration.group === 'admin'
-  ) {
-    if (first.item.routeKey === 'admin') {
-      return second.item.routeKey === 'admin' ? 0 : -1;
-    }
-    if (second.item.routeKey === 'admin') {
-      return 1;
-    }
-  }
-
-  const orderDifference = first.item.order - second.item.order;
-  if (orderDifference !== 0) {
-    return orderDifference;
+  const sortDifference = first.item.sort - second.item.sort;
+  if (sortDifference !== 0) {
+    return sortDifference;
   }
 
   if (first.item.routeKey === second.item.routeKey) {
@@ -66,7 +54,18 @@ export function buildMenuData(items: NavigationItem[]): MenuDataItem[] {
     .filter((item) => isRouteKey(item.routeKey))
     .flatMap<RegisteredNavigationItem>((item) => {
       const registration = getRouteRegistration(item.routeKey);
-      return registration ? [{ item, registration }] : [];
+      return registration?.menu &&
+        !registration.prototype &&
+        registration.group !== null
+        ? [
+            {
+              item,
+              registration: registration as RouteRegistration & {
+                group: NavigationGroupKey;
+              },
+            },
+          ]
+        : [];
     })
     .sort(compareNavigationItems);
 

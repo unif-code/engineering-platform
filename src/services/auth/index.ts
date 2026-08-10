@@ -1,10 +1,5 @@
 import { request } from '@umijs/max';
-import {
-  mutationHeaders,
-  normalizeApiError,
-  resolveApiEnvelope,
-} from '@/services/transport';
-import type { ApiEnvelope } from '@/types/api';
+import { mutationHeaders, normalizeApiError } from '@/services/transport';
 import type {
   BootstrapPasswordInput,
   BootstrapResult,
@@ -48,9 +43,22 @@ async function requestAuth<T>(
 }
 
 export async function getCurrentUser(): Promise<CurrentUser> {
-  return resolveApiEnvelope(
-    request<ApiEnvelope<CurrentUser>>('/api/v1/me', { method: 'GET' }),
-  );
+  try {
+    return await request<CurrentUser>('/api/v1/me', { method: 'GET' });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
+}
+
+export async function logout(): Promise<void> {
+  try {
+    await request<void>('/api/v1/auth/logout', {
+      headers: mutationHeaders(),
+      method: 'POST',
+    });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
 }
 
 export async function startLogin(input: LoginInput): Promise<LoginResult> {
@@ -88,6 +96,7 @@ export type {
   CurrentUser,
   LoginInput,
   LoginResult,
+  Principal,
   TotpInput,
   TotpResult,
 } from './type';

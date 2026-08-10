@@ -7,6 +7,7 @@ export type {
   CurrentUser,
   LoginInput,
   LoginResult,
+  Principal,
   TotpInput,
   TotpResult,
 } from '@/services/auth';

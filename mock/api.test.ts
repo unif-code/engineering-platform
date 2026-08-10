@@ -88,10 +88,12 @@ function runRoute(
   return response;
 }
 
-const unauthenticatedEnvelope = {
-  code: 401,
-  data: null,
-  message: 'Unauthenticated',
+const unauthenticatedProblem = {
+  detail: '当前 Session 不存在或已失效',
+  requestId: 'mock-session-unauthorized',
+  status: 401,
+  title: 'UNAUTHORIZED',
+  type: 'https://engineering-platform.example/problems/unauthorized',
 };
 const idempotencyHeaders = {
   'idempotency-key': '00000000-0000-4000-8000-000000000001',
@@ -105,11 +107,14 @@ describe('mock API session assembly', () => {
   it.each([
     'GET /api/v1/me',
     'GET /api/v1/navigation',
-  ])('fresh %s 返回完整 401 信封', (route) => {
+  ])('fresh %s 返回 401 Problem Details', (route) => {
     const response = runRoute(route);
 
     expect(response.statusCode).toBe(401);
-    expect(response.body).toEqual(unauthenticatedEnvelope);
+    expect(response.body).toEqual(unauthenticatedProblem);
+    expect(response.headers.get('content-type')).toBe(
+      'application/problem+json',
+    );
   });
 
   it('合法登录由 auth mock 签发 TOTP challenge，尚不建立 session', () => {
@@ -186,7 +191,7 @@ describe('mock API session assembly', () => {
     expect(response.cookieCall).toBeUndefined();
   });
 
-  it('携带合法 session 后 me 与 navigation 返回现有精确信封', () => {
+  it('携带合法 session 后 me 与 navigation 返回 V0.2 裸投影', () => {
     const request = {
       headers: { cookie: 'ep_session=mock-session' },
     };
@@ -194,31 +199,61 @@ describe('mock API session assembly', () => {
     const meResponse = runRoute('GET /api/v1/me', request);
     expect(meResponse.statusCode).toBe(200);
     expect(meResponse.body).toEqual({
-      code: 200,
-      data: { employeeId: '00000000', name: 'V0.1 Stub' },
-      message: 'ok',
+      capabilities: [
+        'audit.read',
+        'identity.account.manage',
+        'platform.configuration.manage',
+        'workspace.manage',
+      ],
+      employeeId: '00000000',
+      name: '平台管理员',
     });
 
     const navigationResponse = runRoute('GET /api/v1/navigation', request);
     expect(navigationResponse.statusCode).toBe(200);
-    expect(navigationResponse.body).toEqual({
-      code: 200,
-      data: [
-        { routeKey: 'home', name: '工作台', order: 1 },
-        { routeKey: 'tasks', name: '任务', order: 2 },
-        { routeKey: 'workspaces', name: '工作区', order: 3 },
-        { routeKey: 'messages', name: '消息中心', order: 4 },
-        { routeKey: 'teamBoard', name: '团队看板', order: 5 },
-        { routeKey: 'audit', name: '审计看板', order: 6 },
-        { routeKey: 'admin', name: '管理概览', order: 7 },
-        { routeKey: 'adminWorkspaces', name: '工作区管理', order: 8 },
-        { routeKey: 'adminSkills', name: '技能管理', order: 9 },
-        { routeKey: 'adminModels', name: '模型管理', order: 10 },
-        { routeKey: 'adminRoles', name: '角色管理', order: 11 },
-        { routeKey: 'adminUsers', name: '用户管理', order: 12 },
-        { routeKey: 'adminMenus', name: '菜单管理', order: 13 },
-      ],
-      message: 'ok',
-    });
+    expect(navigationResponse.body).toEqual([
+      {
+        meta: { section: 'workspace' },
+        name: '工作台',
+        order: 1,
+        routeKey: 'home',
+        sort: 10,
+      },
+      {
+        meta: { section: 'workspace' },
+        name: '工作区',
+        order: 2,
+        routeKey: 'workspaces',
+        sort: 20,
+      },
+      {
+        meta: { section: 'governance' },
+        name: '审计看板',
+        order: 3,
+        routeKey: 'audit',
+        sort: 30,
+      },
+      {
+        meta: { section: 'administration' },
+        name: '管理概览',
+        order: 4,
+        routeKey: 'admin',
+        sort: 40,
+      },
+      {
+        meta: { section: 'administration' },
+        name: '工作区管理',
+        order: 5,
+        routeKey: 'admin.workspaces',
+        sort: 50,
+      },
+      {
+        meta: { section: 'administration' },
+        name: '账号管理',
+        order: 6,
+        routeKey: 'admin.users',
+        sort: 60,
+      },
+    ]);
   });
 });

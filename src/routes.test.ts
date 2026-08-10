@@ -11,6 +11,7 @@ interface RouteConfig {
   parentKeys?: string[];
   path?: string;
   redirect?: string;
+  routeKey?: string;
   routes?: RouteConfig[];
   wrappers?: string[];
 }
@@ -83,63 +84,73 @@ describe('route registry integration', () => {
     expect(getRoute('/admin').name).toBe('管理概览');
   });
 
-  it('让 navigation Registry 的每条 path 都有静态页面路由', () => {
-    const componentPaths = new Set(Object.keys(expectedComponents));
+  it('config 的 19 条 public、parent、redirect、page route 与 Registry 一一对应', () => {
+    expect(allRoutes).toHaveLength(19);
+    expect(allRoutes.every(({ routeKey }) => routeKey)).toBe(true);
+    expect(allRoutes.map(({ routeKey }) => routeKey)).toEqual(
+      Object.keys(ROUTE_REGISTRY),
+    );
+    expect(new Set(allRoutes.map(({ routeKey }) => routeKey))).toHaveLength(19);
 
-    expect(Object.values(ROUTE_REGISTRY).map(({ path }) => path)).toEqual([
-      '/home',
-      '/tasks',
-      '/workspaces',
-      '/messages',
-      '/team-board',
-      '/audit',
-      '/admin',
-      '/admin/workspaces',
-      '/admin/skills',
-      '/admin/models',
-      '/admin/roles',
-      '/admin/users',
-      '/admin/menus',
-    ]);
-    for (const { path } of Object.values(ROUTE_REGISTRY)) {
-      expect(componentPaths.has(path), path).toBe(true);
+    for (const route of allRoutes) {
+      const registration =
+        ROUTE_REGISTRY[route.routeKey as keyof typeof ROUTE_REGISTRY];
+      expect(registration.path, route.routeKey).toBe(route.path);
+      expect(registration.kind, route.routeKey).toBe(
+        route.component ? 'page' : route.redirect ? 'redirect' : 'parent',
+      );
+      if (route.redirect) {
+        expect(registration.redirectTo, route.routeKey).toBe(route.redirect);
+      }
     }
   });
 
-  it('登录与初始化页绕过布局，根路由受 RouteGuard 保护并重定向到工作台', () => {
+  it('登录与初始化页公开且绕过布局，根父路由受统一 RouteGuard 保护', () => {
     expect(
       allRoutes
         .filter(({ component, layout }) => component && layout === false)
         .map(({ path }) => path),
     ).toEqual(['/login', '/bootstrap']);
+    expect(ROUTE_REGISTRY.login.access).toBe('public');
+    expect(ROUTE_REGISTRY.bootstrap.access).toBe('public');
 
     const protectedRoot = routes.find(
       (route) => route.path === '/' && route.wrappers,
     );
-    expect(protectedRoot?.wrappers).toEqual(['@/features/auth/RouteGuard']);
-    expect(protectedRoot?.routes).toContainEqual({
-      path: '/',
-      redirect: '/home',
+    expect(protectedRoot?.wrappers).toEqual([
+      '@/features/navigation/RouteGuard',
+    ]);
+    expect(protectedRoot?.routes).toContainEqual(
+      expect.objectContaining({
+        path: '/',
+        redirect: '/home',
+        routeKey: 'root',
+      }),
+    );
+    expect(ROUTE_REGISTRY.app).toMatchObject({
+      access: 'session',
+      kind: 'parent',
+    });
+    expect(ROUTE_REGISTRY.root).toMatchObject({
+      access: 'session',
+      kind: 'redirect',
+      redirectTo: '/home',
     });
   });
 
-  it('全部七个管理端页面都绑定 canAccessAdmin', () => {
+  it('管理路由不再绑定 plugin-layout access，由父 RouteGuard 统一判定', () => {
     const adminRoutes = allRoutes.filter(
       ({ component, path }) =>
         component && (path === '/admin' || path?.startsWith('/admin/')),
     );
 
     expect(adminRoutes.map(({ path }) => path)).toEqual(expectedAdminPaths);
-    for (const route of adminRoutes) {
-      expect(route.access, route.path).toBe('canAccessAdmin');
-    }
-  });
+    expect(adminRoutes.every(({ access }) => access === undefined)).toBe(true);
 
-  it('让全部管理端页面保持为受 RouteGuard 保护的根路由子级', () => {
     const protectedRoot = routes.find(
       (route) =>
         route.path === '/' &&
-        route.wrappers?.includes('@/features/auth/RouteGuard'),
+        route.wrappers?.includes('@/features/navigation/RouteGuard'),
     );
     const protectedAdminRoutes = (protectedRoot?.routes ?? []).filter(
       ({ component, path }) =>
@@ -156,15 +167,41 @@ describe('route registry integration', () => {
     expect(topLevelAdminRoutes).toEqual([]);
   });
 
+  it('V0.2 契约外页面全部标 prototype，契约内路由不得误标', () => {
+    expect(
+      Object.entries(ROUTE_REGISTRY)
+        .filter(([, registration]) => registration.prototype)
+        .map(([routeKey]) => routeKey),
+    ).toEqual([
+      'tasks',
+      'tasks.archived',
+      'tasks.detail',
+      'messages',
+      'team-board',
+      'admin.skills',
+      'admin.models',
+      'admin.roles',
+      'admin.menus',
+    ]);
+
+    expect(ROUTE_REGISTRY['admin.users'].prototype).toBe(false);
+    expect(ROUTE_REGISTRY['admin.workspaces'].prototype).toBe(false);
+    expect(ROUTE_REGISTRY.audit.prototype).toBe(false);
+  });
+
   it('归档与详情隐藏在任务父菜单下，且静态归档先于动态详情', () => {
     expect(getRoute('/tasks/archived')).toMatchObject({
       hideInMenu: true,
       parentKeys: ['/tasks'],
+      routeKey: 'tasks.archived',
     });
     expect(getRoute('/tasks/:taskId')).toMatchObject({
       hideInMenu: true,
       parentKeys: ['/tasks'],
+      routeKey: 'tasks.detail',
     });
+    expect(ROUTE_REGISTRY['tasks.archived'].parent).toBe('tasks');
+    expect(ROUTE_REGISTRY['tasks.detail'].parent).toBe('tasks');
 
     const protectedRoot = routes.find(
       (route) => route.path === '/' && route.routes,

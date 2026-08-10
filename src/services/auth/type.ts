@@ -1,6 +1,10 @@
-export interface CurrentUser {
+export interface Principal {
   employeeId: string;
   name: string;
+}
+
+export interface CurrentUser extends Principal {
+  capabilities: string[];
 }
 
 export interface LoginInput {

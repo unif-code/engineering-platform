@@ -1,5 +1,3 @@
-import type { ApiSuccessEnvelope } from '../src/types/api';
-
 export interface LoginBody {
   employeeNo: string;
   password: string;
@@ -17,14 +15,17 @@ type LoginHandlerResult =
     };
 
 interface Principal {
+  capabilities: string[];
   employeeId: string;
   name: string;
 }
 
 interface NavigationItem {
-  routeKey: string;
+  meta: Record<string, unknown>;
   name: string;
   order: number;
+  routeKey: string;
+  sort: number;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -37,31 +38,61 @@ const isLoginBody = (body: unknown): body is LoginBody =>
   typeof body.password === 'string' &&
   body.password.length > 0;
 
-export const meHandler = (): ApiSuccessEnvelope<Principal> => ({
-  code: 200,
-  data: { employeeId: '00000000', name: 'V0.1 Stub' },
-  message: 'ok',
+export const meHandler = (): Principal => ({
+  capabilities: [
+    'audit.read',
+    'identity.account.manage',
+    'platform.configuration.manage',
+    'workspace.manage',
+  ],
+  employeeId: '00000000',
+  name: '平台管理员',
 });
 
-export const navigationHandler = (): ApiSuccessEnvelope<NavigationItem[]> => ({
-  code: 200,
-  data: [
-    { routeKey: 'home', name: '工作台', order: 1 },
-    { routeKey: 'tasks', name: '任务', order: 2 },
-    { routeKey: 'workspaces', name: '工作区', order: 3 },
-    { routeKey: 'messages', name: '消息中心', order: 4 },
-    { routeKey: 'teamBoard', name: '团队看板', order: 5 },
-    { routeKey: 'audit', name: '审计看板', order: 6 },
-    { routeKey: 'admin', name: '管理概览', order: 7 },
-    { routeKey: 'adminWorkspaces', name: '工作区管理', order: 8 },
-    { routeKey: 'adminSkills', name: '技能管理', order: 9 },
-    { routeKey: 'adminModels', name: '模型管理', order: 10 },
-    { routeKey: 'adminRoles', name: '角色管理', order: 11 },
-    { routeKey: 'adminUsers', name: '用户管理', order: 12 },
-    { routeKey: 'adminMenus', name: '菜单管理', order: 13 },
-  ],
-  message: 'ok',
-});
+export const navigationHandler = (): NavigationItem[] => [
+  {
+    meta: { section: 'workspace' },
+    name: '工作台',
+    order: 1,
+    routeKey: 'home',
+    sort: 10,
+  },
+  {
+    meta: { section: 'workspace' },
+    name: '工作区',
+    order: 2,
+    routeKey: 'workspaces',
+    sort: 20,
+  },
+  {
+    meta: { section: 'governance' },
+    name: '审计看板',
+    order: 3,
+    routeKey: 'audit',
+    sort: 30,
+  },
+  {
+    meta: { section: 'administration' },
+    name: '管理概览',
+    order: 4,
+    routeKey: 'admin',
+    sort: 40,
+  },
+  {
+    meta: { section: 'administration' },
+    name: '工作区管理',
+    order: 5,
+    routeKey: 'admin.workspaces',
+    sort: 50,
+  },
+  {
+    meta: { section: 'administration' },
+    name: '账号管理',
+    order: 6,
+    routeKey: 'admin.users',
+    sort: 60,
+  },
+];
 
 export const loginHandler = (body: unknown): LoginHandlerResult => {
   if (!isLoginBody(body)) {

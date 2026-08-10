@@ -1,8 +1,10 @@
 import { RouteContext } from '@ant-design/pro-components';
 import { fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { App as AntdApp } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@/features/theme';
+import { ApiError } from '@/services/transport';
 import { HeaderActions, HeaderTitle, MenuBrand } from '.';
 
 vi.mock('@umijs/max', () => ({
@@ -24,10 +26,11 @@ beforeEach(() => {
 
 describe('HeaderActions', () => {
   it('呈现搜索、主题、消息入口和当前用户头像', () => {
+    const onLogout = vi.fn();
     render(
       <AntdApp>
         <ThemeProvider>
-          <HeaderActions user={{ name: '平台用户' }} />
+          <HeaderActions onLogout={onLogout} user={{ name: '平台用户' }} />
         </ThemeProvider>
       </AntdApp>,
     );
@@ -43,6 +46,9 @@ describe('HeaderActions', () => {
       screen.getByRole('button', { name: '消息入口' }),
     ).toBeInTheDocument();
     expect(
+      screen.getByRole('button', { name: '退出登录' }),
+    ).toBeInTheDocument();
+    expect(
       screen.getByRole('img', { name: '用户：平台用户' }),
     ).toBeInTheDocument();
     expect(screen.getByText('平台用户')).toBeInTheDocument();
@@ -52,7 +58,7 @@ describe('HeaderActions', () => {
     render(
       <AntdApp>
         <ThemeProvider>
-          <HeaderActions user={null} />
+          <HeaderActions onLogout={vi.fn()} user={null} />
         </ThemeProvider>
       </AntdApp>,
     );
@@ -68,7 +74,7 @@ describe('HeaderActions', () => {
     render(
       <AntdApp>
         <ThemeProvider>
-          <HeaderActions user={{ name: '平台用户' }} />
+          <HeaderActions onLogout={vi.fn()} user={{ name: '平台用户' }} />
         </ThemeProvider>
       </AntdApp>,
     );
@@ -81,6 +87,32 @@ describe('HeaderActions', () => {
     expect(
       await screen.findByText('静态原型：全局搜索暂未接入。'),
     ).toBeInTheDocument();
+  });
+
+  it('退出成功调用 Session owner，失败展示 Problem detail 原文', async () => {
+    const user = userEvent.setup();
+    const onLogout = vi
+      .fn()
+      .mockResolvedValueOnce(undefined)
+      .mockRejectedValueOnce(
+        new ApiError({ detail: '退出失败，请重试', status: 503 }),
+      );
+    render(
+      <AntdApp>
+        <ThemeProvider>
+          <HeaderActions onLogout={onLogout} user={{ name: '平台用户' }} />
+        </ThemeProvider>
+      </AntdApp>,
+    );
+    const button = screen.getByRole('button', { name: '退出登录' });
+
+    await user.click(button);
+    await vi.waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
+    await vi.waitFor(() => expect(button).not.toHaveClass('ant-btn-loading'));
+
+    await user.click(button);
+    expect(await screen.findByText('退出失败，请重试')).toBeInTheDocument();
+    expect(onLogout).toHaveBeenCalledTimes(2);
   });
 });
 

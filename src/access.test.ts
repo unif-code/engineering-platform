@@ -1,54 +1,33 @@
 import { describe, expect, it } from 'vitest';
 import access from './access';
 
-const loggedInUser = { employeeId: '00000000', name: 'V0.1 Stub' };
+const loggedInPrincipal = {
+  employeeId: '00000000',
+  name: '平台管理员',
+};
 
-function createInitialState(
-  routeKeys: string[],
-  me: { employeeId: string; name: string } | null = loggedInUser,
-) {
+function createInitialState(routeKeys: string[], loggedIn = true) {
   return {
-    me,
+    capabilities: loggedIn ? ['identity.account.manage'] : [],
     navigation: routeKeys.map((routeKey, order) => ({
-      routeKey,
+      meta: {},
       name: routeKey,
       order,
+      routeKey,
+      sort: order,
     })),
+    principal: loggedIn ? loggedInPrincipal : null,
   };
 }
 
 describe('access', () => {
-  it('只有用户端 routeKey 时不开放管理端', () => {
-    expect(access(createInitialState(['home', 'tasks'])).canAccessAdmin).toBe(
-      false,
-    );
+  it('登录用户不再被宽泛 admin projection 门禁抢先拦截', () => {
+    expect(access(createInitialState(['home'])).canAccessAdmin).toBe(true);
+    expect(access(createInitialState([])).canAccessAdmin).toBe(true);
   });
 
-  it.each([
-    'admin',
-    'adminWorkspaces',
-    'adminSkills',
-    'adminModels',
-    'adminRoles',
-    'adminUsers',
-    'adminMenus',
-  ])('任一已知管理端 key %s 都开放管理端', (routeKey) => {
-    expect(access(createInitialState(['home', routeKey])).canAccessAdmin).toBe(
-      true,
-    );
-  });
-
-  it('伪造未知 key 和原型属性不能开放管理端', () => {
-    expect(
-      access(createInitialState(['adminGhost', 'constructor'])).canAccessAdmin,
-    ).toBe(false);
-  });
-
-  it('缺少 initialState 时 fail-closed 拒绝管理端', () => {
+  it('缺少 Initial State 或 Principal 时 fail closed', () => {
     expect(access().canAccessAdmin).toBe(false);
-  });
-
-  it('initialState 已加载但未登录时让父 RouteGuard 接管跳转', () => {
-    expect(access(createInitialState([], null)).canAccessAdmin).toBe(true);
+    expect(access(createInitialState([], false)).canAccessAdmin).toBe(false);
   });
 });

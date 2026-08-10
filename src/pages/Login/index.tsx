@@ -1,9 +1,9 @@
-import { history, useModel } from '@umijs/max';
+import { history, useLocation, useModel } from '@umijs/max';
 import { App } from 'antd';
 import { useEffect, useState } from 'react';
 import { BrandMark } from '@/components/BrandMark';
 import { fetchMe, LoginFlow } from '@/features/auth';
-import { fetchNavigation } from '@/features/navigation';
+import { fetchNavigation, resolvePostLoginPath } from '@/features/navigation';
 import { ThemeSelector } from '@/features/theme';
 import { DELIVERY_STAGES } from './constant';
 import { useStyles } from './index.style';
@@ -12,13 +12,17 @@ export default function LoginPage() {
   const { styles } = useStyles();
   const [loginSucceeded, setLoginSucceeded] = useState(false);
   const { message } = App.useApp();
+  const location = useLocation();
   const { setInitialState } = useModel('@@initialState');
+  const postLoginPath = resolvePostLoginPath(
+    new URLSearchParams(location.search).get('redirect'),
+  );
 
   useEffect(() => {
     if (loginSucceeded) {
-      history.push('/home');
+      history.push(postLoginPath);
     }
-  }, [loginSucceeded]);
+  }, [loginSucceeded, postLoginPath]);
 
   const refreshSession = async () => {
     const [me, navigation] = await Promise.all([fetchMe(), fetchNavigation()]);
@@ -26,7 +30,8 @@ export default function LoginPage() {
       message.error('登录状态刷新失败');
       return;
     }
-    await setInitialState({ me, navigation });
+    const { capabilities, ...principal } = me;
+    await setInitialState({ capabilities, navigation, principal });
     setLoginSucceeded(true);
   };
 

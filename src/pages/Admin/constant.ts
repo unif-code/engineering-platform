@@ -30,37 +30,37 @@ export const ADMIN_METRICS = [
 
 export const ADMIN_ENTRIES = [
   {
-    routeKey: 'adminWorkspaces',
+    routeKey: 'admin.workspaces',
     label: '工作区管理',
     description: '维护 Owner、成员范围与仓库接入关系',
     href: APP_PATHS.adminWorkspaces,
   },
   {
-    routeKey: 'adminSkills',
+    routeKey: 'admin.skills',
     label: '技能管理',
     description: '管理技能目录、版本与适用技术栈',
     href: APP_PATHS.adminSkills,
   },
   {
-    routeKey: 'adminModels',
+    routeKey: 'admin.models',
     label: '模型管理',
     description: '查看模型目录、评测与 Execution Route',
     href: APP_PATHS.adminModels,
   },
   {
-    routeKey: 'adminRoles',
+    routeKey: 'admin.roles',
     label: '角色管理',
     description: '维护角色能力标签与授权边界',
     href: APP_PATHS.adminRoles,
   },
   {
-    routeKey: 'adminUsers',
+    routeKey: 'admin.users',
     label: '用户管理',
     description: '维护用户、组织归属与账号状态',
     href: APP_PATHS.adminUsers,
   },
   {
-    routeKey: 'adminMenus',
+    routeKey: 'admin.menus',
     label: '菜单管理',
     description: '配置菜单分组、可见能力与排序',
     href: APP_PATHS.adminMenus,

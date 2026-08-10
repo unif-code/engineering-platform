@@ -8,6 +8,7 @@ import {
   confirmBootstrapTotp,
   enrollBootstrapTotp,
   getCurrentUser,
+  logout,
   setBootstrapPassword,
   startLogin,
   verifyTotp,
@@ -18,19 +19,72 @@ beforeEach(() => {
 });
 
 describe('auth service', () => {
-  it('GET /api/v1/me 并返回解包后的当前用户', async () => {
+  it('GET /api/v1/me 并返回裸 Principal 投影', async () => {
     requestMock.mockResolvedValue({
-      code: 200,
-      data: { employeeId: '00000000', name: 'V0.1 Stub' },
-      message: 'ok',
+      capabilities: ['identity.account.manage', 'audit.read'],
+      employeeId: '00000000',
+      name: '平台管理员',
     });
 
     await expect(getCurrentUser()).resolves.toEqual({
+      capabilities: ['identity.account.manage', 'audit.read'],
       employeeId: '00000000',
-      name: 'V0.1 Stub',
+      name: '平台管理员',
     });
     expect(requestMock).toHaveBeenCalledWith('/api/v1/me', {
       method: 'GET',
+    });
+  });
+
+  it('GET /me 将 Umi Axios rejection 归一为 ApiError', async () => {
+    requestMock.mockRejectedValue({
+      config: { url: '/api/v1/me' },
+      response: {
+        data: {
+          detail: 'Session 服务暂不可用',
+          requestId: 'req-me-503',
+          status: 503,
+        },
+        status: 503,
+      },
+    });
+
+    await expect(getCurrentUser()).rejects.toMatchObject({
+      name: 'ApiError',
+      problem: { detail: 'Session 服务暂不可用', status: 503 },
+      requestId: 'req-me-503',
+    });
+  });
+
+  it('POST /api/v1/auth/logout 携带新幂等键并保留 204 void 结果', async () => {
+    requestMock.mockResolvedValue(undefined);
+
+    await expect(logout()).resolves.toBeUndefined();
+    expect(requestMock).toHaveBeenCalledWith('/api/v1/auth/logout', {
+      headers: {
+        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+      },
+      method: 'POST',
+    });
+  });
+
+  it('logout 将底层 Problem 归一且保留服务端 detail 原文', async () => {
+    requestMock.mockRejectedValue({
+      response: {
+        data: {
+          detail: '退出失败，请重试',
+          requestId: 'req-logout-1',
+          status: 503,
+          title: 'SERVICE_UNAVAILABLE',
+        },
+        status: 503,
+      },
+    });
+
+    await expect(logout()).rejects.toMatchObject({
+      name: 'ApiError',
+      problem: { detail: '退出失败，请重试', status: 503 },
+      requestId: 'req-logout-1',
     });
   });
 

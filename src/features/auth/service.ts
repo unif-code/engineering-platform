@@ -6,9 +6,11 @@ import {
   setBootstrapPassword as requestBootstrapPassword,
   confirmBootstrapTotp as requestBootstrapTotpConfirmation,
   enrollBootstrapTotp as requestBootstrapTotpEnrollment,
+  logout as requestLogout,
   verifyTotp as requestTotp,
   startLogin,
 } from '@/services/auth';
+import { ApiError } from '@/services/transport';
 import type {
   BootstrapPasswordInput,
   BootstrapResult,
@@ -25,13 +27,20 @@ import type {
 export async function fetchMe(): Promise<CurrentUser | null> {
   try {
     return await getCurrentUser();
-  } catch {
-    return null;
+  } catch (error) {
+    if (error instanceof ApiError && error.problem.status === 401) {
+      return null;
+    }
+    throw error;
   }
 }
 
 export async function login(input: LoginInput): Promise<LoginResult> {
   return startLogin(input);
+}
+
+export async function logout(): Promise<void> {
+  return requestLogout();
 }
 
 export async function verifyTotp(input: TotpInput): Promise<TotpResult> {

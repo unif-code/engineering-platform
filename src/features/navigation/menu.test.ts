@@ -2,6 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { buildMenuData } from './menu';
 import { ROUTE_REGISTRY } from './registry';
 
+function navigationItem(routeKey: string, title: string, sort: number) {
+  return {
+    meta: { opaqueLabel: `不参与菜单渲染-${title}` },
+    name: title,
+    order: 999 - sort,
+    routeKey,
+    sort,
+  };
+}
+
 function permutations<T>(items: readonly T[]): T[][] {
   if (items.length <= 1) {
     return [[...items]];
@@ -17,12 +27,9 @@ function permutations<T>(items: readonly T[]): T[][] {
 describe('buildMenuData', () => {
   it('普通用户 navigation 不生成管理端分组', () => {
     const userOnlyNavigation = [
-      { routeKey: 'home', name: '工作台', order: 1 },
-      { routeKey: 'tasks', name: '任务', order: 2 },
-      { routeKey: 'workspaces', name: '工作区', order: 3 },
-      { routeKey: 'messages', name: '消息中心', order: 4 },
-      { routeKey: 'teamBoard', name: '团队看板', order: 5 },
-      { routeKey: 'audit', name: '审计看板', order: 6 },
+      navigationItem('home', '工作台', 10),
+      navigationItem('workspaces', '工作区', 20),
+      navigationItem('audit', '审计看板', 30),
     ];
 
     expect(buildMenuData(userOnlyNavigation)).not.toContainEqual(
@@ -30,39 +37,45 @@ describe('buildMenuData', () => {
     );
   });
 
-  it('管理员 navigation 生成管理端分组', () => {
+  it('管理员 navigation 仅用投影中的真实管理路由生成管理端分组', () => {
     const adminNavigation = [
-      { routeKey: 'home', name: '工作台', order: 1 },
-      { routeKey: 'tasks', name: '任务', order: 2 },
-      { routeKey: 'workspaces', name: '工作区', order: 3 },
-      { routeKey: 'messages', name: '消息中心', order: 4 },
-      { routeKey: 'teamBoard', name: '团队看板', order: 5 },
-      { routeKey: 'audit', name: '审计看板', order: 6 },
-      { routeKey: 'admin', name: '管理概览', order: 7 },
-      { routeKey: 'adminWorkspaces', name: '工作区管理', order: 8 },
-      { routeKey: 'adminSkills', name: '技能管理', order: 9 },
-      { routeKey: 'adminModels', name: '模型管理', order: 10 },
-      { routeKey: 'adminRoles', name: '角色管理', order: 11 },
-      { routeKey: 'adminUsers', name: '用户管理', order: 12 },
-      { routeKey: 'adminMenus', name: '菜单管理', order: 13 },
+      navigationItem('home', '工作台', 10),
+      navigationItem('admin', '管理概览', 20),
+      navigationItem('admin.users', '账号管理', 30),
     ];
 
-    expect(buildMenuData(adminNavigation)).toContainEqual(
-      expect.objectContaining({ name: '管理端' }),
-    );
+    expect(buildMenuData(adminNavigation)).toContainEqual({
+      children: [
+        {
+          icon: ROUTE_REGISTRY.admin.icon,
+          key: 'admin',
+          name: '管理概览',
+          path: '/admin',
+        },
+        {
+          icon: ROUTE_REGISTRY['admin.users'].icon,
+          key: 'admin.users',
+          name: '账号管理',
+          path: '/admin/users',
+        },
+      ],
+      key: 'group-admin',
+      name: '管理端',
+      type: 'group',
+    });
   });
 
-  it('过滤未知 key 后按分组和 order 输出菜单，且管理概览固定在管理组首位', () => {
+  it('过滤未知与 prototype key，按 sort 排序并保留不透明 meta', () => {
     const items = [
-      { routeKey: 'adminMenus', name: '菜单管理', order: 5 },
-      { routeKey: 'tasks', name: '任务', order: 4 },
-      { routeKey: 'admin', name: '管理概览', order: 99 },
-      { routeKey: 'constructor', name: '原型属性', order: 0 },
-      { routeKey: 'home', name: '首页', order: 2 },
-      { routeKey: 'ghost', name: '未知菜单', order: 1 },
-      { routeKey: 'adminUsers', name: '用户管理', order: 3 },
+      navigationItem('admin.users', '账号管理', 4),
+      navigationItem('admin', '管理概览', 8),
+      navigationItem('tasks', '不应出现的任务原型', 1),
+      navigationItem('constructor', '原型属性', 0),
+      navigationItem('home', '首页', 6),
+      navigationItem('ghost', '未知菜单', 2),
+      navigationItem('workspaces', '工作区', 3),
     ];
-    const original = items.map((item) => ({ ...item }));
+    const original = structuredClone(items);
 
     expect(buildMenuData(items)).toEqual([
       {
@@ -71,16 +84,16 @@ describe('buildMenuData', () => {
         type: 'group',
         children: [
           {
+            key: 'workspaces',
+            path: '/workspaces',
+            name: '工作区',
+            icon: ROUTE_REGISTRY.workspaces.icon,
+          },
+          {
             key: 'home',
             path: '/home',
             name: '首页',
             icon: ROUTE_REGISTRY.home.icon,
-          },
-          {
-            key: 'tasks',
-            path: '/tasks',
-            name: '任务',
-            icon: ROUTE_REGISTRY.tasks.icon,
           },
         ],
       },
@@ -90,22 +103,16 @@ describe('buildMenuData', () => {
         type: 'group',
         children: [
           {
+            key: 'admin.users',
+            path: '/admin/users',
+            name: '账号管理',
+            icon: ROUTE_REGISTRY['admin.users'].icon,
+          },
+          {
             key: 'admin',
             path: '/admin',
             name: '管理概览',
             icon: ROUTE_REGISTRY.admin.icon,
-          },
-          {
-            key: 'adminUsers',
-            path: '/admin/users',
-            name: '用户管理',
-            icon: ROUTE_REGISTRY.adminUsers.icon,
-          },
-          {
-            key: 'adminMenus',
-            path: '/admin/menus',
-            name: '菜单管理',
-            icon: ROUTE_REGISTRY.adminMenus.icon,
           },
         ],
       },
@@ -114,44 +121,26 @@ describe('buildMenuData', () => {
     expect(items).toEqual(original);
   });
 
-  it('不输出空分组，未知 key 也不能借原型属性进入菜单', () => {
+  it('prototype 即使被后端错误投影也不进入菜单', () => {
     expect(
       buildMenuData([
-        { routeKey: 'home', name: '首页', order: 1 },
-        { routeKey: 'ghost', name: '未知菜单', order: 2 },
-        { routeKey: 'constructor', name: '原型属性', order: 3 },
-      ]),
-    ).toEqual([
-      {
-        key: 'group-user',
-        name: '用户端',
-        type: 'group',
-        children: [
-          {
-            key: 'home',
-            path: '/home',
-            name: '首页',
-            icon: ROUTE_REGISTRY.home.icon,
-          },
-        ],
-      },
-    ]);
-
-    expect(
-      buildMenuData([
-        { routeKey: 'ghost', name: '未知菜单', order: 1 },
-        { routeKey: 'constructor', name: '原型属性', order: 2 },
+        navigationItem('tasks', '任务', 1),
+        navigationItem('messages', '消息中心', 2),
+        navigationItem('team-board', '团队看板', 3),
+        navigationItem('admin.roles', '角色管理', 4),
+        navigationItem('admin.menus', '菜单管理', 5),
+        navigationItem('admin.models', '模型管理', 6),
+        navigationItem('admin.skills', '技能管理', 7),
       ]),
     ).toEqual([]);
   });
 
-  it('任意用户端与管理端混合排列都生成同一确定顺序', () => {
+  it('任意输入排列都只由 sort 决定分组内顺序', () => {
     const items = [
-      { routeKey: 'admin', name: '管理概览', order: 99 },
-      { routeKey: 'home', name: '首页', order: 2 },
-      { routeKey: 'adminUsers', name: '用户管理', order: 3 },
-      { routeKey: 'tasks', name: '任务', order: 4 },
-      { routeKey: 'adminMenus', name: '菜单管理', order: 5 },
+      navigationItem('admin', '管理概览', 50),
+      navigationItem('home', '首页', 20),
+      navigationItem('admin.users', '账号管理', 30),
+      navigationItem('workspaces', '工作区', 10),
     ];
 
     for (const permutation of permutations(items)) {
@@ -163,8 +152,8 @@ describe('buildMenuData', () => {
         groupChildren,
         permutation.map(({ routeKey }) => routeKey).join(', '),
       ).toEqual([
-        ['home', 'tasks'],
-        ['admin', 'adminUsers', 'adminMenus'],
+        ['workspaces', 'home'],
+        ['admin.users', 'admin'],
       ]);
     }
   });

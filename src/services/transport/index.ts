@@ -98,11 +98,14 @@ const toProblem = (text: string, response: Response): ProblemDetails => {
 };
 
 const normalize: Middleware = {
-  async onResponse({ response }) {
+  async onResponse({ request, response }) {
     if (response.ok) {
       return undefined;
     }
-    if (response.status === 401) {
+    if (
+      response.status === 401 &&
+      !new URL(request.url).pathname.includes('/api/v1/auth/')
+    ) {
       try {
         unauthorizedHandler?.();
       } catch {

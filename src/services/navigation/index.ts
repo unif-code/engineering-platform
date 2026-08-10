@@ -1,14 +1,15 @@
 import { request } from '@umijs/max';
-import { resolveApiEnvelope } from '@/services/transport';
-import type { ApiEnvelope } from '@/types/api';
+import { normalizeApiError } from '@/services/transport';
 import type { NavigationItem } from './type';
 
 export async function getNavigation(): Promise<NavigationItem[]> {
-  return resolveApiEnvelope(
-    request<ApiEnvelope<NavigationItem[]>>('/api/v1/navigation', {
+  try {
+    return await request<NavigationItem[]>('/api/v1/navigation', {
       method: 'GET',
-    }),
-  );
+    });
+  } catch (error) {
+    throw normalizeApiError(error);
+  }
 }
 
 export type { NavigationItem } from './type';

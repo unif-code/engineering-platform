@@ -5,6 +5,8 @@ const PROVISIONING_URI =
   'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP';
 const SESSION_COOKIE =
   'ep_session=mock-session; Path=/; HttpOnly; Secure; SameSite=Lax';
+const CLEARED_SESSION_COOKIE =
+  'ep_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
 const VALID_TOTP = '123456';
 const MAX_ATTEMPTS = 5;
 const UUID_PATTERN =
@@ -242,6 +244,7 @@ export const createAuthMock = () => {
         return;
       }
 
+      response.setHeader('Set-Cookie', CLEARED_SESSION_COOKIE);
       response.status(204).end();
     },
 

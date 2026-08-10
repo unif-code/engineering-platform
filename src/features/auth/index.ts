@@ -6,6 +6,7 @@ export {
   enrollBootstrapTotp,
   fetchMe,
   login,
+  logout,
   setBootstrapPassword,
   verifyTotp,
 } from './service';
@@ -18,6 +19,7 @@ export type {
   CurrentUser,
   LoginInput,
   LoginResult,
+  Principal,
   TotpInput,
   TotpResult,
 } from './type';

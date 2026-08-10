@@ -376,10 +376,13 @@ describe('auth mock contract', () => {
     expect(expiredProblem.challengeExpired).toBe(true);
   });
 
-  it('logout 返回无响应体的 204', async () => {
+  it('logout 返回 204 并清除 Session cookie', async () => {
     const response = await fetchAuth('/api/v1/auth/logout', jsonRequest({}));
 
     expect(response.status).toBe(204);
+    expect(response.rawHeaders.get('set-cookie')).toContain(
+      'ep_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
+    );
     await expect(response.text()).resolves.toBe('');
   });
 

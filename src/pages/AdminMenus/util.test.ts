@@ -35,7 +35,7 @@ const EXPECTED_MENUS = [
   },
   {
     group: 'user',
-    key: 'teamBoard',
+    key: 'team-board',
     name: '团队看板',
     order: 5,
     path: '/team-board',
@@ -56,42 +56,42 @@ const EXPECTED_MENUS = [
   },
   {
     group: 'admin',
-    key: 'adminWorkspaces',
+    key: 'admin.workspaces',
     name: '工作区管理',
     order: 8,
     path: '/admin/workspaces',
   },
   {
     group: 'admin',
-    key: 'adminSkills',
+    key: 'admin.skills',
     name: '技能管理',
     order: 9,
     path: '/admin/skills',
   },
   {
     group: 'admin',
-    key: 'adminModels',
+    key: 'admin.models',
     name: '模型管理',
     order: 10,
     path: '/admin/models',
   },
   {
     group: 'admin',
-    key: 'adminRoles',
+    key: 'admin.roles',
     name: '角色管理',
     order: 11,
     path: '/admin/roles',
   },
   {
     group: 'admin',
-    key: 'adminUsers',
+    key: 'admin.users',
     name: '用户管理',
     order: 12,
     path: '/admin/users',
   },
   {
     group: 'admin',
-    key: 'adminMenus',
+    key: 'admin.menus',
     name: '菜单管理',
     order: 13,
     path: '/admin/menus',
@@ -111,7 +111,7 @@ afterEach(() => {
 });
 
 describe('MENU_ROWS', () => {
-  it('与公共 ROUTE_REGISTRY 的 13 个 key、path 和 group 精确一一对应', () => {
+  it('13 个原型菜单行全部引用公共 Registry 中的 page route', () => {
     expect(
       MENU_ROWS.map(({ group, key, name, order, path }) => ({
         group,
@@ -121,13 +121,10 @@ describe('MENU_ROWS', () => {
         path,
       })),
     ).toEqual(EXPECTED_MENUS);
-    expect(Object.keys(ROUTE_REGISTRY)).toEqual(
-      EXPECTED_MENUS.map(({ key }) => key),
-    );
-
     for (const menu of EXPECTED_MENUS) {
       expect(ROUTE_REGISTRY[menu.key]).toMatchObject({
         group: menu.group,
+        kind: 'page',
         path: menu.path,
       });
     }
@@ -154,18 +151,18 @@ describe('queryMenuRows', () => {
       'tasks',
       'workspaces',
       'messages',
-      'teamBoard',
+      'team-board',
       'audit',
     ]);
     expect(userResult.total).toBe(6);
     expect(adminResult.data?.map((row) => row.key)).toEqual([
       'admin',
-      'adminWorkspaces',
-      'adminSkills',
-      'adminModels',
-      'adminRoles',
-      'adminUsers',
-      'adminMenus',
+      'admin.workspaces',
+      'admin.skills',
+      'admin.models',
+      'admin.roles',
+      'admin.users',
+      'admin.menus',
     ]);
     expect(adminResult.total).toBe(7);
   });
@@ -216,9 +213,9 @@ describe('queryMenuRows', () => {
     expect(result.data?.map((row) => row.key)).toEqual([
       'audit',
       'admin',
-      'adminWorkspaces',
-      'adminSkills',
-      'adminModels',
+      'admin.workspaces',
+      'admin.skills',
+      'admin.models',
     ]);
     expect(result.total).toBe(13);
   });

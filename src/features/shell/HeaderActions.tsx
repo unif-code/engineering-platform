@@ -1,4 +1,9 @@
-import { BellOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
+import {
+  BellOutlined,
+  LogoutOutlined,
+  SearchOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
 import {
   App,
   AutoComplete,
@@ -10,7 +15,9 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import { useState } from 'react';
 import { ThemeSelector } from '@/features/theme';
+import { ApiError } from '@/services/transport';
 
 const SEARCH_OPTIONS = [
   { label: '搜索任务', value: '搜索任务' },
@@ -19,13 +26,32 @@ const SEARCH_OPTIONS = [
 ];
 
 export interface HeaderActionsProps {
+  onLogout: () => Promise<void>;
   user?: { name: string } | null;
 }
 
-export function HeaderActions({ user }: HeaderActionsProps) {
+export function HeaderActions({ onLogout, user }: HeaderActionsProps) {
   const { message } = App.useApp();
+  const [loggingOut, setLoggingOut] = useState(false);
   const userName = user?.name.trim() || '当前用户';
   const initial = user?.name.trim().slice(0, 1);
+
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await onLogout();
+    } catch (error) {
+      const detail =
+        error instanceof ApiError
+          ? error.problem.detail
+          : error instanceof Error
+            ? error.message
+            : undefined;
+      void message.error(detail || '退出登录失败，请重试');
+    } finally {
+      setLoggingOut(false);
+    }
+  };
 
   return (
     <Space size="middle">
@@ -63,6 +89,17 @@ export function HeaderActions({ user }: HeaderActionsProps) {
         </span>
         <Typography.Text>{userName}</Typography.Text>
       </Space>
+      <Tooltip title="退出登录">
+        <Button
+          aria-label="退出登录"
+          icon={<LogoutOutlined />}
+          loading={loggingOut}
+          onClick={() => {
+            void handleLogout();
+          }}
+          type="text"
+        />
+      </Tooltip>
     </Space>
   );
 }

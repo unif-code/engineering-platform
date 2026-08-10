@@ -13,5 +13,3 @@ export const APP_PATHS = {
   adminUsers: '/admin/users',
   adminMenus: '/admin/menus',
 } as const;
-
-export type RouteKey = keyof typeof APP_PATHS;
