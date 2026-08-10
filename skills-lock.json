@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "umi": {
+      "source": "unif-design/skills",
+      "sourceType": "github",
+      "skillPath": "skills/umi/SKILL.md",
+      "computedHash": "4d6be067c2c6f9fcd298301c9b5508c822e759ccfeb7343c552218a52f3422ea"
+    }
+  }
+}

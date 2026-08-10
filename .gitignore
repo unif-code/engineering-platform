@@ -46,6 +46,7 @@ lerna-debug.log*
 
 # AI 工具本地配置
 .claude/settings.local.json
+/.agents/
 
 # 本地 Git Worktree
 /.worktrees/
