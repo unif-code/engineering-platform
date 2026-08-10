@@ -26,6 +26,7 @@
 | 登录 | 仅重构现有员工编号 + 密码 + TOTP 登录视觉，不加入首次初始化、重置密码或 TOTP 绑定流程 |
 | 内容口径 | 使用当前 `docs/architecture` 术语和中性静态示例；原型仅提供视觉与信息密度参考 |
 | 导航 | 全部页面进入现有动态菜单；用户端与“管理端”分组展示 |
+| 管理端可见性 | 仅后端 `navigation` 返回管理端 routeKey 的管理员显示“管理端”分组；普通用户不可直接访问 `/admin` 与 `/admin/*` |
 | 路由兼容 | `/home` 升级为工作台；`/admin` 保留为管理概览；管理能力使用 `/admin/*` 子路由 |
 
 ## 2. 目标与非目标
@@ -88,6 +89,7 @@
 继续使用 Umi ProLayout，不重写侧栏和顶栏：
 
 - 侧栏包含 Brand Mark、产品名、用户端菜单和“管理端”分组，支持折叠、选中态与徽标。
+- “管理端”分组不是所有登录用户的静态菜单；仅当当前 `navigation` 至少包含一个已知管理端 routeKey 时出现。
 - 顶栏包含当前页面标题、全局搜索视觉入口、主题选择、消息入口、用户 Avatar/姓名。
 - 内容区拥有唯一页面滚动所有权；任务详情等复杂页面可以建立明确的内部滚动区，避免多层滚动陷阱。
 - 1280px 下宽表格使用 `scroll.x`，顶部动作溢出时进入 Dropdown，不设置原型的 `overflow:hidden` 强制裁切。
@@ -126,7 +128,7 @@
 ### 5.3 页面内浮层
 
 - Modal/StepsForm：创建任务、分配任务、驳回审批、管理页新增/编辑。
-- Drawer：代码 Diff、Artifact 文档、审计详情。
+- Drawer：代码 Diff、Artifact 文档、审计详情；Artifact 与审计详情复用只读 `DetailDrawer`，其内部固定组合 Ant Design `Drawer` 与 `ProDescriptions`，代码 Diff 仍直接使用 `Drawer`。
 - AutoComplete/Dropdown：全局搜索视觉结果、顶部快捷入口。
 - 所有静态提交操作通过 `App.useApp().message` 明确提示“静态原型操作”，随后关闭浮层；不修改持久示例数据。
 
@@ -149,13 +151,13 @@
 - Status/Risk/Team Tag。
 - 紧凑列表行与统一 Empty State。
 - 迷你柱图、堆叠条和 Legend。
-- 通用详情 Drawer 外壳。
+- 只读 `DetailDrawer`：只封装 Ant Design `Drawer` 的浮层行为与 `ProDescriptions` 的字段展示，不引入编辑、提交或请求逻辑。
 
 页面私有组件平铺在页面目录，不建立额外 `components/` 子目录；私有样式放 `index.style.ts`，静态 fixtures 放 `constant.ts`。
 
 ### 6.3 原型到组件的约束
 
-- 不手写 Ant Design 已提供的表格、Checkbox、Switch、Tab、Modal、Drawer、Toast 或表单控件。
+- 不重写 Ant Design 已提供的表格、Checkbox、Switch、Tab、Modal、Drawer、Toast 或表单控件；`DetailDrawer` 只能组合原生 `Drawer + ProDescriptions`，不得自行实现遮罩、焦点锁定或详情布局引擎。
 - 不复制原型的大量 inline style、硬编码 z-index、暗色反查 CSS 或斜纹 Preview 占位。
 - 简单柱条用 `Progress` 与 CSS Grid；不为静态骨架新增图表依赖。
 - Diff 和 Browser Preview 使用 Drawer + List/Typography/pre + 少量样式，不引入重型编辑器。
@@ -175,6 +177,8 @@
 `home`、`tasks`、`workspaces`、`messages`、`teamBoard`、`audit`、`admin`、`adminWorkspaces`、`adminSkills`、`adminModels`、`adminRoles`、`adminUsers`、`adminMenus`。
 
 mock navigation 仍只返回 `routeKey/name/order`；用户端/管理端父级、图标与 path 由 Registry 派生。未知 routeKey 必须被过滤，不进入菜单或授权判断。
+
+管理端权限不新增前端角色真相源：后端按当前 Principal 过滤 `navigation`，前端从相同结果派生 `canAccessAdmin`。普通用户没有管理端 routeKey 时，不显示管理分组，且 Umi route `access` 阻止直接访问 `/admin` 和 `/admin/*`。这属于前端体验与纵深防御；后端 API 仍必须独立执行真实授权。开发 mock 的当前用户作为管理员返回全部 routeKey，以便完整验收页面，同时单元测试覆盖仅用户端 navigation 的普通用户场景。
 
 ### 7.3 静态页面数据
 
@@ -224,6 +228,7 @@ mock navigation 仍只返回 `routeKey/name/order`；用户端/管理端父级�
 
 - Theme：system/light/dark 解析、matchMedia、localStorage 持久化、异常回退。
 - Navigation：全部 routeKey 映射、用户端/管理端分组、排序、未知项过滤。
+- Access：普通用户 navigation 不产生管理端分组且不能访问 `/admin/*`；管理员 navigation 可以展示和访问管理端。
 - Route：全部页面路由可解析，`/home` 与 `/admin` 兼容保留。
 - Page smoke：每个路由至少验证标题或主要 Landmark。
 - Interaction：主题切换、表格/看板、Tabs、Modal、Drawer、搜索下拉。
@@ -251,9 +256,10 @@ mock navigation 仍只返回 `routeKey/name/order`；用户端/管理端父级�
 ## 11. 验收标准
 
 1. 全部设计路由存在；所有顶层页面均有侧栏菜单入口，用户端/管理端分组与 active 状态正确；详情和归档页由任务入口进入。
-2. 视觉 token、Light/Dark algorithm、ProLayout 和 Portal 使用同一 Theme 状态，无 inline 暗色补丁。
-3. `/login`、`/home`、`/admin` 现有行为与回归测试不退化。
-4. 所有页面使用 Ant Design/ProComponents 优先策略，重复视觉 primitive 已合理共享。
-5. 所有静态按钮明确为视觉交互，不产生伪造持久业务结果。
-6. 1440×900 浅/深主题与 1280px 桌面验收通过。
-7. lint、test、build、doctor 及 dependency architecture contract 全部通过。
+2. 管理端分组仅对后端 navigation 授权的管理员出现；普通用户直接访问 `/admin` 或 `/admin/*` 被 Umi access 拒绝，且前端可见性不替代后端授权。
+3. 视觉 token、Light/Dark algorithm、ProLayout 和 Portal 使用同一 Theme 状态，无 inline 暗色补丁。
+4. `/login`、`/home`、`/admin` 现有行为与回归测试不退化。
+5. 所有页面使用 Ant Design/ProComponents 优先策略，重复视觉 primitive 已合理共享。
+6. 所有静态按钮明确为视觉交互，不产生伪造持久业务结果。
+7. 1440×900 浅/深主题与 1280px 桌面验收通过。
+8. lint、test、build、doctor 及 dependency architecture contract 全部通过。
