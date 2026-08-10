@@ -1,0 +1,8 @@
+export const THEME_STORAGE_KEY = 'engineering-platform.theme.v1';
+export const THEME_MEDIA_QUERY = '(prefers-color-scheme: dark)';
+export const BRAND_ORANGE = '#EB6E00';
+export const ACTION_ORANGE = '#C25700';
+export const LIGHT_LAYOUT_BACKGROUND = '#F5F5F5';
+export const LIGHT_CONTAINER_BACKGROUND = '#FFFFFF';
+export const DARK_LAYOUT_BACKGROUND = '#121212';
+export const DARK_CONTAINER_BACKGROUND = '#1F1F1F';

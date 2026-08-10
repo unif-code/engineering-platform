@@ -1,8 +1,16 @@
+import { render, screen } from '@testing-library/react';
+import { theme } from 'antd';
+import { createElement } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const featureMocks = vi.hoisted(() => ({
   fetchMe: vi.fn(),
   fetchNavigation: vi.fn(),
+  setAntdConfig: vi.fn(),
+}));
+
+vi.mock('@umijs/max', () => ({
+  useAntdConfigSetter: () => featureMocks.setAntdConfig,
 }));
 
 vi.mock('@/features/auth', async (importOriginal) => ({
@@ -15,11 +23,14 @@ vi.mock('@/features/navigation', async (importOriginal) => ({
   fetchNavigation: featureMocks.fetchNavigation,
 }));
 
-import { getInitialState, layout } from './app';
+import { usePlatformTheme } from '@/features/theme';
+import { antd, getInitialState, layout, rootContainer } from './app';
 
 beforeEach(() => {
   featureMocks.fetchMe.mockReset();
   featureMocks.fetchNavigation.mockReset();
+  featureMocks.setAntdConfig.mockReset();
+  delete window.__ENGINEERING_PLATFORM_THEME__;
 });
 
 describe('getInitialState', () => {
@@ -54,5 +65,45 @@ describe('layout', () => {
       { path: '/home', name: '首页' },
       { path: '/admin', name: '管理后台' },
     ]);
+  });
+});
+
+describe('theme runtime', () => {
+  it('antd runtime 保留既有配置并注入首屏解析的暗色主题', () => {
+    window.__ENGINEERING_PLATFORM_THEME__ = {
+      mode: 'system',
+      resolvedTheme: 'dark',
+    };
+    const memo = { appConfig: {}, prefixCls: 'platform' };
+
+    const config = antd(memo);
+
+    expect(config.appConfig).toBe(memo.appConfig);
+    expect(config.prefixCls).toBe('platform');
+    expect(config.theme).toEqual({
+      algorithm: [theme.darkAlgorithm],
+      token: {
+        colorPrimary: '#C25700',
+        colorBgLayout: '#121212',
+        colorBgContainer: '#1F1F1F',
+        borderRadius: 8,
+      },
+    });
+  });
+
+  it('rootContainer 保留子树并提供首屏主题上下文', () => {
+    window.__ENGINEERING_PLATFORM_THEME__ = {
+      mode: 'dark',
+      resolvedTheme: 'dark',
+    };
+
+    function Probe() {
+      const { mode, resolvedTheme } = usePlatformTheme();
+      return createElement('output', null, `${mode}/${resolvedTheme}`);
+    }
+
+    render(rootContainer(createElement(Probe)));
+
+    expect(screen.getByText('dark/dark')).toBeInTheDocument();
   });
 });
