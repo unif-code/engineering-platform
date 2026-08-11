@@ -1,31 +1,36 @@
 import {
+  type ActionType,
   PageContainer,
   ProCard,
   type ProColumns,
   ProTable,
+  type ProTableProps,
 } from '@ant-design/pro-components';
-import { Button, Input, Select, Space, Typography } from 'antd';
-import { useMemo, useState } from 'react';
+import { App, Button, Input, Select, Space, Typography } from 'antd';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailDrawer } from '@/components/DetailDrawer';
 import { FilterToolbar } from '@/components/FilterToolbar';
 import { MetricCard } from '@/components/MetricCard';
 import { MiniBarChart } from '@/components/MiniBarChart';
 import { SemanticTag } from '@/components/SemanticTag';
-import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
+import { formatGovernanceError } from '@/features/administration';
 import {
   AUDIT_ACTION_DISTRIBUTION,
   AUDIT_ACTION_OPTIONS,
   AUDIT_DETAIL_COLUMNS,
+  AUDIT_METRICS,
+  AUDIT_PAGE_SIZE,
   AUDIT_RANGE_OPTIONS,
+  AUDIT_RESULT_COUNTS,
   AUDIT_RESULT_META,
   AUDIT_RISK_META,
   AUDIT_RISK_OPTIONS,
-  AUDIT_ROWS,
+  AUDIT_TARGET_TYPE_OPTIONS,
   AUDIT_TREND,
 } from './constant';
 import { useStyles } from './index.style';
 import type { AuditQueryParams, AuditRange, AuditRow } from './type';
-import { queryAuditRows, selectAuditRows } from './util';
+import { mergeAndSelectAuditRows, queryAuditRows } from './util';
 
 const ACTION_TONE: Record<AuditRow['action'], 'brand' | 'info' | 'purple'> = {
   'Capability Activate': 'purple',
@@ -35,48 +40,114 @@ const ACTION_TONE: Record<AuditRow['action'], 'brand' | 'info' | 'purple'> = {
 };
 
 export default function AuditPage() {
+  const { message } = App.useApp();
   const { styles } = useStyles();
-  const showStaticAction = useStaticPrototypeAction();
+  const actionRef = useRef<ActionType | undefined>(undefined);
+  const requestSequenceRef = useRef(0);
+  const loadedRowsRef = useRef<AuditRow[]>([]);
   const [range, setRange] = useState<AuditRange>('all');
   const [action, setAction] =
     useState<NonNullable<AuditQueryParams['action']>>('all');
   const [risk, setRisk] =
     useState<NonNullable<AuditQueryParams['risk']>>('all');
-  const [keyword, setKeyword] = useState('');
+  const [actor, setActor] = useState('');
+  const [targetType, setTargetType] =
+    useState<NonNullable<AuditQueryParams['targetType']>>('all');
+  const [cursor, setCursor] = useState<string>();
+  const [nextCursor, setNextCursor] = useState<string | null>();
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [selectedRow, setSelectedRow] = useState<AuditRow>();
 
-  const queryParams = useMemo<AuditQueryParams>(
-    () => ({ action, keyword, range, risk }),
-    [action, keyword, range, risk],
+  const resetCursor = useCallback(() => {
+    requestSequenceRef.current += 1;
+    loadedRowsRef.current = [];
+    setCursor(undefined);
+    setNextCursor(undefined);
+    setVisibleCount(0);
+  }, []);
+
+  useEffect(
+    () => () => {
+      requestSequenceRef.current += 1;
+    },
+    [],
   );
-  const visibleCount = selectAuditRows(queryParams).length;
-  const metrics = [
-    {
-      description: '当前静态审计样本',
-      title: '审计事件',
-      tone: 'neutral' as const,
-      value: AUDIT_ROWS.length,
+
+  const queryParams = useMemo<AuditQueryParams>(
+    () => ({
+      action,
+      actor,
+      cursor,
+      pageSize: AUDIT_PAGE_SIZE,
+      range,
+      risk,
+      targetType,
+    }),
+    [action, actor, cursor, range, risk, targetType],
+  );
+
+  const requestAuditRows = useCallback<
+    NonNullable<ProTableProps<AuditRow, AuditQueryParams>['request']>
+  >(
+    async (params, sort, filter) => {
+      const requestSequence = ++requestSequenceRef.current;
+      const appending = params.cursor !== undefined;
+      if (appending) {
+        setLoadingMore(true);
+      }
+      try {
+        const result = await queryAuditRows(params, sort, filter);
+        if (requestSequence !== requestSequenceRef.current) {
+          return { data: [], success: false };
+        }
+        const nextRows = appending
+          ? mergeAndSelectAuditRows(
+              loadedRowsRef.current,
+              result.data,
+              params,
+              sort,
+              filter,
+            )
+          : [...result.data];
+        loadedRowsRef.current = nextRows;
+        setNextCursor(result.nextCursor);
+        setVisibleCount(nextRows.length);
+        return { data: nextRows, success: true };
+      } catch (error) {
+        if (requestSequence !== requestSequenceRef.current) {
+          return { data: [], success: false };
+        }
+        if (!appending) {
+          loadedRowsRef.current = [];
+          setVisibleCount(0);
+          setNextCursor(null);
+        }
+        message.error(formatGovernanceError(error, '审计事件加载失败'));
+        return { data: [...loadedRowsRef.current], success: true };
+      } finally {
+        if (requestSequence === requestSequenceRef.current) {
+          setLoadingMore(false);
+        }
+      }
     },
-    {
-      description: '最近一个审计日',
-      title: '今日事件',
-      tone: 'brand' as const,
-      value: AUDIT_ROWS.filter((row) => row.occurredAt.startsWith('2026-08-10'))
-        .length,
-    },
-    {
-      description: '需要优先复核',
-      title: '高风险事件',
-      tone: 'danger' as const,
-      value: AUDIT_ROWS.filter((row) => row.risk === 'high').length,
-    },
-    {
-      description: '未形成业务效果',
-      title: '已拒绝',
-      tone: 'warning' as const,
-      value: AUDIT_ROWS.filter((row) => row.result === 'rejected').length,
-    },
-  ];
+    [message],
+  );
+
+  const loadMore = useCallback(() => {
+    if (!nextCursor) {
+      return;
+    }
+    if (cursor === nextCursor) {
+      void actionRef.current?.reload();
+      return;
+    }
+    setCursor(nextCursor);
+  }, [cursor, nextCursor]);
+
+  const showStaticAction = (actionLabel: string) => {
+    message.info(`静态原型操作：${actionLabel}，未保存任何业务数据。`);
+  };
 
   const columns = useMemo<ProColumns<AuditRow>[]>(
     () => [
@@ -143,11 +214,6 @@ export default function AuditPage() {
     [styles.code],
   );
 
-  const resultCounts = {
-    success: AUDIT_ROWS.filter((row) => row.result === 'success').length,
-    rejected: AUDIT_ROWS.filter((row) => row.result === 'rejected').length,
-  };
-
   return (
     <PageContainer
       ghost
@@ -156,7 +222,7 @@ export default function AuditPage() {
     >
       <div className={styles.page}>
         <section aria-label="审计指标" className={styles.metricsGrid}>
-          {metrics.map((metric) => (
+          {AUDIT_METRICS.map((metric) => (
             <article
               aria-label={`${metric.title}：${metric.value}`}
               key={metric.title}
@@ -185,14 +251,14 @@ export default function AuditPage() {
           </ProCard>
           <ProCard className={styles.card} title="结果分布">
             <ul aria-label="审计结果分布" className={styles.resultList}>
-              {(Object.keys(resultCounts) as AuditRow['result'][]).map(
+              {(Object.keys(AUDIT_RESULT_COUNTS) as AuditRow['result'][]).map(
                 (result) => (
                   <li className={styles.resultItem} key={result}>
                     <span className={styles.resultLabel}>
                       <SemanticTag {...AUDIT_RESULT_META[result]} />
                     </span>
                     <span className={styles.resultValue}>
-                      {resultCounts[result]}
+                      {AUDIT_RESULT_COUNTS[result]}
                     </span>
                   </li>
                 ),
@@ -225,16 +291,36 @@ export default function AuditPage() {
                 aria-label="时间范围"
                 className={styles.filter}
                 id="audit-range-filter"
-                onChange={setRange}
+                onChange={(nextRange) => {
+                  resetCursor();
+                  setRange(nextRange);
+                }}
                 options={AUDIT_RANGE_OPTIONS.map((option) => ({ ...option }))}
                 value={range}
+                virtual={false}
+              />
+              <Select<NonNullable<AuditQueryParams['targetType']>>
+                aria-label="目标类型"
+                className={styles.filter}
+                id="audit-target-type-filter"
+                onChange={(nextTargetType) => {
+                  resetCursor();
+                  setTargetType(nextTargetType);
+                }}
+                options={AUDIT_TARGET_TYPE_OPTIONS.map((option) => ({
+                  ...option,
+                }))}
+                value={targetType}
                 virtual={false}
               />
               <Select<NonNullable<AuditQueryParams['action']>>
                 aria-label="审计动作"
                 className={styles.actionFilter}
                 id="audit-action-filter"
-                onChange={setAction}
+                onChange={(nextAction) => {
+                  resetCursor();
+                  setAction(nextAction);
+                }}
                 options={AUDIT_ACTION_OPTIONS.map((option) => ({ ...option }))}
                 value={action}
                 virtual={false}
@@ -243,7 +329,10 @@ export default function AuditPage() {
                 aria-label="风险等级"
                 className={styles.filter}
                 id="audit-risk-filter"
-                onChange={setRisk}
+                onChange={(nextRisk) => {
+                  resetCursor();
+                  setRisk(nextRisk);
+                }}
                 options={AUDIT_RISK_OPTIONS.map((option) => ({ ...option }))}
                 value={risk}
                 virtual={false}
@@ -253,31 +342,44 @@ export default function AuditPage() {
           search={
             <Input.Search
               allowClear
-              aria-label="搜索审计"
+              aria-label="操作人"
               className={styles.search}
-              onChange={(event) => setKeyword(event.target.value)}
-              placeholder="操作人 / 目标 / Correlation ID"
-              value={keyword}
+              onChange={(event) => {
+                resetCursor();
+                setActor(event.target.value);
+              }}
+              placeholder="输入操作人"
+              value={actor}
             />
           }
           summary={
             <Typography.Text type="secondary">
-              共 {visibleCount} 条审计事件
+              已加载 {visibleCount} 条审计事件
             </Typography.Text>
           }
         />
 
         <ProTable<AuditRow, AuditQueryParams>
+          actionRef={actionRef}
           columns={columns}
+          onChange={resetCursor}
           options={false}
-          pagination={{ pageSize: 10, showSizeChanger: false }}
+          pagination={false}
           params={queryParams}
-          request={queryAuditRows}
+          request={requestAuditRows}
           rowKey="id"
           scroll={{ x: 1180 }}
           search={false}
           toolBarRender={false}
         />
+
+        {nextCursor ? (
+          <div className={styles.loadMore}>
+            <Button loading={loadingMore} onClick={loadMore}>
+              加载更多
+            </Button>
+          </div>
+        ) : null}
 
         {selectedRow ? (
           <DetailDrawer<AuditRow>

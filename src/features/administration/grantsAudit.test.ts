@@ -20,7 +20,7 @@ beforeEach(() => {
   requestMock.mockReset();
 });
 
-describe('administration Grant mock-only domain seam', () => {
+describe('administration Grant/Audit mock-only domain seam', () => {
   it('Grant 列表按 principal 与 capability 查询服务端分页', async () => {
     const query = {
       capability: 'audit.read',
@@ -72,6 +72,27 @@ describe('administration Grant mock-only domain seam', () => {
         'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
       },
       method: 'DELETE',
+    });
+  });
+
+  it('Audit 查询透传时间、actor、targetType 与 cursor', async () => {
+    const query = {
+      actor: '孙杰',
+      cursor: 'opaque-cursor',
+      from: '2026-08-01T00:00:00.000Z',
+      limit: 3,
+      targetType: 'CONFIGURATION',
+      to: '2026-08-11T00:00:00.000Z',
+    };
+    const response = { items: [], nextCursor: null };
+    requestMock.mockResolvedValue(response);
+
+    await expect(
+      publicService('listAuditEvents')(query as never),
+    ).resolves.toEqual(response);
+    expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/audit-events', {
+      method: 'GET',
+      params: query,
     });
   });
 });

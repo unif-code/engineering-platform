@@ -40,6 +40,10 @@ export const useStyles = createStyles(({ token }) => ({
     width: 280,
     maxWidth: '100%',
   },
+  loadMore: {
+    display: 'flex',
+    justifyContent: 'center',
+  },
   code: {
     color: token.colorTextSecondary,
     fontFamily: token.fontFamilyCode,

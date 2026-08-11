@@ -4,104 +4,42 @@ import { createElement } from 'react';
 import type { MiniBarDatum } from '@/components/MiniBarChart';
 import { SemanticTag } from '@/components/SemanticTag';
 import type { SemanticTone } from '@/types/presentation';
+import { AuditRequestId } from './AuditRequestId';
 import type { AuditQueryParams, AuditRow } from './type';
 
-function freezeRows(rows: AuditRow[]): readonly AuditRow[] {
-  return Object.freeze(rows.map((row) => Object.freeze(row)));
-}
+export const AUDIT_PAGE_SIZE = 3;
 
-export const AUDIT_ROWS: readonly AuditRow[] = freezeRows([
+export const AUDIT_METRICS = [
   {
-    id: 'AUD-2026-0810-001',
-    occurredAt: '2026-08-10T18:40:00+08:00',
-    actor: '孙杰',
-    action: 'Config Publish',
-    target: '生产策略 / access-policy-v8',
-    risk: 'high',
-    correlationId: 'corr-audit-0810-001',
-    result: 'success',
+    description: '当前审计样本',
+    title: '审计事件',
+    tone: 'neutral' as const,
+    value: 9,
   },
   {
-    id: 'AUD-2026-0810-003',
-    occurredAt: '2026-08-10T16:30:00+08:00',
-    actor: '刘洋',
-    action: 'Promotion',
-    target: '策略服务 / release-2026.08',
-    risk: 'high',
-    correlationId: 'corr-audit-0810-003',
-    result: 'success',
+    description: '最近一个审计日',
+    title: '今日事件',
+    tone: 'brand' as const,
+    value: 4,
   },
   {
-    id: 'AUD-2026-0810-004',
-    occurredAt: '2026-08-10T15:20:00+08:00',
-    actor: '周遥',
-    action: 'Config Publish',
-    target: '开发策略 / theme-v3',
-    risk: 'low',
-    correlationId: 'corr-audit-0810-004',
-    result: 'success',
+    description: '需要优先复核',
+    title: '高风险事件',
+    tone: 'danger' as const,
+    value: 4,
   },
   {
-    id: 'AUD-2026-0810-005',
-    occurredAt: '2026-08-10T14:10:00+08:00',
-    actor: '方舟',
-    action: 'Config Publish',
-    target: '模型路由 / coding-primary',
-    risk: 'high',
-    correlationId: 'corr-audit-0810-005',
-    result: 'rejected',
+    description: '未形成业务效果',
+    title: '已拒绝',
+    tone: 'warning' as const,
+    value: 2,
   },
-  {
-    id: 'AUD-2026-0809-002',
-    occurredAt: '2026-08-09T17:15:00+08:00',
-    actor: '孙杰',
-    action: 'Config Publish',
-    target: '生产策略 / feature-toggle-v7',
-    risk: 'high',
-    correlationId: 'corr-audit-0809-002',
-    result: 'success',
-  },
-  {
-    id: 'AUD-2026-0808-006',
-    occurredAt: '2026-08-08T12:05:00+08:00',
-    actor: '郑楠',
-    action: 'Artifact Accept',
-    target: 'artifact / requirement-spec-v12',
-    risk: 'medium',
-    correlationId: 'corr-audit-0808-006',
-    result: 'success',
-  },
-  {
-    id: 'AUD-2026-0807-007',
-    occurredAt: '2026-08-07T11:25:00+08:00',
-    actor: '李强',
-    action: 'Capability Activate',
-    target: 'capability / sandbox-runtime',
-    risk: 'medium',
-    correlationId: 'corr-audit-0807-007',
-    result: 'rejected',
-  },
-  {
-    id: 'AUD-2026-0805-008',
-    occurredAt: '2026-08-05T10:10:00+08:00',
-    actor: '王悦',
-    action: 'Promotion',
-    target: 'workspace / product-release',
-    risk: 'low',
-    correlationId: 'corr-audit-0805-008',
-    result: 'success',
-  },
-  {
-    id: 'AUD-2026-0802-009',
-    occurredAt: '2026-08-02T09:35:00+08:00',
-    actor: '陈默',
-    action: 'Artifact Accept',
-    target: 'artifact / security-evidence-v4',
-    risk: 'low',
-    correlationId: 'corr-audit-0802-009',
-    result: 'success',
-  },
-]);
+] as const;
+
+export const AUDIT_RESULT_COUNTS: Record<AuditRow['result'], number> = {
+  rejected: 2,
+  success: 7,
+};
 
 export const AUDIT_RANGE_OPTIONS = [
   { label: '全部时间', value: 'all' },
@@ -132,6 +70,18 @@ export const AUDIT_RISK_OPTIONS = [
 ] satisfies ReadonlyArray<{
   label: string;
   value: NonNullable<AuditQueryParams['risk']>;
+}>;
+
+export const AUDIT_TARGET_TYPE_OPTIONS = [
+  { label: '全部目标', value: 'all' },
+  { label: '配置', value: 'CONFIGURATION' },
+  { label: '制品', value: 'ARTIFACT' },
+  { label: 'Capability', value: 'CAPABILITY' },
+  { label: 'Grant', value: 'GRANT' },
+  { label: 'Workspace', value: 'WORKSPACE' },
+] satisfies ReadonlyArray<{
+  label: string;
+  value: NonNullable<AuditQueryParams['targetType']>;
 }>;
 
 export const AUDIT_TREND: readonly MiniBarDatum[] = [
@@ -182,6 +132,8 @@ export const AUDIT_DETAIL_COLUMNS: NonNullable<
   { dataIndex: 'actor', title: '操作人', valueType: 'text' },
   { dataIndex: 'action', title: '动作', valueType: 'text' },
   { dataIndex: 'target', title: '目标', valueType: 'text' },
+  { dataIndex: 'targetType', title: '目标类型', valueType: 'text' },
+  { dataIndex: 'targetId', title: '目标 ID', valueType: 'text' },
   {
     dataIndex: 'risk',
     render: (_, row) => createElement(SemanticTag, AUDIT_RISK_META[row.risk]),
@@ -198,5 +150,13 @@ export const AUDIT_DETAIL_COLUMNS: NonNullable<
     render: (_, row) =>
       createElement(Typography.Text, { code: true }, row.correlationId),
     title: 'Correlation ID',
+  },
+  { dataIndex: 'summary', title: '完整摘要', valueType: 'text' },
+  { dataIndex: 'reason', title: '原因', valueType: 'text' },
+  {
+    dataIndex: 'requestId',
+    render: (_, row) =>
+      createElement(AuditRequestId, { requestId: row.requestId }),
+    title: 'Request ID',
   },
 ];

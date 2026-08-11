@@ -20,6 +20,16 @@ export {
   resetAccountTotp,
 } from '@/services/adminAccounts';
 export type {
+  AuditAction,
+  AuditEvent,
+  AuditEventsQuery,
+  AuditEventsResponse,
+  AuditResult,
+  AuditRisk,
+  AuditTargetType,
+} from '@/services/adminAudit';
+export { listAuditEvents } from '@/services/adminAudit';
+export type {
   CreateGrantInput,
   GrantListQuery,
   GrantListResponse,
