@@ -6,8 +6,8 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useEffectEvent,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { THEME_MEDIA_QUERY } from '@/constants/theme';
@@ -18,7 +18,7 @@ import {
   persistThemeMode,
   syncDocumentTheme,
 } from './model';
-import type { ThemeContextValue, ThemeMode } from './type';
+import type { ResolvedTheme, ThemeContextValue, ThemeMode } from './type';
 
 const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
@@ -37,9 +37,13 @@ function getCurrentSystemPreference(): boolean {
 export function ThemeProvider({ children }: PropsWithChildren) {
   const setAntdConfig = useAntdConfigSetter();
   const parentProConfig = useContext(ProProvider);
-  const setAntdConfigRef = useRef(setAntdConfig);
-  setAntdConfigRef.current = setAntdConfig;
   const [snapshot, setSnapshot] = useState(getInitialThemeSnapshot);
+
+  const syncAntdThemeConfig = useEffectEvent((resolvedTheme: ResolvedTheme) => {
+    setAntdConfig({
+      theme: createAntdThemeConfig(resolvedTheme),
+    });
+  });
 
   const setMode = useCallback((mode: ThemeMode) => {
     persistThemeMode(mode);
@@ -53,9 +57,7 @@ export function ThemeProvider({ children }: PropsWithChildren) {
 
   useEffect(() => {
     syncDocumentTheme(snapshot.resolvedTheme);
-    setAntdConfigRef.current({
-      theme: createAntdThemeConfig(snapshot.resolvedTheme),
-    });
+    syncAntdThemeConfig(snapshot.resolvedTheme);
   }, [snapshot.resolvedTheme]);
 
   useEffect(() => {
