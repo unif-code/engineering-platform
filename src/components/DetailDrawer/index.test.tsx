@@ -70,7 +70,9 @@ function DetailDrawerHarness() {
           }}
           open={open}
           title="制品详情"
-        />
+        >
+          <section aria-label="关联治理信息">附加治理内容</section>
+        </DetailDrawer>
       </App>
     </ConfigProvider>
   );
@@ -107,6 +109,9 @@ describe('DetailDrawer', () => {
     expect(dialog).toHaveTextContent('需求说明.md');
     expect(dialog).toHaveTextContent('Digest');
     expect(dialog).toHaveTextContent('sha256:5dc9e5');
+    expect(
+      within(dialog).getByRole('region', { name: '关联治理信息' }),
+    ).toHaveTextContent('附加治理内容');
     expect(within(dialog).queryByRole('form')).not.toBeInTheDocument();
     expect(
       within(dialog).queryByRole('button', { name: /提交|保存/ }),

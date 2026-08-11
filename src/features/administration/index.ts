@@ -29,4 +29,25 @@ export {
   getOrganizationTree,
   setOrganizationSuperior,
 } from '@/services/adminOrganization';
+export type {
+  CreateWorkspaceInput,
+  WorkspaceAccountRef,
+  WorkspaceLeaderInput,
+  WorkspaceListQuery,
+  WorkspaceListResponse,
+  WorkspaceMember,
+  WorkspaceMemberSource,
+  WorkspaceMembersResponse,
+  WorkspaceReasonInput,
+  WorkspaceStatus,
+  WorkspaceSummary,
+} from '@/services/adminWorkspaces';
+export {
+  createWorkspace,
+  inviteWorkspaceLeader,
+  listWorkspaceMembers,
+  listWorkspaces,
+  removeWorkspaceLeader,
+  transferWorkspaceOwner,
+} from '@/services/adminWorkspaces';
 export { formatGovernanceError } from './error';

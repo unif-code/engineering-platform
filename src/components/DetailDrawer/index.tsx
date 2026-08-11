@@ -15,6 +15,7 @@ export interface DetailDrawerProps<TRecord extends Record<string, any>> {
   column?: ProDescriptionsProps<TRecord>['column'];
   extra?: DrawerProps['extra'];
   focusReturnRef?: RefObject<HTMLElement | null>;
+  children?: ReactNode;
 }
 
 export function DetailDrawer<TRecord extends Record<string, any>>({
@@ -27,6 +28,7 @@ export function DetailDrawer<TRecord extends Record<string, any>>({
   column = 1,
   extra,
   focusReturnRef,
+  children,
 }: DetailDrawerProps<TRecord>) {
   return (
     <Drawer
@@ -52,6 +54,7 @@ export function DetailDrawer<TRecord extends Record<string, any>>({
           size="small"
         />
       ) : null}
+      {children}
     </Drawer>
   );
 }

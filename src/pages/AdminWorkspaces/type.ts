@@ -1,25 +1,35 @@
-export interface WorkspaceRow {
-  id: string;
-  name: string;
-  owner: string;
-  memberCount: number;
-  repositoryCount: number;
-  status: 'active' | 'restricted';
-  updatedAt: string;
-}
+import type {
+  WorkspaceAccountRef,
+  WorkspaceMember,
+  WorkspaceStatus,
+  WorkspaceSummary,
+} from '@/features/administration';
 
-export type WorkspaceStatus = WorkspaceRow['status'];
+export type WorkspaceRow = WorkspaceSummary;
 
 export interface WorkspaceQueryParams {
   current?: number;
-  pageSize?: number;
   keyword?: string;
+  pageSize?: number;
   status?: WorkspaceStatus | 'all';
 }
 
 export interface WorkspaceFormValues {
   name: string;
-  owner: string;
-  defaultTeam: string;
-  description: string;
+  ownerId: string;
+  reason: string;
 }
+
+export type WorkspaceAction = 'invite' | 'remove' | 'transfer';
+
+export interface WorkspaceActionFormValues {
+  accountId?: string;
+  reason: string;
+}
+
+export interface WorkspaceActionState {
+  action: WorkspaceAction;
+  leader?: WorkspaceAccountRef;
+}
+
+export type WorkspaceMemberRow = WorkspaceMember;
