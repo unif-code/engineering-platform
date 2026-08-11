@@ -1,0 +1,232 @@
+import { readFile, readdir } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { join, relative } from 'node:path';
+
+const runtimeDependencies = [
+  '@ant-design/pro-components',
+  '@tanstack/react-query',
+  '@umijs/max',
+  'antd',
+  'react',
+  'react-dom',
+];
+const developmentDependencies = [
+  '@biomejs/biome',
+  '@vitest/coverage-v8',
+  'happy-dom',
+  'tailwindcss',
+  'typescript',
+  'vitest',
+];
+const sourceRoots = ['config', 'mock', 'src'];
+const requiredBiomeScopes = ['config', 'scripts', 'src', 'tests'];
+
+async function readText(root, path, issues) {
+  try {
+    return await readFile(join(root, path), 'utf8');
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      issues.push(`缺少 ${path}`);
+      return undefined;
+    }
+    issues.push(`无法读取 ${path}: ${error.message}`);
+    return undefined;
+  }
+}
+
+async function readJson(root, path, issues) {
+  const contents = await readText(root, path, issues);
+  if (contents === undefined) return undefined;
+
+  try {
+    return JSON.parse(contents);
+  } catch (error) {
+    issues.push(`${path} JSON 解析错误: ${error.message}`);
+    return undefined;
+  }
+}
+
+function hasDependency(manifest, name) {
+  return Boolean(manifest.dependencies?.[name]);
+}
+
+function hasBiomeScope(includes, directory) {
+  return includes.some(
+    (pattern) =>
+      pattern === '**/*' ||
+      pattern.startsWith(`${directory}/`) ||
+      pattern.startsWith(`**/${directory}/`),
+  );
+}
+
+async function collectSourceFiles(root, path) {
+  try {
+    const entries = await readdir(join(root, path), { withFileTypes: true });
+    const nested = await Promise.all(
+      entries.map(async (entry) => {
+        const child = join(path, entry.name);
+        if (entry.isDirectory()) {
+          if (
+            child === 'src/.umi' ||
+            child.startsWith('src/.umi-') ||
+            child === 'src/services/generated'
+          ) {
+            return [];
+          }
+          return collectSourceFiles(root, child);
+        }
+        return /\.(?:[cm]?[jt]sx?)$|\.less$/u.test(entry.name) ? [child] : [];
+      }),
+    );
+    return nested.flat();
+  } catch (error) {
+    if (error?.code === 'ENOENT') return [];
+    throw error;
+  }
+}
+
+function checkManifest(manifest, issues) {
+  if (!manifest) return;
+
+  if (manifest.packageManager !== 'pnpm@11.18.0') {
+    issues.push('packageManager 必须为 pnpm@11.18.0');
+  }
+  if (!/^>=11(?:\D|$)/u.test(manifest.engines?.pnpm ?? '')) {
+    issues.push('engines.pnpm 必须要求 >=11');
+  }
+  if (!manifest.engines?.node) {
+    issues.push('缺少 engines.node');
+  }
+
+  for (const name of runtimeDependencies) {
+    if (!hasDependency(manifest, name)) {
+      issues.push(`${name} 必须位于 dependencies`);
+    }
+  }
+  for (const name of developmentDependencies) {
+    if (!manifest.devDependencies?.[name]) {
+      issues.push(`${name} 必须位于 devDependencies`);
+    }
+  }
+
+  for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })) {
+    if (name === 'vite' || name === '@utoo/pack' || name.startsWith('@vitejs/')) {
+      issues.push(`禁止 direct Vite/Utoopack 依赖：${name}`);
+    }
+  }
+}
+
+function checkConfig(contents, issues) {
+  if (contents === undefined) return;
+  if (!/\butoopack\s*:/u.test(contents)) {
+    issues.push('config/config.ts 必须声明 utoopack');
+  }
+  if (/\bmfsu\s*:/u.test(contents)) {
+    issues.push('config/config.ts 不得保留 mfsu');
+  }
+  if (/\besbuildMinifyIIFE\s*:/u.test(contents)) {
+    issues.push('config/config.ts 不得保留 esbuildMinifyIIFE');
+  }
+}
+
+function checkTsconfig(tsconfig, issues) {
+  if (!tsconfig) return;
+  if (typeof tsconfig.extends === 'string' && tsconfig.extends.includes('.umi/')) {
+    issues.push('tsconfig.json 不得 extends .umi 生成配置');
+  }
+  if (tsconfig.compilerOptions?.moduleResolution !== 'bundler') {
+    issues.push('tsconfig.json 必须使用 moduleResolution: bundler');
+  }
+  if (tsconfig.compilerOptions?.strict !== true) {
+    issues.push('tsconfig.json 必须启用 strict');
+  }
+  if (!Array.isArray(tsconfig.compilerOptions?.paths?.['@/*'])) {
+    issues.push('tsconfig.json 必须声明 @/* 路径别名');
+  }
+  if (!Array.isArray(tsconfig.compilerOptions?.paths?.['@root/*'])) {
+    issues.push('tsconfig.json 必须声明 @root/* 路径别名');
+  }
+}
+
+function checkBiome(biome, issues) {
+  if (!biome) return;
+  const includes = biome.files?.includes;
+  if (!Array.isArray(includes)) {
+    issues.push('Biome 必须声明 files.includes');
+    return;
+  }
+  for (const directory of requiredBiomeScopes) {
+    if (!hasBiomeScope(includes, directory)) {
+      issues.push(`Biome scope 必须覆盖 ${directory}`);
+    }
+  }
+}
+
+function checkSettings(settings, issues) {
+  if (!settings) {
+    issues.push('缺少共享 Skill 声明');
+    return;
+  }
+  const plugins = settings.enabledPlugins;
+  const skills = settings.skills;
+  const hasSkillDeclaration =
+    (plugins && typeof plugins === 'object' && Object.keys(plugins).length > 0) ||
+    (Array.isArray(skills) && skills.length > 0);
+  if (!hasSkillDeclaration) {
+    issues.push('.claude/settings.json 必须声明共享 Skill');
+  }
+}
+
+async function checkHooks(root, issues) {
+  const preCommit = await readText(root, '.husky/pre-commit', issues);
+  if (preCommit !== undefined && !preCommit.includes('lint-staged')) {
+    issues.push('.husky/pre-commit 必须运行 lint-staged');
+  }
+  const commitMessage = await readText(root, '.husky/commit-msg', issues);
+  if (commitMessage !== undefined && !commitMessage.includes('verify-commit')) {
+    issues.push('.husky/commit-msg 必须运行 verify-commit');
+  }
+  if (preCommit === undefined || commitMessage === undefined) {
+    issues.push('缺少 Git hooks 声明');
+  }
+  await readJson(root, '.lintstagedrc', issues);
+}
+
+async function checkSourceFiles(root, issues) {
+  const files = (await Promise.all(sourceRoots.map((path) => collectSourceFiles(root, path)))).flat();
+  for (const path of files) {
+    if (path.endsWith('.less')) {
+      issues.push(`${path}: 不允许 .less 文件`);
+      continue;
+    }
+    const contents = await readText(root, path, issues);
+    if (contents !== undefined && /\bfrom\s+['"]umi['"]/u.test(contents)) {
+      issues.push(`${path}: 不允许 from 'umi'，请从 '@umijs/max' 导入`);
+    }
+  }
+}
+
+export async function verifyStructure(root = process.cwd()) {
+  const issues = [];
+  const manifest = await readJson(root, 'package.json', issues);
+  checkManifest(manifest, issues);
+
+  checkConfig(await readText(root, 'config/config.ts', issues), issues);
+  checkTsconfig(await readJson(root, 'tsconfig.json', issues), issues);
+  checkBiome(await readJson(root, 'biome.json', issues), issues);
+  checkSettings(await readJson(root, '.claude/settings.json', issues), issues);
+  await checkHooks(root, issues);
+  await checkSourceFiles(root, issues);
+
+  return issues;
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const issues = await verifyStructure();
+  if (issues.length === 0) {
+    console.log('结构验证通过');
+  } else {
+    for (const issue of issues) console.error(issue);
+    process.exitCode = 1;
+  }
+}

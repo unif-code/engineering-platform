@@ -1,0 +1,160 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
+import { afterEach, test } from 'node:test';
+import { verifyStructure } from './verify-structure.mjs';
+
+const fixtureRoots = [];
+
+afterEach(async () => {
+  await Promise.all(fixtureRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })));
+});
+
+async function write(root, relativePath, contents) {
+  const target = join(root, relativePath);
+  await mkdir(dirname(target), { recursive: true });
+  await writeFile(target, contents);
+}
+
+async function createValidFixture() {
+  const root = await mkdtemp(join(tmpdir(), 'engineering-platform-structure-'));
+  fixtureRoots.push(root);
+
+  await write(
+    root,
+    'package.json',
+    JSON.stringify(
+      {
+        packageManager: 'pnpm@11.18.0',
+        engines: { node: '>=22', pnpm: '>=11' },
+        dependencies: {
+          '@ant-design/pro-components': '^3.0.0',
+          '@tanstack/react-query': '^5.0.0',
+          '@umijs/max': '^4.0.0',
+          antd: '^6.0.0',
+          react: '^19.0.0',
+          'react-dom': '^19.0.0',
+        },
+        devDependencies: {
+          '@biomejs/biome': '^2.0.0',
+          '@vitest/coverage-v8': '^4.0.0',
+          'happy-dom': '^20.0.0',
+          tailwindcss: '^4.0.0',
+          typescript: '^5.0.0',
+          vitest: '^4.0.0',
+        },
+      },
+      null,
+      2,
+    ),
+  );
+  await write(
+    root,
+    'config/config.ts',
+    "import { defineConfig } from '@umijs/max';\nexport default defineConfig({ utoopack: {} });\n",
+  );
+  await write(
+    root,
+    'tsconfig.json',
+    JSON.stringify({
+      compilerOptions: {
+        moduleResolution: 'bundler',
+        paths: { '@/*': ['./src/*'], '@root/*': ['./*'] },
+        strict: true,
+      },
+      include: ['config', 'src'],
+    }),
+  );
+  await write(
+    root,
+    'biome.json',
+    JSON.stringify({
+      files: {
+        includes: ['config/**/*.ts', 'scripts/**/*.mjs', 'src/**/*.{ts,tsx}', 'tests/**/*.ts'],
+      },
+    }),
+  );
+  await write(
+    root,
+    '.claude/settings.json',
+    JSON.stringify({ enabledPlugins: { 'umi@unif-skills': true } }),
+  );
+  await write(root, '.husky/pre-commit', 'pnpm exec lint-staged\n');
+  await write(root, '.husky/commit-msg', 'pnpm exec max verify-commit \"$1\"\n');
+  await write(root, '.lintstagedrc', '{"*.{ts,tsx}": "biome check --write"}\n');
+  await write(root, 'src/index.ts', "export { defineConfig } from '@umijs/max';\n");
+
+  return root;
+}
+
+async function mutatePackage(root, mutate) {
+  const packagePath = join(root, 'package.json');
+  const manifest = JSON.parse(await (await import('node:fs/promises')).readFile(packagePath, 'utf8'));
+  mutate(manifest);
+  await write(root, 'package.json', JSON.stringify(manifest, null, 2));
+}
+
+test('accepts the platform engineering baseline', async () => {
+  const root = await createValidFixture();
+  assert.deepEqual(await verifyStructure(root), []);
+});
+
+test('reports obsolete builders and generated tsconfig coupling', async () => {
+  const root = await createValidFixture();
+  await mutatePackage(root, ({ devDependencies }) => {
+    devDependencies.vite = '^7.3.5';
+  });
+  await write(root, 'config/config.ts', 'export default { mfsu: false };\n');
+  await write(root, 'tsconfig.json', '{"extends":"./src/.umi/tsconfig.json"}\n');
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(output, /vite/);
+  assert.match(output, /utoopack/);
+  assert.match(output, /\.umi/);
+});
+
+test('reports framework imports and Less without applying API rules', async () => {
+  const root = await createValidFixture();
+  await write(root, 'src/legacy.ts', "import { history } from 'umi';\n");
+  await write(root, 'src/legacy.less', '.legacy {}\n');
+  await write(
+    root,
+    'src/services/domain/index.ts',
+    'export const response = { code: 200, data: {}, message: "ok" };\n',
+  );
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(output, /from 'umi'/);
+  assert.match(output, /\.less/);
+  assert.doesNotMatch(output, /信封|解包|code/);
+});
+
+test('ignores generated Umi artifacts and tool fixture strings', async () => {
+  const root = await createValidFixture();
+  await write(root, 'src/.umi-production/core/runtime.ts', "import { history } from 'umi';\n");
+  await write(root, 'scripts/fixture.mjs', 'const fixture = "from \'umi\'";\n');
+
+  assert.deepEqual(await verifyStructure(root), []);
+});
+
+test('reports missing package, tooling, and Skill baseline requirements together', async () => {
+  const root = await createValidFixture();
+  await mutatePackage(root, (manifest) => {
+    manifest.packageManager = 'pnpm@10.30.3';
+    manifest.engines.pnpm = '>=10';
+    delete manifest.dependencies['@umijs/max'];
+    manifest.devDependencies['@umijs/max'] = '^4.0.0';
+  });
+  await write(root, 'biome.json', '{"files":{"includes":["src/**/*.ts"]}}\n');
+  await rm(join(root, '.claude'), { force: true, recursive: true });
+  await rm(join(root, '.husky'), { force: true, recursive: true });
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(output, /pnpm@11\.18\.0/);
+  assert.match(output, /engines\.pnpm/);
+  assert.match(output, /@umijs\/max/);
+  assert.match(output, /Biome/);
+  assert.match(output, /hooks/);
+  assert.match(output, /Skill/);
+});
