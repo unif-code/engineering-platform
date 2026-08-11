@@ -31,7 +31,6 @@ export interface InitialState {
   principal: Principal | null;
 }
 
-const DEFAULT_COLLAPSED_MAX_VIEWPORT_WIDTH = 1280;
 const EMPTY_INITIAL_STATE: InitialState = {
   capabilities: [],
   navigation: [],
@@ -67,13 +66,6 @@ function readRequestFailure(error: unknown): {
 
 function isAuthEndpoint(url: string | undefined): boolean {
   return url?.includes('/api/v1/auth/') ?? false;
-}
-
-function shouldCollapseSiderByDefault(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    window.innerWidth <= DEFAULT_COLLAPSED_MAX_VIEWPORT_WIDTH
-  );
 }
 
 export async function getInitialState(): Promise<InitialState> {
@@ -141,8 +133,6 @@ export const layout = (({
     logo: false,
     title: false,
     siderWidth: 208,
-    defaultCollapsed: shouldCollapseSiderByDefault(),
-    breakpoint: false,
     fixedHeader: true,
     fixSiderbar: true,
     menu: {

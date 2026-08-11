@@ -130,23 +130,11 @@ describe('getInitialState', () => {
 });
 
 describe('layout', () => {
-  it.each([
-    { viewportWidth: 1440, expected: false },
-    { viewportWidth: 1280, expected: true },
-    { viewportWidth: 1024, expected: true },
-  ])('视口宽度为 $viewportWidth 时初始折叠状态为 $expected', ({
-    viewportWidth,
-    expected,
-  }) => {
-    vi.stubGlobal('window', { innerWidth: viewportWidth });
+  it('不覆盖 ProLayout 官方响应式侧栏配置', () => {
+    const config = layout({});
 
-    expect(layout({}).defaultCollapsed).toBe(expected);
-  });
-
-  it('SSR 环境默认保持展开且不访问 window', () => {
-    vi.stubGlobal('window', undefined);
-
-    expect(layout({}).defaultCollapsed).toBe(false);
+    expect(config).not.toHaveProperty('defaultCollapsed');
+    expect(config).not.toHaveProperty('breakpoint');
   });
 
   it('提供品牌化 mix 布局、固定尺寸和 header 接缝', () => {
@@ -185,7 +173,6 @@ describe('layout', () => {
     expect(config.layout).toBe('mix');
     expect(config).toHaveProperty('navTheme', undefined);
     expect(config.siderWidth).toBe(208);
-    expect(config.breakpoint).toBe(false);
     expect(config.fixedHeader).toBe(true);
     expect(config.fixSiderbar).toBe(true);
     expect(config.menu).toEqual({
