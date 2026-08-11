@@ -1,0 +1,11 @@
+packages:
+  - .
+
+allowBuilds:
+  core-js: false
+  core-js-pure: false
+  es5-ext: false
+  esbuild: true
+
+overrides:
+  '@umijs/plugins>@ant-design/pro-components': '3.1.14-6'

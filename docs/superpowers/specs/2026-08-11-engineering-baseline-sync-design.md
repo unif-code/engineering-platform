@@ -58,6 +58,8 @@
 - 将 `@umijs/max` 移入 `devDependencies`。
 - 删除项目直接声明的 `vite`。Vitest 与 Umi 内部需要的 Vite 由各自传递依赖管理。
 - 不直接依赖 `@utoo/pack`，Utoopack 由 Umi 管理。
+- TypeScript 暂时保持 5.9.3。平台保留的 `openapi-typescript@7.13.0` 官方 peer range 为 `typescript: ^5.x`；Ant Design Pro 的 TypeScript 7 基线使用不同的 `max openapi` 生成链。本轮不替换平台 Artifact/Digest/兼容性门禁，也不引入双 TypeScript workspace。待生成器官方支持 TypeScript 7 后再整体升级。
+- pnpm 11 的依赖构建脚本策略集中写入根 `pnpm-workspace.yaml`：只允许 `esbuild` 执行必要构建脚本，对无需执行脚本的兼容包显式拒绝，不开启全局放行。
 
 ### Umi 配置
 
@@ -78,6 +80,8 @@
 ### 独立 TypeScript 配置
 
 根 `tsconfig.json` 不再 extends `src/.umi/tsconfig.json`，直接声明 ES2022、bundler resolution、React JSX、strict、noEmit、noImplicitReturns、aliases、Vitest/Node types，以及 config/mock/src/tests/vitest 配置的 include。所有 `.umi*`、dist 和 coverage 目录明确 exclude。
+
+Umi 的 React Query 插件运行时从 `@umijs/max` 转出 TanStack Query API，但独立 tsconfig 下该生成式转出缺少稳定声明、会让 `useQuery().data` 退化为 `any`。根 `typings.d.ts` 只补齐 `useQuery` 与 `useMutation` 到 TanStack Query 公共函数类型的真实映射，并由 compile-time 守卫持续验证；不在业务页面逐个补参数类型，也不重新依赖 `.umi` 生成配置。
 
 `tsconfig.depcruise.json` 继续 extends 根配置，只保留 dependency-cruiser 所需的 `baseUrl` 与 paths 覆盖。
 

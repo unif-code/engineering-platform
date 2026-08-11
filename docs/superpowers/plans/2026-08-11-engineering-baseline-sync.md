@@ -6,7 +6,7 @@
 
 **Architecture:** 工程升级分为可执行验证器、运行时/静态配置、交付接线和文档 overlay 四层。结构验证器只约束通用工程事实，不读取或改写平台 API 协议；dependency-cruiser 与 OpenAPI 脚本继续负责平台专属架构。所有配置变化先由测试或真实 CLI 产生 RED，再做最小修改取得 GREEN。
 
-**Tech Stack:** Umi Max 4、Utoopack、React 19、Ant Design 6、ProComponents 3、TanStack Query 5、TypeScript 7、Biome 2、Vitest 4、pnpm 11、Husky 9、GitHub Actions、Docker。
+**Tech Stack:** Umi Max 4、Utoopack、React 19、Ant Design 6、ProComponents 3、TanStack Query 5、TypeScript 5.9、Biome 2、Vitest 4、pnpm 11、Husky 9、GitHub Actions、Docker。
 
 ## Global Constraints
 
@@ -143,6 +143,9 @@ Expected: commit 只包含结构验证器及测试；当前仓库级 RED 保留�
 - Modify: `biome.json`
 - Modify: `vitest.config.ts`
 - Modify: `Dockerfile`
+- Modify: `typings.d.ts`
+- Create: `pnpm-workspace.yaml`
+- Create: `tests/umijs-max-react-query.typecheck.ts`
 
 **Interfaces:**
 - Consumes: Task 1 的 `verifyStructure(root)`；现有平台 routes/proxy/theme/OpenAPI/dependency-cruiser。
@@ -163,7 +166,7 @@ Expected: commit 只包含结构验证器及测试；当前仓库级 RED 保留�
   "devDependencies": {
     "@types/node": "^26.1.2",
     "@umijs/max": "^4.6.82",
-    "typescript": "^7.0.2",
+    "typescript": "^5.9.3",
     "vitest": "^4.1.10"
   }
 }
@@ -171,11 +174,15 @@ Expected: commit 只包含结构验证器及测试；当前仓库级 RED 保留�
 
 `vite` 必须消失；`@umijs/max` 只存在于 devDependencies；`@tanstack/react-query` 与 `@tanstack/react-query-devtools` 使用相同 range。
 
+TypeScript 暂时保持 5.9.3：平台保留的 `openapi-typescript@7.13.0` 官方 peer range 为 `typescript: ^5.x`。Ant Design Pro 的 TypeScript 7 基线使用另一套 `max openapi` 生成链，不能在不改变平台 Artifact/Digest/兼容性门禁的情况下直接照搬。本轮不为版本数字引入双 TypeScript workspace；待生成器官方支持 TypeScript 7 后再整体升级。
+
 - [ ] **Step 2: 更新 Umi、TypeScript、Biome 与 Vitest 配置**
 
 `config/config.ts` 增加 `join`/`@root`、base/hash/fastRefresh/routePrefetch/manifest/utoopack，保留平台 `headScripts` 与 layout title，删除 MFSU/esbuild 配置。
 
 `tsconfig.json` 直接声明 strict ES2022 bundler config，不得含 `extends`；include `config`、`mock`、`src`、`tests`、`typings.d.ts`、`vitest.config.ts`，exclude 全部 `.umi*` 与生成目录。
+
+Umi 的 React Query 插件在运行时从 `@umijs/max` 转出 TanStack Query API，但脱离生成 tsconfig 后该转出会退化为 `any`。在 `typings.d.ts` 中把 `useQuery`、`useMutation` 声明为对应 TanStack Query 公共函数类型，并用 `tests/umijs-max-react-query.typecheck.ts` 的 compile-time 守卫确保 `data` 不会再次静默退化；不得用页面局部参数标注掩盖根因。
 
 `biome.json` 使用 `preset: "recommended"`，覆盖手写目录，排除 `.git`、`.husky/_`、`.umi*`、coverage、dist、node_modules、`.pnpm-store`、Markdown、lockfile 与 `src/services/generated`。
 
@@ -214,6 +221,8 @@ corepack pnpm install --frozen-lockfile
 
 Expected: lockfile 使用 pnpm 11 正常解析，不再有 root direct Vite entry。
 
+若 pnpm 11 拒绝未声明的依赖构建脚本，在根 `pnpm-workspace.yaml` 中显式允许构建 `esbuild`，并显式拒绝无需执行的兼容包脚本；不得使用全局 `dangerouslyAllowAllBuilds`。
+
 - [ ] **Step 4: 运行结构验证并确认剩余 RED 只属于交付接线**
 
 Run:
@@ -236,12 +245,12 @@ pnpm openapi:check
 node --test scripts/verify-structure.test.mjs
 ```
 
-Expected: 全部 exit 0；若 TypeScript 7 暴露真实源码类型错误，先定位根因，不回退 strict 或扩大 exclude。
+Expected: 全部 exit 0；若依赖升级暴露真实源码类型错误，先定位根因，不回退 strict 或扩大 exclude。
 
 - [ ] **Step 6: 提交运行时与静态配置升级**
 
 ```bash
-git add package.json pnpm-lock.yaml config/config.ts tsconfig.json biome.json vitest.config.ts Dockerfile
+git add package.json pnpm-lock.yaml pnpm-workspace.yaml config/config.ts tsconfig.json biome.json vitest.config.ts Dockerfile typings.d.ts tests/umijs-max-react-query.typecheck.ts docs/superpowers/plans/2026-08-11-engineering-baseline-sync.md docs/superpowers/specs/2026-08-11-engineering-baseline-sync-design.md
 git commit -m "chore(tooling): sync Umi engineering baseline"
 ```
 

@@ -5,16 +5,19 @@
     "ignoreUnknown": true,
     "includes": [
       "**/*",
+      "!**/.git",
+      "!**/.husky/_",
       "!**/.umi",
       "!**/.umi-production",
       "!**/.umi-test",
+      "!**/.umi-test-production",
       "!**/src/services/generated",
-      "!**/mock",
       "!**/dist",
       "!**/coverage",
       "!**/node_modules",
+      "!**/.pnpm-store",
+      "!**/*.md",
       "!biome.json",
-      "!tailwind.css",
       "!pnpm-lock.yaml"
     ]
   },
@@ -22,16 +25,9 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true,
-      "suspicious": { "noExplicitAny": "off", "noUnknownAtRules": "off" },
-      "correctness": {
-        "useUniqueElementIds": "off",
-        "useExhaustiveDependencies": "off"
-      },
-      "a11y": {
-        "noStaticElementInteractions": "off",
-        "useValidAnchor": "off",
-        "useKeyWithClickEvents": "off"
+      "preset": "recommended",
+      "suspicious": {
+        "noUnknownAtRules": "off"
       }
     }
   },

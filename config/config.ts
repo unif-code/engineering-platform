@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { defineConfig } from '@umijs/max';
 import defaultSettings from './defaultSettings';
 import proxy from './proxy';
@@ -5,8 +6,17 @@ import routes from './routes';
 import { themePreflightScript } from './themePreflight';
 
 const { REACT_APP_ENV = 'dev' } = process.env;
+const proxyEnvironment = REACT_APP_ENV in proxy ? REACT_APP_ENV : 'dev';
 
 export default defineConfig({
+  base: '/',
+  alias: {
+    '@root': join(__dirname, '..'),
+  },
+  hash: true,
+  fastRefresh: true,
+  routePrefetch: {},
+  manifest: {},
   antd: {
     configProvider: {},
     appConfig: {},
@@ -22,9 +32,8 @@ export default defineConfig({
   layout: {
     title: defaultSettings.title,
   },
-  mfsu: false,
   routes,
-  proxy: proxy[REACT_APP_ENV],
+  proxy: proxy[proxyEnvironment],
   npmClient: 'pnpm',
-  esbuildMinifyIIFE: true,
+  utoopack: {},
 });

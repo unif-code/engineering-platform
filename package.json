@@ -1,10 +1,10 @@
 {
   "private": true,
   "author": "qq382724925 <382724935@qq.com>",
-  "packageManager": "pnpm@10.30.3",
+  "packageManager": "pnpm@11.18.0",
   "engines": {
-    "node": "^22.13.0 || ^24.0.0 || >=26.0.0",
-    "pnpm": ">=10"
+    "node": ">=22.22.1",
+    "pnpm": ">=11"
   },
   "scripts": {
     "dev": "max dev",
@@ -30,39 +30,40 @@
     "lint-staged": "lint-staged"
   },
   "dependencies": {
-    "@ant-design/icons": "^6.2.5",
+    "@ant-design/icons": "^6.3.2",
     "@ant-design/pro-components": "3.1.14-6",
     "@ant-design/x": "^2.9.0",
-    "@tanstack/react-query": "^5.101.0",
-    "@umijs/max": "^4.6.64",
-    "antd": "^6.4.4",
+    "@tanstack/react-query": "^5.101.4",
+    "@tanstack/react-query-devtools": "^5.101.4",
+    "antd": "^6.5.2",
     "antd-style": "^4.1.0",
     "clsx": "^2.1.1",
-    "dayjs": "^1.11.20",
+    "dayjs": "^1.11.21",
     "openapi-fetch": "^0.17.0",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
-    "@ant-design/cli": "^6.4.4",
-    "@biomejs/biome": "^2.5.0",
+    "@ant-design/cli": "^6.5.2",
+    "@biomejs/biome": "^2.5.6",
     "@testing-library/dom": "^10.4.1",
-    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.3",
-    "@types/react": "^19.2.14",
+    "@types/node": "^26.1.2",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitest/coverage-v8": "^4.1.8",
-    "@vitest/ui": "^4.1.8",
+    "@umijs/max": "^4.6.82",
+    "@vitest/coverage-v8": "^4.1.10",
+    "@vitest/ui": "^4.1.10",
     "dependency-cruiser": "^18.1.1",
-    "happy-dom": "^20.10.1",
+    "happy-dom": "^20.11.1",
     "husky": "^9.1.7",
-    "lint-staged": "^17.0.2",
+    "lint-staged": "^17.2.0",
     "openapi-typescript": "^7.13.0",
-    "react-doctor": "^0.5.0",
-    "tailwindcss": "^4.3.1",
+    "react-doctor": "^0.9.2",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.9.3",
-    "vite": "^7.3.5",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.10"
   }
 }
