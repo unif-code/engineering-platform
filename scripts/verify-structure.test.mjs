@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, test } from 'node:test';
@@ -8,7 +8,11 @@ import { verifyStructure } from './verify-structure.mjs';
 const fixtureRoots = [];
 
 afterEach(async () => {
-  await Promise.all(fixtureRoots.splice(0).map((root) => rm(root, { force: true, recursive: true })));
+  await Promise.all(
+    fixtureRoots
+      .splice(0)
+      .map((root) => rm(root, { force: true, recursive: true })),
+  );
 });
 
 async function write(root, relativePath, contents) {
@@ -32,7 +36,6 @@ async function createValidFixture() {
           '@ant-design/x': '^2.0.0',
           '@ant-design/pro-components': '^3.0.0',
           '@tanstack/react-query': '^5.0.0',
-          '@umijs/max': '^4.0.0',
           antd: '^6.0.0',
           'openapi-fetch': '^0.17.0',
           react: '^19.0.0',
@@ -40,6 +43,7 @@ async function createValidFixture() {
         },
         devDependencies: {
           '@biomejs/biome': '^2.0.0',
+          '@umijs/max': '^4.0.0',
           '@vitest/coverage-v8': '^4.0.0',
           'dependency-cruiser': '^18.0.0',
           'happy-dom': '^20.0.0',
@@ -75,7 +79,12 @@ async function createValidFixture() {
     'biome.json',
     JSON.stringify({
       files: {
-        includes: ['config/**/*.ts', 'scripts/**/*.mjs', 'src/**/*.{ts,tsx}', 'tests/**/*.ts'],
+        includes: [
+          'config/**/*.ts',
+          'scripts/**/*.mjs',
+          'src/**/*.{ts,tsx}',
+          'tests/**/*.ts',
+        ],
       },
     }),
   );
@@ -85,16 +94,22 @@ async function createValidFixture() {
     JSON.stringify({ enabledPlugins: { 'umi@unif-skills': true } }),
   );
   await write(root, '.husky/pre-commit', 'pnpm exec lint-staged\n');
-  await write(root, '.husky/commit-msg', 'pnpm exec max verify-commit \"$1\"\n');
+  await write(root, '.husky/commit-msg', 'pnpm exec max verify-commit "$1"\n');
   await write(root, '.lintstagedrc', '{"*.{ts,tsx}": "biome check --write"}\n');
-  await write(root, 'src/index.ts', "export { defineConfig } from '@umijs/max';\n");
+  await write(
+    root,
+    'src/index.ts',
+    "export { defineConfig } from '@umijs/max';\n",
+  );
 
   return root;
 }
 
 async function mutatePackage(root, mutate) {
   const packagePath = join(root, 'package.json');
-  const manifest = JSON.parse(await (await import('node:fs/promises')).readFile(packagePath, 'utf8'));
+  const manifest = JSON.parse(
+    await (await import('node:fs/promises')).readFile(packagePath, 'utf8'),
+  );
   mutate(manifest);
   await write(root, 'package.json', JSON.stringify(manifest, null, 2));
 }
@@ -110,7 +125,11 @@ test('reports obsolete builders and generated tsconfig coupling', async () => {
     devDependencies.vite = '^7.3.5';
   });
   await write(root, 'config/config.ts', 'export default { mfsu: false };\n');
-  await write(root, 'tsconfig.json', '{"extends":"./src/.umi/tsconfig.json"}\n');
+  await write(
+    root,
+    'tsconfig.json',
+    '{"extends":"./src/.umi/tsconfig.json"}\n',
+  );
 
   const output = (await verifyStructure(root)).join('\n');
   assert.match(output, /vite/);
@@ -136,7 +155,11 @@ test('reports framework imports and Less without applying API rules', async () =
 
 test('ignores generated Umi artifacts and tool fixture strings', async () => {
   const root = await createValidFixture();
-  await write(root, 'src/.umi-production/core/runtime.ts', "import { history } from 'umi';\n");
+  await write(
+    root,
+    'src/.umi-production/core/runtime.ts',
+    "import { history } from 'umi';\n",
+  );
   await write(root, 'scripts/fixture.mjs', 'const fixture = "from \'umi\'";\n');
 
   assert.deepEqual(await verifyStructure(root), []);
@@ -147,8 +170,7 @@ test('reports missing package, tooling, and Skill baseline requirements together
   await mutatePackage(root, (manifest) => {
     manifest.packageManager = 'pnpm@10.30.3';
     manifest.engines.pnpm = '>=10';
-    delete manifest.dependencies['@umijs/max'];
-    manifest.devDependencies['@umijs/max'] = '^4.0.0';
+    delete manifest.devDependencies['@umijs/max'];
   });
   await write(root, 'biome.json', '{"files":{"includes":["src/**/*.ts"]}}\n');
   await rm(join(root, '.claude'), { force: true, recursive: true });
@@ -182,6 +204,34 @@ test('reports every required platform dependency when individually missing', asy
     });
     assert.match((await verifyStructure(root)).join('\n'), new RegExp(name));
   }
+});
+
+test('requires @umijs/max only in devDependencies', async () => {
+  for (const section of [
+    'dependencies',
+    'peerDependencies',
+    'optionalDependencies',
+  ]) {
+    const root = await createValidFixture();
+    await mutatePackage(root, (manifest) => {
+      delete manifest.devDependencies['@umijs/max'];
+      manifest[section] = { ...manifest[section], '@umijs/max': '^4.0.0' };
+    });
+
+    assert.match(
+      (await verifyStructure(root)).join('\n'),
+      /@umijs\/max 必须仅位于 devDependencies/,
+    );
+  }
+
+  const root = await createValidFixture();
+  await mutatePackage(root, (manifest) => {
+    delete manifest.devDependencies['@umijs/max'];
+  });
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /@umijs\/max 必须仅位于 devDependencies/,
+  );
 });
 
 test('reports direct Vite and Utoopack dependencies in peer and optional sections', async () => {

@@ -1,12 +1,11 @@
-import { readFile, readdir } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { join, relative } from 'node:path';
 
 const runtimeDependencies = [
   '@ant-design/x',
   '@ant-design/pro-components',
   '@tanstack/react-query',
-  '@umijs/max',
   'antd',
   'openapi-fetch',
   'react',
@@ -14,6 +13,7 @@ const runtimeDependencies = [
 ];
 const developmentDependencies = [
   '@biomejs/biome',
+  '@umijs/max',
   '@vitest/coverage-v8',
   'dependency-cruiser',
   'happy-dom',
@@ -119,15 +119,31 @@ function checkManifest(manifest, issues) {
       issues.push(`${name} 必须位于 dependencies`);
     }
   }
-  for (const name of developmentDependencies) {
+  for (const name of developmentDependencies.filter(
+    (name) => name !== '@umijs/max',
+  )) {
     if (!manifest.devDependencies?.[name]) {
       issues.push(`${name} 必须位于 devDependencies`);
     }
   }
 
+  const umiMaxIsOutsideDevDependencies = dependencySections
+    .filter((section) => section !== 'devDependencies')
+    .some((section) => manifest[section]?.['@umijs/max']);
+  if (
+    !manifest.devDependencies?.['@umijs/max'] ||
+    umiMaxIsOutsideDevDependencies
+  ) {
+    issues.push('@umijs/max 必须仅位于 devDependencies');
+  }
+
   for (const section of dependencySections) {
     for (const name of Object.keys(manifest[section] ?? {})) {
-      if (name === 'vite' || name === '@utoo/pack' || name.startsWith('@vitejs/')) {
+      if (
+        name === 'vite' ||
+        name === '@utoo/pack' ||
+        name.startsWith('@vitejs/')
+      ) {
         issues.push(`禁止 direct Vite/Utoopack 依赖：${section}.${name}`);
       }
     }
@@ -149,7 +165,10 @@ function checkConfig(contents, issues) {
 
 function checkTsconfig(tsconfig, issues) {
   if (!tsconfig) return;
-  if (typeof tsconfig.extends === 'string' && tsconfig.extends.includes('.umi/')) {
+  if (
+    typeof tsconfig.extends === 'string' &&
+    tsconfig.extends.includes('.umi/')
+  ) {
     issues.push('tsconfig.json 不得 extends .umi 生成配置');
   }
   if (tsconfig.compilerOptions?.moduleResolution !== 'bundler') {
@@ -188,7 +207,9 @@ function checkSettings(settings, issues) {
   const plugins = settings.enabledPlugins;
   const skills = settings.skills;
   const hasSkillDeclaration =
-    (plugins && typeof plugins === 'object' && Object.keys(plugins).length > 0) ||
+    (plugins &&
+      typeof plugins === 'object' &&
+      Object.keys(plugins).length > 0) ||
     (Array.isArray(skills) && skills.length > 0);
   if (!hasSkillDeclaration) {
     issues.push('.claude/settings.json 必须声明共享 Skill');
@@ -211,16 +232,22 @@ async function checkHooks(root, issues) {
 }
 
 async function checkSourceFiles(root, issues) {
-  const files = (await Promise.all(sourceRoots.map((path) => collectSourceFiles(root, path)))).flat();
+  const files = (
+    await Promise.all(sourceRoots.map((path) => collectSourceFiles(root, path)))
+  ).flat();
   for (const path of files) {
     if (path.endsWith('.less')) {
       issues.push(`${path}: 不允许 .less 文件`);
       continue;
     }
     const contents = await readText(root, path, issues);
-    const importForm = umiImportForms.find(({ pattern }) => pattern.test(contents));
+    const importForm = umiImportForms.find(({ pattern }) =>
+      pattern.test(contents),
+    );
     if (importForm) {
-      issues.push(`${path}: 不允许 ${importForm.label}，请从 '@umijs/max' 导入`);
+      issues.push(
+        `${path}: 不允许 ${importForm.label}，请从 '@umijs/max' 导入`,
+      );
     }
   }
 }
