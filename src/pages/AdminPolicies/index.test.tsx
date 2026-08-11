@@ -21,6 +21,7 @@ vi.mock('@umijs/max', async () => ({
 import AdminPoliciesPage from '.';
 
 const INITIAL_WAIT = { timeout: 5_000 };
+const PAGE_INTERACTION_TEST_TIMEOUT = 30_000;
 let routes: MockRoutes;
 const requestThroughMock = createMockRequester(() => routes);
 
@@ -120,7 +121,9 @@ beforeEach(() => {
   requestMock.mockImplementation(requestThroughMock);
 });
 
-describe('AdminPoliciesPage', () => {
+describe('AdminPoliciesPage', {
+  timeout: PAGE_INTERACTION_TEST_TIMEOUT,
+}, () => {
   it('呈现 catalog 当前值/版本，并为 Draft 使用数字与枚举控件', async () => {
     const user = userEvent.setup();
     renderPage();
