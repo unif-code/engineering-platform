@@ -1,14 +1,22 @@
 import { LoginForm, ProFormText } from '@ant-design/pro-components';
 import { history } from '@umijs/max';
 import { Alert, Button } from 'antd';
+import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { ApiError } from '@/services/transport';
+import { LoginStepHeader } from './LoginStepHeader';
 import { login, verifyTotp } from './service';
 import type { LoginInput } from './type';
 
 interface TotpFormValues {
   code: string;
 }
+
+// LoginForm 默认 min-width 为 328px；通过官方 contentStyle 统一为原型的 320px。
+const loginFormContentStyle: CSSProperties = {
+  minWidth: 320,
+  width: 320,
+};
 
 export interface LoginFlowProps {
   onAuthenticated: () => Promise<void> | void;
@@ -104,17 +112,23 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
     return (
       <LoginForm<TotpFormValues>
         autoFocusFirstInput={false}
+        contentStyle={loginFormContentStyle}
         key={`totp-${formVersion}`}
-        message={errorMessage}
+        message={false}
         onFinish={submitTotp}
-        subTitle="输入认证器生成的 6 位动态码"
+        subTitle={false}
         submitter={{
           resetButtonProps: false,
           searchConfig: { submitText: '验证并登录' },
           submitButtonProps: { disabled: challengeExpired },
         }}
-        title="验证动态码"
+        title={false}
       >
+        <LoginStepHeader
+          description="输入认证器生成的 6 位动态码"
+          title="验证动态码"
+        />
+        {errorMessage}
         <ProFormText
           fieldProps={{
             autoComplete: 'one-time-code',
@@ -135,17 +149,20 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
 
   return (
     <LoginForm<LoginInput>
+      contentStyle={loginFormContentStyle}
       key={`credentials-${formVersion}`}
-      message={errorMessage}
+      message={false}
       onFinish={submitCredentials}
-      subTitle="使用平台账号继续"
+      subTitle={false}
       submitter={{
         resetButtonProps: false,
         searchConfig: { submitText: '继续' },
         submitButtonProps: { disabled: rateLimited },
       }}
-      title="欢迎回来"
+      title={false}
     >
+      <LoginStepHeader description="使用平台账号继续" title="账号登录" />
+      {errorMessage}
       <ProFormText
         fieldProps={{ autoComplete: 'username', inputMode: 'numeric' }}
         label="员工编号"

@@ -1,4 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@/features/theme';
 
@@ -172,21 +178,36 @@ beforeEach(() => {
 });
 
 describe('LoginPage', () => {
-  it('呈现交付链路 Hero、平台品牌与主题入口', () => {
+  it('按原型呈现品牌、Hero、交付链路和版本', () => {
     renderLoginPage();
 
     expect(
-      screen.getByRole('heading', {
-        name: '从需求到交付，一套可追溯的研发工作台',
-      }),
+      screen.getByRole('img', { name: '研发协作平台' }),
     ).toBeInTheDocument();
+    expect(screen.queryByText('IP')).not.toBeInTheDocument();
+    expect(screen.getByText('集团内网 · V0.2')).toBeInTheDocument();
+
+    const heading = screen.getByRole('heading', {
+      name: /需求到合并，\s*一条\s*可治理\s*的\s*AI 交付链路。/,
+    });
+    expect(within(heading).getByText('可治理')).toBeInTheDocument();
+
+    const deliveryFlow = screen.getByRole('list', {
+      name: '研发交付链路',
+    });
+    for (const label of [
+      '需求对齐',
+      'Spec / Plan 规格计划',
+      '开发',
+      'Review 评审',
+      'MR 合并',
+    ]) {
+      expect(within(deliveryFlow).getByText(label)).toBeInTheDocument();
+    }
+
     expect(
-      screen.getByRole('img', { name: '内部研发平台' }),
+      screen.getByText('© 2026 集团企业开发部 · 仅限内网使用'),
     ).toBeInTheDocument();
-    expect(screen.getByText('Requirement')).toBeInTheDocument();
-    expect(screen.getByText('Artifact')).toBeInTheDocument();
-    expect(screen.getByText('Agent Attempt')).toBeInTheDocument();
-    expect(screen.getByText('Merge Request')).toBeInTheDocument();
     expect(
       screen.getByRole('button', { name: '主题设置' }),
     ).toBeInTheDocument();

@@ -5,9 +5,14 @@ export const useStyles = createStyles(({ token }) => ({
   root: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: token.marginSM,
     minWidth: 0,
     color: token.colorText,
+  },
+  defaultRoot: {
+    gap: 10,
+  },
+  smallRoot: {
+    gap: 9,
   },
   collapsed: {
     justifyContent: 'center',
@@ -19,18 +24,23 @@ export const useStyles = createStyles(({ token }) => ({
     backgroundColor: BRAND_ORANGE,
   },
   defaultMark: {
-    width: 32,
-    height: 32,
+    width: 26,
+    height: 26,
   },
   smallMark: {
-    width: 28,
-    height: 28,
+    width: 24,
+    height: 24,
   },
   name: {
     overflow: 'hidden',
-    fontSize: token.fontSizeLG,
     fontWeight: token.fontWeightStrong,
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
+  },
+  defaultName: {
+    fontSize: 15,
+  },
+  smallName: {
+    fontSize: token.fontSize,
   },
 }));

@@ -2,9 +2,11 @@
 
 > **执行方式：** 使用 `executing-plans` 逐 Task 执行；生产代码前必须取得对应 RED，完成声明前使用 `verification-before-completion`。
 
+**状态：** 执行中（Task 1–3、浏览器验收与独立 review 已完成，等待最终全量门禁和提交）。
+
 **Goal:** 从品牌事实源和 Feature 边界上修复登录页漂移，使 `/login` 精确对齐最新原型，同时完整保留 V0.2 员工编号/密码 → TOTP 两步认证。
 
-**Architecture:** 先集中平台品牌与认证场景主题常量，再让共享 `BrandMark`、Shell 和浏览器标题消费同一事实源；新增 auth Feature 的 `LoginShell` 承载视觉与响应式，`LoginPage` 只保留 Session/redirect 装配；删除 page 层旧样式与文案常量。
+**Architecture:** 先集中平台品牌与认证场景主题常量，再让共享 `BrandMark`、Shell 和浏览器标题消费同一事实源；新增 auth Feature 的 `LoginShell` 承载左侧自伸展、右侧固定登录区的弹性布局，`LoginPage` 只保留 Session/redirect 装配；删除 page 层旧样式与文案常量。
 
 **Tech Stack:** Umi Max 4、React 19、TypeScript、antd 6、@ant-design/pro-components 3、antd-style、Testing Library、Vitest、Biome
 
@@ -15,10 +17,12 @@
 - 不修改 auth service、transport、mock、Session、路由或 Bootstrap 行为。
 - 不增加演示账号、免认证入口、前端 TOTP 倒计时或演示数据重置。
 - 产品运行时名称统一为“研发协作平台”，品牌方块不显示 `IP`。
-- 1440×900 为桌面视觉基准；1280px 及以上保持双栏。
+- 左侧 Hero 自动伸展，右侧登录区固定 548px。
 - Hero、五阶段和“集团内网 · V0.2”使用集中常量或 auth Feature 常量。
 - light 认证背景固定为 `#FDFCFA`；dark、卡片、边框和文字继续使用主题 token。
 - 页面只能通过 auth Feature 公开入口消费 `LoginShell`/`LoginFlow`。
+- `LoginForm` 只通过官方 `contentStyle` 统一设置 `width/minWidth: 320`，不改 `containerStyle` 或内部 DOM。
+- 布局只使用单层 flex，不维护 breakpoint、`@media`、`flex-wrap` 或分辨率分支。
 - 所有既有认证行为测试原位保留，只能补充或做公开文案的最小更新。
 - 任一未知原因的测试或门禁失败立即停止，不放宽全局 timeout、并发或断言。
 
@@ -29,8 +33,9 @@
 - `src/constants/brand.ts`：产品名、版本、Eyebrow 和版权事实源。
 - `src/features/auth/LoginShell.tsx`：认证页视觉壳。
 - `src/features/auth/LoginShell.test.tsx`：视觉壳公开语义测试。
+- `src/features/auth/LoginStepHeader.tsx`：绕开 Pro title 槽的原生步骤标题。
 - `src/features/auth/login.constant.ts`：五阶段常量。
-- `src/features/auth/login.style.ts`：认证页主题与响应式样式。
+- `src/features/auth/login.style.ts`：认证页主题与左右弹性布局样式。
 
 修改：
 
@@ -66,7 +71,7 @@
 
 **Produces:** 单一 `PLATFORM_NAME`，空白橙色品牌方块，以及统一 Shell/browser title。
 
-- [ ] **Step 1: 先改测试形成品牌 RED**
+- [x] **Step 1: 先改测试形成品牌 RED**
 
 更新 `BrandMark` 测试：
 
@@ -92,7 +97,7 @@ it('展开和折叠时使用统一产品名且不渲染旧字母标识', () => {
 
 同步更新 `src/features/shell/index.test.tsx` 中菜单品牌与 fallback title 的公开期望为“研发协作平台”，并断言展开/折叠均无 `IP`。
 
-- [ ] **Step 2: 运行品牌 RED**
+- [x] **Step 2: 运行品牌 RED**
 
 ```bash
 pnpm exec vitest run src/components/BrandMark/index.test.tsx src/features/shell/index.test.tsx
@@ -100,7 +105,7 @@ pnpm exec vitest run src/components/BrandMark/index.test.tsx src/features/shell/
 
 Expected: 只因旧产品名和 `IP` 标识失败；其他 Shell 行为仍通过。
 
-- [ ] **Step 3: 新增品牌事实源并最小接线**
+- [x] **Step 3: 新增品牌事实源并最小接线**
 
 `src/constants/brand.ts`：
 
@@ -119,7 +124,7 @@ export const PLATFORM_COPYRIGHT = '© 2026 集团企业开发部 · 仅限内网
 - `HeaderTitle` fallback 使用 `PLATFORM_NAME`。
 - 不新增品牌 variant 或页面级 name prop。
 
-- [ ] **Step 4: 运行品牌 GREEN 与 scoped checks**
+- [x] **Step 4: 运行品牌 GREEN 与 scoped checks**
 
 ```bash
 pnpm exec vitest run src/components/BrandMark/index.test.tsx src/features/shell/index.test.tsx
@@ -129,7 +134,7 @@ pnpm exec tsc --noEmit
 
 Expected: 全部 exit 0，无新 warning。
 
-- [ ] **Step 5: 提交品牌基础改动**
+- [x] **Step 5: 提交品牌基础改动**
 
 只暂存本 Task 文件，提交：
 
@@ -153,7 +158,7 @@ git commit -m "refactor(brand): centralize platform identity"
 **Consumes:** `BrandMark`、集中品牌常量、公开 `usePlatformTheme`。
 **Produces:** 不读取 service/Session 的纯视觉 `LoginShell`。
 
-- [ ] **Step 1: 写 LoginShell 缺失能力测试**
+- [x] **Step 1: 写 LoginShell 缺失能力测试**
 
 测试必须通过公开 role/name 覆盖：
 
@@ -164,7 +169,7 @@ git commit -m "refactor(brand): centralize platform identity"
 - `headerAction` 与 `children` 被原样装配。
 - DOM 不出现 `IP`、演示数据重置或同屏 TOTP 文案。
 
-- [ ] **Step 2: 运行 LoginShell RED**
+- [x] **Step 2: 运行 LoginShell RED**
 
 ```bash
 pnpm exec vitest run src/features/auth/LoginShell.test.tsx
@@ -172,7 +177,7 @@ pnpm exec vitest run src/features/auth/LoginShell.test.tsx
 
 Expected: 因 `LoginShell` 尚不存在而失败。
 
-- [ ] **Step 3: 建立认证语义 token 和阶段常量**
+- [x] **Step 3: 建立认证语义 token 和阶段常量**
 
 在 `src/constants/theme.ts` 增加：
 
@@ -192,7 +197,7 @@ export const DELIVERY_STAGES = [
 ] as const;
 ```
 
-- [ ] **Step 4: 实现 LoginShell 语义结构**
+- [x] **Step 4: 实现 LoginShell 语义结构**
 
 接口固定为：
 
@@ -211,13 +216,13 @@ export interface LoginShellProps {
 - 从 `src/pages` 导入内容。
 - 为 visual test 添加测试专用生产属性。
 
-- [ ] **Step 5: 实现原型与响应式样式**
+- [x] **Step 5: 实现原型与弹性布局样式**
 
-桌面关键值：header 56/44、Hero 88、form column 460、right padding 88、title 50/800/1.28、card 14/32。阶段节点、卡片、边框、阴影和 dark 模式使用 token；只有品牌橙与认证 light 背景使用集中常量。
+桌面关键值：header 56/44、Hero 88、右侧登录区 548、form card 460、LoginForm 320、title 50/800/1.28、card 14/32。阶段节点、卡片、边框、阴影和 dark 模式使用 token；只有品牌橙与认证 light 背景使用集中常量。
 
-1280px 及以上保持双栏；小于 `screenMD` 转为纵向且允许页面滚动。
+页面使用单层 flex：Hero `flex: 1`，右侧登录区 `flex: 0 0 548px`；不新增 breakpoint、`@media`、`flex-wrap` 或分辨率分支。
 
-- [ ] **Step 6: 公开 Feature 入口并运行 GREEN**
+- [x] **Step 6: 公开 Feature 入口并运行 GREEN**
 
 从 `src/features/auth/index.ts` 导出 `LoginShell` 和类型。
 
@@ -239,10 +244,12 @@ Expected: 全部 exit 0。
 - Modify: `src/features/auth/LoginFlow.test.tsx`
 - Modify: `src/pages/Login/index.tsx`
 - Modify: `src/features/auth/LoginFlow.tsx`
+- Create: `src/features/auth/LoginStepHeader.tsx`
+- Modify: `src/features/auth/login.style.ts`
 - Delete: `src/pages/Login/constant.ts`
 - Delete: `src/pages/Login/index.style.ts`
 
-- [ ] **Step 1: 就地改写现有页面与 LoginFlow 测试形成 RED**
+- [x] **Step 1: 就地改写现有页面与 LoginFlow 测试形成 RED**
 
 保留 `src/pages/Login/index.test.tsx` 全部认证、错误、Bootstrap、Session commit 和 redirect 测试。只把首个视觉用例更新为最新品牌、Hero、五阶段、版本、版权和主题入口。
 
@@ -261,15 +268,15 @@ it('凭据步骤使用账号登录标题并保持两字段', () => {
 });
 ```
 
-- [ ] **Step 2: 运行装配 RED**
+- [x] **Step 2: 运行装配 RED**
 
 ```bash
 pnpm exec vitest run src/pages/Login/index.test.tsx src/features/auth/LoginFlow.test.tsx
 ```
 
-Expected: 视觉用例因页面尚未使用 `LoginShell` 失败；标题用例因“欢迎回来”失败。既有认证行为继续通过。
+Expected: 视觉用例因页面尚未使用 `LoginShell` 失败；标题用例因 Pro title 只产生普通 `span` 而失败。既有认证行为继续通过。
 
-- [ ] **Step 3: 最小接线并删除 page 私有视觉文件**
+- [x] **Step 3: 最小接线并删除 page 私有视觉文件**
 
 `LoginPage` 保留 `refreshSession`、`postLoginPath`、`useEffect` 与错误处理，return 收敛为：
 
@@ -279,9 +286,9 @@ Expected: 视觉用例因页面尚未使用 `LoginShell` 失败；标题用例�
 </LoginShell>
 ```
 
-只把凭据 `LoginForm` 标题改为“账号登录”。删除 page 层 `constant.ts` 和 `index.style.ts`，并确保没有残留导入。
+新增 `LoginStepHeader`，在表单内容区用原生 `h2` 呈现“账号登录”与“验证动态码”；不再使用 Pro 的 `title`/`subTitle` 槽。两个 LoginForm 共享官方 `contentStyle={{ width: 320, minWidth: 320 }}`；删除 page 层 `constant.ts` 和 `index.style.ts`，并确保没有残留导入。
 
-- [ ] **Step 4: 运行 focused GREEN 和架构门**
+- [x] **Step 4: 运行 focused GREEN 和架构门**
 
 ```bash
 pnpm exec vitest run src/components/BrandMark/index.test.tsx src/features/shell/index.test.tsx src/features/auth/LoginShell.test.tsx src/features/auth/LoginFlow.test.tsx src/pages/Login/index.test.tsx
@@ -293,7 +300,7 @@ git diff --check
 
 Expected: 全部 exit 0；依赖方向无 violation。
 
-- [ ] **Step 5: 运行 antd 专项检查**
+- [x] **Step 5: 运行 antd 专项检查**
 
 ```bash
 NO_UPDATE_CHECK=1 pnpm exec antd lint ./src/features/auth
@@ -317,21 +324,20 @@ pnpm test
 
 Expected: 全部 exit 0。不以重试掩盖失败。
 
-- [ ] **Step 2: 浏览器验收**
+- [x] **Step 2: 浏览器验收**
 
-启动 `pnpm dev`，使用 fresh profile 且导航前设置视口：
+启动 `pnpm dev`，使用 fresh profile 验收：
 
-1. 1440×900 light：背景 `#FDFCFA`；header 56px；Hero、五阶段和 460px 卡片无裁切。
-2. 1440×900 dark：页面、卡片、输入和主题 Dropdown 无浅色孤岛。
-3. 1280×900：保持双栏，无 document 横向溢出。
-4. 窄屏：纵向排列，无 document 横向溢出。
-5. 凭据成功后只出现 TOTP 且自动聚焦。
-6. 应用 Shell 展开/折叠均显示新品牌，无 `IP`。
-7. Console 无 runtime error；网络仅允许未登录 bootstrap 的预期 401。
+1. light：背景 `#FDFCFA`；header 56px；Hero、五阶段和 460px 卡片无裁切。
+2. dark：页面、卡片、输入和主题 Dropdown 无浅色孤岛。
+3. 左侧 Hero 自动填充，右侧 548px 登录区、460px 卡片和 320px LoginForm 尺寸稳定。
+4. 凭据成功后只出现 TOTP 且自动聚焦。
+5. 应用 Shell 展开/折叠均显示新品牌，无 `IP`。
+6. Console 无 runtime error；网络仅允许未登录 bootstrap 的预期 401。
 
 截图保存到 `/private/tmp`，不提交；结束后停止 dev/browser 并确认端口释放。
 
-- [ ] **Step 3: 请求独立只读 review**
+- [x] **Step 3: 请求独立只读 review**
 
 按 `requesting-code-review` 对本计划全部代码 diff 做一次只读 review。Critical/Important 必须先技术核验，再按 TDD 修复并重新运行受影响门禁。
 

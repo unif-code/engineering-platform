@@ -1,5 +1,6 @@
 export { BootstrapWizard } from './BootstrapWizard';
 export { LoginFlow, type LoginFlowProps } from './LoginFlow';
+export { LoginShell, type LoginShellProps } from './LoginShell';
 export { default as RouteGuard } from './RouteGuard';
 export {
   confirmBootstrapTotp,

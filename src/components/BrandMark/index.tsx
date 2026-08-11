@@ -18,7 +18,12 @@ export function BrandMark({
   return (
     <span
       aria-label={PLATFORM_NAME}
-      className={clsx(styles.root, collapsed && styles.collapsed, className)}
+      className={clsx(
+        styles.root,
+        size === 'small' ? styles.smallRoot : styles.defaultRoot,
+        collapsed && styles.collapsed,
+        className,
+      )}
       role="img"
     >
       <span
@@ -29,7 +34,13 @@ export function BrandMark({
         )}
       />
       {collapsed ? null : (
-        <span aria-hidden="true" className={styles.name}>
+        <span
+          aria-hidden="true"
+          className={clsx(
+            styles.name,
+            size === 'small' ? styles.smallName : styles.defaultName,
+          )}
+        >
           {PLATFORM_NAME}
         </span>
       )}

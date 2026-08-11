@@ -44,6 +44,17 @@ beforeEach(() => {
 });
 
 describe('LoginFlow', () => {
+  it('凭据步骤使用账号登录标题并保持两字段', () => {
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    expect(
+      screen.getByRole('heading', { name: '账号登录' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
+    expect(screen.getByLabelText('密码')).toBeInTheDocument();
+    expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
+  });
+
   it('完成凭据与 TOTP 两步后才通知页面刷新 Session', async () => {
     const user = userEvent.setup();
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
@@ -58,6 +69,9 @@ describe('LoginFlow', () => {
     expect(mocks.onAuthenticated).not.toHaveBeenCalled();
 
     const totpInput = await screen.findByLabelText('TOTP 动态码');
+    expect(
+      screen.getByRole('heading', { name: '验证动态码' }),
+    ).toBeInTheDocument();
     await waitFor(() => expect(totpInput).toHaveFocus());
     await user.click(totpInput);
     await user.paste('123456');
