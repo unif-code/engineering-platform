@@ -122,6 +122,15 @@ node scripts/verify-structure.mjs
 
 Expected: exit 1，至少报告 pnpm 10、direct Vite、`mfsu: false`、`.umi` tsconfig、缺失 hooks/Skill 声明；不得报告平台 API/Service 协议。
 
+- [ ] **Step 6: 提交结构验证器**
+
+```bash
+git add scripts/verify-structure.mjs scripts/verify-structure.test.mjs
+git commit -m "test(tooling): add structure baseline gate"
+```
+
+Expected: commit 只包含结构验证器及测试；当前仓库级 RED 保留给 Task 2/3 收敛。
+
 ---
 
 ### Task 2: 同步依赖、Utoopack 与静态测试配置
@@ -229,6 +238,15 @@ node --test scripts/verify-structure.test.mjs
 
 Expected: 全部 exit 0；若 TypeScript 7 暴露真实源码类型错误，先定位根因，不回退 strict 或扩大 exclude。
 
+- [ ] **Step 6: 提交运行时与静态配置升级**
+
+```bash
+git add package.json pnpm-lock.yaml config/config.ts tsconfig.json biome.json vitest.config.ts Dockerfile
+git commit -m "chore(tooling): sync Umi engineering baseline"
+```
+
+Expected: commit 不包含源码、OpenAPI Artifact 或生成目录。
+
 ---
 
 ### Task 3: 建立 Markdown、hooks 与统一验证接线
@@ -323,6 +341,15 @@ pnpm exec biome check package.json .github/workflows/ci.yml .claude/settings.jso
 
 Expected: 全部 exit 0。
 
+- [ ] **Step 7: 提交统一验证接线**
+
+```bash
+git add scripts/verify-markdown.mjs scripts/verify-markdown.test.mjs .husky/pre-commit .husky/commit-msg .lintstagedrc .claude/settings.json package.json pnpm-lock.yaml .github/workflows/ci.yml CLAUDE.md
+git commit -m "chore(tooling): unify repository verification"
+```
+
+Expected: commit 只包含 Markdown tooling、hooks、scripts、CI 与必要 lockfile 更新。
+
 ---
 
 ### Task 4: 收敛 AGENTS overlay 并修复 Markdown 基线
@@ -364,6 +391,15 @@ pnpm test:tooling
 ```
 
 Expected: 全部 exit 0；Markdown 无 broken relative link。
+
+- [ ] **Step 4: 提交仓库指导与 Markdown 基线**
+
+```bash
+git add AGENTS.md CLAUDE.md docs/superpowers
+git commit -m "docs: align repository engineering guidance"
+```
+
+Expected: commit 只包含 AGENTS overlay、历史 Markdown 链接修复及本计划状态更新。
 
 ---
 
@@ -414,23 +450,13 @@ Expected: OpenAPI clean；`.umi*`、dist、coverage、node_modules、`.pnpm-stor
 
 审查重点：平台协议是否被误改、生成客户端是否被触碰、CI publish/release 是否保留、validator 是否存在 false positive/negative、direct Vite 是否只从 root manifest 删除。发现问题先按 receiving-code-review Skill 验证，再用 TDD 修复。
 
-- [ ] **Step 5: 提交 Conventional Commits**
+- [ ] **Step 5: 验证各任务的 Conventional Commits**
 
-建议按可回滚边界提交：
-
-```bash
-git commit -m "test(tooling): add engineering baseline gates"
-git commit -m "chore(tooling): sync Umi engineering baseline"
-git commit -m "docs: align repository engineering guidance"
-```
-
-每次只 stage 对应文件，并由 `.husky/commit-msg` 验证。最终运行：
+各任务已经按可回滚边界独立提交。最终核对提交范围，并运行：
 
 ```bash
-pnpm exec max verify-commit HEAD~2
-pnpm exec max verify-commit HEAD~1
-pnpm exec max verify-commit HEAD
+git log --oneline --decorate -8
 git status --short --branch
 ```
 
-Expected: 三个提交信息通过；main 工作区 clean。是否 push 由用户另行授权。
+Expected: Task 1–4 的提交均为 Conventional Commits 且 hooks 已实际执行；main 工作区 clean。是否 push 由用户另行授权。
