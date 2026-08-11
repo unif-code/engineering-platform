@@ -1,47 +1,51 @@
 import {
-  ModalForm,
+  DrawerForm,
   ProFormSelect,
   ProFormText,
+  ProFormTextArea,
 } from '@ant-design/pro-components';
-import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
-import { USER_FORM_ROLE_OPTIONS, USER_FORM_STATUS_OPTIONS } from './constant';
-import type { UserFormValues, UserRow } from './type';
+import { App } from 'antd';
+import { createAccount } from '@/features/administration';
+import { USER_FORM_PROFESSION_OPTIONS } from './constant';
+import type { CredentialReceipt, UserFormValues } from './type';
+import { formatAccountError } from './util';
 
 interface UserModalProps {
   open: boolean;
-  user?: UserRow;
   onClose: () => void;
+  onCreated: (receipt: CredentialReceipt) => void;
 }
 
-export function UserModal({ open, user, onClose }: UserModalProps) {
-  const showStaticAction = useStaticPrototypeAction();
-  const inputIdPrefix = user
-    ? `admin-user-edit-${user.employeeId}`
-    : 'admin-user-create';
-  const initialValues: UserFormValues | undefined = user
-    ? {
-        employeeId: user.employeeId,
-        name: user.name,
-        email: user.email,
-        roles: [...user.roles],
-        status: user.status,
-      }
-    : undefined;
+export function UserModal({ open, onClose, onCreated }: UserModalProps) {
+  const { message } = App.useApp();
+  const titleId = 'admin-account-create-title';
 
-  const submit = async (_values: UserFormValues) => {
-    showStaticAction(user ? `编辑用户 ${user.employeeId}` : '新增用户');
-    onClose();
-    return true;
+  const submit = async (values: UserFormValues) => {
+    try {
+      const receipt = await createAccount({
+        ...values,
+        displayName: values.displayName.trim(),
+        employeeNo: values.employeeNo.trim(),
+        profession: values.profession?.trim() || undefined,
+        reason: values.reason.trim(),
+      });
+      onClose();
+      onCreated(receipt);
+      return true;
+    } catch (error) {
+      message.error(formatAccountError(error, '账号创建失败'));
+      return false;
+    }
   };
 
   return (
-    <ModalForm<UserFormValues>
-      initialValues={initialValues}
-      key={user?.employeeId ?? 'create'}
-      modalProps={{
+    <DrawerForm<UserFormValues>
+      drawerProps={{
+        'aria-labelledby': titleId,
         destroyOnHidden: true,
-        onCancel: onClose,
+        onClose,
       }}
+      key="create-account"
       onFinish={submit}
       onOpenChange={(nextOpen) => {
         if (!nextOpen) {
@@ -50,19 +54,20 @@ export function UserModal({ open, user, onClose }: UserModalProps) {
       }}
       open={open}
       submitter={{
-        searchConfig: {
-          resetText: '取消',
-          submitText: user ? '保存' : '新增',
-        },
+        searchConfig: { resetText: '取消', submitText: '创建' },
       }}
-      title={user ? '编辑用户' : '新增用户'}
-      width={560}
+      title={<span id={titleId}>新增账号</span>}
+      width={480}
     >
       <ProFormText
-        fieldProps={{ id: `${inputIdPrefix}-employee-id` }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-employee-id` }}
+        fieldProps={{
+          autoComplete: 'off',
+          id: 'admin-user-create-employee-no',
+          inputMode: 'numeric',
+        }}
+        formItemProps={{ htmlFor: 'admin-user-create-employee-no' }}
         label="员工编号"
-        name="employeeId"
+        name="employeeNo"
         placeholder="请输入 8 位员工编号"
         rules={[
           { required: true, message: '请输入员工编号' },
@@ -70,51 +75,40 @@ export function UserModal({ open, user, onClose }: UserModalProps) {
         ]}
       />
       <ProFormText
-        fieldProps={{ id: `${inputIdPrefix}-name` }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-name` }}
+        fieldProps={{ id: 'admin-user-create-display-name' }}
+        formItemProps={{ htmlFor: 'admin-user-create-display-name' }}
         label="姓名"
-        name="name"
+        name="displayName"
         placeholder="请输入姓名"
-        rules={[{ required: true, message: '请输入姓名' }]}
-      />
-      <ProFormText
-        fieldProps={{ id: `${inputIdPrefix}-email`, type: 'email' }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-email` }}
-        label="邮箱"
-        name="email"
-        placeholder="name@example.com"
         rules={[
-          { required: true, message: '请输入邮箱' },
-          { type: 'email', message: '请输入有效邮箱' },
+          { required: true, message: '请输入姓名' },
+          { whitespace: true, message: '姓名不能为空' },
         ]}
       />
       <ProFormSelect
         fieldProps={{
-          'aria-label': '角色',
-          id: `${inputIdPrefix}-roles`,
-          mode: 'multiple',
+          'aria-label': '专业分类',
+          allowClear: true,
+          id: 'admin-user-create-profession',
           virtual: false,
         }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-roles` }}
-        label="角色"
-        name="roles"
-        options={USER_FORM_ROLE_OPTIONS.map((option) => ({ ...option }))}
-        placeholder="请选择角色"
-        rules={[{ required: true, message: '请选择角色' }]}
+        formItemProps={{ htmlFor: 'admin-user-create-profession' }}
+        label="专业分类"
+        name="profession"
+        options={USER_FORM_PROFESSION_OPTIONS.map((option) => ({ ...option }))}
+        placeholder="可选"
       />
-      <ProFormSelect
-        fieldProps={{
-          'aria-label': '状态',
-          id: `${inputIdPrefix}-status`,
-          virtual: false,
-        }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-status` }}
-        label="状态"
-        name="status"
-        options={USER_FORM_STATUS_OPTIONS.map((option) => ({ ...option }))}
-        placeholder="请选择状态"
-        rules={[{ required: true, message: '请选择状态' }]}
+      <ProFormTextArea
+        fieldProps={{ id: 'admin-user-create-reason', rows: 3 }}
+        formItemProps={{ htmlFor: 'admin-user-create-reason' }}
+        label="创建原因"
+        name="reason"
+        placeholder="说明创建该账号的原因"
+        rules={[
+          { required: true, message: '请输入创建原因' },
+          { whitespace: true, message: '创建原因不能为空' },
+        ]}
       />
-    </ModalForm>
+    </DrawerForm>
   );
 }

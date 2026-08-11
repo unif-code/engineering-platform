@@ -1,26 +1,26 @@
-export interface UserRow {
-  employeeId: string;
-  name: string;
-  email: string;
-  roles: readonly string[];
-  status: 'active' | 'disabled';
-  lastActiveAt: string;
-}
+import type {
+  AccountCredentialReceipt,
+  AccountStatus,
+  AccountSummary,
+  CreateAccountInput,
+} from '@/features/administration';
 
-export type UserStatus = UserRow['status'];
+export type UserRow = AccountSummary;
+export type UserStatus = AccountStatus;
+export type UserFormValues = CreateAccountInput;
+export type CredentialReceipt = AccountCredentialReceipt;
 
 export interface UserQueryParams {
   current?: number;
   pageSize?: number;
-  keyword?: string;
+  employeeNo?: string;
+  displayName?: string;
+  profession?: string | 'all';
   status?: UserStatus | 'all';
-  role?: string | 'all';
 }
 
-export interface UserFormValues {
-  employeeId: string;
-  name: string;
-  email: string;
-  roles: string[];
-  status: UserStatus;
+export type UserAction = 'enable' | 'disable' | 'resetPassword' | 'resetTotp';
+
+export interface UserActionFormValues {
+  reason: string;
 }

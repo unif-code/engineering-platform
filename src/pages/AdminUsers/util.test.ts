@@ -1,7 +1,14 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { USER_ROWS } from './constant';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from '@/services/transport';
+
+const listAccountsMock = vi.hoisted(() => vi.fn());
+
+vi.mock('@/features/administration', () => ({
+  listAccounts: listAccountsMock,
+}));
+
 import type { UserQueryParams } from './type';
-import { queryUserRows } from './util';
+import { formatAccountError, queryUserRows, toAccountListQuery } from './util';
 
 async function runQuery(
   params: UserQueryParams = {},
@@ -11,107 +18,131 @@ async function runQuery(
   return queryUserRows(params, sort, filter);
 }
 
-afterEach(() => {
-  vi.unstubAllGlobals();
+beforeEach(() => {
+  listAccountsMock.mockReset();
+  listAccountsMock.mockResolvedValue({ items: [], total: 0 });
 });
 
 describe('queryUserRows', () => {
-  it('组合 keyword、status 与 role 筛选用户', async () => {
-    const result = await runQuery({
-      current: 1,
-      keyword: '  USER.B@EXAMPLE.TEST  ',
-      pageSize: 20,
-      role: 'Reviewer',
-      status: 'active',
+  it('组合 employeeNo、displayName、status 与 profession 转为服务端查询', async () => {
+    listAccountsMock.mockResolvedValue({
+      items: [
+        {
+          displayName: '示例用户乙',
+          employeeNo: '10000002',
+          id: 'account-2',
+          profession: '测试',
+          status: 'ENABLED',
+        },
+      ],
+      total: 1,
     });
 
+    const result = await runQuery({
+      current: 2,
+      displayName: '  示例用户  ',
+      employeeNo: '  100000  ',
+      pageSize: 20,
+      profession: '  测试  ',
+      status: 'ENABLED',
+    });
+
+    expect(listAccountsMock).toHaveBeenCalledWith({
+      displayName: '示例用户',
+      employeeNo: '100000',
+      page: 2,
+      pageSize: 20,
+      profession: '测试',
+      status: 'ENABLED',
+    });
     expect(result).toEqual({
-      data: [
-        expect.objectContaining({
-          employeeId: '10000002',
-          name: '示例用户乙',
-        }),
-      ],
+      data: [expect.objectContaining({ employeeNo: '10000002' })],
       success: true,
       total: 1,
     });
   });
 
-  it('按角色与状态筛选时返回正确 total', async () => {
+  it('all 状态与专业分类不会泄漏到请求参数', () => {
+    expect(
+      toAccountListQuery({
+        current: 1,
+        pageSize: 10,
+        profession: 'all',
+        status: 'all',
+      }),
+    ).toEqual({ page: 1, pageSize: 10 });
+  });
+
+  it('忽略 ProTable 注入的未知状态值', () => {
+    expect(
+      toAccountListQuery(
+        { current: 1, pageSize: 10 },
+        {},
+        { status: ['UNKNOWN'] },
+      ),
+    ).toEqual({ page: 1, pageSize: 10 });
+  });
+
+  it('把 ProTable employeeNo 降序转换为 sortBy 与 sortOrder', () => {
+    expect(
+      toAccountListQuery(
+        { current: 1, pageSize: 20 },
+        { employeeNo: 'descend' },
+      ),
+    ).toEqual({
+      page: 1,
+      pageSize: 20,
+      sortBy: 'employeeNo',
+      sortOrder: 'desc',
+    });
+  });
+
+  it('忽略非契约排序字段，避免把页面私有字段发送给后端', () => {
+    expect(
+      toAccountListQuery(
+        { current: 1, pageSize: 20 },
+        { lastActiveAt: 'ascend' },
+      ),
+    ).toEqual({ page: 1, pageSize: 20 });
+  });
+
+  it('current 和 pageSize 非法时使用第一页与十条分页', () => {
+    expect(toAccountListQuery({ current: 0, pageSize: -1 })).toEqual({
+      page: 1,
+      pageSize: 10,
+    });
+  });
+
+  it('无匹配项时把服务端空页适配为 ProTable 成功响应', async () => {
     const result = await runQuery({
       current: 1,
+      displayName: '不存在的用户',
       pageSize: 20,
-      role: 'Reviewer',
-      status: 'active',
-    });
-
-    expect(result.data?.map((row) => row.employeeId)).toEqual([
-      '10000002',
-      '10000004',
-    ]);
-    expect(result.total).toBe(2);
-  });
-
-  it('按 lastActiveAt 降序排序', async () => {
-    const result = await runQuery(
-      { current: 1, pageSize: 20 },
-      { lastActiveAt: 'descend' },
-    );
-
-    expect(result.data?.map((row) => row.employeeId)).toEqual([
-      '10000001',
-      '10000002',
-      '10000004',
-      '10000003',
-    ]);
-  });
-
-  it('排序后按 current 和 pageSize 分页并保留完整 total', async () => {
-    const result = await runQuery(
-      { current: 2, pageSize: 2 },
-      { employeeId: 'ascend' },
-    );
-
-    expect(result.data?.map((row) => row.employeeId)).toEqual([
-      '10000003',
-      '10000004',
-    ]);
-    expect(result.total).toBe(4);
-  });
-
-  it('不修改深度冻结 fixture，并且每次返回新的数据数组', async () => {
-    const before = USER_ROWS.map((row) => ({
-      ...row,
-      roles: [...row.roles],
-    }));
-
-    expect(Object.isFrozen(USER_ROWS)).toBe(true);
-    expect(USER_ROWS.every((row) => Object.isFrozen(row))).toBe(true);
-    expect(USER_ROWS.every((row) => Object.isFrozen(row.roles))).toBe(true);
-
-    const first = await runQuery(
-      { current: 1, pageSize: 20 },
-      { lastActiveAt: 'ascend' },
-    );
-    const second = await runQuery({ current: 1, pageSize: 20 });
-
-    expect(USER_ROWS).toEqual(before);
-    expect(first.data).not.toBe(USER_ROWS);
-    expect(second.data).not.toBe(first.data);
-  });
-
-  it('纯本地查询不会调用 global fetch', async () => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal('fetch', fetchSpy);
-
-    await runQuery({
-      current: 1,
-      keyword: '示例用户',
-      pageSize: 20,
-      role: 'all',
+      profession: 'all',
       status: 'all',
     });
 
-    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(result).toEqual({ data: [], success: true, total: 0 });
+  });
+
+  it.each([
+    { detail: '无账号治理权限', requestId: 'req-403', status: 403 },
+    { detail: '员工号已存在', requestId: 'req-409', status: 409 },
+    { detail: '状态转换不合法', requestId: 'req-422', status: 422 },
+  ])('保留 $status Problem detail 与 requestId', ({
+    detail,
+    requestId,
+    status,
+  }) => {
+    const error = new ApiError({
+      detail,
+      requestId,
+      status,
+      title: 'ACCOUNT_GOVERNANCE_ERROR',
+    });
+
+    expect(formatAccountError(error, '账号操作失败')).toBe(
+      `${detail}（requestId: ${requestId}）`,
+    );
   });
 });

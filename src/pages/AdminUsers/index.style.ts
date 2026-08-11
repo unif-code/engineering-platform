@@ -16,15 +16,24 @@ export const useStyles = createStyles(({ token }) => ({
     minWidth: 144,
   },
   search: {
-    width: 300,
+    width: 180,
     maxWidth: '100%',
   },
-  employeeId: {
-    fontFamily: token.fontFamilyCode,
-  },
-  roles: {
+  searchFields: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: token.marginXXS,
+    gap: token.marginSM,
+  },
+  employeeNo: {
+    fontFamily: token.fontFamilyCode,
+  },
+  credential: {
+    width: '100%',
+  },
+  credentialSecret: {
+    display: 'block',
+    padding: token.paddingSM,
+    fontSize: token.fontSizeLG,
+    wordBreak: 'break-all',
   },
 }));
