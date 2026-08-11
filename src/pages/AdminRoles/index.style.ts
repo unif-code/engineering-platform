@@ -8,14 +8,17 @@ export const useStyles = createStyles(({ token }) => ({
     gap: token.margin,
   },
   masterDetail: {
-    display: 'grid',
-    gridTemplateColumns: '292px minmax(0, 1fr)',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: token.margin,
     alignItems: 'start',
-
-    [`@media (max-width: ${token.screenLG}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
+  },
+  roleList: {
+    flex: '0 1 292px',
+  },
+  matrix: {
+    flex: '1 1 520px',
+    minWidth: 0,
   },
   card: {
     borderColor: token.colorBorderSecondary,
@@ -115,12 +118,8 @@ export const useStyles = createStyles(({ token }) => ({
   },
   capabilityGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
     gap: token.margin,
-
-    [`@media (max-width: ${token.screenXL}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   capabilityGroup: {
     minWidth: 0,

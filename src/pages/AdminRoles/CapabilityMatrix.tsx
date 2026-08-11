@@ -23,7 +23,10 @@ export function CapabilityMatrix({
   const { styles } = useStyles();
 
   return (
-    <section aria-label={`${role.name} Capability 矩阵`}>
+    <section
+      aria-label={`${role.name} Capability 矩阵`}
+      className={styles.matrix}
+    >
       <ProCard className={styles.card}>
         <header className={styles.matrixHeader}>
           <div className={styles.matrixTitleBlock}>

@@ -10,6 +10,7 @@ export const useStyles = createStyles(({ token }) => ({
     border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     display: 'flex',
+    flex: '1 1 360px',
     flexDirection: 'column',
     gap: token.margin,
     minWidth: 0,
@@ -47,12 +48,12 @@ export const useStyles = createStyles(({ token }) => ({
     padding: token.paddingLG,
   },
   workspace: {
-    display: 'grid',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: token.margin,
-    gridTemplateColumns: 'minmax(520px, 1.2fr) minmax(360px, 0.8fr)',
+  },
+  catalog: {
+    flex: '1 1 520px',
     minWidth: 0,
-    '@media (max-width: 1200px)': {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
 }));

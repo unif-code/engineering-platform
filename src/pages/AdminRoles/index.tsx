@@ -41,7 +41,7 @@ export default function AdminRolesPage() {
     >
       <div className={styles.page}>
         <div className={styles.masterDetail}>
-          <nav aria-label="角色列表">
+          <nav aria-label="角色列表" className={styles.roleList}>
             <ProList<RoleFixture>
               cardProps={{ className: styles.card }}
               dataSource={[...ROLE_FIXTURES]}

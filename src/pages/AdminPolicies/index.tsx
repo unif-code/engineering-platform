@@ -334,7 +334,7 @@ export default function AdminPoliciesPage() {
     >
       <div className={styles.page}>
         <div className={styles.workspace}>
-          <section aria-label="Policy Catalog">
+          <section aria-label="Policy Catalog" className={styles.catalog}>
             <ProTable<PolicyCatalogRow, PolicyTableQueryParams>
               actionRef={catalogActionRef}
               columns={catalogColumns}
