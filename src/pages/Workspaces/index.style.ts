@@ -8,14 +8,21 @@ export const useStyles = createStyles(({ token }) => ({
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: token.margin,
   },
   masterDetail: {
-    display: 'grid',
-    gridTemplateColumns: '260px minmax(0, 1fr)',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: token.margin,
     alignItems: 'start',
+  },
+  selectorCard: {
+    flex: '0 1 260px',
+  },
+  detailCard: {
+    flex: '1 1 560px',
+    minWidth: 0,
   },
   card: {
     borderColor: token.colorBorderSecondary,
@@ -128,7 +135,7 @@ export const useStyles = createStyles(({ token }) => ({
   },
   memberList: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
     gap: token.marginSM,
     margin: 0,
     padding: 0,
@@ -180,7 +187,7 @@ export const useStyles = createStyles(({ token }) => ({
   },
   repositoryList: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
     gap: token.marginSM,
     margin: 0,
     padding: 0,
@@ -215,7 +222,7 @@ export const useStyles = createStyles(({ token }) => ({
   },
   settingsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
     gap: token.margin,
   },
   settingsSection: {

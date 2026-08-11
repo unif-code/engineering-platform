@@ -1,5 +1,6 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { Tabs } from 'antd';
+import clsx from 'clsx';
 import { useState } from 'react';
 import { MetricCard } from '@/components/MetricCard';
 import { SemanticTag } from '@/components/SemanticTag';
@@ -54,7 +55,7 @@ export default function WorkspacesPage() {
             workspaces={WORKSPACE_FIXTURES}
           />
 
-          <ProCard className={styles.card}>
+          <ProCard className={clsx(styles.card, styles.detailCard)}>
             <header className={styles.detailHeader}>
               <div>
                 <h2 className={styles.detailTitle}>{selectedWorkspace.name}</h2>

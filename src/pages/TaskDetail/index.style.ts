@@ -5,12 +5,13 @@ const previewToken = theme.getDesignToken();
 
 export const useStyles = createStyles(({ token }) => ({
   detailGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) 344px',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: token.margin,
     alignItems: 'start',
   },
   conversationPane: {
+    flex: '1 1 640px',
     minWidth: 0,
   },
   conversationCard: {
@@ -37,8 +38,8 @@ export const useStyles = createStyles(({ token }) => ({
   inspector: {
     position: 'sticky',
     top: token.margin,
-    width: 344,
-    minWidth: 0,
+    flex: '0 1 344px',
+    maxWidth: '100%',
   },
   inspectorCard: {
     borderColor: token.colorBorderSecondary,

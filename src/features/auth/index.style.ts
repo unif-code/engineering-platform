@@ -7,26 +7,18 @@ export const useBootstrapStyles = createStyles(({ token }) => ({
     minHeight: '100vh',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: token.paddingXL,
+    padding: token.padding,
     background: `linear-gradient(145deg, ${token.colorPrimaryBg} 0%, ${token.colorBgLayout} 55%, ${token.colorBgContainer} 100%)`,
-
-    [`@media (max-width: ${token.screenSM}px)`]: {
-      alignItems: 'stretch',
-      padding: token.padding,
-    },
   },
   panel: {
     boxSizing: 'border-box',
-    width: 'min(100%, 760px)',
+    width: '100%',
+    maxWidth: 760,
     padding: token.paddingXL,
     border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     backgroundColor: token.colorBgElevated,
     boxShadow: token.boxShadowSecondary,
-
-    [`@media (max-width: ${token.screenSM}px)`]: {
-      padding: token.paddingLG,
-    },
   },
   eyebrow: {
     marginBlock: 0,

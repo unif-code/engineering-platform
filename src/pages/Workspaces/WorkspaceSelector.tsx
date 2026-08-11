@@ -19,7 +19,7 @@ export function WorkspaceSelector({
   const { styles } = useStyles();
 
   return (
-    <ProCard className={styles.card}>
+    <ProCard className={clsx(styles.card, styles.selectorCard)}>
       <nav aria-labelledby="workspace-selector-title">
         <header className={styles.selectorHeader}>
           <h2 className={styles.selectorTitle} id="workspace-selector-title">
