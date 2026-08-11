@@ -116,41 +116,41 @@ describe('TaskDetailPage', () => {
     { actionName: '查看 Artifact', dialogName: 'Artifact 文档' },
     { actionName: '查看完整 Diff', dialogName: '代码 Diff' },
     { actionName: '驳回审批', dialogName: '驳回审批' },
-  ])('从菜单打开 $actionName 并按 Escape 关闭后焦点回到更多操作', async ({
-    actionName,
-    dialogName,
-  }) => {
-    // rc-component 在 test 环境为所有 Portal 生成相同 ID；development
-    // 分支使用真实唯一 ID，才能复现浏览器的 Overlay Escape 栈。
-    vi.stubEnv('NODE_ENV', 'development');
-    try {
-      const user = userEvent.setup();
-      renderPage();
-      await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
+  ])(
+    '从菜单打开 $actionName 并按 Escape 关闭后焦点回到更多操作',
+    async ({ actionName, dialogName }) => {
+      // rc-component 在 test 环境为所有 Portal 生成相同 ID；development
+      // 分支使用真实唯一 ID，才能复现浏览器的 Overlay Escape 栈。
+      vi.stubEnv('NODE_ENV', 'development');
+      try {
+        const user = userEvent.setup();
+        renderPage();
+        await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
 
-      const actions = screen.getByRole('group', { name: '任务操作' });
-      const moreActionsButton = within(actions).getByRole('button', {
-        name: '更多操作',
-      });
-      await user.click(moreActionsButton);
-      const menuItem = await screen.findByRole('menuitem', {
-        name: actionName,
-      });
-      await user.click(menuItem);
+        const actions = screen.getByRole('group', { name: '任务操作' });
+        const moreActionsButton = within(actions).getByRole('button', {
+          name: '更多操作',
+        });
+        await user.click(moreActionsButton);
+        const menuItem = await screen.findByRole('menuitem', {
+          name: actionName,
+        });
+        await user.click(menuItem);
 
-      const dialog = await screen.findByRole('dialog', { name: dialogName });
-      await user.keyboard('{Escape}');
+        const dialog = await screen.findByRole('dialog', { name: dialogName });
+        await user.keyboard('{Escape}');
 
-      await waitFor(() => {
-        expect(dialog).not.toBeInTheDocument();
-      });
-      await waitFor(() => {
-        expect(moreActionsButton).toHaveFocus();
-      });
-    } finally {
-      vi.unstubAllEnvs();
-    }
-  });
+        await waitFor(() => {
+          expect(dialog).not.toBeInTheDocument();
+        });
+        await waitFor(() => {
+          expect(moreActionsButton).toHaveFocus();
+        });
+      } finally {
+        vi.unstubAllEnvs();
+      }
+    },
+  );
 
   it('驳回审批必须填写原因，提交后仅提示且任务与对话不变', async () => {
     const user = userEvent.setup();

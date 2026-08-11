@@ -63,19 +63,19 @@ describe('transport', () => {
       data: '',
       expected: { status: 502, title: 'Bad Gateway' },
     },
-  ])('normalizeApiError 将文本或空 HTTP 响应归一为 ApiError', ({
-    data,
-    expected,
-  }) => {
-    const normalized = normalizeApiError({
-      response: { data, status: 502, statusText: 'Bad Gateway' },
-    });
+  ])(
+    'normalizeApiError 将文本或空 HTTP 响应归一为 ApiError',
+    ({ data, expected }) => {
+      const normalized = normalizeApiError({
+        response: { data, status: 502, statusText: 'Bad Gateway' },
+      });
 
-    expect(normalized).toMatchObject({
-      name: 'ApiError',
-      problem: expected,
-    });
-  });
+      expect(normalized).toMatchObject({
+        name: 'ApiError',
+        problem: expected,
+      });
+    },
+  );
 
   it.each([
     {
@@ -156,27 +156,27 @@ describe('transport', () => {
     expect(handler).toHaveBeenCalledOnce();
   });
 
-  it.each([
-    '/api/v1/auth/login',
-    '/api/v1/auth/logout',
-  ])('%s 的业务 401 不触发 Session 失效回调', async (path) => {
-    const handler = vi.fn();
-    onUnauthorized(handler);
-    stubFetch(
-      async () =>
-        new Response(JSON.stringify({ detail: '认证操作失败' }), {
-          status: 401,
-          headers: { 'Content-Type': 'application/problem+json' },
-        }),
-    );
-    const client = createApiClient('/api');
+  it.each(['/api/v1/auth/login', '/api/v1/auth/logout'])(
+    '%s 的业务 401 不触发 Session 失效回调',
+    async (path) => {
+      const handler = vi.fn();
+      onUnauthorized(handler);
+      stubFetch(
+        async () =>
+          new Response(JSON.stringify({ detail: '认证操作失败' }), {
+            status: 401,
+            headers: { 'Content-Type': 'application/problem+json' },
+          }),
+      );
+      const client = createApiClient('/api');
 
-    await expect(client.POST(path as never)).rejects.toMatchObject({
-      name: 'ApiError',
-      problem: { detail: '认证操作失败', status: 401 },
-    });
-    expect(handler).not.toHaveBeenCalled();
-  });
+      await expect(client.POST(path as never)).rejects.toMatchObject({
+        name: 'ApiError',
+        problem: { detail: '认证操作失败', status: 401 },
+      });
+      expect(handler).not.toHaveBeenCalled();
+    },
+  );
 
   it('does not let unauthorized handler errors mask the 401 ApiError', async () => {
     const handler = vi.fn(() => {

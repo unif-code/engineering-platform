@@ -197,7 +197,9 @@ export function createAdminOrganizationMock(
       if (!requireWrite(request, response)) {
         return;
       }
-      const account = records.find(({ id }) => id === request.params?.accountId);
+      const account = records.find(
+        ({ id }) => id === request.params?.accountId,
+      );
       const superiorId = isRecord(request.body)
         ? request.body.superiorId
         : undefined;
@@ -207,7 +209,12 @@ export function createAdminOrganizationMock(
         return;
       }
       if (account.kind === 'MANAGER') {
-        sendProblem(response, 422, 'VALIDATION_ERROR', '经理不能设置平台内上级');
+        sendProblem(
+          response,
+          422,
+          'VALIDATION_ERROR',
+          '经理不能设置平台内上级',
+        );
         return;
       }
       const expectedKind = account.kind === 'LEADER' ? 'MANAGER' : 'LEADER';

@@ -226,10 +226,7 @@ export function createAdminPoliciesMock(
     return false;
   };
 
-  const requireMutation = (
-    request: MockRequest,
-    response: MockResponse,
-  ) => {
+  const requireMutation = (request: MockRequest, response: MockResponse) => {
     if (!requireAuthorization(request, response)) {
       return false;
     }
@@ -346,7 +343,12 @@ export function createAdminPoliciesMock(
         !isRecord(request.body) ||
         request.body.scope !== 'PLATFORM'
       ) {
-        sendProblem(response, 422, 'VALIDATION_ERROR', 'Policy namespace 或 scope 不合法');
+        sendProblem(
+          response,
+          422,
+          'VALIDATION_ERROR',
+          'Policy namespace 或 scope 不合法',
+        );
         return;
       }
       const draft = createDraftFrom(activeContent);
@@ -369,7 +371,12 @@ export function createAdminPoliciesMock(
         return;
       }
       if (headerValue(request, 'If-Match') !== draft.etag) {
-        sendProblem(response, 409, 'DRAFT_CONFLICT', '已被并发修改，刷新后重试');
+        sendProblem(
+          response,
+          409,
+          'DRAFT_CONFLICT',
+          '已被并发修改，刷新后重试',
+        );
         return;
       }
       if (!isRecord(request.body) || !isRecord(request.body.content)) {
@@ -447,14 +454,25 @@ export function createAdminPoliciesMock(
         return;
       }
       if (draft.baseVersion !== activeVersion) {
-        sendProblem(response, 409, 'SOURCE_STALE', 'Draft Base 已落后，请刷新后重试');
+        sendProblem(
+          response,
+          409,
+          'SOURCE_STALE',
+          'Draft Base 已落后，请刷新后重试',
+        );
         return;
       }
       const validation = validationResult(draft);
       if (!validation.valid) {
-        sendProblem(response, 422, 'POLICY_VALIDATION_FAILED', 'Policy 校验未通过', {
-          issues: validation.issues,
-        });
+        sendProblem(
+          response,
+          422,
+          'POLICY_VALIDATION_FAILED',
+          'Policy 校验未通过',
+          {
+            issues: validation.issues,
+          },
+        );
         return;
       }
       activeVersion += 1;
@@ -490,14 +508,21 @@ export function createAdminPoliciesMock(
       if (!requireMutation(request, response)) {
         return;
       }
-      const toVersion = isRecord(request.body) ? request.body.toVersion : undefined;
+      const toVersion = isRecord(request.body)
+        ? request.body.toVersion
+        : undefined;
       const source = versions.find(
         (version) =>
           version.namespace === request.params?.namespace &&
           version.version === toVersion,
       );
       if (source === undefined) {
-        sendProblem(response, 404, 'VERSION_NOT_FOUND', 'Policy Version 不存在');
+        sendProblem(
+          response,
+          404,
+          'VERSION_NOT_FOUND',
+          'Policy Version 不存在',
+        );
         return;
       }
       const draft = createDraftFrom(source.snapshot);

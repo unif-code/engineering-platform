@@ -32,12 +32,10 @@ describe('session redirects', () => {
     expect(resolvePostLoginPath(candidate)).toBe(expected);
   });
 
-  it.each([
-    '/login',
-    '/login/',
-    '/bootstrap',
-    '/bootstrap/',
-  ])('%s 上的 401 不生成自指回跳', (path) => {
-    expect(buildLoginPath({ pathname: path, search: '' })).toBe('/login');
-  });
+  it.each(['/login', '/login/', '/bootstrap', '/bootstrap/'])(
+    '%s 上的 401 不生成自指回跳',
+    (path) => {
+      expect(buildLoginPath({ pathname: path, search: '' })).toBe('/login');
+    },
+  );
 });

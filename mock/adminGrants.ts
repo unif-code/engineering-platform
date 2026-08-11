@@ -126,9 +126,7 @@ const cloneGrant = (grant: GrantRecord): GrantRecord => ({
   scope: { ...grant.scope },
 });
 
-export function createAdminGrantsMock(
-  options: AdminGrantsMockOptions = {},
-) {
+export function createAdminGrantsMock(options: AdminGrantsMockOptions = {}) {
   const authorize = options.authorize ?? (() => true);
   const grants = INITIAL_GRANTS.map(cloneGrant);
   let nextGrantId = 1;
@@ -244,7 +242,12 @@ export function createAdminGrantsMock(
         capability === 'platform.configuration.manage' ||
         capability === 'platform.super_admin.manage'
       ) {
-        sendProblem(response, 422, 'RESERVED_CAPABILITY', '保留能力不可普通授予');
+        sendProblem(
+          response,
+          422,
+          'RESERVED_CAPABILITY',
+          '保留能力不可普通授予',
+        );
         return;
       }
       if (

@@ -3,11 +3,7 @@ import { defineMock } from '@umijs/max';
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-type AccountStatus =
-  | 'PENDING_INIT'
-  | 'ENABLED'
-  | 'DISABLED'
-  | 'RESTRICTED';
+type AccountStatus = 'PENDING_INIT' | 'ENABLED' | 'DISABLED' | 'RESTRICTED';
 
 interface AccountSummary {
   id: string;
@@ -125,11 +121,7 @@ export const createAdminAccountsMock = (
   let nextAccountId = INITIAL_ACCOUNTS.length + 1;
   let requestSequence = 0;
 
-  const sendJson = (
-    response: MockResponse,
-    status: number,
-    body: unknown,
-  ) => {
+  const sendJson = (response: MockResponse, status: number, body: unknown) => {
     response.status(status);
     response.setHeader('Content-Type', 'application/json');
     response.json(body);
@@ -248,14 +240,16 @@ export const createAdminAccountsMock = (
 
       const filtered = accounts.filter((account) => {
         const matchesEmployeeNo =
-          !employeeNo || account.employeeNo.toLocaleLowerCase().includes(employeeNo);
+          !employeeNo ||
+          account.employeeNo.toLocaleLowerCase().includes(employeeNo);
         const matchesDisplayName =
           !displayName ||
           account.displayName.toLocaleLowerCase().includes(displayName);
         const matchesProfession =
           !profession ||
           account.profession?.toLocaleLowerCase().includes(profession) === true;
-        const matchesStatus = !isAccountStatus(status) || account.status === status;
+        const matchesStatus =
+          !isAccountStatus(status) || account.status === status;
         return (
           matchesEmployeeNo &&
           matchesDisplayName &&

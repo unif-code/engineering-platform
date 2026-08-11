@@ -85,23 +85,21 @@ describe('admin workspaces service', () => {
       path: '/api/v1/admin/workspaces/workspace%2F1/transfer-owner',
       payload: { accountId: 'leader-2', reason: '职责交接' },
     },
-  ])('$path 治理命令带原因与幂等键', async ({
-    invoke,
-    method,
-    path,
-    payload,
-  }) => {
-    requestMock.mockResolvedValue({ id: 'workspace-1' });
+  ])(
+    '$path 治理命令带原因与幂等键',
+    async ({ invoke, method, path, payload }) => {
+      requestMock.mockResolvedValue({ id: 'workspace-1' });
 
-    await invoke();
-    expect(requestMock).toHaveBeenCalledWith(path, {
-      data: payload,
-      headers: {
-        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-      },
-      method,
-    });
-  });
+      await invoke();
+      expect(requestMock).toHaveBeenCalledWith(path, {
+        data: payload,
+        headers: {
+          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        },
+        method,
+      });
+    },
+  );
 
   it('读取只读成员投影', async () => {
     const response = {

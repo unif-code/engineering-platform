@@ -122,22 +122,21 @@ describe('admin accounts service', () => {
       path: '/api/v1/admin/accounts/account-1/totp-reset',
       reason: '更换设备',
     },
-  ])('$path 成功保留 204 void，并携带 reason 与幂等键', async ({
-    invoke,
-    path,
-    reason,
-  }) => {
-    requestMock.mockResolvedValue(undefined);
+  ])(
+    '$path 成功保留 204 void，并携带 reason 与幂等键',
+    async ({ invoke, path, reason }) => {
+      requestMock.mockResolvedValue(undefined);
 
-    await expect(invoke()).resolves.toBeUndefined();
-    expect(requestMock).toHaveBeenCalledWith(path, {
-      data: { reason },
-      headers: {
-        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-      },
-      method: 'POST',
-    });
-  });
+      await expect(invoke()).resolves.toBeUndefined();
+      expect(requestMock).toHaveBeenCalledWith(path, {
+        data: { reason },
+        headers: {
+          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        },
+        method: 'POST',
+      });
+    },
+  );
 
   it('将 403 Problem 原文与 requestId 归一为 ApiError', async () => {
     requestMock.mockRejectedValue({

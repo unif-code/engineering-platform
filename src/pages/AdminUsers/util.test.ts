@@ -129,20 +129,19 @@ describe('queryUserRows', () => {
     { detail: '无账号治理权限', requestId: 'req-403', status: 403 },
     { detail: '员工号已存在', requestId: 'req-409', status: 409 },
     { detail: '状态转换不合法', requestId: 'req-422', status: 422 },
-  ])('保留 $status Problem detail 与 requestId', ({
-    detail,
-    requestId,
-    status,
-  }) => {
-    const error = new ApiError({
-      detail,
-      requestId,
-      status,
-      title: 'ACCOUNT_GOVERNANCE_ERROR',
-    });
+  ])(
+    '保留 $status Problem detail 与 requestId',
+    ({ detail, requestId, status }) => {
+      const error = new ApiError({
+        detail,
+        requestId,
+        status,
+        title: 'ACCOUNT_GOVERNANCE_ERROR',
+      });
 
-    expect(formatAccountError(error, '账号操作失败')).toBe(
-      `${detail}（requestId: ${requestId}）`,
-    );
-  });
+      expect(formatAccountError(error, '账号操作失败')).toBe(
+        `${detail}（requestId: ${requestId}）`,
+      );
+    },
+  );
 });

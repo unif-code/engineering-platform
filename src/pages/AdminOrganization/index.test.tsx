@@ -176,35 +176,34 @@ describe('AdminOrganizationPage', () => {
       requestId: 'mock-org-page-422',
       status: 422,
     },
-  ])('保留 $status Problem 原文与 requestId', async ({
-    detail,
-    requestId,
-    status,
-  }) => {
-    const original = routes['PUT /api/v1/admin/accounts/:accountId/superior'];
-    routes = {
-      ...routes,
-      'PUT /api/v1/admin/accounts/:accountId/superior': (
-        request: MockRequest,
-        response: MockResponse,
-      ) => {
-        if (request.body === undefined) {
-          throw new Error('测试请求缺少 body');
-        }
-        response.status(status);
-        response.setHeader('Content-Type', 'application/problem+json');
-        response.json({ detail, requestId, status, title: 'ORG_ERROR' });
-      },
-    };
-    expect(original).toBeTypeOf('function');
-    const user = userEvent.setup();
-    renderPage();
+  ])(
+    '保留 $status Problem 原文与 requestId',
+    async ({ detail, requestId, status }) => {
+      const original = routes['PUT /api/v1/admin/accounts/:accountId/superior'];
+      routes = {
+        ...routes,
+        'PUT /api/v1/admin/accounts/:accountId/superior': (
+          request: MockRequest,
+          response: MockResponse,
+        ) => {
+          if (request.body === undefined) {
+            throw new Error('测试请求缺少 body');
+          }
+          response.status(status);
+          response.setHeader('Content-Type', 'application/problem+json');
+          response.json({ detail, requestId, status, title: 'ORG_ERROR' });
+        },
+      };
+      expect(original).toBeTypeOf('function');
+      const user = userEvent.setup();
+      renderPage();
 
-    const dialog = await submitSuperiorChange(user, '林一', '沈一');
+      const dialog = await submitSuperiorChange(user, '林一', '沈一');
 
-    expect(await screen.findByText(new RegExp(detail))).toHaveTextContent(
-      `requestId: ${requestId}`,
-    );
-    expect(dialog).toBeInTheDocument();
-  });
+      expect(await screen.findByText(new RegExp(detail))).toHaveTextContent(
+        `requestId: ${requestId}`,
+      );
+      expect(dialog).toBeInTheDocument();
+    },
+  );
 });

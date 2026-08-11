@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { mutationHeaders } from '../src/services/transport';
 import type {
   PolicyCatalogResponse,
   PolicyDraft,
@@ -7,6 +6,7 @@ import type {
   PolicyVersionsResponse,
   PublishedPolicyVersion,
 } from '../src/services/adminPolicies';
+import { mutationHeaders } from '../src/services/transport';
 import {
   createMockRequester,
   type MockRoutes,
@@ -55,7 +55,9 @@ beforeEach(() => {
 
 describe('adminPolicies mock contract', () => {
   it('返回 identity catalog 当前值、版本与版本历史', async () => {
-    const catalog = (await request('/api/v1/admin/policies')) as PolicyCatalogResponse;
+    const catalog = (await request(
+      '/api/v1/admin/policies',
+    )) as PolicyCatalogResponse;
     const versions = (await request(
       '/api/v1/admin/policies/identity/versions',
     )) as PolicyVersionsResponse;
@@ -121,10 +123,10 @@ describe('adminPolicies mock contract', () => {
       'identity.session_idle_minutes': 10,
     });
 
-    const result = (await request(
-      `${draftsPath}/${updated.id}/validate`,
-      { headers: mutationHeaders(), method: 'POST' },
-    )) as PolicyValidationResult;
+    const result = (await request(`${draftsPath}/${updated.id}/validate`, {
+      headers: mutationHeaders(),
+      method: 'POST',
+    })) as PolicyValidationResult;
 
     expect(result).toEqual({
       issues: [
@@ -176,7 +178,9 @@ describe('adminPolicies mock contract', () => {
         method: 'POST',
       },
     )) as PolicyDraft;
-    const catalog = (await request('/api/v1/admin/policies')) as PolicyCatalogResponse;
+    const catalog = (await request(
+      '/api/v1/admin/policies',
+    )) as PolicyCatalogResponse;
 
     expect(rollbackDraft).toMatchObject({
       baseVersion: 2,
@@ -185,9 +189,8 @@ describe('adminPolicies mock contract', () => {
     });
     expect(catalog).toMatchObject({ activeVersion: 2 });
     expect(
-      catalog.items.find(
-        ({ key }) => key === 'identity.session_idle_minutes',
-      )?.activeValue,
+      catalog.items.find(({ key }) => key === 'identity.session_idle_minutes')
+        ?.activeValue,
     ).toBe(30);
   });
 });

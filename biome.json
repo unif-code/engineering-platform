@@ -12,6 +12,7 @@
       "!**/.umi-test",
       "!**/.umi-test-production",
       "!**/src/services/generated",
+      "!**/openapi/spec.json",
       "!**/dist",
       "!**/coverage",
       "!**/node_modules",
@@ -26,7 +27,17 @@
     "enabled": true,
     "rules": {
       "preset": "recommended",
+      "a11y": {
+        "noStaticElementInteractions": "error",
+        "useKeyWithClickEvents": "error",
+        "useValidAnchor": "error"
+      },
+      "correctness": {
+        "useExhaustiveDependencies": "error",
+        "useUniqueElementIds": "off"
+      },
       "suspicious": {
+        "noExplicitAny": "error",
         "noUnknownAtRules": "off"
       }
     }

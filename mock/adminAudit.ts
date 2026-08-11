@@ -265,8 +265,7 @@ export function createAdminAuditMock(options: AdminAuditMockOptions = {}) {
         const tuple = decodeCursor(cursor);
         start = tuple
           ? filtered.findIndex(
-              (event) =>
-                event.occurredAt === tuple[0] && event.id === tuple[1],
+              (event) => event.occurredAt === tuple[0] && event.id === tuple[1],
             ) + 1
           : 0;
         if (!tuple || start === 0) {

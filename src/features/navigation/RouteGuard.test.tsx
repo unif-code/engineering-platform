@@ -208,33 +208,34 @@ describe('RouteGuard', () => {
       routeKey: 'admin.menus',
       visibleText: '菜单管理',
     },
-  ])('$routeKey prototype 不在 navigation 也可直达，且真实页面无 /api/v1 请求', async ({
-    Page,
-    path,
-    visibleText,
-  }) => {
-    const fetchSpy = vi.fn();
-    vi.stubGlobal('fetch', fetchSpy);
-    mocks.location.pathname = path;
-    mocks.outlet = (
-      <App>
-        <Page />
-      </App>
-    );
+  ])(
+    '$routeKey prototype 不在 navigation 也可直达，且真实页面无 /api/v1 请求',
+    async ({ Page, path, visibleText }) => {
+      const fetchSpy = vi.fn();
+      vi.stubGlobal('fetch', fetchSpy);
+      mocks.location.pathname = path;
+      mocks.outlet = (
+        <App>
+          <Page />
+        </App>
+      );
 
-    render(<RouteGuard />);
+      render(<RouteGuard />);
 
-    expect((await screen.findAllByText(visibleText)).length).toBeGreaterThan(0);
-    await act(async () => undefined);
-    expect(
-      fetchSpy.mock.calls.filter(([input]) =>
-        String(input).includes('/api/v1'),
-      ),
-    ).toEqual([]);
-    expect(
-      mocks.request.mock.calls.filter(([input]) =>
-        String(input).includes('/api/v1'),
-      ),
-    ).toEqual([]);
-  });
+      expect((await screen.findAllByText(visibleText)).length).toBeGreaterThan(
+        0,
+      );
+      await act(async () => undefined);
+      expect(
+        fetchSpy.mock.calls.filter(([input]) =>
+          String(input).includes('/api/v1'),
+        ),
+      ).toEqual([]);
+      expect(
+        mocks.request.mock.calls.filter(([input]) =>
+          String(input).includes('/api/v1'),
+        ),
+      ).toEqual([]);
+    },
+  );
 });

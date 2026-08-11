@@ -104,18 +104,18 @@ describe('mock API session assembly', () => {
     expect(Object.keys(api).filter((route) => route in auth)).toEqual([]);
   });
 
-  it.each([
-    'GET /api/v1/me',
-    'GET /api/v1/navigation',
-  ])('fresh %s 返回 401 Problem Details', (route) => {
-    const response = runRoute(route);
+  it.each(['GET /api/v1/me', 'GET /api/v1/navigation'])(
+    'fresh %s 返回 401 Problem Details',
+    (route) => {
+      const response = runRoute(route);
 
-    expect(response.statusCode).toBe(401);
-    expect(response.body).toEqual(unauthenticatedProblem);
-    expect(response.headers.get('content-type')).toBe(
-      'application/problem+json',
-    );
-  });
+      expect(response.statusCode).toBe(401);
+      expect(response.body).toEqual(unauthenticatedProblem);
+      expect(response.headers.get('content-type')).toBe(
+        'application/problem+json',
+      );
+    },
+  );
 
   it('合法登录由 auth mock 签发 TOTP challenge，尚不建立 session', () => {
     const response = runRoute(
@@ -171,25 +171,26 @@ describe('mock API session assembly', () => {
       caseName: 'password 类型错误',
       body: { employeeNo: '00000001', password: null },
     },
-  ])('login route 在$caseName时返回 422 Problem 且不建立 session', ({
-    body,
-  }) => {
-    const response = runRoute(
-      'POST /api/v1/auth/login',
-      { body, headers: idempotencyHeaders },
-      createAuthMock(),
-    );
+  ])(
+    'login route 在$caseName时返回 422 Problem 且不建立 session',
+    ({ body }) => {
+      const response = runRoute(
+        'POST /api/v1/auth/login',
+        { body, headers: idempotencyHeaders },
+        createAuthMock(),
+      );
 
-    expect(response.statusCode).toBe(422);
-    expect(response.body).toMatchObject({
-      requestId: expect.any(String),
-      status: 422,
-    });
-    expect(response.headers.get('content-type')).toBe(
-      'application/problem+json',
-    );
-    expect(response.cookieCall).toBeUndefined();
-  });
+      expect(response.statusCode).toBe(422);
+      expect(response.body).toMatchObject({
+        requestId: expect.any(String),
+        status: 422,
+      });
+      expect(response.headers.get('content-type')).toBe(
+        'application/problem+json',
+      );
+      expect(response.cookieCall).toBeUndefined();
+    },
+  );
 
   it('携带合法 session 后 me 与 navigation 返回 V0.2 裸投影', () => {
     const request = {

@@ -71,20 +71,18 @@ describe('theme preflight', () => {
       expected: { mode: 'system', resolvedTheme: 'dark' },
       background: DARK_LAYOUT_BACKGROUND,
     },
-  ])('在 React 启动前同步 $stored 对应的主题', ({
-    stored,
-    prefersDark,
-    expected,
-    background,
-  }) => {
-    runPreflight(stored, prefersDark);
+  ])(
+    '在 React 启动前同步 $stored 对应的主题',
+    ({ stored, prefersDark, expected, background }) => {
+      runPreflight(stored, prefersDark);
 
-    expect(window.__ENGINEERING_PLATFORM_THEME__).toEqual(expected);
-    expect(document.documentElement.style.colorScheme).toBe(
-      expected.resolvedTheme,
-    );
-    expect(document.documentElement.style.backgroundColor).toBe(background);
-  });
+      expect(window.__ENGINEERING_PLATFORM_THEME__).toEqual(expected);
+      expect(document.documentElement.style.colorScheme).toBe(
+        expected.resolvedTheme,
+      );
+      expect(document.documentElement.style.backgroundColor).toBe(background);
+    },
+  );
 
   it('读取浏览器偏好失败时安全回退到 system/light', () => {
     vi.spyOn(window.localStorage, 'getItem').mockImplementation(() => {

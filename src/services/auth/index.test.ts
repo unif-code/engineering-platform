@@ -272,17 +272,17 @@ describe('auth service', () => {
         response: { data: '', status: 502, statusText: 'Bad Gateway' },
       },
     },
-  ])('登录请求不泄露底层 network/HTTP 异常', async ({
-    expected,
-    rejection,
-  }) => {
-    requestMock.mockRejectedValue(rejection);
+  ])(
+    '登录请求不泄露底层 network/HTTP 异常',
+    async ({ expected, rejection }) => {
+      requestMock.mockRejectedValue(rejection);
 
-    const error = await startLogin({
-      employeeNo: '00000000',
-      password: 'Valid-Password!2026',
-    }).catch((caught: unknown) => caught);
+      const error = await startLogin({
+        employeeNo: '00000000',
+        password: 'Valid-Password!2026',
+      }).catch((caught: unknown) => caught);
 
-    expect(error).toMatchObject({ name: 'ApiError', ...expected });
-  });
+      expect(error).toMatchObject({ name: 'ApiError', ...expected });
+    },
+  );
 });

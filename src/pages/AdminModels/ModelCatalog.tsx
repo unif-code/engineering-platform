@@ -81,7 +81,7 @@ export function ModelCatalog() {
         width: 100,
       },
     ],
-    [styles.contextWindow, styles.modelId, styles.modelName, setModalState],
+    [styles.contextWindow, styles.modelId, styles.modelName],
   );
 
   return (

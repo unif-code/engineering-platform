@@ -145,32 +145,28 @@ describe('auth mock contract', () => {
     fetchAuth = createMockFetch(createAuthMock());
   });
 
-  it.each(
-    authPostCases,
-  )('$route 缺失 Idempotency-Key 时返回 422 Problem', async ({
-    body,
-    route,
-  }) => {
-    const response = await fetchAuth(route, jsonRequest(body, {}));
+  it.each(authPostCases)(
+    '$route 缺失 Idempotency-Key 时返回 422 Problem',
+    async ({ body, route }) => {
+      const response = await fetchAuth(route, jsonRequest(body, {}));
 
-    const problem = await expectProblem(response, 422);
-    expect(problem.detail).toContain('Idempotency-Key');
-  });
+      const problem = await expectProblem(response, 422);
+      expect(problem.detail).toContain('Idempotency-Key');
+    },
+  );
 
-  it.each(
-    authPostCases,
-  )('$route 的 Idempotency-Key 非 UUID 时返回 422 Problem', async ({
-    body,
-    route,
-  }) => {
-    const response = await fetchAuth(
-      route,
-      jsonRequest(body, { 'Idempotency-Key': 'not-a-uuid' }),
-    );
+  it.each(authPostCases)(
+    '$route 的 Idempotency-Key 非 UUID 时返回 422 Problem',
+    async ({ body, route }) => {
+      const response = await fetchAuth(
+        route,
+        jsonRequest(body, { 'Idempotency-Key': 'not-a-uuid' }),
+      );
 
-    const problem = await expectProblem(response, 422);
-    expect(problem.detail).toContain('Idempotency-Key');
-  });
+      const problem = await expectProblem(response, 422);
+      expect(problem.detail).toContain('Idempotency-Key');
+    },
+  );
 
   it('密码步骤为已初始化账号签发 TOTP challenge', async () => {
     const response = await fetchAuth(

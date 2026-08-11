@@ -6,7 +6,8 @@ import routes from './routes';
 import { themePreflightScript } from './themePreflight';
 
 const { REACT_APP_ENV = 'dev' } = process.env;
-const proxyEnvironment = REACT_APP_ENV in proxy ? REACT_APP_ENV : 'dev';
+const proxyEnvironment =
+  REACT_APP_ENV in proxy ? (REACT_APP_ENV as keyof typeof proxy) : 'dev';
 
 export default defineConfig({
   base: '/',

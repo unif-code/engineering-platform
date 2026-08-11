@@ -15,8 +15,7 @@ module.exports = {
       from: { path: '^(?:\\.\\./)*src/pages(?:/|$)' },
       to: {
         path: '^(?:\\.\\./)*src/features(?:/|$)[^/]+(?:/|$)',
-        pathNot:
-          '^(?:\\.\\./)*src/features(?:/|$)[^/]+/index\\.tsx?$',
+        pathNot: '^(?:\\.\\./)*src/features(?:/|$)[^/]+/index\\.tsx?$',
       },
     },
     {

@@ -5,7 +5,10 @@ import {
 import { Drawer, type DrawerProps } from 'antd';
 import type { ReactNode, RefObject } from 'react';
 
-export interface DetailDrawerProps<TRecord extends Record<string, any>> {
+// biome-ignore lint/suspicious/noExplicitAny: ProDescriptionsProps 的泛型上界由上游定义为 Record<string, any>。
+type DescriptionRecord = Record<string, any>;
+
+export interface DetailDrawerProps<TRecord extends DescriptionRecord> {
   open: boolean;
   title: ReactNode;
   size?: DrawerProps['size'];
@@ -18,7 +21,7 @@ export interface DetailDrawerProps<TRecord extends Record<string, any>> {
   children?: ReactNode;
 }
 
-export function DetailDrawer<TRecord extends Record<string, any>>({
+export function DetailDrawer<TRecord extends DescriptionRecord>({
   open,
   title,
   size,

@@ -5,7 +5,7 @@ import {
 } from '../tests/mockRequestHarness';
 
 vi.mock('@umijs/max', () => ({
-  defineMock: <T,>(routes: T) => routes,
+  defineMock: <T>(routes: T) => routes,
 }));
 
 import { createAdminGrantsMock } from './adminGrants';

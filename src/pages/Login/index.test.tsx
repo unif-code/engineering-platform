@@ -346,25 +346,24 @@ describe('LoginPage', () => {
       message: '动态码为 6 位数字',
       totp: 'abcdef',
     },
-  ])('$caseName由真实表单拦截且不调用对应 service', async ({
-    input,
-    message,
-    totp,
-  }) => {
-    renderLoginPage();
+  ])(
+    '$caseName由真实表单拦截且不调用对应 service',
+    async ({ input, message, totp }) => {
+      renderLoginPage();
 
-    if (totp === undefined) {
-      submitCredentials(input);
-    } else {
-      await submitForm(input, totp);
-    }
+      if (totp === undefined) {
+        submitCredentials(input);
+      } else {
+        await submitForm(input, totp);
+      }
 
-    expect(await screen.findByText(message)).toBeInTheDocument();
-    if (totp === undefined) {
-      expect(mocks.startLogin).not.toHaveBeenCalled();
-    } else {
-      expect(mocks.startLogin).toHaveBeenCalledWith(input);
-      expect(mocks.verifyTotp).not.toHaveBeenCalled();
-    }
-  });
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      if (totp === undefined) {
+        expect(mocks.startLogin).not.toHaveBeenCalled();
+      } else {
+        expect(mocks.startLogin).toHaveBeenCalledWith(input);
+        expect(mocks.verifyTotp).not.toHaveBeenCalled();
+      }
+    },
+  );
 });

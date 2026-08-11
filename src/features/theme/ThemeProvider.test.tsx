@@ -120,20 +120,20 @@ describe('createAntdThemeConfig', () => {
   it.each([
     { resolvedTheme: 'light' as const, algorithm: theme.defaultAlgorithm },
     { resolvedTheme: 'dark' as const, algorithm: theme.darkAlgorithm },
-  ])('为 $resolvedTheme 生成单一算法和平台 token', ({
-    resolvedTheme,
-    algorithm,
-  }) => {
-    expect(createAntdThemeConfig(resolvedTheme)).toEqual({
-      algorithm: [algorithm],
-      token: {
-        colorPrimary: '#C25700',
-        colorBgLayout: resolvedTheme === 'dark' ? '#121212' : '#F5F5F5',
-        colorBgContainer: resolvedTheme === 'dark' ? '#1F1F1F' : '#FFFFFF',
-        borderRadius: 8,
-      },
-    });
-  });
+  ])(
+    '为 $resolvedTheme 生成单一算法和平台 token',
+    ({ resolvedTheme, algorithm }) => {
+      expect(createAntdThemeConfig(resolvedTheme)).toEqual({
+        algorithm: [algorithm],
+        token: {
+          colorPrimary: '#C25700',
+          colorBgLayout: resolvedTheme === 'dark' ? '#121212' : '#F5F5F5',
+          colorBgContainer: resolvedTheme === 'dark' ? '#1F1F1F' : '#FFFFFF',
+          borderRadius: 8,
+        },
+      });
+    },
+  );
 });
 
 describe('ThemeProvider', () => {
@@ -287,30 +287,29 @@ describe('ThemeSelector', () => {
     { label: '跟随系统', mode: 'system' as const, stored: 'dark' },
     { label: '浅色', mode: 'light' as const, stored: 'dark' },
     { label: '深色', mode: 'dark' as const, stored: 'light' },
-  ])('通过主题菜单选择 $label 并标记当前项', async ({
-    label,
-    mode,
-    stored,
-  }) => {
-    window.localStorage.setItem(THEME_STORAGE_KEY, stored);
-    installMatchMedia(false);
-    render(
-      <ThemeProvider>
-        <ThemeSelector />
-        <ThemeProbe />
-      </ThemeProvider>,
-    );
+  ])(
+    '通过主题菜单选择 $label 并标记当前项',
+    async ({ label, mode, stored }) => {
+      window.localStorage.setItem(THEME_STORAGE_KEY, stored);
+      installMatchMedia(false);
+      render(
+        <ThemeProvider>
+          <ThemeSelector />
+          <ThemeProbe />
+        </ThemeProvider>,
+      );
 
-    const trigger = screen.getByRole('button', { name: '主题设置' });
-    fireEvent.click(trigger);
-    fireEvent.click(await screen.findByRole('menuitem', { name: label }));
+      const trigger = screen.getByRole('button', { name: '主题设置' });
+      fireEvent.click(trigger);
+      fireEvent.click(await screen.findByRole('menuitem', { name: label }));
 
-    expect(screen.getByLabelText('当前主题')).toHaveTextContent(
-      new RegExp(`^${mode}/`),
-    );
+      expect(screen.getByLabelText('当前主题')).toHaveTextContent(
+        new RegExp(`^${mode}/`),
+      );
 
-    fireEvent.click(trigger);
-    const selectedItem = await screen.findByRole('menuitem', { name: label });
-    expect(selectedItem).toHaveClass('ant-dropdown-menu-item-selected');
-  });
+      fireEvent.click(trigger);
+      const selectedItem = await screen.findByRole('menuitem', { name: label });
+      expect(selectedItem).toHaveClass('ant-dropdown-menu-item-selected');
+    },
+  );
 });

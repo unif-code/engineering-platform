@@ -184,15 +184,16 @@ export function createAdminWorkspacesMock(
 
   const formalLeaders = (workspace: WorkspaceRecord) => [
     workspace.owner,
-    ...workspace.invitedLeaders.filter(
-      ({ id }) => id !== workspace.owner.id,
-    ),
+    ...workspace.invitedLeaders.filter(({ id }) => id !== workspace.owner.id),
   ];
 
   const memberProjection = (workspace: WorkspaceRecord) => {
     const members = new Map<
       string,
-      AccountRef & { accountId: string; source: 'OWNER' | 'LEADER' | 'DIRECT_REPORT' }
+      AccountRef & {
+        accountId: string;
+        source: 'OWNER' | 'LEADER' | 'DIRECT_REPORT';
+      }
     >();
     for (const leader of formalLeaders(workspace)) {
       members.set(leader.id, {
@@ -264,7 +265,9 @@ export function createAdminWorkspacesMock(
       }
       const body = request.body as Record<string, unknown>;
       const name = typeof body.name === 'string' ? body.name.trim() : '';
-      const owner = Object.values(LEADERS).find(({ id }) => id === body.ownerId);
+      const owner = Object.values(LEADERS).find(
+        ({ id }) => id === body.ownerId,
+      );
       if (name.length === 0 || owner === undefined) {
         sendProblem(
           response,
@@ -315,14 +318,24 @@ export function createAdminWorkspacesMock(
         : undefined;
       const leader = Object.values(LEADERS).find(({ id }) => id === accountId);
       if (leader === undefined) {
-        sendProblem(response, 422, 'VALIDATION_ERROR', '目标账号不是有效 Leader');
+        sendProblem(
+          response,
+          422,
+          'VALIDATION_ERROR',
+          '目标账号不是有效 Leader',
+        );
         return;
       }
       if (
         workspace.owner.id === leader.id ||
         workspace.invitedLeaders.some(({ id }) => id === leader.id)
       ) {
-        sendProblem(response, 409, 'WORKSPACE_CONFLICT', '该 Leader 已在名单中');
+        sendProblem(
+          response,
+          409,
+          'WORKSPACE_CONFLICT',
+          '该 Leader 已在名单中',
+        );
         return;
       }
       workspace.invitedLeaders.push({ ...leader });
@@ -349,7 +362,12 @@ export function createAdminWorkspacesMock(
         ({ id }) => id === accountId,
       );
       if (index < 0) {
-        sendProblem(response, 422, 'VALIDATION_ERROR', '目标账号不在 Leader 名单中');
+        sendProblem(
+          response,
+          422,
+          'VALIDATION_ERROR',
+          '目标账号不在 Leader 名单中',
+        );
         return;
       }
       workspace.invitedLeaders.splice(index, 1);
@@ -370,7 +388,9 @@ export function createAdminWorkspacesMock(
       const accountId = isRecord(request.body)
         ? request.body.accountId
         : undefined;
-      const leader = workspace.invitedLeaders.find(({ id }) => id === accountId);
+      const leader = workspace.invitedLeaders.find(
+        ({ id }) => id === accountId,
+      );
       if (leader === undefined) {
         sendProblem(
           response,
@@ -381,7 +401,12 @@ export function createAdminWorkspacesMock(
         return;
       }
       if (leader.id === workspace.owner.id) {
-        sendProblem(response, 409, 'WORKSPACE_CONFLICT', '该 Leader 已是 Owner');
+        sendProblem(
+          response,
+          409,
+          'WORKSPACE_CONFLICT',
+          '该 Leader 已是 Owner',
+        );
         return;
       }
       workspace.owner = { ...leader };
