@@ -21,6 +21,7 @@ import { createAdminAccountsMock } from '../../../mock/adminAccounts';
 import AdminUsersPage from '.';
 
 const PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS = { timeout: 5_000 };
+const PRO_TABLE_UPDATE_WAIT_OPTIONS = { timeout: 5_000 };
 
 interface MockRequest {
   body?: unknown;
@@ -589,7 +590,7 @@ describe('AdminUsersPage', () => {
     });
   });
 
-  it('启用与 TOTP 重置均经过确认和 reason，并产生可观察反馈', async () => {
+  it('启用经过确认和 reason，并刷新账号状态', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -606,10 +607,15 @@ describe('AdminUsersPage', () => {
         '已启用',
       );
     });
+  });
+
+  it('TOTP 重置经过确认和 reason，并产生可观察反馈', async () => {
+    const user = userEvent.setup();
+    renderPage();
 
     await submitAction(
       user,
-      /示例用户丙/,
+      /示例用户甲/,
       '重置 TOTP',
       '确认重置 TOTP',
       '用户更换认证设备',
@@ -655,6 +661,6 @@ describe('AdminUsersPage', () => {
         screen.queryByRole('row', { name: /示例用户甲/ }),
       ).not.toBeInTheDocument();
       expect(screen.getByText('共 0 个账号')).toBeInTheDocument();
-    });
+    }, PRO_TABLE_UPDATE_WAIT_OPTIONS);
   });
 });
