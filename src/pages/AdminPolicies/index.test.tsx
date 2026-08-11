@@ -318,9 +318,14 @@ describe('AdminPoliciesPage', {
     await setIdleMinutes(user, '30');
     await saveDraft(user);
     await user.click(screen.getByRole('button', { name: 'Preview' }));
+    const preview = await screen.findByRole(
+      'region',
+      { name: 'Policy Preview' },
+      INITIAL_WAIT,
+    );
 
     expect(
-      await screen.findByRole(
+      await within(preview).findByRole(
         'row',
         { name: /Session 空闲期限.*60.*30.*认证 API 的空闲 Session 判定/ },
         INITIAL_WAIT,
