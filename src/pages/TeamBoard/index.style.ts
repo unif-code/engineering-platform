@@ -13,14 +13,10 @@ export const useStyles = createStyles(({ token }) => ({
   },
   selectorHeader: {
     display: 'flex',
+    flexWrap: 'wrap',
     gap: token.margin,
     alignItems: 'center',
     justifyContent: 'space-between',
-
-    [`@media (max-width: ${token.screenMD}px)`]: {
-      flexDirection: 'column',
-      alignItems: 'stretch',
-    },
   },
   teamName: {
     margin: 0,
@@ -35,31 +31,18 @@ export const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeightSM,
   },
   teamSelector: {
-    width: 'min(100%, 560px)',
-    flexShrink: 0,
+    flex: '1 1 360px',
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: token.margin,
-
-    [`@media (max-width: ${token.screenXL}px)`]: {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
-
-    [`@media (max-width: ${token.screenSM}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   analysisGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
     gap: token.margin,
     alignItems: 'stretch',
-
-    [`@media (max-width: ${token.screenLG}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   list: {
     margin: 0,

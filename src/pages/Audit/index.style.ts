@@ -8,22 +8,14 @@ export const useStyles = createStyles(({ token }) => ({
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: token.margin,
-
-    [`@media (max-width: ${token.screenXL}px)`]: {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
   },
   analysisGrid: {
     display: 'grid',
-    gridTemplateColumns: '1.2fr 1fr 1fr',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
     gap: token.margin,
     alignItems: 'stretch',
-
-    [`@media (max-width: ${token.screenLG}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   card: {
     height: '100%',
