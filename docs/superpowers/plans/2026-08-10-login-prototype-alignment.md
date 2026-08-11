@@ -1,199 +1,252 @@
 # Login Prototype Alignment Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **执行方式：** 使用 `executing-plans` 逐 Task 执行；生产代码前必须取得对应 RED，完成声明前使用 `verification-before-completion`。
 
-**Goal:** 将现有 `/login` 的视觉外壳精确对齐已确认原型，同时完整保留 V0.2 员工编号/密码 → TOTP 两步认证。
+**Goal:** 从品牌事实源和 Feature 边界上修复登录页漂移，使 `/login` 精确对齐最新原型，同时完整保留 V0.2 员工编号/密码 → TOTP 两步认证。
 
-**Architecture:** `LoginPage` 继续负责编排品牌 Hero、`LoginFlow` 和登录后的 Session 刷新；认证状态机、service、transport 与 mock 不变。先给共享 `BrandMark` 增加向后兼容的可选品牌名，再以页面语义结构和 token 样式重构登录外壳，最后用现有行为测试、全量门禁和浏览器场景验证。
+**Architecture:** 先集中平台品牌与认证场景主题常量，再让共享 `BrandMark`、Shell 和浏览器标题消费同一事实源；新增 auth Feature 的 `LoginShell` 承载视觉与响应式，`LoginPage` 只保留 Session/redirect 装配；删除 page 层旧样式与文案常量。
 
 **Tech Stack:** Umi Max 4、React 19、TypeScript、antd 6、@ant-design/pro-components 3、antd-style、Testing Library、Vitest、Biome
 
 ## Global Constraints
 
+- 直接在用户明确授权的 `main` 分支实施。
 - 必须保留 V0.2 两步认证；员工编号/密码与 TOTP 不得同屏。
 - 不修改 auth service、transport、mock、Session、路由或 Bootstrap 行为。
 - 不增加演示账号、免认证入口、前端 TOTP 倒计时或演示数据重置。
-- 1440×900 为桌面视觉基准；1280px 及以上保持横向双栏。
-- 品牌文案固定为“研发协作平台”“集团内网 · V0.2”。
-- Hero 固定为“需求到合并，一条可治理的 AI 交付链路。”，仅“可治理”高亮。
-- 阶段固定为“需求对齐 → Spec / Plan 规格计划 → 开发 → Review 评审 → MR 合并”。
-- 品牌橙只复用 `BRAND_ORANGE`；其余颜色使用 antd token，不制造 dark 主题浅色孤岛。
-- 所有既有认证行为测试必须保留，只能补充或按公开文案变化做最小更新。
-- 任何生产代码前必须先运行对应 RED；未知原因导致 `pnpm lint` 或 `pnpm test` 失败时立即停止并报告。
-
----
+- 产品运行时名称统一为“研发协作平台”，品牌方块不显示 `IP`。
+- 1440×900 为桌面视觉基准；1280px 及以上保持双栏。
+- Hero、五阶段和“集团内网 · V0.2”使用集中常量或 auth Feature 常量。
+- light 认证背景固定为 `#FDFCFA`；dark、卡片、边框和文字继续使用主题 token。
+- 页面只能通过 auth Feature 公开入口消费 `LoginShell`/`LoginFlow`。
+- 所有既有认证行为测试原位保留，只能补充或做公开文案的最小更新。
+- 任一未知原因的测试或门禁失败立即停止，不放宽全局 timeout、并发或断言。
 
 ## File Map
 
-- `src/components/BrandMark/index.tsx`：共享品牌标识；新增可选 `name`，默认行为不变。
-- `src/components/BrandMark/index.test.tsx`：保护默认品牌名与显式品牌名。
-- `src/pages/Login/constant.ts`：登录页唯一交付阶段文案。
-- `src/pages/Login/index.tsx`：登录路由页语义结构、Hero、品牌栏与 `LoginFlow` 装配。
-- `src/pages/Login/index.style.ts`：桌面原型、dark 和响应式视觉规则。
-- `src/pages/Login/index.test.tsx`：公开品牌、Hero、阶段、版本和两步流回归。
-- `src/features/auth/LoginFlow.tsx`：只将凭据步骤标题改为“账号登录”。
-- `src/features/auth/LoginFlow.test.tsx`：保护凭据步骤公开标题，原认证测试保持原位。
+新增：
+
+- `src/constants/brand.ts`：产品名、版本、Eyebrow 和版权事实源。
+- `src/features/auth/LoginShell.tsx`：认证页视觉壳。
+- `src/features/auth/LoginShell.test.tsx`：视觉壳公开语义测试。
+- `src/features/auth/login.constant.ts`：五阶段常量。
+- `src/features/auth/login.style.ts`：认证页主题与响应式样式。
+
+修改：
+
+- `config/defaultSettings.ts`
+- `src/constants/theme.ts`
+- `src/components/BrandMark/index.tsx`
+- `src/components/BrandMark/index.test.tsx`
+- `src/features/shell/HeaderTitle.tsx`
+- `src/features/shell/index.test.tsx`
+- `src/features/auth/index.ts`
+- `src/features/auth/LoginFlow.tsx`
+- `src/features/auth/LoginFlow.test.tsx`
+- `src/pages/Login/index.tsx`
+- `src/pages/Login/index.test.tsx`
+
+删除：
+
+- `src/pages/Login/constant.ts`
+- `src/pages/Login/index.style.ts`
 
 ---
 
-### Task 1: 让 BrandMark 支持登录页品牌名
+## Task 1: 集中品牌事实并统一应用 Shell
 
 **Files:**
+
+- Create: `src/constants/brand.ts`
+- Modify: `config/defaultSettings.ts`
 - Modify: `src/components/BrandMark/index.tsx`
 - Modify: `src/components/BrandMark/index.test.tsx`
+- Modify: `src/features/shell/HeaderTitle.tsx`
+- Modify: `src/features/shell/index.test.tsx`
 
-**Interfaces:**
-- Consumes: 既有 `BrandMarkProps` 的 `collapsed`、`size`、`className`。
-- Produces: `BrandMarkProps.name?: string`，默认值为 `'内部研发平台'`；可访问名和可见名称都使用最终 `name`。
+**Produces:** 单一 `PLATFORM_NAME`，空白橙色品牌方块，以及统一 Shell/browser title。
 
-- [ ] **Step 1: 写显式品牌名的失败测试**
+- [ ] **Step 1: 先改测试形成品牌 RED**
 
-在 `src/components/BrandMark/index.test.tsx` 保留原测试，并新增：
+更新 `BrandMark` 测试：
 
 ```tsx
-it('只在显式传参时展示上下文品牌名', () => {
-  render(<BrandMark name="研发协作平台" />);
+it('展开和折叠时使用统一产品名且不渲染旧字母标识', () => {
+  const { rerender } = render(<BrandMark />);
 
   expect(
     screen.getByRole('img', { name: '研发协作平台' }),
   ).toBeInTheDocument();
   expect(screen.getByText('研发协作平台')).toBeInTheDocument();
-  expect(screen.queryByText('内部研发平台')).not.toBeInTheDocument();
-});
-```
+  expect(screen.queryByText('IP')).not.toBeInTheDocument();
 
-- [ ] **Step 2: 运行 RED**
-
-Run:
-
-```bash
-pnpm exec vitest run src/components/BrandMark/index.test.tsx
-```
-
-Expected: TypeScript/测试失败，指出 `BrandMarkProps` 尚无 `name` 或无法找到“研发协作平台”。
-
-- [ ] **Step 3: 最小实现可选 `name`**
-
-将组件签名调整为：
-
-```tsx
-export interface BrandMarkProps {
-  collapsed?: boolean;
-  size?: 'small' | 'default';
-  className?: string;
-  name?: string;
-}
-
-export function BrandMark({
-  collapsed = false,
-  size = 'default',
-  className,
-  name = '内部研发平台',
-}: BrandMarkProps) {
-  const { styles } = useStyles();
-
-  return (
-    <span
-      aria-label={name}
-      className={clsx(styles.root, collapsed && styles.collapsed, className)}
-      role="img"
-    >
-      <span
-        aria-hidden="true"
-        className={clsx(
-          styles.mark,
-          size === 'small' ? styles.smallMark : styles.defaultMark,
-        )}
-      >
-        IP
-      </span>
-      {collapsed ? null : (
-        <span aria-hidden="true" className={styles.name}>
-          {name}
-        </span>
-      )}
-    </span>
-  );
-}
-```
-
-不得修改默认名称、`IP` 标识或折叠逻辑，确保 `MenuBrand` 零行为变化。
-
-- [ ] **Step 4: 运行 GREEN 与格式检查**
-
-Run:
-
-```bash
-pnpm exec vitest run src/components/BrandMark/index.test.tsx
-pnpm exec biome check src/components/BrandMark
-```
-
-Expected: BrandMark 全部测试通过；Biome 0 error。
-
-- [ ] **Step 5: 提交共享组件改动**
-
-```bash
-git add src/components/BrandMark/index.tsx src/components/BrandMark/index.test.tsx
-git commit -m "feat(brand): support contextual product name"
-```
-
----
-
-### Task 2: 按原型重构登录页外壳并保留两步认证
-
-**Files:**
-- Modify: `src/pages/Login/constant.ts`
-- Modify: `src/pages/Login/index.tsx`
-- Modify: `src/pages/Login/index.style.ts`
-- Modify: `src/pages/Login/index.test.tsx`
-- Modify: `src/features/auth/LoginFlow.tsx`
-- Modify: `src/features/auth/LoginFlow.test.tsx`
-
-**Interfaces:**
-- Consumes: Task 1 的 `<BrandMark name="研发协作平台" size="small" />`；现有 `LoginFlowProps.onAuthenticated`；`ThemeSelector`。
-- Produces: `/login` 的原型对齐视觉；`DELIVERY_STAGES` 五项只读字符串数组；凭据步骤公开标题“账号登录”。
-
-- [ ] **Step 1: 扩展登录页测试形成视觉 RED**
-
-在 `src/pages/Login/index.test.tsx` 从 Testing Library 增加 `within` 导入，并把原“呈现交付链路 Hero、平台品牌与主题入口”用例改为以下公开行为；其余认证用例原位保留：
-
-```tsx
-it('按原型呈现品牌、Hero、交付链路和版本', () => {
-  renderLoginPage();
+  rerender(<BrandMark collapsed />);
 
   expect(
     screen.getByRole('img', { name: '研发协作平台' }),
   ).toBeInTheDocument();
-  expect(screen.getByText('集团内网 · V0.2')).toBeInTheDocument();
-
-  const heading = screen.getByRole('heading', {
-    name: /需求到合并，\s*一条可治理的\s*AI 交付链路。/,
-  });
-  expect(within(heading).getByText('可治理')).toBeInTheDocument();
-
-  const deliveryFlow = screen.getByRole('list', {
-    name: '研发交付链路',
-  });
-  for (const label of [
-    '需求对齐',
-    'Spec / Plan 规格计划',
-    '开发',
-    'Review 评审',
-    'MR 合并',
-  ]) {
-    expect(within(deliveryFlow).getByText(label)).toBeInTheDocument();
-  }
-
-  expect(
-    screen.getByText('© 2026 集团企业开发部 · 仅限内网使用'),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole('button', { name: '主题设置' }),
-  ).toBeInTheDocument();
+  expect(screen.queryByText('研发协作平台')).not.toBeInTheDocument();
+  expect(screen.queryByText('IP')).not.toBeInTheDocument();
 });
 ```
 
-在 `src/features/auth/LoginFlow.test.tsx` 新增：
+同步更新 `src/features/shell/index.test.tsx` 中菜单品牌与 fallback title 的公开期望为“研发协作平台”，并断言展开/折叠均无 `IP`。
+
+- [ ] **Step 2: 运行品牌 RED**
+
+```bash
+pnpm exec vitest run src/components/BrandMark/index.test.tsx src/features/shell/index.test.tsx
+```
+
+Expected: 只因旧产品名和 `IP` 标识失败；其他 Shell 行为仍通过。
+
+- [ ] **Step 3: 新增品牌事实源并最小接线**
+
+`src/constants/brand.ts`：
+
+```ts
+export const PLATFORM_NAME = '研发协作平台';
+export const PLATFORM_RELEASE_LABEL = '集团内网 · V0.2';
+export const PLATFORM_EYEBROW = 'ENGINEERING PLATFORM';
+export const PLATFORM_COPYRIGHT = '© 2026 集团企业开发部 · 仅限内网使用';
+```
+
+实现要求：
+
+- `BrandMark` 从 `PLATFORM_NAME` 读取可访问名与展开名称。
+- 保留品牌方块 DOM，但移除 `IP` 文本。
+- `config/defaultSettings.ts` 的 title 使用 `PLATFORM_NAME`。
+- `HeaderTitle` fallback 使用 `PLATFORM_NAME`。
+- 不新增品牌 variant 或页面级 name prop。
+
+- [ ] **Step 4: 运行品牌 GREEN 与 scoped checks**
+
+```bash
+pnpm exec vitest run src/components/BrandMark/index.test.tsx src/features/shell/index.test.tsx
+pnpm exec biome check config/defaultSettings.ts src/constants/brand.ts src/components/BrandMark src/features/shell
+pnpm exec tsc --noEmit
+```
+
+Expected: 全部 exit 0，无新 warning。
+
+- [ ] **Step 5: 提交品牌基础改动**
+
+只暂存本 Task 文件，提交：
+
+```bash
+git commit -m "refactor(brand): centralize platform identity"
+```
+
+---
+
+## Task 2: 在 auth Feature 建立可维护的 LoginShell
+
+**Files:**
+
+- Modify: `src/constants/theme.ts`
+- Create: `src/features/auth/login.constant.ts`
+- Create: `src/features/auth/login.style.ts`
+- Create: `src/features/auth/LoginShell.tsx`
+- Create: `src/features/auth/LoginShell.test.tsx`
+- Modify: `src/features/auth/index.ts`
+
+**Consumes:** `BrandMark`、集中品牌常量、公开 `usePlatformTheme`。
+**Produces:** 不读取 service/Session 的纯视觉 `LoginShell`。
+
+- [ ] **Step 1: 写 LoginShell 缺失能力测试**
+
+测试必须通过公开 role/name 覆盖：
+
+- 品牌可访问名与版本。
+- 标题整体可访问名及独立“可治理”文本。
+- `aria-label="研发交付链路"` 的五个 list item。
+- 版权文案。
+- `headerAction` 与 `children` 被原样装配。
+- DOM 不出现 `IP`、演示数据重置或同屏 TOTP 文案。
+
+- [ ] **Step 2: 运行 LoginShell RED**
+
+```bash
+pnpm exec vitest run src/features/auth/LoginShell.test.tsx
+```
+
+Expected: 因 `LoginShell` 尚不存在而失败。
+
+- [ ] **Step 3: 建立认证语义 token 和阶段常量**
+
+在 `src/constants/theme.ts` 增加：
+
+```ts
+export const LIGHT_AUTH_BACKGROUND = '#FDFCFA';
+```
+
+在 `login.constant.ts` 导出只读五阶段数组：
+
+```ts
+export const DELIVERY_STAGES = [
+  '需求对齐',
+  'Spec / Plan 规格计划',
+  '开发',
+  'Review 评审',
+  'MR 合并',
+] as const;
+```
+
+- [ ] **Step 4: 实现 LoginShell 语义结构**
+
+接口固定为：
+
+```tsx
+export interface LoginShellProps {
+  children: ReactNode;
+  headerAction: ReactNode;
+}
+```
+
+结构固定为 `<main>` + 绝对顶部 `<header>` + Hero `<section>` + 表单 `<section>`。`LoginShell` 使用 `usePlatformTheme()` 的 `resolvedTheme` 传给 `useStyles`，light 取 `LIGHT_AUTH_BACKGROUND`，dark 取 `token.colorBgLayout`。
+
+禁止：
+
+- 读取 auth service、Session、history 或 URL。
+- 从 `src/pages` 导入内容。
+- 为 visual test 添加测试专用生产属性。
+
+- [ ] **Step 5: 实现原型与响应式样式**
+
+桌面关键值：header 56/44、Hero 88、form column 460、right padding 88、title 50/800/1.28、card 14/32。阶段节点、卡片、边框、阴影和 dark 模式使用 token；只有品牌橙与认证 light 背景使用集中常量。
+
+1280px 及以上保持双栏；小于 `screenMD` 转为纵向且允许页面滚动。
+
+- [ ] **Step 6: 公开 Feature 入口并运行 GREEN**
+
+从 `src/features/auth/index.ts` 导出 `LoginShell` 和类型。
+
+```bash
+pnpm exec vitest run src/features/auth/LoginShell.test.tsx
+pnpm exec biome check src/constants/theme.ts src/features/auth/LoginShell.tsx src/features/auth/LoginShell.test.tsx src/features/auth/login.constant.ts src/features/auth/login.style.ts src/features/auth/index.ts
+pnpm exec tsc --noEmit
+```
+
+Expected: 全部 exit 0。
+
+---
+
+## Task 3: 将 LoginPage 收敛为路由装配并保留认证状态机
+
+**Files:**
+
+- Modify: `src/pages/Login/index.test.tsx`
+- Modify: `src/features/auth/LoginFlow.test.tsx`
+- Modify: `src/pages/Login/index.tsx`
+- Modify: `src/features/auth/LoginFlow.tsx`
+- Delete: `src/pages/Login/constant.ts`
+- Delete: `src/pages/Login/index.style.ts`
+
+- [ ] **Step 1: 就地改写现有页面与 LoginFlow 测试形成 RED**
+
+保留 `src/pages/Login/index.test.tsx` 全部认证、错误、Bootstrap、Session commit 和 redirect 测试。只把首个视觉用例更新为最新品牌、Hero、五阶段、版本、版权和主题入口。
+
+在 `LoginFlow.test.tsx` 新增凭据标题保护：
 
 ```tsx
 it('凭据步骤使用账号登录标题并保持两字段', () => {
@@ -208,341 +261,90 @@ it('凭据步骤使用账号登录标题并保持两字段', () => {
 });
 ```
 
-- [ ] **Step 2: 运行 RED 并确认只因新视觉缺失失败**
-
-Run:
+- [ ] **Step 2: 运行装配 RED**
 
 ```bash
 pnpm exec vitest run src/pages/Login/index.test.tsx src/features/auth/LoginFlow.test.tsx
 ```
 
-Expected: 新原型用例因旧品牌/标题/阶段/版本文案失败；新 LoginFlow 用例因当前标题“欢迎回来”失败。既有认证用例仍通过。
+Expected: 视觉用例因页面尚未使用 `LoginShell` 失败；标题用例因“欢迎回来”失败。既有认证行为继续通过。
 
-- [ ] **Step 3: 固定五阶段文案**
+- [ ] **Step 3: 最小接线并删除 page 私有视觉文件**
 
-将 `src/pages/Login/constant.ts` 替换为：
-
-```ts
-export const DELIVERY_STAGES = [
-  '需求对齐',
-  'Spec / Plan 规格计划',
-  '开发',
-  'Review 评审',
-  'MR 合并',
-] as const;
-```
-
-- [ ] **Step 4: 重构 LoginPage 语义结构**
-
-保留 `refreshSession`、`postLoginPath`、`useEffect` 与所有错误处理，只替换 return 结构并新增 `clsx` 导入：
+`LoginPage` 保留 `refreshSession`、`postLoginPath`、`useEffect` 与错误处理，return 收敛为：
 
 ```tsx
-return (
-  <main className={styles.page}>
-    <header className={styles.header}>
-      <BrandMark name="研发协作平台" size="small" />
-      <div className={styles.headerActions}>
-        <span className={styles.version}>集团内网 · V0.2</span>
-        <ThemeSelector />
-      </div>
-    </header>
-
-    <section className={styles.hero} aria-labelledby="login-hero-title">
-      <p className={styles.eyebrow}>ENGINEERING PLATFORM</p>
-      <h1 className={styles.heroTitle} id="login-hero-title">
-        需求到合并，
-        <br />
-        一条<span className={styles.heroAccent}>可治理</span>的
-        <br />
-        AI 交付链路。
-      </h1>
-      <ol className={styles.deliveryStages} aria-label="研发交付链路">
-        {DELIVERY_STAGES.map((stage, index) => (
-          <li className={styles.stageItem} key={stage}>
-            <span
-              className={clsx(
-                styles.stage,
-                index === DELIVERY_STAGES.length - 1 && styles.terminalStage,
-              )}
-            >
-              {stage}
-            </span>
-            {index < DELIVERY_STAGES.length - 1 ? (
-              <span aria-hidden="true" className={styles.stageArrow}>
-                →
-              </span>
-            ) : null}
-          </li>
-        ))}
-      </ol>
-      <small className={styles.meta}>
-        © 2026 集团企业开发部 · 仅限内网使用
-      </small>
-    </section>
-
-    <section className={styles.formPane} aria-label="登录表单">
-      <div className={styles.formCard}>
-        <LoginFlow onAuthenticated={refreshSession} />
-      </div>
-    </section>
-  </main>
-);
+<LoginShell headerAction={<ThemeSelector />}>
+  <LoginFlow onAuthenticated={refreshSession} />
+</LoginShell>
 ```
 
-每个 `li` 同时承载阶段节点和其后的装饰箭头；箭头设置 `aria-hidden`，`ol/li` 保留阶段链的公开语义。
+只把凭据 `LoginForm` 标题改为“账号登录”。删除 page 层 `constant.ts` 和 `index.style.ts`，并确保没有残留导入。
 
-- [ ] **Step 5: 实现原型布局与主题样式**
-
-在 `src/pages/Login/index.style.ts` 中删除旧 `brand`、`themeAction` 和整栏边界规则，使用以下布局值：
-
-```ts
-page: {
-  position: 'relative',
-  boxSizing: 'border-box',
-  display: 'grid',
-  gridTemplateAreas: '"hero form"',
-  gridTemplateColumns: 'minmax(0, 1fr) 460px',
-  minHeight: '100vh',
-  overflow: 'hidden',
-  backgroundColor: token.colorBgLayout,
-  color: token.colorText,
-  '@media (max-width: 1279px)': {
-    gridTemplateColumns: 'minmax(0, 1fr) 420px',
-  },
-  [`@media (max-width: ${token.screenMD}px)`]: {
-    gridTemplateAreas: '"hero" "form"',
-    gridTemplateColumns: 'minmax(0, 1fr)',
-    gridTemplateRows: 'auto auto',
-    overflow: 'auto',
-  },
-},
-header: {
-  position: 'absolute',
-  top: 0,
-  right: 0,
-  left: 0,
-  zIndex: 1,
-  display: 'flex',
-  height: 56,
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  paddingInline: 44,
-  [`@media (max-width: ${token.screenMD}px)`]: {
-    paddingInline: token.padding,
-  },
-},
-headerActions: {
-  display: 'flex',
-  alignItems: 'center',
-  gap: token.marginXS,
-},
-version: {
-  color: token.colorTextTertiary,
-  fontSize: token.fontSizeSM,
-},
-hero: {
-  position: 'relative',
-  gridArea: 'hero',
-  display: 'flex',
-  minWidth: 0,
-  flexDirection: 'column',
-  justifyContent: 'center',
-  paddingBlock: token.paddingXL * 3,
-  paddingInline: 88,
-  '@media (max-width: 1279px)': {
-    paddingInline: 48,
-  },
-  [`@media (max-width: ${token.screenMD}px)`]: {
-    paddingBlock: token.paddingXL * 2,
-    paddingInline: token.padding,
-  },
-},
-eyebrow: {
-  marginBlock: `0 ${token.marginLG}px`,
-  color: BRAND_ORANGE,
-  fontSize: token.fontSizeSM,
-  fontWeight: token.fontWeightStrong,
-  letterSpacing: '0.3em',
-},
-heroTitle: {
-  maxWidth: 720,
-  margin: 0,
-  color: token.colorTextHeading,
-  fontSize: 50,
-  fontWeight: 800,
-  letterSpacing: '-0.035em',
-  lineHeight: 1.28,
-  '@media (max-width: 1279px)': {
-    fontSize: 44,
-  },
-  [`@media (max-width: ${token.screenMD}px)`]: {
-    fontSize: 36,
-  },
-},
-heroAccent: { color: BRAND_ORANGE },
-deliveryStages: {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: token.marginXS,
-  alignItems: 'center',
-  marginBlock: `${token.marginXL + token.marginXS}px 0`,
-  padding: 0,
-  listStyle: 'none',
-},
-stageItem: {
-  display: 'flex',
-  alignItems: 'center',
-  gap: token.marginXS,
-},
-stage: {
-  paddingBlock: token.paddingXXS,
-  paddingInline: token.paddingSM,
-  border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
-  borderRadius: 14,
-  backgroundColor: token.colorBgContainer,
-  color: token.colorTextSecondary,
-  fontSize: token.fontSizeSM,
-},
-terminalStage: {
-  borderColor: token.colorText,
-  backgroundColor: token.colorText,
-  color: token.colorBgContainer,
-},
-stageArrow: {
-  color: BRAND_ORANGE,
-  fontSize: token.fontSizeSM,
-},
-meta: {
-  position: 'absolute',
-  bottom: 22,
-  left: 88,
-  color: token.colorTextQuaternary,
-  fontSize: token.fontSizeSM,
-  '@media (max-width: 1279px)': {
-    left: 48,
-  },
-  [`@media (max-width: ${token.screenMD}px)`]: {
-    position: 'static',
-    marginTop: token.marginXL,
-  },
-},
-formPane: {
-  gridArea: 'form',
-  display: 'flex',
-  minWidth: 0,
-  alignItems: 'center',
-  paddingInlineEnd: 88,
-  '@media (max-width: 1279px)': {
-    paddingInlineEnd: 48,
-  },
-  [`@media (max-width: ${token.screenMD}px)`]: {
-    justifyContent: 'center',
-    paddingBlock: `0 ${token.paddingXL * 2}px`,
-    paddingInline: token.padding,
-  },
-},
-formCard: {
-  boxSizing: 'border-box',
-  width: '100%',
-  padding: 32,
-  border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
-  borderRadius: 14,
-  backgroundColor: token.colorBgElevated,
-  boxShadow: token.boxShadowSecondary,
-  [`@media (max-width: ${token.screenMD}px)`]: {
-    maxWidth: 460,
-    padding: token.paddingLG,
-  },
-},
-```
-
-上述响应式值必须进入对应 style key；不得增加全局 CSS、Less 或硬编码浅色 RGBA 阴影。
-
-- [ ] **Step 6: 只调整凭据步骤标题**
-
-在 `src/features/auth/LoginFlow.tsx` 的凭据 `LoginForm` 中将：
-
-```tsx
-title="欢迎回来"
-```
-
-替换为：
-
-```tsx
-title="账号登录"
-```
-
-保留 `subTitle="使用平台账号继续"`、全部字段、rules、提交按钮、错误恢复与 TOTP 分支。
-
-- [ ] **Step 7: 运行 focused GREEN**
-
-Run:
+- [ ] **Step 4: 运行 focused GREEN 和架构门**
 
 ```bash
-pnpm exec vitest run src/components/BrandMark/index.test.tsx src/pages/Login/index.test.tsx src/features/auth/LoginFlow.test.tsx
-pnpm exec biome check src/components/BrandMark src/pages/Login src/features/auth/LoginFlow.tsx src/features/auth/LoginFlow.test.tsx
-```
-
-Expected: 三组测试全部通过且无 warning；Biome 0 error。若仅有 formatter 差异，使用 scoped `pnpm exec biome check --write <same paths>` 后重新运行上述两条命令。
-
-- [ ] **Step 8: 运行静态与组件专项门禁**
-
-Run:
-
-```bash
+pnpm exec vitest run src/components/BrandMark/index.test.tsx src/features/shell/index.test.tsx src/features/auth/LoginShell.test.tsx src/features/auth/LoginFlow.test.tsx src/pages/Login/index.test.tsx
+pnpm exec biome check config/defaultSettings.ts src/constants src/components/BrandMark src/features/shell src/features/auth src/pages/Login
 pnpm exec tsc --noEmit
-NO_UPDATE_CHECK=1 pnpm exec antd lint ./src/pages/Login
-NO_UPDATE_CHECK=1 pnpm exec antd lint ./src/features/auth
 pnpm depcruise
 git diff --check
 ```
 
-Expected: 全部 exit 0；antd deprecated/a11y/usage 无本轮问题；依赖方向无 violation。
+Expected: 全部 exit 0；依赖方向无 violation。
 
-- [ ] **Step 9: 运行仓库全量门禁**
+- [ ] **Step 5: 运行 antd 专项检查**
 
-必须逐条运行，上一条失败就停止，不重试掩盖失败：
+```bash
+NO_UPDATE_CHECK=1 pnpm exec antd lint ./src/features/auth
+NO_UPDATE_CHECK=1 pnpm exec antd lint ./src/pages/Login
+```
+
+Expected: deprecated/a11y/usage 无本轮问题。
+
+---
+
+## Task 4: 全量验证、浏览器验收与提交
+
+- [ ] **Step 1: 运行全量门禁**
+
+逐条运行，上一条失败即停止：
 
 ```bash
 pnpm lint
 pnpm test
 ```
 
-Expected: 两条命令均 exit 0；Vitest 全部测试通过。原因不明的失败立即报告，不自行放宽全局 timeout、并发配置或断言。
+Expected: 全部 exit 0。不以重试掩盖失败。
 
-- [ ] **Step 10: 浏览器验收登录页**
+- [ ] **Step 2: 浏览器验收**
 
-启动：
+启动 `pnpm dev`，使用 fresh profile 且导航前设置视口：
 
-```bash
-pnpm dev
-```
+1. 1440×900 light：背景 `#FDFCFA`；header 56px；Hero、五阶段和 460px 卡片无裁切。
+2. 1440×900 dark：页面、卡片、输入和主题 Dropdown 无浅色孤岛。
+3. 1280×900：保持双栏，无 document 横向溢出。
+4. 窄屏：纵向排列，无 document 横向溢出。
+5. 凭据成功后只出现 TOTP 且自动聚焦。
+6. 应用 Shell 展开/折叠均显示新品牌，无 `IP`。
+7. Console 无 runtime error；网络仅允许未登录 bootstrap 的预期 401。
 
-使用 fresh browser profile，且在导航前设置视口，依次核对：
+截图保存到 `/private/tmp`，不提交；结束后停止 dev/browser 并确认端口释放。
 
-1. 1440×900 light：顶部栏 56px；品牌/版本正确；Hero 文案与五阶段完整；右侧卡片无裁切。
-2. 1440×900 dark：背景、卡片、输入、主题 Dropdown 无浅色孤岛。
-3. 1280×900：保持横向双栏，无 document 横向溢出。
-4. 窄屏：Hero 与表单纵向排列，无 document 横向溢出。
-5. 输入合法凭据并进入 TOTP：员工编号/密码消失，TOTP 自动聚焦；无需完成真实登录。
-6. Console 无 runtime error，除未登录 `/me`、`/navigation` 的预期 401 外无异常请求。
+- [ ] **Step 3: 请求独立只读 review**
 
-保存 light/dark 各一张 1440×900 截图到 `/private/tmp` 作为本地验收证据，不提交截图。结束后停止 dev/browser 并确认端口释放。
+按 `requesting-code-review` 对本计划全部代码 diff 做一次只读 review。Critical/Important 必须先技术核验，再按 TDD 修复并重新运行受影响门禁。
 
-- [ ] **Step 11: 提交登录页改动**
+- [ ] **Step 4: 精确提交登录改动**
 
-先确认精确范围：
-
-```bash
-git status --short
-git diff --check
-```
-
-只暂存本 Task 六个文件：
+确认 `git status --short`、`git diff --check` 和 staged 文件清单。按主题提交：
 
 ```bash
-git add src/pages/Login/constant.ts src/pages/Login/index.tsx src/pages/Login/index.style.ts src/pages/Login/index.test.tsx src/features/auth/LoginFlow.tsx src/features/auth/LoginFlow.test.tsx
-git commit -m "feat(login): align authentication page with prototype"
+git commit -m "feat(login): align authentication shell with prototype"
 ```
 
-Expected: commit 不包含 service、mock、路由、Session、生成目录或浏览器证据。
+不得包含 service、mock、路由、Session、生成目录、截图或其他任务文件。
+
+- [ ] **Step 5: 使用 finishing-a-development-branch 收口**
+
+只在全部验证通过后进入 `finishing-a-development-branch`，报告 commit、验证证据、浏览器截图位置和任何剩余 concern。
