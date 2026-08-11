@@ -23,7 +23,7 @@ const developmentDependencies = [
   'vitest',
 ];
 const sourceRoots = ['config', 'mock', 'src'];
-const requiredBiomeScopes = ['config', 'scripts', 'src', 'tests'];
+const requiredBiomeScopes = ['config', 'mock', 'scripts', 'src', 'tests'];
 const dependencySections = [
   'dependencies',
   'devDependencies',

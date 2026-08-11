@@ -81,6 +81,7 @@ async function createValidFixture() {
       files: {
         includes: [
           'config/**/*.ts',
+          'mock/**/*.ts',
           'scripts/**/*.mjs',
           'src/**/*.{ts,tsx}',
           'tests/**/*.ts',
@@ -183,6 +184,29 @@ test('reports missing package, tooling, and Skill baseline requirements together
   assert.match(output, /Biome/);
   assert.match(output, /hooks/);
   assert.match(output, /Skill/);
+});
+
+test('requires Biome to cover hand-written mock sources', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'biome.json',
+    JSON.stringify({
+      files: {
+        includes: [
+          'config/**/*.ts',
+          'scripts/**/*.mjs',
+          'src/**/*.{ts,tsx}',
+          'tests/**/*.ts',
+        ],
+      },
+    }),
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /Biome scope 必须覆盖 mock/,
+  );
 });
 
 test('reports every required platform dependency when individually missing', async () => {
