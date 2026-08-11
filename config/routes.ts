@@ -77,6 +77,12 @@ export default [
         routeKey: 'admin.workspaces',
       },
       {
+        name: '组织管理',
+        path: '/admin/organization',
+        component: './AdminOrganization',
+        routeKey: 'admin.organization',
+      },
+      {
         name: '技能管理',
         path: '/admin/skills',
         component: './AdminSkills',

@@ -7,6 +7,7 @@ describe('mock handlers', () => {
       capabilities: [
         'audit.read',
         'identity.account.manage',
+        'organization.manage',
         'platform.configuration.manage',
         'workspace.manage',
       ],
@@ -47,17 +48,24 @@ describe('mock handlers', () => {
       },
       {
         meta: { section: 'administration' },
-        name: '工作区管理',
+        name: '组织管理',
         order: 5,
-        routeKey: 'admin.workspaces',
+        routeKey: 'admin.organization',
         sort: 50,
       },
       {
         meta: { section: 'administration' },
-        name: '账号管理',
+        name: '工作区管理',
         order: 6,
-        routeKey: 'admin.users',
+        routeKey: 'admin.workspaces',
         sort: 60,
+      },
+      {
+        meta: { section: 'administration' },
+        name: '账号管理',
+        order: 7,
+        routeKey: 'admin.users',
+        sort: 70,
       },
     ]);
   });

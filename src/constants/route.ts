@@ -6,6 +6,7 @@ export const APP_PATHS = {
   teamBoard: '/team-board',
   audit: '/audit',
   admin: '/admin',
+  adminOrganization: '/admin/organization',
   adminWorkspaces: '/admin/workspaces',
   adminSkills: '/admin/skills',
   adminModels: '/admin/models',

@@ -1,4 +1,5 @@
 import {
+  ApartmentOutlined,
   AppstoreOutlined,
   AuditOutlined,
   BarChartOutlined,
@@ -184,6 +185,17 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminWorkspaces,
+    prototype: false,
+    redirectTo: null,
+  },
+  'admin.organization': {
+    access: 'session',
+    group: 'admin',
+    icon: <ApartmentOutlined />,
+    kind: 'page',
+    menu: true,
+    parent: 'admin',
+    path: APP_PATHS.adminOrganization,
     prototype: false,
     redirectTo: null,
   },
