@@ -30,6 +30,7 @@ const dependencySections = [
   'optionalDependencies',
   'peerDependencies',
 ];
+const requiredSkillPlugins = ['ant-design@unif-skills', 'antd@unif-skills'];
 const umiImportForms = [
   { label: "from 'umi'", pattern: /\bfrom\s+['"]umi['"]/u },
   { label: "import 'umi'", pattern: /\bimport\s+['"]umi['"]/u },
@@ -204,15 +205,36 @@ function checkSettings(settings, issues) {
     issues.push('缺少共享 Skill 声明');
     return;
   }
+
+  const marketplace = settings.extraKnownMarketplaces?.['unif-skills']?.source;
+  if (
+    marketplace?.source !== 'github' ||
+    marketplace?.repo !== 'unif-design/skills'
+  ) {
+    issues.push(
+      '.claude/settings.json 必须将 unif-skills 指向 GitHub unif-design/skills',
+    );
+  }
+
   const plugins = settings.enabledPlugins;
-  const skills = settings.skills;
-  const hasSkillDeclaration =
-    (plugins &&
-      typeof plugins === 'object' &&
-      Object.keys(plugins).length > 0) ||
-    (Array.isArray(skills) && skills.length > 0);
-  if (!hasSkillDeclaration) {
-    issues.push('.claude/settings.json 必须声明共享 Skill');
+  for (const plugin of requiredSkillPlugins) {
+    if (plugins?.[plugin] !== true) {
+      issues.push(`.claude/settings.json 必须启用 ${plugin}`);
+    }
+  }
+  if (plugins?.['umi@unif-skills'] === true) {
+    issues.push('.claude/settings.json 不得启用 umi@unif-skills');
+  }
+  const unexpectedPlugins = Object.entries(plugins ?? {})
+    .filter(
+      ([plugin, enabled]) =>
+        enabled === true && !requiredSkillPlugins.includes(plugin),
+    )
+    .map(([plugin]) => plugin);
+  if (unexpectedPlugins.length > 0) {
+    issues.push(
+      `.claude/settings.json 只允许启用组件 Skill：${unexpectedPlugins.join(', ')}`,
+    );
   }
 }
 

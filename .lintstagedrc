@@ -1,0 +1,6 @@
+{
+  "*.{js,mjs,cjs,jsx,ts,tsx,css,json,jsonc}": [
+    "pnpm exec biome check --write --no-errors-on-unmatched"
+  ],
+  "*.md": ["node scripts/verify-markdown.mjs"]
+}

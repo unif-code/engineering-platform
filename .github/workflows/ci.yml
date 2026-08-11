@@ -20,9 +20,7 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm test
-      - run: pnpm build
+      - run: pnpm verify
 
   publish-image:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

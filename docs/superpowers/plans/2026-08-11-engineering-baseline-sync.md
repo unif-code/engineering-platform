@@ -12,7 +12,7 @@
 
 - 用户明确要求直接在已清洁且同步的 `main` 实施，不创建分支或 worktree。
 - 不修改 `src/pages/`、`src/features/`、业务组件、API、Service、OpenAPI schema、生成客户端或 Problem Details 行为。
-- 不把 `unif:umi` 的通用 API 信封规则应用到本仓；平台架构文档和现有 OpenAPI 契约优先。
+- 不采用共享 marketplace 的通用 `umi` Skill；平台架构文档和现有 OpenAPI 契约是 Umi 工程规则的事实源。PC/antd 组件知识使用 `ant-design` 与 `antd` Skill。
 - 保留 `@ant-design/x`、`openapi-fetch`、`openapi-typescript`、dependency-cruiser、Docker publish 与 Release gate。
 - 不修改或提交 `src/.umi*`、`dist`、`coverage`、`node_modules`、`.pnpm-store`。
 - 使用 TDD；每个生产行为先取得正确 RED，再写最小实现并确认 GREEN。
@@ -269,7 +269,8 @@ Expected: commit 不包含源码、OpenAPI Artifact 或生成目录。
 - Create: `.claude/settings.json`
 - Modify: `package.json`
 - Modify: `.github/workflows/ci.yml`
-- Modify: `CLAUDE.md`
+- Modify: `scripts/verify-structure.mjs`
+- Modify: `scripts/verify-structure.test.mjs`
 
 **Interfaces:**
 - Consumes: Task 1/2 的结构验证与工程脚本。
@@ -305,12 +306,12 @@ Expected: all tests PASS。
 
 ```sh
 # .husky/pre-commit
-npx --no-install lint-staged --quiet
+pnpm exec lint-staged --quiet
 ```
 
 ```sh
 # .husky/commit-msg
-npx --no-install max verify-commit $1
+pnpm exec max verify-commit "$1"
 ```
 
 ```json
@@ -322,7 +323,9 @@ npx --no-install max verify-commit $1
 }
 ```
 
-`.claude/settings.json` 只登记 `unif-skills` marketplace 与 `umi@unif-skills`。
+`.claude/settings.json` 登记 `unif-design/skills` 的 `unif-skills` marketplace，并只启用 `ant-design@unif-skills` 与 `antd@unif-skills`。不得启用 `umi@unif-skills`。
+
+先更新结构验证测试，确认只声明通用 `umi` Skill 时 RED，再把验证器改为要求上述两个组件 Skill 且拒绝通用 `umi` Skill。
 
 - [ ] **Step 4: 将 scripts 全部改为 pnpm-native 并聚合 verify**
 
@@ -353,7 +356,7 @@ Expected: 全部 exit 0。
 - [ ] **Step 7: 提交统一验证接线**
 
 ```bash
-git add scripts/verify-markdown.mjs scripts/verify-markdown.test.mjs .husky/pre-commit .husky/commit-msg .lintstagedrc .claude/settings.json package.json pnpm-lock.yaml .github/workflows/ci.yml CLAUDE.md
+git add scripts/verify-markdown.mjs scripts/verify-markdown.test.mjs scripts/verify-structure.mjs scripts/verify-structure.test.mjs .husky/pre-commit .husky/commit-msg .lintstagedrc .claude/settings.json package.json pnpm-lock.yaml .github/workflows/ci.yml docs/superpowers/plans/2026-08-11-engineering-baseline-sync.md docs/superpowers/specs/2026-08-11-engineering-baseline-sync-design.md
 git commit -m "chore(tooling): unify repository verification"
 ```
 
@@ -361,7 +364,7 @@ Expected: commit 只包含 Markdown tooling、hooks、scripts、CI 与必要 loc
 
 ---
 
-### Task 4: 收敛 AGENTS overlay 并修复 Markdown 基线
+### Task 4: 同步 AGENTS Skill 接线说明并修复 Markdown 基线
 
 **Files:**
 - Modify: `AGENTS.md`
@@ -374,14 +377,12 @@ Expected: commit 只包含 Markdown tooling、hooks、scripts、CI 与必要 loc
 - Modify: `docs/superpowers/plans/2026-08-11-engineering-baseline-sync.md`
 
 **Interfaces:**
-- Consumes: shared `unif:umi` Skill 与平台 architecture/OpenAPI facts。
-- Produces: 只记录平台差异的仓库 overlay；单仓 checkout 可验证的 Markdown。
+- Consumes: 当前完整 `AGENTS.md`、平台 architecture/OpenAPI facts、Task 3 的组件 Skill 声明。
+- Produces: 架构事实保持完整且 Skill 自动安装说明准确；单仓 checkout 可验证的 Markdown。
 
-- [ ] **Step 1: 将 AGENTS.md 改为薄 overlay**
+- [ ] **Step 1: 保留完整 AGENTS 并同步 Skill 接线说明**
 
-保留以下仓库专属事实：pages/features/services 依赖方向、generated/transport、OpenAPI Artifact、Problem Details、dependency-cruiser、`@ant-design/x`、Release deviation 规则和安全配置。通用 Umi/antd/Tailwind/Vitest 规则引用共享 Skill，不再复制。
-
-明确写出：共享 Skill 的通用 API 信封/Service 规则不适用于本仓，除非平台架构与 OpenAPI Artifact 后续明确变更。
+不得把当前完整 `AGENTS.md` 薄化，也不得引入通用 `umi` Skill。保留 pages/features/services 依赖方向、generated/transport、OpenAPI Artifact、Problem Details、dependency-cruiser、`@ant-design/x`、Release deviation、测试与安全配置等全部仓库事实；只把“尚未提交 `.claude/settings.json`”更新为 Task 3 已启用 `ant-design@unif-skills` 与 `antd@unif-skills`。
 
 - [ ] **Step 2: 修复已有 18 个 Markdown 问题**
 
@@ -408,7 +409,7 @@ git add AGENTS.md CLAUDE.md docs/superpowers
 git commit -m "docs: align repository engineering guidance"
 ```
 
-Expected: commit 只包含 AGENTS overlay、历史 Markdown 链接修复及本计划状态更新。
+Expected: commit 只包含 AGENTS Skill 接线说明、历史 Markdown 链接修复及本计划状态更新。
 
 ---
 

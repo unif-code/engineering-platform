@@ -92,7 +92,17 @@ async function createValidFixture() {
   await write(
     root,
     '.claude/settings.json',
-    JSON.stringify({ enabledPlugins: { 'umi@unif-skills': true } }),
+    JSON.stringify({
+      enabledPlugins: {
+        'ant-design@unif-skills': true,
+        'antd@unif-skills': true,
+      },
+      extraKnownMarketplaces: {
+        'unif-skills': {
+          source: { repo: 'unif-design/skills', source: 'github' },
+        },
+      },
+    }),
   );
   await write(root, '.husky/pre-commit', 'pnpm exec lint-staged\n');
   await write(root, '.husky/commit-msg', 'pnpm exec max verify-commit "$1"\n');
@@ -184,6 +194,30 @@ test('reports missing package, tooling, and Skill baseline requirements together
   assert.match(output, /Biome/);
   assert.match(output, /hooks/);
   assert.match(output, /Skill/);
+});
+
+test('requires the component Skills and rejects the generic Umi Skill', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    '.claude/settings.json',
+    JSON.stringify({
+      enabledPlugins: {
+        'ant-design@unif-skills': true,
+        'umi@unif-skills': true,
+      },
+      extraKnownMarketplaces: {
+        'unif-skills': {
+          source: { repo: 'wrong/marketplace', source: 'github' },
+        },
+      },
+    }),
+  );
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(output, /unif-design\/skills/u);
+  assert.match(output, /antd@unif-skills/u);
+  assert.match(output, /不得启用 umi@unif-skills/u);
 });
 
 test('requires Biome to cover hand-written mock sources', async () => {

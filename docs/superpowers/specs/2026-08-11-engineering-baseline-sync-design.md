@@ -13,7 +13,7 @@
 - 让 TypeScript、Biome、Vitest 和工程验证不依赖 `src/.umi` 生成目录即可运行。
 - 将本地与 CI 门禁统一到 `pnpm verify`。
 - 为工程结构和 Markdown 增加可执行、可回归的验证器。
-- 将 `AGENTS.md` 收敛为 `unif:umi` Skill 之上的平台专属 overlay。
+- 保留完整 `AGENTS.md` 作为平台前端工程事实源，并自动接线 PC/Web 的 `ant-design` 与组件查询 `antd` Skill。
 
 ## 非目标
 
@@ -26,11 +26,11 @@
 
 ## 优先级与架构边界
 
-开发前读取 `unif:umi` Skill。若共享 Skill 与平台事实冲突，按以下优先级处理：
+本仓不采用共享 marketplace 的通用 `umi` Skill。工程规则按以下优先级处理：
 
 1. `engineering-platform-docs` 的平台架构与已锁定 OpenAPI Artifact。
-2. 本仓 `AGENTS.md` 中的平台 overlay。
-3. `unif:umi` 的通用 Umi 工程规则。
+2. 本仓完整 `AGENTS.md`。
+3. `ant-design` 的 PC/Web 组件约定与 `antd` CLI 查询结果；若与前两项冲突，以前两项为准。
 
 平台继续采用：
 

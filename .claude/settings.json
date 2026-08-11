@@ -1,0 +1,14 @@
+{
+  "extraKnownMarketplaces": {
+    "unif-skills": {
+      "source": {
+        "source": "github",
+        "repo": "unif-design/skills"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "ant-design@unif-skills": true,
+    "antd@unif-skills": true
+  }
+}

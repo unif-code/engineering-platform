@@ -1,0 +1,1 @@
+pnpm exec max verify-commit "$1"
