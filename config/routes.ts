@@ -107,6 +107,12 @@ export default [
         routeKey: 'admin.users',
       },
       {
+        name: 'Grant 管理',
+        path: '/admin/grants',
+        component: './AdminGrants',
+        routeKey: 'admin.grants',
+      },
+      {
         name: '菜单管理',
         path: '/admin/menus',
         component: './AdminMenus',

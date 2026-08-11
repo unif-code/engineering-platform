@@ -34,6 +34,7 @@ const expectedComponents = {
   '/admin/models': './AdminModels',
   '/admin/roles': './AdminRoles',
   '/admin/users': './AdminUsers',
+  '/admin/grants': './AdminGrants',
   '/admin/menus': './AdminMenus',
 } as const;
 
@@ -45,6 +46,7 @@ const expectedAdminPaths = [
   '/admin/models',
   '/admin/roles',
   '/admin/users',
+  '/admin/grants',
   '/admin/menus',
 ] as const;
 
@@ -76,8 +78,8 @@ describe('route registry integration', () => {
       componentRoutes.map(({ component, path }) => [path, component]),
     );
 
-    expect(componentRoutes).toHaveLength(18);
-    expect(new Set(componentRoutes.map(({ path }) => path))).toHaveLength(18);
+    expect(componentRoutes).toHaveLength(19);
+    expect(new Set(componentRoutes.map(({ path }) => path))).toHaveLength(19);
     expect(components).toEqual(expectedComponents);
   });
 
@@ -86,13 +88,13 @@ describe('route registry integration', () => {
     expect(getRoute('/admin').name).toBe('管理概览');
   });
 
-  it('config 的 20 条 public、parent、redirect、page route 与 Registry 一一对应', () => {
-    expect(allRoutes).toHaveLength(20);
+  it('config 的 21 条 public、parent、redirect、page route 与 Registry 一一对应', () => {
+    expect(allRoutes).toHaveLength(21);
     expect(allRoutes.every(({ routeKey }) => routeKey)).toBe(true);
     expect(allRoutes.map(({ routeKey }) => routeKey)).toEqual(
       Object.keys(ROUTE_REGISTRY),
     );
-    expect(new Set(allRoutes.map(({ routeKey }) => routeKey))).toHaveLength(20);
+    expect(new Set(allRoutes.map(({ routeKey }) => routeKey))).toHaveLength(21);
 
     for (const route of allRoutes) {
       const registration =
@@ -189,6 +191,7 @@ describe('route registry integration', () => {
     expect(ROUTE_REGISTRY['admin.users'].prototype).toBe(false);
     expect(ROUTE_REGISTRY['admin.organization'].prototype).toBe(false);
     expect(ROUTE_REGISTRY['admin.workspaces'].prototype).toBe(false);
+    expect(ROUTE_REGISTRY['admin.grants'].prototype).toBe(false);
     expect(ROUTE_REGISTRY.audit.prototype).toBe(false);
   });
 

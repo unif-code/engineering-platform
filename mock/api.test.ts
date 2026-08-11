@@ -203,6 +203,7 @@ describe('mock API session assembly', () => {
         'audit.read',
         'identity.account.manage',
         'organization.manage',
+        'authorization.grant.manage',
         'platform.configuration.manage',
         'workspace.manage',
       ],
@@ -261,6 +262,13 @@ describe('mock API session assembly', () => {
         order: 7,
         routeKey: 'admin.users',
         sort: 70,
+      },
+      {
+        meta: { section: 'administration' },
+        name: 'Grant 管理',
+        order: 8,
+        routeKey: 'admin.grants',
+        sort: 80,
       },
     ]);
   });

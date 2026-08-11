@@ -20,6 +20,23 @@ export {
   resetAccountTotp,
 } from '@/services/adminAccounts';
 export type {
+  CreateGrantInput,
+  GrantListQuery,
+  GrantListResponse,
+  GrantPrincipalRef,
+  GrantScopeSummary,
+  GrantScopeType,
+  GrantSource,
+  GrantStatus,
+  GrantSummary,
+  RevokeGrantInput,
+} from '@/services/adminGrants';
+export {
+  createGrant,
+  listGrants,
+  revokeGrant,
+} from '@/services/adminGrants';
+export type {
   OrganizationKind,
   OrganizationNode,
   OrganizationTreeResponse,

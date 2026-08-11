@@ -7,6 +7,7 @@ import {
   ClusterOutlined,
   ControlOutlined,
   HomeOutlined,
+  KeyOutlined,
   MenuOutlined,
   ReadOutlined,
   RobotOutlined,
@@ -145,6 +146,13 @@ const expectedRoutes = {
     kind: 'page',
     path: '/admin/users',
   },
+  'admin.grants': {
+    access: 'session',
+    group: 'admin',
+    kind: 'page',
+    path: '/admin/grants',
+    prototype: false,
+  },
   'admin.menus': {
     access: 'session',
     group: 'admin',
@@ -169,6 +177,7 @@ const expectedIcons: Partial<Record<RouteKey, JSXElementConstructor<object>>> =
     'admin.models': RobotOutlined,
     'admin.roles': SafetyCertificateOutlined,
     'admin.users': TeamOutlined,
+    'admin.grants': KeyOutlined,
     'admin.menus': MenuOutlined,
   };
 
@@ -181,6 +190,7 @@ describe('ROUTE_REGISTRY', () => {
     }
 
     expect(APP_PATHS).toMatchObject({
+      adminGrants: '/admin/grants',
       adminUsers: '/admin/users',
       home: '/home',
       teamBoard: '/team-board',
@@ -231,6 +241,9 @@ describe('ROUTE_REGISTRY', () => {
     });
     expect(findRouteRegistration('/admin/organization')).toMatchObject({
       routeKey: 'admin.organization',
+    });
+    expect(findRouteRegistration('/admin/grants')).toMatchObject({
+      routeKey: 'admin.grants',
     });
     expect(findRouteRegistration('/not-registered')).toBeUndefined();
   });

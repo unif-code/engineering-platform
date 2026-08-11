@@ -8,6 +8,7 @@ describe('mock handlers', () => {
         'audit.read',
         'identity.account.manage',
         'organization.manage',
+        'authorization.grant.manage',
         'platform.configuration.manage',
         'workspace.manage',
       ],
@@ -67,7 +68,33 @@ describe('mock handlers', () => {
         routeKey: 'admin.users',
         sort: 70,
       },
+      {
+        meta: { section: 'administration' },
+        name: 'Grant 管理',
+        order: 8,
+        routeKey: 'admin.grants',
+        sort: 80,
+      },
     ]);
+  });
+
+  it('navigation 的 admin.grants 仅出现一次且由 sort 保持在账号管理之后', () => {
+    const navigation = navigationHandler();
+    const adminKeys = navigation
+      .filter(({ routeKey }) => routeKey.startsWith('admin'))
+      .sort((left, right) => left.sort - right.sort)
+      .map(({ routeKey }) => routeKey);
+
+    expect(adminKeys).toEqual([
+      'admin',
+      'admin.organization',
+      'admin.workspaces',
+      'admin.users',
+      'admin.grants',
+    ]);
+    expect(
+      navigation.filter(({ routeKey }) => routeKey === 'admin.grants'),
+    ).toHaveLength(1);
   });
 
   it('login 为已初始化账号返回 TOTP challenge 决策', () => {

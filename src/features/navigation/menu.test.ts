@@ -42,6 +42,7 @@ describe('buildMenuData', () => {
       navigationItem('home', '工作台', 10),
       navigationItem('admin', '管理概览', 20),
       navigationItem('admin.organization', '组织管理', 30),
+      navigationItem('admin.grants', 'Grant 管理', 35),
       navigationItem('admin.users', '账号管理', 40),
     ];
 
@@ -58,6 +59,12 @@ describe('buildMenuData', () => {
           key: 'admin.organization',
           name: '组织管理',
           path: '/admin/organization',
+        },
+        {
+          icon: ROUTE_REGISTRY['admin.grants'].icon,
+          key: 'admin.grants',
+          name: 'Grant 管理',
+          path: '/admin/grants',
         },
         {
           icon: ROUTE_REGISTRY['admin.users'].icon,
@@ -147,6 +154,7 @@ describe('buildMenuData', () => {
       navigationItem('admin', '管理概览', 50),
       navigationItem('home', '首页', 20),
       navigationItem('admin.users', '账号管理', 30),
+      navigationItem('admin.grants', 'Grant 管理', 28),
       navigationItem('admin.organization', '组织管理', 25),
       navigationItem('workspaces', '工作区', 10),
     ];
@@ -161,7 +169,7 @@ describe('buildMenuData', () => {
         permutation.map(({ routeKey }) => routeKey).join(', '),
       ).toEqual([
         ['workspaces', 'home'],
-        ['admin.organization', 'admin.users', 'admin'],
+        ['admin.organization', 'admin.grants', 'admin.users', 'admin'],
       ]);
     }
   });
