@@ -8,12 +8,8 @@ export const useStyles = createStyles(({ token }) => ({
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: token.margin,
-
-    '@media (max-width: 1280px)': {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
   },
   search: {
     width: 280,

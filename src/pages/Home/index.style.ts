@@ -8,29 +8,18 @@ export const useStyles = createStyles(({ token }) => ({
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: token.margin,
-
-    '@media (max-width: 1280px)': {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
-
-    [`@media (max-width: ${token.screenSM}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   contentGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'minmax(0, 3fr) minmax(320px, 2fr)',
+    display: 'flex',
+    flexWrap: 'wrap',
     gap: token.margin,
     alignItems: 'start',
-
-    [`@media (max-width: ${token.screenLG}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   column: {
     display: 'flex',
+    flex: '1 1 320px',
     minWidth: 0,
     flexDirection: 'column',
     gap: token.margin,

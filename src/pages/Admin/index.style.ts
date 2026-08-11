@@ -8,16 +8,8 @@ export const useStyles = createStyles(({ token }) => ({
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
     gap: token.margin,
-
-    '@media (max-width: 1280px)': {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
-
-    [`@media (max-width: ${token.screenSM}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   sectionCard: {
     borderColor: token.colorBorderSecondary,
@@ -25,16 +17,8 @@ export const useStyles = createStyles(({ token }) => ({
   },
   entryGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
     gap: token.marginSM,
-
-    [`@media (max-width: ${token.screenLG}px)`]: {
-      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-    },
-
-    [`@media (max-width: ${token.screenSM}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   entryCard: {
     borderColor: token.colorBorderSecondary,
@@ -49,13 +33,9 @@ export const useStyles = createStyles(({ token }) => ({
   },
   lowerGrid: {
     display: 'grid',
-    gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
     gap: token.margin,
     alignItems: 'start',
-
-    [`@media (max-width: ${token.screenLG}px)`]: {
-      gridTemplateColumns: 'minmax(0, 1fr)',
-    },
   },
   list: {
     margin: 0,
