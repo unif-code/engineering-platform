@@ -33,7 +33,7 @@
 
 - [ ] **Step 1: 写缺少实现时失败的真实 fixture 测试**
 
-创建临时目录 helper，写入最小合法 `package.json`、`config/config.ts`、`tsconfig.json`、`biome.json`、`.claude/settings.json`、`.husky/*`、`.lintstagedrc` 与手写源码。测试至少覆盖以下 mutation：
+创建临时目录 helper，写入最小合法 `package.json`、`config/config.ts`、`tsconfig.json`、`biome.json`、`skills-lock.json`、`.husky/*`、`.lintstagedrc` 与手写源码。测试至少覆盖以下 mutation：
 
 ```js
 test('accepts the platform engineering baseline', async () => {
@@ -266,7 +266,7 @@ Expected: commit 不包含源码、OpenAPI Artifact 或生成目录。
 - Create: `.husky/pre-commit`
 - Create: `.husky/commit-msg`
 - Create: `.lintstagedrc`
-- Create: `.claude/settings.json`
+- Modify: `skills-lock.json`
 - Modify: `package.json`
 - Modify: `.github/workflows/ci.yml`
 - Modify: `scripts/verify-structure.mjs`
@@ -323,7 +323,7 @@ pnpm exec max verify-commit "$1"
 }
 ```
 
-`.claude/settings.json` 登记 `unif-design/skills` 的 `unif-skills` marketplace，并只启用 `ant-design@unif-skills` 与 `antd@unif-skills`。不得启用 `umi@unif-skills`。
+使用 installer 从 Ant Design 官方 `ant-design/antd-skill` 安装 `ant-design` 与 `antd`，由 `skills-lock.json` 记录 source、skillPath 与 computedHash。不得锁定 generic `umi` Skill。
 
 先更新结构验证测试，确认只声明通用 `umi` Skill 时 RED，再把验证器改为要求上述两个组件 Skill 且拒绝通用 `umi` Skill。
 
@@ -348,7 +348,7 @@ Run:
 ```bash
 pnpm test:tooling
 pnpm verify:structure
-pnpm exec biome check package.json .github/workflows/ci.yml .claude/settings.json .lintstagedrc scripts
+pnpm exec biome check package.json .github/workflows/ci.yml skills-lock.json .lintstagedrc scripts
 ```
 
 Expected: 全部 exit 0。
@@ -356,7 +356,7 @@ Expected: 全部 exit 0。
 - [ ] **Step 7: 提交统一验证接线**
 
 ```bash
-git add scripts/verify-markdown.mjs scripts/verify-markdown.test.mjs scripts/verify-structure.mjs scripts/verify-structure.test.mjs .husky/pre-commit .husky/commit-msg .lintstagedrc .claude/settings.json package.json pnpm-lock.yaml .github/workflows/ci.yml docs/superpowers/plans/2026-08-11-engineering-baseline-sync.md docs/superpowers/specs/2026-08-11-engineering-baseline-sync-design.md
+git add scripts/verify-markdown.mjs scripts/verify-markdown.test.mjs scripts/verify-structure.mjs scripts/verify-structure.test.mjs .husky/pre-commit .husky/commit-msg .lintstagedrc skills-lock.json package.json pnpm-lock.yaml .github/workflows/ci.yml docs/superpowers/plans/2026-08-11-engineering-baseline-sync.md docs/superpowers/specs/2026-08-11-engineering-baseline-sync-design.md
 git commit -m "chore(tooling): unify repository verification"
 ```
 
@@ -382,7 +382,7 @@ Expected: commit 只包含 Markdown tooling、hooks、scripts、CI 与必要 loc
 
 - [ ] **Step 1: 保留完整 AGENTS 并同步 Skill 接线说明**
 
-不得把当前完整 `AGENTS.md` 薄化，也不得引入通用 `umi` Skill。保留 pages/features/services 依赖方向、generated/transport、OpenAPI Artifact、Problem Details、dependency-cruiser、`@ant-design/x`、Release deviation、测试与安全配置等全部仓库事实；只把“尚未提交 `.claude/settings.json`”更新为 Task 3 已启用 `ant-design@unif-skills` 与 `antd@unif-skills`。
+不得把当前完整 `AGENTS.md` 薄化，也不得引入 generic `umi` Skill。保留 pages/features/services 依赖方向、generated/transport、OpenAPI Artifact、Problem Details、dependency-cruiser、`@ant-design/x`、Release deviation、测试与安全配置等全部仓库事实；组件知识源必须与 `skills-lock.json` 中 Ant Design 官方 `ant-design/antd-skill` 一致。
 
 - [ ] **Step 2: 修复已有 18 个 Markdown 问题**
 

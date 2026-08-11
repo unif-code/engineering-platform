@@ -30,7 +30,11 @@ const dependencySections = [
   'optionalDependencies',
   'peerDependencies',
 ];
-const requiredSkillPlugins = ['ant-design@unif-skills', 'antd@unif-skills'];
+const requiredSkills = {
+  'ant-design': 'skills/ant-design/SKILL.md',
+  antd: 'skills/antd/SKILL.md',
+};
+const officialSkillSource = 'ant-design/antd-skill';
 const umiImportForms = [
   { label: "from 'umi'", pattern: /\bfrom\s+['"]umi['"]/u },
   { label: "import 'umi'", pattern: /\bimport\s+['"]umi['"]/u },
@@ -200,40 +204,45 @@ function checkBiome(biome, issues) {
   }
 }
 
-function checkSettings(settings, issues) {
-  if (!settings) {
+function checkSkillLock(lock, issues) {
+  if (!lock) {
     issues.push('缺少共享 Skill 声明');
     return;
   }
 
-  const marketplace = settings.extraKnownMarketplaces?.['unif-skills']?.source;
-  if (
-    marketplace?.source !== 'github' ||
-    marketplace?.repo !== 'unif-design/skills'
-  ) {
-    issues.push(
-      '.claude/settings.json 必须将 unif-skills 指向 GitHub unif-design/skills',
-    );
+  if (lock.version !== 1) {
+    issues.push('skills-lock.json version 必须为 1');
   }
 
-  const plugins = settings.enabledPlugins;
-  for (const plugin of requiredSkillPlugins) {
-    if (plugins?.[plugin] !== true) {
-      issues.push(`.claude/settings.json 必须启用 ${plugin}`);
+  const skills = lock.skills ?? {};
+  for (const [name, skillPath] of Object.entries(requiredSkills)) {
+    const skill = skills[name];
+    if (
+      skill?.source !== officialSkillSource ||
+      skill?.sourceType !== 'github' ||
+      skill?.skillPath !== skillPath
+    ) {
+      issues.push(
+        `skills-lock.json 必须从 GitHub ${officialSkillSource} 锁定 ${name}（${skillPath}）`,
+      );
+    }
+    if (!/^[0-9a-f]{64}$/u.test(skill?.computedHash ?? '')) {
+      issues.push(
+        `skills-lock.json 的 ${name}.computedHash 必须是 64 位十六进制摘要`,
+      );
     }
   }
-  if (plugins?.['umi@unif-skills'] === true) {
-    issues.push('.claude/settings.json 不得启用 umi@unif-skills');
+
+  if (skills.umi !== undefined) {
+    issues.push('skills-lock.json 不得锁定 generic umi Skill');
   }
-  const unexpectedPlugins = Object.entries(plugins ?? {})
-    .filter(
-      ([plugin, enabled]) =>
-        enabled === true && !requiredSkillPlugins.includes(plugin),
-    )
-    .map(([plugin]) => plugin);
-  if (unexpectedPlugins.length > 0) {
+
+  const unexpectedSkills = Object.keys(skills).filter(
+    (name) => !Object.hasOwn(requiredSkills, name),
+  );
+  if (unexpectedSkills.length > 0) {
     issues.push(
-      `.claude/settings.json 只允许启用组件 Skill：${unexpectedPlugins.join(', ')}`,
+      `skills-lock.json 只允许锁定组件 Skill：${unexpectedSkills.join(', ')}`,
     );
   }
 }
@@ -282,7 +291,7 @@ export async function verifyStructure(root = process.cwd()) {
   checkConfig(await readText(root, 'config/config.ts', issues), issues);
   checkTsconfig(await readJson(root, 'tsconfig.json', issues), issues);
   checkBiome(await readJson(root, 'biome.json', issues), issues);
-  checkSettings(await readJson(root, '.claude/settings.json', issues), issues);
+  checkSkillLock(await readJson(root, 'skills-lock.json', issues), issues);
   await checkHooks(root, issues);
   await checkSourceFiles(root, issues);
 

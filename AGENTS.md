@@ -19,7 +19,7 @@
 
 ## 共享 Skill 与组件知识查询
 
-本仓的前端结构、数据获取与工程约定以 `engineering-platform-docs` 的架构文档（尤其 06 篇）为准，不采用 `@unif` 共享 marketplace 的 `umi` 通用基线 skill。antd 组件约定与知识查询仍来自该 marketplace（`unif-design/skills`）：`ant-design` 提供 PC/Web 专属约定（antd 6 与 pro-components 3 用法、ProComponents 铁律、桌面样式），`antd` 提供组件知识查询 CLI。仓库已通过 `.claude/settings.json` 启用这两个 Skill；克隆并信任目录后可自动安装，也可手动执行 `npx skills add unif-design/skills --skill ant-design --skill antd`。写 PC 界面前先查 `ant-design` skill；写 antd 代码前先用 `npx antd info <组件>` 查询当前版本 API，不凭记忆写组件属性。
+本仓的前端结构、数据获取与工程约定以 `engineering-platform-docs` 的架构文档（尤其 06 篇）为准，不采用 generic `umi` Skill。antd 组件约定与知识查询来自 Ant Design 官方 Skill 仓（`ant-design/antd-skill`）：`ant-design` 提供 PC/Web 专属约定（antd 6 与 Pro Components 用法、ProComponents 铁律、桌面样式），`antd` 提供组件知识查询 CLI。仓库通过 `skills-lock.json` 锁定这两个 Skill；克隆后可执行 `npx skills experimental_install` 恢复，也可手动执行 `npx skills add ant-design/antd-skill --skill ant-design --skill antd`。写 PC 界面前先查 `ant-design` Skill；写 antd 代码前先用 `npx antd info <组件> --format json` 查询当前版本 API，不凭记忆写组件属性。
 
 ## 编码风格与命名约定
 

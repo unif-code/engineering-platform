@@ -14,7 +14,7 @@
 
 - 仅修改前端仓 `engineering-platform`；不得修改 `engineering-platform-backend`、`engineering-platform-gitops` 或其他仓库。
 - 用户已明确批准在 `main` 直接执行，不建立隔离 worktree；所有实现与审查子 Agent 使用 `gpt-5.6-sol`、`max`，按任务串行写入并在任务间完成规格审查和代码质量审查。
-- 修改代码前完整读取共享 `umi`、`ant-design`、`antd` Skill；若本地缺失，运行 `npx skills add unif-design/skills --skill umi --skill ant-design --skill antd`，但不提交安装产生的个人 Skill 缓存文件。
+- 修改代码前完整读取架构 06 与 Ant Design 官方 `ant-design`、`antd` Skill；不使用 generic `umi` Skill。若本地缺失，运行 `npx skills add ant-design/antd-skill --skill ant-design --skill antd`，但不提交安装产生的个人 Skill 缓存文件。
 - 每个任务遵循 `superpowers:test-driven-development`：先写可观察行为测试并确认 RED，再写最小实现确认 GREEN；不得先写生产代码后补测试。
 - 原型只作为视觉、布局与信息密度参考；登录、Session、Initial State、路由守卫、信封解包和 `pages → features → services` 是唯一逻辑事实源。
 - 视觉参考的绝对路径为 `/Users/liulijun/Downloads/untitled/project/研发协作平台.dc.html`；只读取该原型，不修改其文件，也不照搬其中的业务逻辑或示例数据。

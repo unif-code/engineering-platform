@@ -91,15 +91,21 @@ async function createValidFixture() {
   );
   await write(
     root,
-    '.claude/settings.json',
+    'skills-lock.json',
     JSON.stringify({
-      enabledPlugins: {
-        'ant-design@unif-skills': true,
-        'antd@unif-skills': true,
-      },
-      extraKnownMarketplaces: {
-        'unif-skills': {
-          source: { repo: 'unif-design/skills', source: 'github' },
+      version: 1,
+      skills: {
+        'ant-design': {
+          computedHash: 'a'.repeat(64),
+          skillPath: 'skills/ant-design/SKILL.md',
+          source: 'ant-design/antd-skill',
+          sourceType: 'github',
+        },
+        antd: {
+          computedHash: 'b'.repeat(64),
+          skillPath: 'skills/antd/SKILL.md',
+          source: 'ant-design/antd-skill',
+          sourceType: 'github',
         },
       },
     }),
@@ -184,7 +190,7 @@ test('reports missing package, tooling, and Skill baseline requirements together
     delete manifest.devDependencies['@umijs/max'];
   });
   await write(root, 'biome.json', '{"files":{"includes":["src/**/*.ts"]}}\n');
-  await rm(join(root, '.claude'), { force: true, recursive: true });
+  await rm(join(root, 'skills-lock.json'));
   await rm(join(root, '.husky'), { force: true, recursive: true });
 
   const output = (await verifyStructure(root)).join('\n');
@@ -200,24 +206,31 @@ test('requires the component Skills and rejects the generic Umi Skill', async ()
   const root = await createValidFixture();
   await write(
     root,
-    '.claude/settings.json',
+    'skills-lock.json',
     JSON.stringify({
-      enabledPlugins: {
-        'ant-design@unif-skills': true,
-        'umi@unif-skills': true,
-      },
-      extraKnownMarketplaces: {
-        'unif-skills': {
-          source: { repo: 'wrong/marketplace', source: 'github' },
+      version: 1,
+      skills: {
+        'ant-design': {
+          computedHash: 'invalid',
+          skillPath: 'skills/ant-design/SKILL.md',
+          source: 'wrong/source',
+          sourceType: 'github',
+        },
+        umi: {
+          computedHash: 'c'.repeat(64),
+          skillPath: 'skills/umi/SKILL.md',
+          source: 'unif-design/skills',
+          sourceType: 'github',
         },
       },
     }),
   );
 
   const output = (await verifyStructure(root)).join('\n');
-  assert.match(output, /unif-design\/skills/u);
-  assert.match(output, /antd@unif-skills/u);
-  assert.match(output, /不得启用 umi@unif-skills/u);
+  assert.match(output, /ant-design\/antd-skill/u);
+  assert.match(output, /skills\/antd\/SKILL\.md/u);
+  assert.match(output, /不得锁定 generic umi Skill/u);
+  assert.match(output, /computedHash/u);
 });
 
 test('requires Biome to cover hand-written mock sources', async () => {

@@ -139,7 +139,7 @@ Expected: 只发生格式/import 顺序变化；全部 exit 0。
 Run:
 
 ```bash
-npx skills add unif-design/skills --skill ant-design --skill antd
+npx skills add ant-design/antd-skill --skill ant-design --skill antd
 ```
 
 Expected: `skills-lock.json` 不再只锁 generic `umi`；生成的 hash 由 installer 写入。`.agents/` 保持 ignored，不提交本地 Skill 内容。
