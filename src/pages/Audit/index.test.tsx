@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockRequester,
   type MockRoutes,
@@ -35,6 +35,10 @@ beforeEach(() => {
   routes = createAdminAuditMock();
   requestMock.mockReset();
   requestMock.mockImplementation(requestThroughMock);
+});
+
+afterEach(() => {
+  vi.useRealTimers();
 });
 
 describe('AuditPage', () => {
@@ -140,6 +144,10 @@ describe('AuditPage', () => {
   });
 
   it('按时间、actor 与 targetType 查询契约端点', async () => {
+    vi.useFakeTimers({
+      now: new Date(2026, 7, 10, 12, 0, 0),
+      toFake: ['Date'],
+    });
     const user = userEvent.setup();
     const now = new Date();
     const from = new Date(now);
