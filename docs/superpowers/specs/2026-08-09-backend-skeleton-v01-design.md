@@ -3,7 +3,7 @@
 日期：2026-08-09
 状态：已确认
 范围：`engineering-platform-backend` 仓库（github.com/unif-code/engineering-platform-backend，现为空仓）
-依据：架构基线 `2026-08-09.1`（[baseline-manifest.json](../../architecture/baseline-manifest.json)）、[12 实施路线图](../../architecture/12-implementation-roadmap.md)的 V0.1 范围、[06 平台应用与集成](../../architecture/06-platform-application-integration.md)的 Control Plane 结构
+依据：架构基线 `2026-08-09.1`（[baseline-manifest.json](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/baseline-manifest.json)）、[12 实施路线图](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/12-implementation-roadmap.md)的 V0.1 范围、[06 平台应用与集成](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/06-platform-application-integration.md)的 Control Plane 结构
 
 ## 背景与定位
 

@@ -62,15 +62,15 @@ grep -nE '[0-9]+ ?/ ?[0-9]+ ?vCPU|[0-9]+ ?GiB|active_attempt_limit|active_build_
 
 所有权声明段(删除,归矩阵):
 
-> 删除前:"本文是 Sandbox Environment、Kata/KVM 物理隔离…的唯一规范事实源。Requirement、WorkItem、Gate、Decision…只由 [Requirement Workflow](…)拥有;`IntegrationBaselineEvidence` 只由 [Source Control 与交付](…)拥有;…"
+> 删除前:"本文是 Sandbox Environment、Kata/KVM 物理隔离…的唯一规范事实源。Requirement、WorkItem、Gate、Decision…只由 `Requirement Workflow` 拥有；`IntegrationBaselineEvidence` 只由 `Source Control 与交付` 拥有；…"
 >
-> 删除后(目标与边界节一句话):"业务状态、代码事实与审计规则的归属见 [README 所有权矩阵](./README.md#事实所有权矩阵)。"
+> 删除后(目标与边界节一句话):"业务状态、代码事实与审计规则的归属见 `README` 的事实所有权矩阵。"
 
 参数表(迁附录):
 
 > 删除前:`| resource/standard-v1 | 2 / 4 vCPU | 6 / 8 GiB | 30 / 50 GiB | 1 |` 整表
 >
-> 删除后:"Resource Profile 是不可变的 `GITOPS_CONFIG`,用户不可自选规格;资源向量与 Unit 权重见[参数附录](./appendix-parameters.md#resource-profile)。"
+> 删除后:"Resource Profile 是不可变的 `GITOPS_CONFIG`，用户不可自选规格；资源向量与 Unit 权重见参数附录的 `resource-profile`。"
 
 不变量写法:
 

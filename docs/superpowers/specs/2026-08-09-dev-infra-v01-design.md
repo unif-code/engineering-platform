@@ -3,7 +3,7 @@
 日期：2026-08-09
 状态：已确认
 范围：DEV 单服务器 + 新建 `engineering-platform-gitops` 仓库（GitHub unif-code）
-依据：架构基线 `2026-08-09.2`、[09 基础设施与运维](../../architecture/09-infrastructure-operations.md)、[07 数据、消息与存储](../../architecture/07-data-messaging-storage.md)、[附录 5. 单节点基线](../../architecture/appendix-parameters.md#5-v01v03-单节点基线)与 PCS 锁定版本、治理例外 [DEV-001](../../architecture/deviations.md)
+依据：架构基线 `2026-08-09.2`、[09 基础设施与运维](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/09-infrastructure-operations.md)、[07 数据、消息与存储](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/07-data-messaging-storage.md)、[附录 5. 单节点基线](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/appendix-parameters.md#5-v01v03-%E5%8D%95%E8%8A%82%E7%82%B9%E5%9F%BA%E7%BA%BF)与 PCS 锁定版本、治理例外 [DEV-001](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/deviations.md)
 
 ## 背景与定位
 
@@ -45,7 +45,7 @@ Flux v2.9.3 只装四控制器（source/kustomize/helm/notification），不装 
 
 ## §3 存储与备份（DEV-001 例外生效）
 
-- 同机 MinIO 单实例：独立数据目录（数据盘路径）、TLS、启用 Versioning 与 Object Lock；创建 bucket：`postgres-backup`、`etcd-backup`、`audit-worm`（供 ② 后端 V0.2+ 归档使用，V0.1 先建好并验证 Lock）；每 bucket 独立 Access Key（最小策略）。此即 `StorageBinding` gen-1，例外与关闭条件见 [DEV-001](../../architecture/deviations.md)。
+- 同机 MinIO 单实例：独立数据目录（数据盘路径）、TLS、启用 Versioning 与 Object Lock；创建 bucket：`postgres-backup`、`etcd-backup`、`audit-worm`（供 ② 后端 V0.2+ 归档使用，V0.1 先建好并验证 Lock）；每 bucket 独立 Access Key（最小策略）。此即 `StorageBinding` gen-1，例外与关闭条件见 [DEV-001](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/deviations.md)。
 - 平台 PostgreSQL：CloudNativePG 1.30.0 单实例 Cluster（PG 18.4），Barman Cloud Plugin 0.13.0 推 Base Backup + 连续 WAL 到 MinIO `postgres-backup`；`archive_timeout=5min`、每日 Base Backup（附录包络的 DEV 口径）。
 - etcd：cron 任务按 PCS 锁定的 `etcdctl snapshot save` 每 3 小时快照 + `etcdutl snapshot status` 验证，上传 MinIO `etcd-backup`，保留 7 天。
 - **真实恢复演练（Gate 证据）**：PG 按 Base Backup + WAL 做一次 PITR 到临时 Cluster 并校验数据；etcd 快照在隔离环境（同机 kind 或二次 kubeadm dry-run 目录）restore 并验证。步骤与判定写入 runbook 目录。

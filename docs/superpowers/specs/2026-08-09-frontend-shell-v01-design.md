@@ -3,7 +3,7 @@
 日期：2026-08-09
 状态：已确认
 范围：`engineering-platform` 仓库（本仓）
-依据：架构基线 `2026-08-09.1`、[12 实施路线图](../../architecture/12-implementation-roadmap.md)的 V0.1 范围、[06 平台应用与集成](../../architecture/06-platform-application-integration.md)的前端结构与状态边界、后端骨架 spec（[2026-08-09-backend-skeleton-v01-design.md](./2026-08-09-backend-skeleton-v01-design.md)）
+依据：架构基线 `2026-08-09.1`、[12 实施路线图](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/12-implementation-roadmap.md)的 V0.1 范围、[06 平台应用与集成](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/06-platform-application-integration.md)的前端结构与状态边界、后端骨架 spec（[2026-08-09-backend-skeleton-v01-design.md](./2026-08-09-backend-skeleton-v01-design.md)）
 
 ## 背景与定位
 
