@@ -3,23 +3,39 @@ import { fileURLToPath } from 'node:url';
 import { join, relative } from 'node:path';
 
 const runtimeDependencies = [
+  '@ant-design/x',
   '@ant-design/pro-components',
   '@tanstack/react-query',
   '@umijs/max',
   'antd',
+  'openapi-fetch',
   'react',
   'react-dom',
 ];
 const developmentDependencies = [
   '@biomejs/biome',
   '@vitest/coverage-v8',
+  'dependency-cruiser',
   'happy-dom',
+  'openapi-typescript',
   'tailwindcss',
   'typescript',
   'vitest',
 ];
 const sourceRoots = ['config', 'mock', 'src'];
 const requiredBiomeScopes = ['config', 'scripts', 'src', 'tests'];
+const dependencySections = [
+  'dependencies',
+  'devDependencies',
+  'optionalDependencies',
+  'peerDependencies',
+];
+const umiImportForms = [
+  { label: "from 'umi'", pattern: /\bfrom\s+['"]umi['"]/u },
+  { label: "import 'umi'", pattern: /\bimport\s+['"]umi['"]/u },
+  { label: "import('umi')", pattern: /\bimport\s*\(\s*['"]umi['"]\s*\)/u },
+  { label: "require('umi')", pattern: /\brequire\s*\(\s*['"]umi['"]\s*\)/u },
+];
 
 async function readText(root, path, issues) {
   try {
@@ -109,9 +125,11 @@ function checkManifest(manifest, issues) {
     }
   }
 
-  for (const name of Object.keys({ ...manifest.dependencies, ...manifest.devDependencies })) {
-    if (name === 'vite' || name === '@utoo/pack' || name.startsWith('@vitejs/')) {
-      issues.push(`禁止 direct Vite/Utoopack 依赖：${name}`);
+  for (const section of dependencySections) {
+    for (const name of Object.keys(manifest[section] ?? {})) {
+      if (name === 'vite' || name === '@utoo/pack' || name.startsWith('@vitejs/')) {
+        issues.push(`禁止 direct Vite/Utoopack 依赖：${section}.${name}`);
+      }
     }
   }
 }
@@ -200,8 +218,9 @@ async function checkSourceFiles(root, issues) {
       continue;
     }
     const contents = await readText(root, path, issues);
-    if (contents !== undefined && /\bfrom\s+['"]umi['"]/u.test(contents)) {
-      issues.push(`${path}: 不允许 from 'umi'，请从 '@umijs/max' 导入`);
+    const importForm = umiImportForms.find(({ pattern }) => pattern.test(contents));
+    if (importForm) {
+      issues.push(`${path}: 不允许 ${importForm.label}，请从 '@umijs/max' 导入`);
     }
   }
 }

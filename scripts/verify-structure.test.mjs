@@ -29,17 +29,21 @@ async function createValidFixture() {
         packageManager: 'pnpm@11.18.0',
         engines: { node: '>=22', pnpm: '>=11' },
         dependencies: {
+          '@ant-design/x': '^2.0.0',
           '@ant-design/pro-components': '^3.0.0',
           '@tanstack/react-query': '^5.0.0',
           '@umijs/max': '^4.0.0',
           antd: '^6.0.0',
+          'openapi-fetch': '^0.17.0',
           react: '^19.0.0',
           'react-dom': '^19.0.0',
         },
         devDependencies: {
           '@biomejs/biome': '^2.0.0',
           '@vitest/coverage-v8': '^4.0.0',
+          'dependency-cruiser': '^18.0.0',
           'happy-dom': '^20.0.0',
+          'openapi-typescript': '^7.0.0',
           tailwindcss: '^4.0.0',
           typescript: '^5.0.0',
           vitest: '^4.0.0',
@@ -157,4 +161,49 @@ test('reports missing package, tooling, and Skill baseline requirements together
   assert.match(output, /Biome/);
   assert.match(output, /hooks/);
   assert.match(output, /Skill/);
+});
+
+test('reports every required platform dependency when individually missing', async () => {
+  const dependencies = ['@ant-design/x', 'openapi-fetch'];
+  const devDependencies = ['dependency-cruiser', 'openapi-typescript'];
+
+  for (const name of dependencies) {
+    const root = await createValidFixture();
+    await mutatePackage(root, (manifest) => {
+      delete manifest.dependencies[name];
+    });
+    assert.match((await verifyStructure(root)).join('\n'), new RegExp(name));
+  }
+
+  for (const name of devDependencies) {
+    const root = await createValidFixture();
+    await mutatePackage(root, (manifest) => {
+      delete manifest.devDependencies[name];
+    });
+    assert.match((await verifyStructure(root)).join('\n'), new RegExp(name));
+  }
+});
+
+test('reports direct Vite and Utoopack dependencies in peer and optional sections', async () => {
+  const root = await createValidFixture();
+  await mutatePackage(root, (manifest) => {
+    manifest.peerDependencies = { vite: '^7.3.5' };
+    manifest.optionalDependencies = { '@utoo/pack': '^1.0.0' };
+  });
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(output, /vite/);
+  assert.match(output, /@utoo\/pack/);
+});
+
+test('reports side-effect, dynamic, and require imports from umi', async () => {
+  const root = await createValidFixture();
+  await write(root, 'src/side-effect.ts', "import 'umi';\n");
+  await write(root, 'src/dynamic.ts', "await import('umi');\n");
+  await write(root, 'src/require.ts', "const umi = require('umi');\n");
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(output, /side-effect\.ts:.*import 'umi'/);
+  assert.match(output, /dynamic\.ts:.*import\('umi'\)/);
+  assert.match(output, /require\.ts:.*require\('umi'\)/);
 });
