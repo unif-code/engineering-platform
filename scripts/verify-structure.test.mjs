@@ -154,6 +154,44 @@ test('reports obsolete builders and generated tsconfig coupling', async () => {
   assert.match(output, /\.umi/);
 });
 
+test('does not accept utoopack mentioned only in comments or strings', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/config.ts',
+    [
+      "import { defineConfig } from '@umijs/max';",
+      "const migrationNote = 'utoopack: {}';",
+      '// utoopack: {}',
+      'export default defineConfig({});',
+      '',
+    ].join('\n'),
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /config\/config\.ts 必须声明 utoopack/,
+  );
+});
+
+test('ignores legacy builder names mentioned only in comments or strings', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/config.ts',
+    [
+      "import { defineConfig } from '@umijs/max';",
+      "const migrationNote = 'mfsu: false; esbuildMinifyIIFE: true';",
+      '// mfsu: false',
+      '/* esbuildMinifyIIFE: true */',
+      'export default defineConfig({ utoopack: {} });',
+      '',
+    ].join('\n'),
+  );
+
+  assert.deepEqual(await verifyStructure(root), []);
+});
+
 test('reports framework imports and Less without applying API rules', async () => {
   const root = await createValidFixture();
   await write(root, 'src/legacy.ts', "import { history } from 'umi';\n");

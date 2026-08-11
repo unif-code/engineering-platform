@@ -41,6 +41,8 @@ const umiImportForms = [
   { label: "import('umi')", pattern: /\bimport\s*\(\s*['"]umi['"]\s*\)/u },
   { label: "require('umi')", pattern: /\brequire\s*\(\s*['"]umi['"]\s*\)/u },
 ];
+const commentsAndStrings =
+  /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/gu;
 
 async function readText(root, path, issues) {
   try {
@@ -157,13 +159,14 @@ function checkManifest(manifest, issues) {
 
 function checkConfig(contents, issues) {
   if (contents === undefined) return;
-  if (!/\butoopack\s*:/u.test(contents)) {
+  const executableContents = contents.replace(commentsAndStrings, '');
+  if (!/\butoopack\s*:/u.test(executableContents)) {
     issues.push('config/config.ts 必须声明 utoopack');
   }
-  if (/\bmfsu\s*:/u.test(contents)) {
+  if (/\bmfsu\s*:/u.test(executableContents)) {
     issues.push('config/config.ts 不得保留 mfsu');
   }
-  if (/\besbuildMinifyIIFE\s*:/u.test(contents)) {
+  if (/\besbuildMinifyIIFE\s*:/u.test(executableContents)) {
     issues.push('config/config.ts 不得保留 esbuildMinifyIIFE');
   }
 }
