@@ -13,25 +13,18 @@ export const useStyles = createStyles(({ token }) => ({
     justifyContent: 'center',
   },
   mark: {
-    display: 'inline-flex',
+    display: 'inline-block',
     flexShrink: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
     borderRadius: token.borderRadiusLG,
     backgroundColor: BRAND_ORANGE,
-    color: token.colorWhite,
-    fontWeight: token.fontWeightStrong,
-    letterSpacing: '-0.02em',
   },
   defaultMark: {
     width: 32,
     height: 32,
-    fontSize: token.fontSize,
   },
   smallMark: {
     width: 28,
     height: 28,
-    fontSize: token.fontSizeSM,
   },
   name: {
     overflow: 'hidden',

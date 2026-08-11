@@ -3,21 +3,21 @@ import { describe, expect, it } from 'vitest';
 import { BrandMark } from '.';
 
 describe('BrandMark', () => {
-  it('展开和折叠时都保留产品可访问名', () => {
+  it('展开和折叠时使用统一产品名且不渲染旧字母标识', () => {
     const { rerender } = render(<BrandMark />);
 
     expect(
-      screen.getByRole('img', { name: '内部研发平台' }),
+      screen.getByRole('img', { name: '研发协作平台' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('IP')).toBeInTheDocument();
-    expect(screen.getByText('内部研发平台')).toBeInTheDocument();
+    expect(screen.getByText('研发协作平台')).toBeInTheDocument();
+    expect(screen.queryByText('IP')).not.toBeInTheDocument();
 
     rerender(<BrandMark collapsed />);
 
     expect(
-      screen.getByRole('img', { name: '内部研发平台' }),
+      screen.getByRole('img', { name: '研发协作平台' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('IP')).toBeInTheDocument();
-    expect(screen.queryByText('内部研发平台')).not.toBeInTheDocument();
+    expect(screen.queryByText('研发协作平台')).not.toBeInTheDocument();
+    expect(screen.queryByText('IP')).not.toBeInTheDocument();
   });
 });

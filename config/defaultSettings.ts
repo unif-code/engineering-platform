@@ -1,3 +1,4 @@
+import { PLATFORM_NAME } from '../src/constants/brand';
 import { BRAND_ORANGE } from '../src/constants/theme';
 
 /** ProLayout 默认布局设置 */
@@ -7,7 +8,7 @@ const defaultSettings = {
   contentWidth: 'Fluid',
   fixedHeader: true,
   fixSiderbar: true,
-  title: '内部研发平台',
+  title: PLATFORM_NAME,
 } as const;
 
 export default defaultSettings;

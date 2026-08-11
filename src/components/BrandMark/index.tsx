@@ -1,4 +1,5 @@
 import clsx from 'clsx';
+import { PLATFORM_NAME } from '@/constants/brand';
 import { useStyles } from './index.style';
 
 export interface BrandMarkProps {
@@ -16,7 +17,7 @@ export function BrandMark({
 
   return (
     <span
-      aria-label="内部研发平台"
+      aria-label={PLATFORM_NAME}
       className={clsx(styles.root, collapsed && styles.collapsed, className)}
       role="img"
     >
@@ -26,12 +27,10 @@ export function BrandMark({
           styles.mark,
           size === 'small' ? styles.smallMark : styles.defaultMark,
         )}
-      >
-        IP
-      </span>
+      />
       {collapsed ? null : (
         <span aria-hidden="true" className={styles.name}>
-          内部研发平台
+          {PLATFORM_NAME}
         </span>
       )}
     </span>

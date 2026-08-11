@@ -117,7 +117,7 @@ describe('HeaderActions', () => {
 });
 
 describe('shell branding', () => {
-  it('顶栏标题和展开、折叠菜单品牌都使用固定产品名', () => {
+  it('顶栏标题和展开、折叠菜单品牌都使用统一产品名', () => {
     const { rerender } = render(
       <>
         <HeaderTitle />
@@ -125,17 +125,19 @@ describe('shell branding', () => {
       </>,
     );
 
-    expect(screen.getAllByText('内部研发平台')).toHaveLength(2);
+    expect(screen.getAllByText('研发协作平台')).toHaveLength(2);
     expect(
-      screen.getByRole('img', { name: '内部研发平台' }),
+      screen.getByRole('img', { name: '研发协作平台' }),
     ).toBeInTheDocument();
+    expect(screen.queryByText('IP')).not.toBeInTheDocument();
 
     rerender(<MenuBrand collapsed />);
 
     expect(
-      screen.getByRole('img', { name: '内部研发平台' }),
+      screen.getByRole('img', { name: '研发协作平台' }),
     ).toBeInTheDocument();
-    expect(screen.queryByText('内部研发平台')).not.toBeInTheDocument();
+    expect(screen.queryByText('研发协作平台')).not.toBeInTheDocument();
+    expect(screen.queryByText('IP')).not.toBeInTheDocument();
   });
 
   it('顶栏标题优先展示 ProLayout 当前页面名', () => {
@@ -145,7 +147,7 @@ describe('shell branding', () => {
           pageTitleInfo: {
             id: '/tasks',
             pageName: '任务',
-            title: '任务 - 内部研发平台',
+            title: '任务 - 研发协作平台',
           },
         }}
       >
@@ -154,6 +156,6 @@ describe('shell branding', () => {
     );
 
     expect(screen.getByText('任务')).toBeInTheDocument();
-    expect(screen.queryByText('内部研发平台')).not.toBeInTheDocument();
+    expect(screen.queryByText('研发协作平台')).not.toBeInTheDocument();
   });
 });
