@@ -12,6 +12,7 @@ import {
   ReadOutlined,
   RobotOutlined,
   SafetyCertificateOutlined,
+  SlidersOutlined,
   TeamOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
@@ -153,6 +154,13 @@ const expectedRoutes = {
     path: '/admin/grants',
     prototype: false,
   },
+  'admin.policies': {
+    access: 'session',
+    group: 'admin',
+    kind: 'page',
+    path: '/admin/policies',
+    prototype: false,
+  },
   'admin.menus': {
     access: 'session',
     group: 'admin',
@@ -178,6 +186,7 @@ const expectedIcons: Partial<Record<RouteKey, JSXElementConstructor<object>>> =
     'admin.roles': SafetyCertificateOutlined,
     'admin.users': TeamOutlined,
     'admin.grants': KeyOutlined,
+    'admin.policies': SlidersOutlined,
     'admin.menus': MenuOutlined,
   };
 
@@ -191,6 +200,7 @@ describe('ROUTE_REGISTRY', () => {
 
     expect(APP_PATHS).toMatchObject({
       adminGrants: '/admin/grants',
+      adminPolicies: '/admin/policies',
       adminUsers: '/admin/users',
       home: '/home',
       teamBoard: '/team-board',
@@ -244,6 +254,9 @@ describe('ROUTE_REGISTRY', () => {
     });
     expect(findRouteRegistration('/admin/grants')).toMatchObject({
       routeKey: 'admin.grants',
+    });
+    expect(findRouteRegistration('/admin/policies')).toMatchObject({
+      routeKey: 'admin.policies',
     });
     expect(findRouteRegistration('/not-registered')).toBeUndefined();
   });

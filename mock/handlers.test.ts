@@ -75,6 +75,13 @@ describe('mock handlers', () => {
         routeKey: 'admin.grants',
         sort: 80,
       },
+      {
+        meta: { section: 'administration' },
+        name: 'Policy 发布',
+        order: 9,
+        routeKey: 'admin.policies',
+        sort: 90,
+      },
     ]);
   });
 
@@ -91,9 +98,13 @@ describe('mock handlers', () => {
       'admin.workspaces',
       'admin.users',
       'admin.grants',
+      'admin.policies',
     ]);
     expect(
       navigation.filter(({ routeKey }) => routeKey === 'admin.grants'),
+    ).toHaveLength(1);
+    expect(
+      navigation.filter(({ routeKey }) => routeKey === 'admin.policies'),
     ).toHaveLength(1);
   });
 

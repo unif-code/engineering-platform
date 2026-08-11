@@ -13,5 +13,6 @@ export const APP_PATHS = {
   adminRoles: '/admin/roles',
   adminUsers: '/admin/users',
   adminGrants: '/admin/grants',
+  adminPolicies: '/admin/policies',
   adminMenus: '/admin/menus',
 } as const;

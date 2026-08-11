@@ -57,6 +57,36 @@ export {
   setOrganizationSuperior,
 } from '@/services/adminOrganization';
 export type {
+  CreatePolicyDraftInput,
+  PolicyCatalogItem,
+  PolicyCatalogResponse,
+  PolicyDraft,
+  PolicyEnumOption,
+  PolicyPreview,
+  PolicyPreviewChange,
+  PolicyScope,
+  PolicyValidationIssue,
+  PolicyValidationResult,
+  PolicyValue,
+  PolicyValueType,
+  PolicyVersionSummary,
+  PolicyVersionsResponse,
+  PublishedPolicyVersion,
+  PublishPolicyInput,
+  RollbackPolicyInput,
+  UpdatePolicyDraftInput,
+} from '@/services/adminPolicies';
+export {
+  createPolicyDraft,
+  listPolicyCatalog,
+  listPolicyVersions,
+  previewPolicyDraft,
+  publishPolicyDraft,
+  rollbackPolicyVersion,
+  updatePolicyDraft,
+  validatePolicyDraft,
+} from '@/services/adminPolicies';
+export type {
   CreateWorkspaceInput,
   WorkspaceAccountRef,
   WorkspaceLeaderInput,

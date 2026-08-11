@@ -113,6 +113,12 @@ export default [
         routeKey: 'admin.grants',
       },
       {
+        name: 'Policy 发布',
+        path: '/admin/policies',
+        component: './AdminPolicies',
+        routeKey: 'admin.policies',
+      },
+      {
         name: '菜单管理',
         path: '/admin/menus',
         component: './AdminMenus',

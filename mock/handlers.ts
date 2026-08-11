@@ -108,6 +108,13 @@ export const navigationHandler = (): NavigationItem[] => [
     routeKey: 'admin.grants',
     sort: 80,
   },
+  {
+    meta: { section: 'administration' },
+    name: 'Policy 发布',
+    order: 9,
+    routeKey: 'admin.policies',
+    sort: 90,
+  },
 ];
 
 export const loginHandler = (body: unknown): LoginHandlerResult => {
