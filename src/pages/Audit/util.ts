@@ -14,7 +14,7 @@ const RANGE_DAYS: Record<
   number
 > = { today: 1, '7d': 7, '30d': 30 };
 
-export function auditRangeBounds(
+function auditRangeBounds(
   range: Exclude<NonNullable<AuditQueryParams['range']>, 'all'>,
   now = new Date(),
 ) {
@@ -27,7 +27,7 @@ export function auditRangeBounds(
   return { from: from.toISOString(), to: to.toISOString() };
 }
 
-export function toAuditEventsQuery(params: AuditQueryParams) {
+function toAuditEventsQuery(params: AuditQueryParams) {
   const actor = params.actor?.trim();
   const bounds =
     params.range && params.range !== 'all'
