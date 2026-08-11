@@ -27,6 +27,8 @@ vi.mock('@umijs/max', () => ({
   ),
 }));
 
+const PRO_TABLE_ROW_WAIT = { timeout: 5_000 };
+
 function renderPage(page: React.ReactNode) {
   return render(<App>{page}</App>);
 }
@@ -48,9 +50,13 @@ async function switchTaskView(user: UserEvent, view: '列表' | '看板') {
 }
 
 async function openAssignment(user: UserEvent) {
-  const taskRow = await screen.findByRole('row', {
-    name: /REQ-2026-0142/,
-  });
+  const taskRow = await screen.findByRole(
+    'row',
+    {
+      name: /REQ-2026-0142/,
+    },
+    PRO_TABLE_ROW_WAIT,
+  );
   await user.click(
     within(taskRow).getByRole('button', {
       name: '分配任务',
