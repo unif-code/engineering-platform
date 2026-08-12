@@ -178,7 +178,7 @@ describe('layout', () => {
     expect(config.menu).toEqual({
       locale: false,
       type: 'group',
-      collapsedWidth: 64,
+      collapsedWidth: 56,
     });
     expect(config.headerTitleRender).toBe(false);
     expect(config.menuHeaderRender).toEqual(expect.any(Function));
@@ -204,6 +204,20 @@ describe('layout', () => {
             order: 3,
             routeKey: 'admin',
             sort: 30,
+          },
+          {
+            meta: {},
+            name: '工作区管理',
+            order: 4,
+            routeKey: 'admin.workspaces',
+            sort: 40,
+          },
+          {
+            meta: {},
+            name: '组织管理',
+            order: 5,
+            routeKey: 'admin.organization',
+            sort: 50,
           },
           {
             meta: {},
@@ -243,7 +257,10 @@ describe('layout', () => {
       {
         key: 'group-admin',
         name: '管理端',
-        children: [{ key: 'admin', path: '/admin' }],
+        children: [
+          { key: 'admin.workspaces', path: '/admin/workspaces' },
+          { key: 'admin.organization', path: '/admin/organization' },
+        ],
       },
     ]);
   });
@@ -482,10 +499,18 @@ describe('theme runtime', () => {
     expect(config.prefixCls).toBe('platform');
     expect(config.theme).toEqual({
       algorithm: [theme.darkAlgorithm],
+      components: expect.any(Object),
       token: {
-        colorPrimary: '#C25700',
+        colorBorder: '#424242',
+        colorBorderSecondary: '#303030',
         colorBgLayout: '#121212',
         colorBgContainer: '#1F1F1F',
+        colorInfo: '#EB6E00',
+        colorLink: '#EB6E00',
+        colorLinkHover: '#FF8F2E',
+        colorPrimary: '#EB6E00',
+        colorText: 'rgba(255,255,255,.88)',
+        colorTextSecondary: 'rgba(255,255,255,.65)',
         borderRadius: 8,
       },
     });

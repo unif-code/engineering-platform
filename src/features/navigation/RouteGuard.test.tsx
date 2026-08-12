@@ -149,68 +149,68 @@ describe('RouteGuard', () => {
   });
 
   it.each<{
+    findPage: () => Promise<HTMLElement>;
     Page: ComponentType;
     path: string;
     routeKey: string;
-    visibleText: string;
   }>([
     {
+      findPage: () => screen.findByRole('toolbar', { name: '任务筛选与操作' }),
       Page: TasksPage,
       path: '/tasks',
       routeKey: 'tasks',
-      visibleText: '任务',
     },
     {
+      findPage: () => screen.findByRole('toolbar', { name: '任务筛选与操作' }),
       Page: ArchivedTasksPage,
       path: '/tasks/archived',
       routeKey: 'tasks.archived',
-      visibleText: '归档任务',
     },
     {
+      findPage: () => screen.findByText('任务 TASK-42'),
       Page: TaskDetailPage,
       path: '/tasks/TASK-42',
       routeKey: 'tasks.detail',
-      visibleText: '任务 TASK-42',
     },
     {
+      findPage: () => screen.findByRole('radiogroup', { name: '消息分类' }),
       Page: MessagesPage,
       path: '/messages',
       routeKey: 'messages',
-      visibleText: '消息中心',
     },
     {
+      findPage: () => screen.findByRole('radiogroup', { name: '选择团队' }),
       Page: TeamBoardPage,
       path: '/team-board',
       routeKey: 'team-board',
-      visibleText: '团队看板',
     },
     {
+      findPage: () => screen.findByRole('region', { name: '技能目录' }),
       Page: AdminSkillsPage,
       path: '/admin/skills',
       routeKey: 'admin.skills',
-      visibleText: '技能管理',
     },
     {
+      findPage: () => screen.findByRole('tab', { name: '模型目录' }),
       Page: AdminModelsPage,
       path: '/admin/models',
       routeKey: 'admin.models',
-      visibleText: '模型管理',
     },
     {
+      findPage: () => screen.findByRole('navigation', { name: '角色列表' }),
       Page: AdminRolesPage,
       path: '/admin/roles',
       routeKey: 'admin.roles',
-      visibleText: '角色管理',
     },
     {
+      findPage: () => screen.findByRole('toolbar', { name: '菜单筛选与操作' }),
       Page: AdminMenusPage,
       path: '/admin/menus',
       routeKey: 'admin.menus',
-      visibleText: '菜单管理',
     },
   ])(
     '$routeKey prototype 不在 navigation 也可直达，且真实页面无 /api/v1 请求',
-    async ({ Page, path, visibleText }) => {
+    async ({ findPage, Page, path }) => {
       const fetchSpy = vi.fn();
       vi.stubGlobal('fetch', fetchSpy);
       mocks.location.pathname = path;
@@ -222,9 +222,7 @@ describe('RouteGuard', () => {
 
       render(<RouteGuard />);
 
-      expect((await screen.findAllByText(visibleText)).length).toBeGreaterThan(
-        0,
-      );
+      expect(await findPage()).toBeVisible();
       await act(async () => undefined);
       expect(
         fetchSpy.mock.calls.filter(([input]) =>

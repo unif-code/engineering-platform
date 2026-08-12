@@ -26,6 +26,12 @@ const GROUP_RANK: Record<NavigationGroupKey, number> = {
   admin: 1,
 };
 
+const ARCHITECTURE_MENU_NAMES: Partial<Record<string, string>> = {
+  'admin.grants': 'Grant 管理（新增）',
+  'admin.organization': '组织管理（新增）',
+  'admin.policies': 'Policy 发布（新增）',
+};
+
 function compareNavigationItems(
   first: RegisteredNavigationItem,
   second: RegisteredNavigationItem,
@@ -54,9 +60,7 @@ export function buildMenuData(items: NavigationItem[]): MenuDataItem[] {
     .filter((item) => isRouteKey(item.routeKey))
     .flatMap<RegisteredNavigationItem>((item) => {
       const registration = getRouteRegistration(item.routeKey);
-      return registration?.menu &&
-        !registration.prototype &&
-        registration.group !== null
+      return registration?.menu && registration.group !== null
         ? [
             {
               item,
@@ -74,7 +78,7 @@ export function buildMenuData(items: NavigationItem[]): MenuDataItem[] {
       .filter(({ registration }) => registration.group === group)
       .map(({ item, registration }) => ({
         key: item.routeKey,
-        name: item.name,
+        name: ARCHITECTURE_MENU_NAMES[item.routeKey] ?? item.name,
         path: registration.path,
         icon: registration.icon,
       }));

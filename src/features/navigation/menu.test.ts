@@ -25,6 +25,22 @@ function permutations<T>(items: readonly T[]): T[][] {
 }
 
 describe('buildMenuData', () => {
+  it('仅给三个架构新增页面追加菜单标识', () => {
+    const groups = buildMenuData([
+      navigationItem('admin.workspaces', '工作区管理', 10),
+      navigationItem('admin.organization', '组织管理', 20),
+      navigationItem('admin.grants', 'Grant 管理', 30),
+      navigationItem('admin.policies', 'Policy 发布', 40),
+    ]);
+
+    expect(groups[0]?.children?.map(({ name }) => name)).toEqual([
+      '工作区管理',
+      '组织管理（新增）',
+      'Grant 管理（新增）',
+      'Policy 发布（新增）',
+    ]);
+  });
+
   it('普通用户 navigation 不生成管理端分组', () => {
     const userOnlyNavigation = [
       navigationItem('home', '工作台', 10),
@@ -41,6 +57,7 @@ describe('buildMenuData', () => {
     const adminNavigation = [
       navigationItem('home', '工作台', 10),
       navigationItem('admin', '管理概览', 20),
+      navigationItem('admin.workspaces', '工作区管理', 25),
       navigationItem('admin.organization', '组织管理', 30),
       navigationItem('admin.grants', 'Grant 管理', 35),
       navigationItem('admin.policies', 'Policy 发布', 37),
@@ -50,27 +67,27 @@ describe('buildMenuData', () => {
     expect(buildMenuData(adminNavigation)).toContainEqual({
       children: [
         {
-          icon: ROUTE_REGISTRY.admin.icon,
-          key: 'admin',
-          name: '管理概览',
-          path: '/admin',
+          icon: ROUTE_REGISTRY['admin.workspaces'].icon,
+          key: 'admin.workspaces',
+          name: '工作区管理',
+          path: '/admin/workspaces',
         },
         {
           icon: ROUTE_REGISTRY['admin.organization'].icon,
           key: 'admin.organization',
-          name: '组织管理',
+          name: '组织管理（新增）',
           path: '/admin/organization',
         },
         {
           icon: ROUTE_REGISTRY['admin.grants'].icon,
           key: 'admin.grants',
-          name: 'Grant 管理',
+          name: 'Grant 管理（新增）',
           path: '/admin/grants',
         },
         {
           icon: ROUTE_REGISTRY['admin.policies'].icon,
           key: 'admin.policies',
-          name: 'Policy 发布',
+          name: 'Policy 发布（新增）',
           path: '/admin/policies',
         },
         {
@@ -86,11 +103,41 @@ describe('buildMenuData', () => {
     });
   });
 
-  it('过滤未知与 prototype key，按 sort 排序并保留不透明 meta', () => {
+  it('管理概览只保留兼容路由，工作区管理优先于组织管理', () => {
+    expect(
+      buildMenuData([
+        navigationItem('admin', '管理概览', 10),
+        navigationItem('admin.organization', '组织管理', 30),
+        navigationItem('admin.workspaces', '工作区管理', 20),
+      ]),
+    ).toEqual([
+      {
+        children: [
+          {
+            icon: ROUTE_REGISTRY['admin.workspaces'].icon,
+            key: 'admin.workspaces',
+            name: '工作区管理',
+            path: '/admin/workspaces',
+          },
+          {
+            icon: ROUTE_REGISTRY['admin.organization'].icon,
+            key: 'admin.organization',
+            name: '组织管理（新增）',
+            path: '/admin/organization',
+          },
+        ],
+        key: 'group-admin',
+        name: '管理端',
+        type: 'group',
+      },
+    ]);
+  });
+
+  it('过滤未知与非菜单 key，按 sort 排序并保留不透明 meta', () => {
     const items = [
       navigationItem('admin.users', '账号管理', 4),
       navigationItem('admin', '管理概览', 8),
-      navigationItem('tasks', '不应出现的任务原型', 1),
+      navigationItem('tasks.detail', '不应出现的任务详情', 1),
       navigationItem('constructor', '原型属性', 0),
       navigationItem('home', '首页', 6),
       navigationItem('ghost', '未知菜单', 2),
@@ -129,12 +176,6 @@ describe('buildMenuData', () => {
             name: '账号管理',
             icon: ROUTE_REGISTRY['admin.users'].icon,
           },
-          {
-            key: 'admin',
-            path: '/admin',
-            name: '管理概览',
-            icon: ROUTE_REGISTRY.admin.icon,
-          },
         ],
       },
     ]);
@@ -142,18 +183,82 @@ describe('buildMenuData', () => {
     expect(items).toEqual(original);
   });
 
-  it('prototype 即使被后端错误投影也不进入菜单', () => {
+  it('原型标记不影响明确声明的独立菜单项', () => {
     expect(
       buildMenuData([
         navigationItem('tasks', '任务', 1),
-        navigationItem('messages', '消息中心', 2),
-        navigationItem('team-board', '团队看板', 3),
-        navigationItem('admin.roles', '角色管理', 4),
-        navigationItem('admin.menus', '菜单管理', 5),
+        navigationItem('tasks.archived', '归档数据', 2),
+        navigationItem('messages', '消息中心', 3),
+        navigationItem('team-board', '团队看板', 4),
+        navigationItem('admin.skills', '技能管理', 5),
         navigationItem('admin.models', '模型管理', 6),
-        navigationItem('admin.skills', '技能管理', 7),
+        navigationItem('admin.roles', '角色管理', 7),
+        navigationItem('admin.menus', '菜单管理', 8),
       ]),
-    ).toEqual([]);
+    ).toEqual([
+      {
+        children: [
+          {
+            icon: ROUTE_REGISTRY.tasks.icon,
+            key: 'tasks',
+            name: '任务',
+            path: '/tasks',
+          },
+          {
+            icon: ROUTE_REGISTRY['tasks.archived'].icon,
+            key: 'tasks.archived',
+            name: '归档数据',
+            path: '/tasks/archived',
+          },
+          {
+            icon: ROUTE_REGISTRY.messages.icon,
+            key: 'messages',
+            name: '消息中心',
+            path: '/messages',
+          },
+          {
+            icon: ROUTE_REGISTRY['team-board'].icon,
+            key: 'team-board',
+            name: '团队看板',
+            path: '/team-board',
+          },
+        ],
+        key: 'group-user',
+        name: '用户端',
+        type: 'group',
+      },
+      {
+        children: [
+          {
+            icon: ROUTE_REGISTRY['admin.skills'].icon,
+            key: 'admin.skills',
+            name: '技能管理',
+            path: '/admin/skills',
+          },
+          {
+            icon: ROUTE_REGISTRY['admin.models'].icon,
+            key: 'admin.models',
+            name: '模型管理',
+            path: '/admin/models',
+          },
+          {
+            icon: ROUTE_REGISTRY['admin.roles'].icon,
+            key: 'admin.roles',
+            name: '角色管理',
+            path: '/admin/roles',
+          },
+          {
+            icon: ROUTE_REGISTRY['admin.menus'].icon,
+            key: 'admin.menus',
+            name: '菜单管理',
+            path: '/admin/menus',
+          },
+        ],
+        key: 'group-admin',
+        name: '管理端',
+        type: 'group',
+      },
+    ]);
   });
 
   it('任意输入排列都只由 sort 决定分组内顺序', () => {
@@ -163,6 +268,7 @@ describe('buildMenuData', () => {
       navigationItem('admin.users', '账号管理', 30),
       navigationItem('admin.grants', 'Grant 管理', 28),
       navigationItem('admin.policies', 'Policy 发布', 29),
+      navigationItem('admin.workspaces', '工作区管理', 24),
       navigationItem('admin.organization', '组织管理', 25),
       navigationItem('workspaces', '工作区', 10),
     ];
@@ -178,11 +284,11 @@ describe('buildMenuData', () => {
       ).toEqual([
         ['workspaces', 'home'],
         [
+          'admin.workspaces',
           'admin.organization',
           'admin.grants',
           'admin.policies',
           'admin.users',
-          'admin',
         ],
       ]);
     }

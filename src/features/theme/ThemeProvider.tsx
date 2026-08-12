@@ -1,4 +1,4 @@
-import { ProProvider } from '@ant-design/pro-components';
+import { ProConfigProvider } from '@ant-design/pro-components';
 import { useAntdConfigSetter } from '@umijs/max';
 import {
   createContext,
@@ -11,7 +11,7 @@ import {
   useState,
 } from 'react';
 import { THEME_MEDIA_QUERY } from '@/constants/theme';
-import { createAntdThemeConfig } from './config';
+import { createAntdThemeConfig, createProThemeConfig } from './config';
 import {
   createThemeSnapshot,
   getInitialThemeSnapshot,
@@ -36,7 +36,6 @@ function getCurrentSystemPreference(): boolean {
 
 export function ThemeProvider({ children }: PropsWithChildren) {
   const setAntdConfig = useAntdConfigSetter();
-  const parentProConfig = useContext(ProProvider);
   const [snapshot, setSnapshot] = useState(getInitialThemeSnapshot);
 
   const syncAntdThemeConfig = useEffectEvent((resolvedTheme: ResolvedTheme) => {
@@ -95,17 +94,14 @@ export function ThemeProvider({ children }: PropsWithChildren) {
     () => ({ ...snapshot, setMode }),
     [setMode, snapshot],
   );
-  const proConfig = useMemo(
-    () => ({
-      ...parentProConfig,
-      dark: snapshot.resolvedTheme === 'dark',
-    }),
-    [parentProConfig, snapshot.resolvedTheme],
+  const proThemeConfig = useMemo(
+    () => createProThemeConfig(snapshot.resolvedTheme),
+    [snapshot.resolvedTheme],
   );
 
   return (
     <ThemeContext.Provider value={value}>
-      <ProProvider.Provider value={proConfig}>{children}</ProProvider.Provider>
+      <ProConfigProvider {...proThemeConfig}>{children}</ProConfigProvider>
     </ThemeContext.Provider>
   );
 }

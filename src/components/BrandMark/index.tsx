@@ -26,13 +26,21 @@ export function BrandMark({
       )}
       role="img"
     >
-      <span
+      <svg
         aria-hidden="true"
         className={clsx(
           styles.mark,
           size === 'small' ? styles.smallMark : styles.defaultMark,
         )}
-      />
+        focusable="false"
+        viewBox="0 0 48 48"
+      >
+        <path
+          d="M16,10 h16 a10,10 0 0 1 10,10 v8 a10,10 0 0 1 -10,10 h-16 a10,10 0 0 1 -10,-10 v-8 a10,10 0 0 1 10,-10 Z M16,20 h16 a4,4 0 0 1 0,8 h-16 a4,4 0 0 1 0,-8 Z M27.8,24 a2.2,2.2 0 1 0 4.4,0 a2.2,2.2 0 1 0 -4.4,0 Z"
+          fill="currentColor"
+          fillRule="evenodd"
+        />
+      </svg>
       {collapsed ? null : (
         <span
           aria-hidden="true"

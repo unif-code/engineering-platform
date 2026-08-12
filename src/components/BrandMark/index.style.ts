@@ -18,14 +18,13 @@ export const useStyles = createStyles(({ token }) => ({
     justifyContent: 'center',
   },
   mark: {
-    display: 'inline-block',
+    display: 'block',
     flexShrink: 0,
-    borderRadius: token.borderRadiusLG,
-    backgroundColor: BRAND_ORANGE,
+    color: BRAND_ORANGE,
   },
   defaultMark: {
-    width: 26,
-    height: 26,
+    width: 32,
+    height: 32,
   },
   smallMark: {
     width: 24,

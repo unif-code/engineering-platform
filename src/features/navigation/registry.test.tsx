@@ -7,6 +7,7 @@ import {
   ClusterOutlined,
   ControlOutlined,
   HomeOutlined,
+  InboxOutlined,
   KeyOutlined,
   MenuOutlined,
   ReadOutlined,
@@ -64,6 +65,7 @@ const expectedRoutes = {
   },
   'tasks.archived': {
     access: 'session',
+    group: 'user',
     kind: 'page',
     parent: 'tasks',
     path: '/tasks/archived',
@@ -174,6 +176,7 @@ const expectedIcons: Partial<Record<RouteKey, JSXElementConstructor<object>>> =
   {
     home: HomeOutlined,
     tasks: UnorderedListOutlined,
+    'tasks.archived': InboxOutlined,
     workspaces: AppstoreOutlined,
     messages: BellOutlined,
     'team-board': BarChartOutlined,
@@ -237,6 +240,27 @@ describe('ROUTE_REGISTRY', () => {
       group: null,
       icon: null,
     });
+    expect(ROUTE_REGISTRY.admin).toMatchObject({
+      menu: false,
+      path: '/admin',
+    });
+    for (const routeKey of [
+      'tasks',
+      'tasks.archived',
+      'messages',
+      'team-board',
+      'admin.workspaces',
+      'admin.organization',
+      'admin.skills',
+      'admin.models',
+      'admin.roles',
+      'admin.users',
+      'admin.grants',
+      'admin.policies',
+      'admin.menus',
+    ] as const) {
+      expect(ROUTE_REGISTRY[routeKey], routeKey).toMatchObject({ menu: true });
+    }
   });
 
   it('优先匹配静态归档路由，再匹配动态任务详情，并拒绝未登记路径', () => {

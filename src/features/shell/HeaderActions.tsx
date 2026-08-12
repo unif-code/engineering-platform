@@ -1,5 +1,6 @@
 import {
   BellOutlined,
+  DownOutlined,
   LogoutOutlined,
   SearchOutlined,
   UserOutlined,
@@ -10,13 +11,20 @@ import {
   Avatar,
   Badge,
   Button,
+  Dropdown,
   Input,
+  type MenuProps,
   Space,
   Tooltip,
   Typography,
 } from 'antd';
 import { useState } from 'react';
-import { ThemeSelector } from '@/features/theme';
+import {
+  createThemeMenuItems,
+  getThemeMenuKey,
+  getThemeModeFromMenuKey,
+  usePlatformTheme,
+} from '@/features/theme';
 import { ApiError } from '@/services/transport';
 
 const SEARCH_OPTIONS = [
@@ -25,6 +33,8 @@ const SEARCH_OPTIONS = [
   { label: '搜索 Artifact', value: '搜索 Artifact' },
 ];
 
+const PROTOTYPE_UNREAD_COUNT = 4;
+
 export interface HeaderActionsProps {
   onLogout: () => Promise<void>;
   user?: { name: string } | null;
@@ -32,6 +42,7 @@ export interface HeaderActionsProps {
 
 export function HeaderActions({ onLogout, user }: HeaderActionsProps) {
   const { message } = App.useApp();
+  const { mode, setMode } = usePlatformTheme();
   const [loggingOut, setLoggingOut] = useState(false);
   const userName = user?.name.trim() || '当前用户';
   const initial = user?.name.trim().slice(0, 1);
@@ -53,27 +64,48 @@ export function HeaderActions({ onLogout, user }: HeaderActionsProps) {
     }
   };
 
+  const handleUserMenuClick: MenuProps['onClick'] = ({ key }) => {
+    const nextMode = getThemeModeFromMenuKey(key);
+    if (nextMode) {
+      setMode(nextMode);
+      return;
+    }
+    if (key === 'logout') {
+      void handleLogout();
+    }
+  };
+
+  const userMenuItems: MenuProps['items'] = [
+    ...(createThemeMenuItems(mode) ?? []),
+    { type: 'divider' },
+    {
+      disabled: loggingOut,
+      icon: <LogoutOutlined aria-hidden="true" />,
+      key: 'logout',
+      label: '退出登录',
+    },
+  ];
+
   return (
-    <Space size="middle">
+    <Space size="small">
       <AutoComplete
-        className="w-72"
         onSelect={() => {
           void message.info('静态原型：全局搜索暂未接入。');
         }}
         options={SEARCH_OPTIONS}
+        style={{ width: 220 }}
       >
         <Input
           aria-label="全局搜索"
           placeholder="搜索任务、工作区、Artifact"
-          prefix={<SearchOutlined />}
+          prefix={<SearchOutlined aria-hidden="true" />}
         />
       </AutoComplete>
-      <ThemeSelector />
       <Tooltip title="消息入口">
-        <Badge dot>
+        <Badge count={PROTOTYPE_UNREAD_COUNT} offset={[-4, 4]} size="small">
           <Button
-            aria-label="消息入口"
-            icon={<BellOutlined />}
+            aria-label={`消息入口，${PROTOTYPE_UNREAD_COUNT} 条未读`}
+            icon={<BellOutlined aria-hidden="true" />}
             onClick={() => {
               void message.info('静态原型：消息入口暂未接入。');
             }}
@@ -81,25 +113,30 @@ export function HeaderActions({ onLogout, user }: HeaderActionsProps) {
           />
         </Badge>
       </Tooltip>
-      <Space size="small">
-        <span aria-label={`用户：${userName}`} role="img">
-          <Avatar icon={initial ? undefined : <UserOutlined />}>
-            {initial}
-          </Avatar>
-        </span>
-        <Typography.Text>{userName}</Typography.Text>
-      </Space>
-      <Tooltip title="退出登录">
-        <Button
-          aria-label="退出登录"
-          icon={<LogoutOutlined />}
-          loading={loggingOut}
-          onClick={() => {
-            void handleLogout();
-          }}
-          type="text"
-        />
-      </Tooltip>
+      <Dropdown
+        menu={{
+          items: userMenuItems,
+          onClick: handleUserMenuClick,
+          selectable: true,
+          selectedKeys: [getThemeMenuKey(mode)],
+        }}
+        placement="bottomRight"
+        trigger={['click']}
+      >
+        <Button aria-label={`${userName}账号菜单`} type="text">
+          <Space size="small">
+            <span aria-label={`用户：${userName}`} role="img">
+              <Avatar
+                icon={initial ? undefined : <UserOutlined aria-hidden="true" />}
+              >
+                {initial}
+              </Avatar>
+            </span>
+            <Typography.Text>{userName}</Typography.Text>
+            <DownOutlined aria-hidden="true" />
+          </Space>
+        </Button>
+      </Dropdown>
     </Space>
   );
 }

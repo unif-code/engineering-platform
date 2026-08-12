@@ -10,9 +10,8 @@ import { theme } from 'antd';
 import { type PropsWithChildren, useContext } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { THEME_MEDIA_QUERY, THEME_STORAGE_KEY } from '@/constants/theme';
-import { createAntdThemeConfig } from './config';
+import { createAntdThemeConfig, createProThemeConfig } from './config';
 import { ThemeProvider, usePlatformTheme } from './ThemeProvider';
-import { ThemeSelector } from './ThemeSelector';
 
 const mocks = vi.hoisted(() => ({
   getAntdConfigSetter: vi.fn(),
@@ -125,12 +124,114 @@ describe('createAntdThemeConfig', () => {
     ({ resolvedTheme, algorithm }) => {
       expect(createAntdThemeConfig(resolvedTheme)).toEqual({
         algorithm: [algorithm],
+        components: {
+          Button: {
+            defaultActiveBorderColor: '#C25700',
+            defaultActiveColor: '#C25700',
+            defaultHoverBorderColor: '#EB6E00',
+            defaultHoverColor: '#EB6E00',
+            primaryColor: '#FFFFFF',
+            primaryShadow: 'none',
+          },
+          Input: {
+            activeBorderColor: '#EB6E00',
+            activeShadow: '0 0 0 2px rgba(235, 110, 0, 0.12)',
+            hoverBorderColor: '#EB6E00',
+          },
+          Pagination: {
+            itemActiveBg: resolvedTheme === 'dark' ? '#2A1B10' : '#FFF7F0',
+            itemActiveColor: '#EB6E00',
+            itemActiveColorHover: '#FF8F2E',
+            itemSizeSM: 24,
+          },
+          Select: {
+            activeBorderColor: '#EB6E00',
+            activeOutlineColor: 'rgba(235, 110, 0, 0.12)',
+            hoverBorderColor: '#EB6E00',
+            optionActiveBg: resolvedTheme === 'dark' ? '#2A1B10' : '#FFF7F0',
+            optionSelectedBg: resolvedTheme === 'dark' ? '#3A2413' : '#FFF1E6',
+            optionSelectedColor: '#EB6E00',
+          },
+          Table: {
+            borderColor: resolvedTheme === 'dark' ? '#303030' : '#F0F0F0',
+            cellFontSizeSM: 13,
+            cellPaddingBlockSM: 8,
+            cellPaddingInlineSM: 12,
+            headerBg: resolvedTheme === 'dark' ? '#1F1F1F' : '#FAFAFA',
+            headerColor:
+              resolvedTheme === 'dark'
+                ? 'rgba(255,255,255,.65)'
+                : 'rgba(0,0,0,.65)',
+            headerSplitColor: resolvedTheme === 'dark' ? '#303030' : '#F0F0F0',
+            rowHoverBg: resolvedTheme === 'dark' ? '#2A1B10' : '#FFF7F0',
+            rowSelectedBg: resolvedTheme === 'dark' ? '#3A2413' : '#FFF1E6',
+            rowSelectedHoverBg:
+              resolvedTheme === 'dark' ? '#4A2D16' : '#FFE8D6',
+          },
+        },
         token: {
-          colorPrimary: '#C25700',
+          colorBorder: resolvedTheme === 'dark' ? '#424242' : '#D9D9D9',
+          colorBorderSecondary:
+            resolvedTheme === 'dark' ? '#303030' : '#F0F0F0',
           colorBgLayout: resolvedTheme === 'dark' ? '#121212' : '#F5F5F5',
           colorBgContainer: resolvedTheme === 'dark' ? '#1F1F1F' : '#FFFFFF',
+          colorInfo: '#EB6E00',
+          colorLink: '#EB6E00',
+          colorLinkHover: '#FF8F2E',
+          colorPrimary: '#EB6E00',
+          colorText:
+            resolvedTheme === 'dark' ? 'rgba(255,255,255,.88)' : '#191919',
+          colorTextSecondary:
+            resolvedTheme === 'dark'
+              ? 'rgba(255,255,255,.65)'
+              : 'rgba(0,0,0,.65)',
           borderRadius: 8,
         },
+      });
+    },
+  );
+
+  it.each([
+    {
+      resolvedTheme: 'light' as const,
+      expected: {
+        dark: false,
+        background: '#FFFFFF',
+        divider: '#EBEBEB',
+        item: 'rgba(0,0,0,.7)',
+        secondary: 'rgba(0,0,0,.35)',
+        selectedBackground: '#FFF7F0',
+        selectedText: '#EB6E00',
+        title: '#191919',
+      },
+    },
+    {
+      resolvedTheme: 'dark' as const,
+      expected: {
+        dark: true,
+        background: '#191919',
+        divider: 'rgba(255,255,255,.08)',
+        item: 'rgba(255,255,255,.65)',
+        secondary: 'rgba(255,255,255,.3)',
+        selectedBackground: '#EB6E00',
+        selectedText: '#FFFFFF',
+        title: '#FFFFFF',
+      },
+    },
+  ])(
+    '为 $resolvedTheme 生成 ProLayout 官方侧栏 token',
+    ({ resolvedTheme, expected }) => {
+      const config = createProThemeConfig(resolvedTheme);
+
+      expect(config.dark).toBe(expected.dark);
+      expect(config.token?.layout?.sider).toMatchObject({
+        colorBgMenuItemSelected: expected.selectedBackground,
+        colorMenuBackground: expected.background,
+        colorMenuItemDivider: expected.divider,
+        colorTextMenu: expected.item,
+        colorTextMenuSecondary: expected.secondary,
+        colorTextMenuSelected: expected.selectedText,
+        colorTextMenuTitle: expected.title,
       });
     },
   );
@@ -280,36 +381,4 @@ describe('ThemeProvider', () => {
       'true',
     );
   });
-});
-
-describe('ThemeSelector', () => {
-  it.each([
-    { label: '跟随系统', mode: 'system' as const, stored: 'dark' },
-    { label: '浅色', mode: 'light' as const, stored: 'dark' },
-    { label: '深色', mode: 'dark' as const, stored: 'light' },
-  ])(
-    '通过主题菜单选择 $label 并标记当前项',
-    async ({ label, mode, stored }) => {
-      window.localStorage.setItem(THEME_STORAGE_KEY, stored);
-      installMatchMedia(false);
-      render(
-        <ThemeProvider>
-          <ThemeSelector />
-          <ThemeProbe />
-        </ThemeProvider>,
-      );
-
-      const trigger = screen.getByRole('button', { name: '主题设置' });
-      fireEvent.click(trigger);
-      fireEvent.click(await screen.findByRole('menuitem', { name: label }));
-
-      expect(screen.getByLabelText('当前主题')).toHaveTextContent(
-        new RegExp(`^${mode}/`),
-      );
-
-      fireEvent.click(trigger);
-      const selectedItem = await screen.findByRole('menuitem', { name: label });
-      expect(selectedItem).toHaveClass('ant-dropdown-menu-item-selected');
-    },
-  );
 });

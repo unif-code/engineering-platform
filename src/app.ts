@@ -138,7 +138,7 @@ export const layout = (({
     menu: {
       locale: false,
       type: 'group',
-      collapsedWidth: 64,
+      collapsedWidth: 56,
     },
     menuHeaderRender: (_logo, _title, props) =>
       createElement(MenuBrand, { collapsed: props?.collapsed }),

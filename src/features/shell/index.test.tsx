@@ -25,7 +25,8 @@ beforeEach(() => {
 });
 
 describe('HeaderActions', () => {
-  it('呈现搜索、主题、消息入口和当前用户头像', () => {
+  it('顶栏只呈现搜索、紧凑消息入口和当前用户菜单', async () => {
+    const user = userEvent.setup();
     const onLogout = vi.fn();
     render(
       <AntdApp>
@@ -40,18 +41,57 @@ describe('HeaderActions', () => {
       '搜索任务、工作区、Artifact',
     );
     expect(
-      screen.getByRole('button', { name: '主题设置' }),
-    ).toBeInTheDocument();
+      screen.getByRole('combobox', { name: '全局搜索' }).closest('.ant-select'),
+    ).toHaveStyle({ width: '220px' });
     expect(
-      screen.getByRole('button', { name: '消息入口' }),
+      screen.getByRole('button', { name: '消息入口，4 条未读' }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: '退出登录' }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '主题设置' })).toBeNull();
+    expect(screen.queryByRole('button', { name: '退出登录' })).toBeNull();
     expect(
       screen.getByRole('img', { name: '用户：平台用户' }),
     ).toBeInTheDocument();
     expect(screen.getByText('平台用户')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '平台用户账号菜单' }));
+    expect(
+      await screen.findByRole('menuitem', { name: '跟随系统' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '浅色' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '深色' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('menuitem', { name: '退出登录' }),
+    ).toBeInTheDocument();
+  });
+
+  it('用户菜单为主题选项显示图标和当前项勾选', async () => {
+    const user = userEvent.setup();
+    render(
+      <AntdApp>
+        <ThemeProvider>
+          <HeaderActions onLogout={vi.fn()} user={{ name: '平台管理员' }} />
+        </ThemeProvider>
+      </AntdApp>,
+    );
+
+    const trigger = screen.getByRole('button', {
+      name: '平台管理员账号菜单',
+    });
+    await user.click(trigger);
+
+    const system = await screen.findByRole('menuitem', { name: '跟随系统' });
+    const light = screen.getByRole('menuitem', { name: '浅色' });
+    const dark = screen.getByRole('menuitem', { name: '深色' });
+    expect(system.querySelector('.anticon-desktop')).toBeInTheDocument();
+    expect(system.querySelector('.anticon-check')).toBeInTheDocument();
+    expect(light.querySelector('.anticon-sun')).toBeInTheDocument();
+    expect(dark.querySelector('.anticon-moon')).toBeInTheDocument();
+
+    await user.click(dark);
+    await user.click(trigger);
+    const selectedDark = await screen.findByRole('menuitem', { name: '深色' });
+    expect(selectedDark).toHaveClass('ant-dropdown-menu-item-selected');
+    expect(selectedDark.querySelector('.anticon-check')).toBeInTheDocument();
   });
 
   it('消息入口只展示静态提示', async () => {
@@ -63,7 +103,7 @@ describe('HeaderActions', () => {
       </AntdApp>,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: '消息入口' }));
+    fireEvent.click(screen.getByRole('button', { name: '消息入口，4 条未读' }));
 
     expect(
       await screen.findByText('静态原型：消息入口暂未接入。'),
@@ -104,13 +144,15 @@ describe('HeaderActions', () => {
         </ThemeProvider>
       </AntdApp>,
     );
-    const button = screen.getByRole('button', { name: '退出登录' });
-
-    await user.click(button);
+    const accountMenu = screen.getByRole('button', {
+      name: '平台用户账号菜单',
+    });
+    await user.click(accountMenu);
+    await user.click(await screen.findByRole('menuitem', { name: '退出登录' }));
     await vi.waitFor(() => expect(onLogout).toHaveBeenCalledOnce());
-    await vi.waitFor(() => expect(button).not.toHaveClass('ant-btn-loading'));
 
-    await user.click(button);
+    await user.click(accountMenu);
+    await user.click(await screen.findByRole('menuitem', { name: '退出登录' }));
     expect(await screen.findByText('退出失败，请重试')).toBeInTheDocument();
     expect(onLogout).toHaveBeenCalledTimes(2);
   });
