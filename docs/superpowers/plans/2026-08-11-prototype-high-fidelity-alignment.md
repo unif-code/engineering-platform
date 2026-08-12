@@ -49,7 +49,7 @@
 - Consumes: `createAntdThemeConfig(resolvedTheme)`、`buildMenuData(navigation)`、Umi `layout` runtime config。
 - Produces: 原型色彩/密度 component tokens、208/56 侧栏、52px header、分主题 Menu token、16 个可见菜单项和隐藏 `/admin` 兼容路由。
 
-- [ ] **Step 1: 写主题与壳层视觉契约测试**
+- [x] **Step 1: 写主题与壳层视觉契约测试**
 
 ```ts
 expect(lightTheme.token).toMatchObject({
@@ -65,13 +65,13 @@ expect(layoutConfig.siderWidth).toBe(208);
 expect(layoutConfig.menu?.collapsedWidth).toBe(56);
 ```
 
-- [ ] **Step 2: 运行 RED**
+- [x] **Step 2: 运行 RED**
 
 Run: `pnpm exec vitest run src/features/theme/ThemeProvider.test.tsx src/app.test.ts src/features/shell/index.test.tsx src/features/navigation/menu.test.ts src/features/navigation/registry.test.tsx mock/handlers.test.ts mock/api.test.ts`
 
 Expected: 默认 Token、侧栏宽度或菜单标签仍与原型不一致。
 
-- [ ] **Step 3: 用公开 Token 和 ProLayout 配置完成最小实现**
+- [x] **Step 3: 用公开 Token 和 ProLayout 配置完成最小实现**
 
 ```ts
 components: {
@@ -89,11 +89,11 @@ components: {
 
 `src/app.ts` 只通过公开 `layout` token/config 设置 header、sider、menu，不查询内部 `.ant-*` DOM。
 
-- [ ] **Step 4: 对齐 Header 和菜单投影**
+- [x] **Step 4: 对齐 Header 和菜单投影**
 
 保持 220px 全局搜索、用户菜单内的主题/退出；消息未读数由消息菜单承载；AdminOrganization、AdminGrants、AdminPolicies 使用独立“新增”徽标，其他菜单不加；`/admin` 不投影。
 
-- [ ] **Step 5: 验证并提交**
+- [x] **Step 5: 验证并提交**
 
 Run: `pnpm exec vitest run src/features/theme src/features/shell src/features/navigation src/app.test.ts mock/handlers.test.ts mock/api.test.ts`
 
@@ -126,7 +126,7 @@ Commit: `feat(shell): align platform navigation with prototype`
 - Consumes: antd `Space`、`Tag`、`Drawer` 和 theme tokens。
 - Produces: 紧凑但不重复封装的 toolbar / metric / tag / drawer；手写图形组件不再承担图表绘制。
 
-- [ ] **Step 1: 写共享组件回归测试**
+- [x] **Step 1: 写共享组件回归测试**
 
 ```tsx
 expect(screen.getByRole('toolbar')).toHaveAttribute('data-density', 'compact');
@@ -134,15 +134,15 @@ expect(screen.getByRole('dialog', { name: '详情' })).toBeVisible();
 expect(screen.getByRole('status', { name: '活跃' })).toBeVisible();
 ```
 
-- [ ] **Step 2: 运行 RED**
+- [x] **Step 2: 运行 RED**
 
 Run: `pnpm exec vitest run src/components/FilterToolbar src/components/MetricCard src/components/SemanticTag src/components/DetailDrawer`
 
-- [ ] **Step 3: 最小化共享样式**
+- [x] **Step 3: 最小化共享样式**
 
 仅保留跨两个以上消费者共用的布局；不新建 `PrototypeTable`、`PrototypeButton` 或 `PrototypeSelect`。页面专属间距留在页面的 `index.style.ts`。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 Run: `pnpm exec vitest run src/components`
 
@@ -174,11 +174,11 @@ Commit: `refactor(ui): simplify shared prototype primitives`
 - Consumes: `@ant-design/charts` Column/Bar/Line 图表与现有 fixture 数据。
 - Produces: 带中文可访问名称、原型橙色序列和 reduced-motion 配置的官方图表。
 
-- [ ] **Step 1: 安装官方图表依赖**
+- [x] **Step 1: 安装官方图表依赖**
 
 Run: `pnpm add @ant-design/charts`
 
-- [ ] **Step 2: 写图表行为 RED**
+- [x] **Step 2: 写图表行为 RED**
 
 ```tsx
 expect(screen.getByRole('img', { name: '近七日任务趋势' })).toBeVisible();
@@ -186,7 +186,7 @@ expect(screen.getByText('任务阶段分布')).toBeVisible();
 expect(screen.queryByTestId('handwritten-bar')).not.toBeInTheDocument();
 ```
 
-- [ ] **Step 3: 用官方图表做最小实现**
+- [x] **Step 3: 用官方图表做最小实现**
 
 ```tsx
 <Column
@@ -200,7 +200,7 @@ expect(screen.queryByTestId('handwritten-bar')).not.toBeInTheDocument();
 
 外层保留语义 `figure` / `figcaption`，不包装成新的通用 chart DSL。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 Run: `pnpm exec vitest run src/pages/Home src/pages/TeamBoard src/pages/AdminModels src/pages/Audit`
 
@@ -228,7 +228,7 @@ Commit: `refactor(charts): use ant design charts for dashboards`
 - Consumes: 现有两步登录/Bootstrap/Session 行为、antd `LoginForm`、`Segmented`。
 - Produces: 原型 flex 登录布局、中文文案、无登录页主题按钮；消息中心继续使用现有 Segmented。
 
-- [ ] **Step 1: 写可见结构 RED**
+- [x] **Step 1: 写可见结构 RED**
 
 ```tsx
 expect(screen.getByRole('heading', { name: '研发协作平台' })).toBeVisible();
@@ -236,15 +236,15 @@ expect(screen.queryByRole('button', { name: '切换主题' })).not.toBeInTheDocu
 expect(screen.getByRole('radiogroup', { name: '消息分类' })).toBeVisible();
 ```
 
-- [ ] **Step 2: 运行 RED**
+- [x] **Step 2: 运行 RED**
 
 Run: `pnpm exec vitest run src/features/auth src/pages/Login src/pages/Home src/pages/Messages`
 
-- [ ] **Step 3: 最小实现**
+- [x] **Step 3: 最小实现**
 
 登录页仅使用单层 flex：左侧 `flex: 1`，右侧固定原型区域，`LoginForm` 使用官方 `contentStyle={{ width: 320 }}`；不添加媒体查询、分辨率分支或重复表单。
 
-- [ ] **Step 4: 验证并提交**
+- [x] **Step 4: 验证并提交**
 
 Run: `NO_UPDATE_CHECK=1 pnpm exec antd lint src/features/auth src/pages/Login src/pages/Home src/pages/Messages --format json`
 
@@ -326,7 +326,7 @@ Commit: `feat(tasks): align collaboration workflows with prototype`
 - Consumes: 既有 request adapter、fixture、Modal/Drawer、Tabs/Segmented/ProTable。
 - Produces: 原型中的团队、审计和六个管理页面，中文主文案、small Table/Select/Pagination、原型工具栏与弹层。
 
-- [ ] **Step 1: 为每页写一条结构 RED 和一条交互保持测试**
+- [x] **Step 1: 为每页写一条结构 RED 和一条交互保持测试**
 
 ```tsx
 expect(screen.getByRole('table')).toBeVisible();
@@ -334,11 +334,11 @@ expect(screen.getByRole('button', { name: '新增用户' })).toBeVisible();
 expect(screen.queryByRole('combobox', { name: '原型未提供的筛选' })).not.toBeInTheDocument();
 ```
 
-- [ ] **Step 2: 按原型屏幕顺序逐页 GREEN**
+- [x] **Step 2: 按原型屏幕顺序逐页 GREEN**
 
 顺序：TeamBoard → Audit → AdminSkills → AdminModels → AdminRoles → AdminUsers → AdminMenus → AdminWorkspaces。每页只调整自己的 columns、toolbar、文案、布局和弹层，不复制另一个页面的 JSX。
 
-- [ ] **Step 3: focused 验证与提交**
+- [x] **Step 3: focused 验证与提交**
 
 Run: `pnpm exec vitest run src/pages/TeamBoard src/pages/Audit src/pages/AdminSkills src/pages/AdminModels src/pages/AdminRoles src/pages/AdminUsers src/pages/AdminMenus src/pages/AdminWorkspaces`
 
@@ -365,7 +365,7 @@ Commit: `feat(admin): align prototype management screens`
 - Consumes: 既有 organization/grant/policy service seam、reason/If-Match/Problem/竞态保护。
 - Produces: 原型部门卡片与成员表、Grant 统计/筛选/授权表、Policy 分组编辑/待发布草稿/版本历史；独立菜单徽标不污染名称。
 
-- [ ] **Step 1: 写新版正式页面与菜单一致性 RED**
+- [x] **Step 1: 写新版正式页面与菜单一致性 RED**
 
 ```tsx
 expect(screen.getByRole('link', { name: '组织管理' })).toBeVisible();
@@ -374,11 +374,11 @@ expect(screen.getByRole('button', { name: '新增授权' })).toBeVisible();
 expect(screen.getByText('会话与登录策略', { selector: 'label' })).toBeVisible();
 ```
 
-- [ ] **Step 2: 按新版三张正式屏幕逐页最小 GREEN**
+- [x] **Step 2: 按新版三张正式屏幕逐页最小 GREEN**
 
 Organization 使用部门概览卡片 + 当前部门成员表；Grants 使用 4 个统计值 + 胶囊筛选 + 7 列授权表；Policies 使用 7 个策略分组 + 左侧编辑 + 330px 待发布草稿 + 版本历史。现有契约动作收纳到这些原型结构中，不复制原型手写基础控件。
 
-- [ ] **Step 3: focused 验证与提交**
+- [x] **Step 3: focused 验证与提交**
 
 Run: `pnpm exec vitest run src/pages/AdminOrganization src/pages/AdminGrants src/pages/AdminPolicies src/pages/AdminMenus`
 
@@ -394,15 +394,15 @@ Commit: `feat(admin): align governance pages with prototype system`
 - Consumes: Tasks 1-7 的最终 UI。
 - Produces: 每屏 PASS/FAIL/CANNOT VERIFY 记录、争议项清单、截图和完整质量门证据。
 
-- [ ] **Step 1: 逐页浏览器对照**
+- [x] **Step 1: 逐页浏览器对照**
 
 在浅色和深色下逐页核对 19 个原型页面；记录区块/控件/文案 100%、关键间距误差 ≤4px、列宽比例误差 ≤5%、无额外可见内容。
 
-- [ ] **Step 2: 单列争议项**
+- [x] **Step 2: 单列争议项**
 
 报告只列仍需用户决策的内容，例如架构新增页面的具体布局、原型静态交互与真实契约冲突、无法用公开 API 精确复刻的细节；不把已由原型明确规定的内容列为争议。
 
-- [ ] **Step 3: 完整验证**
+- [x] **Step 3: 完整验证**
 
 Run: `pnpm lint`
 
@@ -416,6 +416,6 @@ Run: `pnpm antd:check`
 
 Run: `pnpm build`
 
-- [ ] **Step 4: 提交报告与最终修复**
+- [x] **Step 4: 提交报告与最终修复**
 
 Commit: `test(ui): verify high-fidelity prototype alignment`

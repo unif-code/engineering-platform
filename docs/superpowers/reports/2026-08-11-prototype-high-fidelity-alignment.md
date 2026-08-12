@@ -68,14 +68,14 @@
 
 ## 完整门禁
 
-第一次完整门禁的有效 RED 为：AdminUsers 重交互 coverage 超时、Audit 异步分页断言过早读取，以及另一个 Vitest 进程并发清理默认 coverage 临时目录；对应测试稳定性问题均已按上表修复。最终 coverage 使用独立临时报告目录，避免并行任务互相删除 shard。`pnpm verify` 没有在所有子命令通过后再机械重复一次；下表列出的每个组成门禁均已在最终冻结快照上分别执行并通过。
+第一次完整门禁的有效 RED 为：AdminUsers 重交互 coverage 超时、Audit 异步分页断言过早读取，以及另一个 Vitest 进程并发清理默认 coverage 临时目录；对应测试稳定性问题均已按上表修复。最终冻结快照先在 sandbox 内执行完整 `pnpm verify`，所有门禁通过至 Utoopack 构建，构建仅因 sandbox 禁止内部端口绑定而报 `EPERM`；随后严格按权限流程在 sandbox 外原样重新执行整条 `pnpm verify`，全部子命令与构建一次通过。
 
 | 门禁 | 最终结果 |
 | --- | --- |
 | `pnpm lint` | PASS；Biome、TypeScript、依赖边界与 OpenAPI 一致性均通过。 |
 | `pnpm test:tooling` + structure / Markdown | PASS；18 个 tooling tests、结构验证与 Markdown 验证全部通过。 |
-| `pnpm vitest run --coverage --coverage.reportsDirectory=<private-temp>` | PASS；67 个文件、477 个测试全绿；Statements 90.49%、Branches 82.20%、Functions 95.74%、Lines 90.34%。 |
+| `pnpm test:coverage` | PASS；67 个文件、477 个测试全绿；Statements 90.49%、Branches 82.20%、Functions 95.74%、Lines 90.34%。 |
 | `pnpm run doctor` | PASS（exit 0）；保留 38 条非阻断维护性 / 性能建议。 |
 | `pnpm antd:check` | PASS（exit 0）；0 deprecated、0 a11y、0 usage，保留 4 条 fixed-enum `virtual={false}` 性能建议。 |
-| `pnpm build` | PASS；Utoopack 生成 55 个产物文件。 |
-| `pnpm verify` | PASS（等价拆分执行）；上述全部组成命令分别通过，未额外重复整套长门禁。 |
+| `pnpm build` | PASS；Utoopack 1.5.2 用时 8.166 秒，生成 55 个产物文件。 |
+| `pnpm verify` | PASS；sandbox 外原样完整执行，67/67 测试文件、477/477 测试与最终 Utoopack 构建全部通过。 |
