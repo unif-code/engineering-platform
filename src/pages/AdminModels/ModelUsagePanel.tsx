@@ -1,7 +1,8 @@
+import { Bar, Column } from '@ant-design/charts';
 import { ProCard } from '@ant-design/pro-components';
-import { DistributionBar } from '@/components/DistributionBar';
+import { theme } from 'antd';
 import { MetricCard } from '@/components/MetricCard';
-import { MiniBarChart } from '@/components/MiniBarChart';
+import type { ChartDatum } from '@/types/presentation';
 import {
   MODEL_PROVIDER_DISTRIBUTION,
   MODEL_USAGE_METRICS,
@@ -11,6 +12,7 @@ import { useStyles } from './index.style';
 
 export function ModelUsagePanel() {
   const { styles } = useStyles();
+  const { token } = theme.useToken();
 
   return (
     <section aria-label="调用看板内容" className={styles.page}>
@@ -32,17 +34,53 @@ export function ModelUsagePanel() {
 
       <div className={styles.analysisGrid}>
         <ProCard className={styles.analysisCard} title="近七日调用量">
-          <MiniBarChart
-            ariaLabel="近七日模型调用量"
-            data={MODEL_USAGE_TREND}
-            highlightKey="sun"
-          />
+          <figure aria-label="近七日模型调用量" className={styles.chartFigure}>
+            <Column
+              animate={false}
+              axis={{ x: { title: false }, y: false }}
+              data={[...MODEL_USAGE_TREND]}
+              height={160}
+              label={{
+                position: 'top',
+                text: (datum: ChartDatum) =>
+                  datum.valueLabel ?? String(datum.value),
+              }}
+              style={{
+                fill: (datum: ChartDatum) =>
+                  datum.tone === 'success'
+                    ? token.colorSuccess
+                    : token.colorPrimary,
+              }}
+              xField="label"
+              yField="value"
+            />
+          </figure>
         </ProCard>
         <ProCard className={styles.analysisCard} title="Provider 分布">
-          <DistributionBar
-            ariaLabel="Provider 调用分布"
-            items={MODEL_PROVIDER_DISTRIBUTION}
-          />
+          <figure aria-label="Provider 调用分布" className={styles.chartFigure}>
+            <Bar
+              animate={false}
+              axis={{ x: false, y: false }}
+              colorField="label"
+              data={[...MODEL_PROVIDER_DISTRIBUTION]}
+              height={160}
+              label={{ position: 'right', text: 'value' }}
+              legend={{ color: { position: 'bottom' } }}
+              scale={{
+                color: {
+                  range: [
+                    token.colorPrimary,
+                    token.colorInfo,
+                    token.colorSuccess,
+                    token.colorWarning,
+                  ],
+                },
+              }}
+              stack
+              xField="value"
+              yField={() => 'Provider'}
+            />
+          </figure>
         </ProCard>
       </div>
     </section>

@@ -1,3 +1,4 @@
+import { Column } from '@ant-design/charts';
 import {
   type ActionType,
   PageContainer,
@@ -6,12 +7,11 @@ import {
   ProTable,
   type ProTableProps,
 } from '@ant-design/pro-components';
-import { App, Button, Input, Select, Space, Typography } from 'antd';
+import { App, Button, Input, Select, Space, Typography, theme } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailDrawer } from '@/components/DetailDrawer';
 import { FilterToolbar } from '@/components/FilterToolbar';
 import { MetricCard } from '@/components/MetricCard';
-import { MiniBarChart } from '@/components/MiniBarChart';
 import { SemanticTag } from '@/components/SemanticTag';
 import { formatGovernanceError } from '@/features/administration';
 import {
@@ -42,6 +42,7 @@ const ACTION_TONE: Record<AuditRow['action'], 'brand' | 'info' | 'purple'> = {
 export default function AuditPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
+  const { token } = theme.useToken();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
   const loadedRowsRef = useRef<AuditRow[]>([]);
@@ -215,11 +216,7 @@ export default function AuditPage() {
   );
 
   return (
-    <PageContainer
-      ghost
-      subTitle="查看不可变审计事实，并通过 Correlation ID 串联排查链路"
-      title="审计看板"
-    >
+    <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
         <section aria-label="审计指标" className={styles.metricsGrid}>
           {AUDIT_METRICS.map((metric) => (
@@ -234,20 +231,37 @@ export default function AuditPage() {
 
         <div className={styles.analysisGrid}>
           <ProCard className={styles.card} title="近 7 日操作数">
-            <MiniBarChart
-              ariaLabel="近 7 日审计趋势"
-              data={AUDIT_TREND}
-              height={140}
-              highlightKey="08-10"
-            />
+            <figure aria-label="近 7 日审计趋势" className={styles.chartFigure}>
+              <Column
+                animate={false}
+                axis={{ x: { title: false }, y: false }}
+                data={[...AUDIT_TREND]}
+                height={140}
+                label={{ position: 'top', text: 'valueLabel' }}
+                style={{
+                  fill: (datum: (typeof AUDIT_TREND)[number]) =>
+                    datum.tone === 'success'
+                      ? token.colorSuccess
+                      : token.colorPrimary,
+                }}
+                xField="label"
+                yField="value"
+              />
+            </figure>
           </ProCard>
           <ProCard className={styles.card} title="动作分类">
-            <MiniBarChart
-              ariaLabel="审计动作分类"
-              data={AUDIT_ACTION_DISTRIBUTION}
-              height={140}
-              highlightKey="config"
-            />
+            <figure aria-label="审计动作分类" className={styles.chartFigure}>
+              <Column
+                animate={false}
+                axis={{ x: { title: false }, y: false }}
+                data={[...AUDIT_ACTION_DISTRIBUTION]}
+                height={140}
+                label={{ position: 'top', text: 'valueLabel' }}
+                style={{ fill: token.colorPrimary }}
+                xField="label"
+                yField="value"
+              />
+            </figure>
           </ProCard>
           <ProCard className={styles.card} title="结果分布">
             <ul aria-label="审计结果分布" className={styles.resultList}>

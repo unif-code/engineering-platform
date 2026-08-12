@@ -14,6 +14,10 @@ vi.mock('@umijs/max', () => ({
   request: requestMock,
 }));
 
+vi.mock('@ant-design/charts', () => ({
+  Column: () => <div data-ant-design-chart="column" />,
+}));
+
 import { createAdminAuditMock } from '../../../mock/adminAudit';
 import AuditPage from '.';
 
@@ -50,8 +54,17 @@ describe('AuditPage', () => {
     expect(
       within(metrics).getByRole('article', { name: '高风险事件：4' }),
     ).toBeInTheDocument();
+    const trendChart = screen.getByRole('figure', {
+      name: '近 7 日审计趋势',
+    });
+    const actionChart = screen.getByRole('figure', {
+      name: '审计动作分类',
+    });
     expect(
-      screen.getByRole('figure', { name: '近 7 日审计趋势' }),
+      trendChart.querySelector('[data-ant-design-chart="column"]'),
+    ).toBeInTheDocument();
+    expect(
+      actionChart.querySelector('[data-ant-design-chart="column"]'),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('toolbar', { name: '审计筛选与操作' }),
@@ -68,6 +81,11 @@ describe('AuditPage', () => {
       method: 'GET',
       params: { limit: 3 },
     });
+    expect(
+      screen.queryByText(
+        '查看不可变审计事实，并通过 Correlation ID 串联排查链路',
+      ),
+    ).not.toBeInTheDocument();
   });
 
   it('从审计行打开详情 Drawer，并可通过关闭按钮移除', async () => {

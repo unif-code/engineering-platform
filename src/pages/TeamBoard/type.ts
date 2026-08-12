@@ -1,6 +1,4 @@
-import type { DistributionItem } from '@/components/DistributionBar';
-import type { MiniBarDatum } from '@/components/MiniBarChart';
-import type { SemanticTone } from '@/types/presentation';
+import type { ChartDatum, SemanticTone } from '@/types/presentation';
 
 export type TeamName = 'Platform' | 'Agent Runtime' | 'Delivery Governance';
 
@@ -31,8 +29,8 @@ export interface TeamBoardFixture {
   name: TeamName;
   summary: string;
   metrics: readonly TeamMetric[];
-  throughput: readonly MiniBarDatum[];
-  distribution: readonly DistributionItem[];
+  throughput: readonly ChartDatum[];
+  distribution: readonly ChartDatum[];
   members: readonly TeamMember[];
   blockers: readonly TeamBlocker[];
 }

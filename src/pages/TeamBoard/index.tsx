@@ -1,30 +1,29 @@
+import { Bar, Column } from '@ant-design/charts';
 import { PageContainer, ProCard } from '@ant-design/pro-components';
-import { Progress, Segmented } from 'antd';
+import { Button, Progress, Segmented, theme } from 'antd';
 import { useState } from 'react';
-import { DistributionBar } from '@/components/DistributionBar';
 import { MetricCard } from '@/components/MetricCard';
-import { MiniBarChart } from '@/components/MiniBarChart';
 import { SemanticTag } from '@/components/SemanticTag';
+import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
+import type { ChartDatum } from '@/types/presentation';
 import { TEAM_FIXTURES, TEAM_OPTIONS } from './constant';
 import { useStyles } from './index.style';
-import type { TeamName } from './type';
+import type { TeamBoardFixture, TeamName } from './type';
 
 const DEFAULT_TEAM = TEAM_FIXTURES[0];
 
 export default function TeamBoardPage() {
   const { styles } = useStyles();
+  const { token } = theme.useToken();
+  const showStaticAction = useStaticPrototypeAction();
   const [selectedTeamName, setSelectedTeamName] =
     useState<TeamName>('Platform');
-  const selectedTeam =
+  const selectedTeam: TeamBoardFixture =
     TEAM_FIXTURES.find((team) => team.name === selectedTeamName) ??
     DEFAULT_TEAM;
 
   return (
-    <PageContainer
-      ghost
-      subTitle="按团队查看交付节奏、成员负载与当前阻塞"
-      title="团队看板"
-    >
+    <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
         <ProCard className={styles.card}>
           <div className={styles.selectorHeader}>
@@ -65,17 +64,60 @@ export default function TeamBoardPage() {
 
         <div className={styles.analysisGrid}>
           <ProCard className={styles.card} title="七日吞吐">
-            <MiniBarChart
-              ariaLabel={`${selectedTeam.name} 七日吞吐`}
-              data={selectedTeam.throughput}
-              highlightKey="sun"
-            />
+            <figure
+              aria-label={`${selectedTeam.name} 七日吞吐`}
+              className={styles.chartFigure}
+            >
+              <Column
+                animate={false}
+                axis={{ x: { title: false }, y: false }}
+                data={[...selectedTeam.throughput]}
+                height={160}
+                label={{
+                  position: 'top',
+                  text: (datum: ChartDatum) =>
+                    datum.valueLabel ?? String(datum.value),
+                }}
+                style={{
+                  fill: (datum: ChartDatum) =>
+                    datum.tone === 'success'
+                      ? token.colorSuccess
+                      : token.colorPrimary,
+                }}
+                xField="label"
+                yField="value"
+              />
+            </figure>
           </ProCard>
           <ProCard className={styles.card} title="阶段分布">
-            <DistributionBar
-              ariaLabel={`${selectedTeam.name} 阶段分布`}
-              items={selectedTeam.distribution}
-            />
+            <figure
+              aria-label={`${selectedTeam.name} 阶段分布`}
+              className={styles.chartFigure}
+            >
+              <Bar
+                animate={false}
+                axis={{ x: false, y: false }}
+                colorField="label"
+                data={[...selectedTeam.distribution]}
+                height={160}
+                label={{ position: 'right', text: 'value' }}
+                legend={{ color: { position: 'bottom' } }}
+                scale={{
+                  color: {
+                    range: [
+                      token.colorTextSecondary,
+                      token.colorInfo,
+                      token.colorPrimary,
+                      token.colorWarning,
+                      token.colorSuccess,
+                    ],
+                  },
+                }}
+                stack
+                xField="value"
+                yField={() => selectedTeam.name}
+              />
+            </figure>
           </ProCard>
         </div>
 
@@ -116,13 +158,23 @@ export default function TeamBoardPage() {
             >
               {selectedTeam.blockers.map((blocker) => (
                 <li className={styles.blockerItem} key={blocker.key}>
-                  <div className={styles.blockerHeader}>
-                    <strong>{blocker.title}</strong>
-                    <SemanticTag label={blocker.status} tone={blocker.tone} />
-                  </div>
-                  <p className={styles.blockerDescription}>
-                    {blocker.description}
-                  </p>
+                  <Button
+                    aria-label={`处理阻塞：${blocker.title}`}
+                    block
+                    className={styles.blockerButton}
+                    onClick={() =>
+                      showStaticAction(`处理阻塞 ${blocker.title}`)
+                    }
+                    type="text"
+                  >
+                    <div className={styles.blockerHeader}>
+                      <strong>{blocker.title}</strong>
+                      <SemanticTag label={blocker.status} tone={blocker.tone} />
+                    </div>
+                    <p className={styles.blockerDescription}>
+                      {blocker.description}
+                    </p>
+                  </Button>
                 </li>
               ))}
             </ul>

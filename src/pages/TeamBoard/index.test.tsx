@@ -1,7 +1,13 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from 'antd';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@ant-design/charts', () => ({
+  Bar: () => <div data-ant-design-chart="bar" />,
+  Column: () => <div data-ant-design-chart="column" />,
+}));
+
 import TeamBoardPage from '.';
 
 function renderPage() {
@@ -52,23 +58,15 @@ describe('TeamBoardPage', () => {
       name: 'Platform 七日吞吐',
     });
     expect(
-      within(
-        within(throughput).getByRole('list', {
-          name: 'Platform 七日吞吐数据',
-        }),
-      ).getAllByRole('listitem'),
-    ).toHaveLength(7);
+      throughput.querySelector('[data-ant-design-chart="column"]'),
+    ).toBeInTheDocument();
 
     const distribution = screen.getByRole('figure', {
       name: 'Platform 阶段分布',
     });
     expect(
-      within(
-        within(distribution).getByRole('list', {
-          name: 'Platform 阶段分布图例',
-        }),
-      ).getAllByRole('listitem'),
-    ).toHaveLength(5);
+      distribution.querySelector('[data-ant-design-chart="bar"]'),
+    ).toBeInTheDocument();
 
     expect(
       within(
@@ -81,6 +79,9 @@ describe('TeamBoardPage', () => {
     expect(
       screen.getByRole('list', { name: 'Platform 阻塞事项' }),
     ).toHaveTextContent('制品权限矩阵待确认');
+    expect(
+      screen.queryByText('按团队查看交付节奏、成员负载与当前阻塞'),
+    ).not.toBeInTheDocument();
   });
 
   it('切换 Team 后同步更新 KPI、吞吐、阶段、成员和阻塞事项', async () => {
@@ -138,5 +139,25 @@ describe('TeamBoardPage', () => {
     expect(
       screen.queryByRole('list', { name: 'Agent Runtime 成员负载' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('点击阻塞事项提供处理反馈且不修改团队数据', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: '处理阻塞：制品权限矩阵待确认',
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        '静态原型操作：处理阻塞 制品权限矩阵待确认，未保存任何业务数据。',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('list', { name: 'Platform 阻塞事项' }),
+    ).toHaveTextContent('制品权限矩阵待确认');
   });
 });

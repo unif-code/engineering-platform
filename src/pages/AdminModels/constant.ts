@@ -1,5 +1,4 @@
-import type { DistributionItem } from '@/components/DistributionBar';
-import type { MiniBarDatum } from '@/components/MiniBarChart';
+import type { ChartDatum } from '@/types/presentation';
 import type { ModelEvaluationRow, ModelRow, ModelUsageMetric } from './type';
 
 export const MODEL_ROWS = Object.freeze([
@@ -108,7 +107,7 @@ export const MODEL_USAGE_TREND = [
     valueLabel: '12,846 次',
     tone: 'success',
   },
-] as const satisfies readonly MiniBarDatum[];
+] as const satisfies readonly ChartDatum[];
 
 export const MODEL_PROVIDER_DISTRIBUTION = [
   { key: 'openai', label: 'OpenAI', value: 38, tone: 'brand' },
@@ -120,7 +119,7 @@ export const MODEL_PROVIDER_DISTRIBUTION = [
     tone: 'success',
   },
   { key: 'deepseek', label: 'DeepSeek', value: 10, tone: 'warning' },
-] as const satisfies readonly DistributionItem[];
+] as const satisfies readonly ChartDatum[];
 
 export const MODEL_EVALUATION_ROWS = Object.freeze([
   Object.freeze({

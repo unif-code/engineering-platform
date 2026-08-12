@@ -2,6 +2,12 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App } from 'antd';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@ant-design/charts', () => ({
+  Bar: () => <div data-ant-design-chart="bar" />,
+  Column: () => <div data-ant-design-chart="column" />,
+}));
+
 import AdminModelsPage from '.';
 
 const PAGE_INTERACTION_TEST_TIMEOUT = 30_000;
@@ -63,6 +69,11 @@ describe('AdminModelsPage', () => {
 
     const table = within(catalog).getByRole('table');
     expect(table).toHaveStyle({ width: '1120px' });
+    expect(
+      screen.queryByText(
+        '管理模型目录、调用投影与评测结果；当前页面为静态数据投影',
+      ),
+    ).not.toBeInTheDocument();
     expect(within(table).getAllByRole('row')).toHaveLength(5);
   });
 
@@ -117,11 +128,17 @@ describe('AdminModelsPage', () => {
     expect(
       within(metrics).getByRole('article', { name: '今日调用：12,846' }),
     ).toBeInTheDocument();
+    const usageChart = screen.getByRole('figure', {
+      name: '近七日模型调用量',
+    });
+    const providerChart = screen.getByRole('figure', {
+      name: 'Provider 调用分布',
+    });
     expect(
-      screen.getByRole('figure', { name: '近七日模型调用量' }),
+      usageChart.querySelector('[data-ant-design-chart="column"]'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('figure', { name: 'Provider 调用分布' }),
+      providerChart.querySelector('[data-ant-design-chart="bar"]'),
     ).toBeInTheDocument();
   });
 

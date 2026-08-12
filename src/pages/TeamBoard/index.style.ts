@@ -44,6 +44,10 @@ export const useStyles = createStyles(({ token }) => ({
     gap: token.margin,
     alignItems: 'stretch',
   },
+  chartFigure: {
+    width: '100%',
+    margin: 0,
+  },
   list: {
     margin: 0,
     padding: 0,
@@ -84,7 +88,6 @@ export const useStyles = createStyles(({ token }) => ({
     color: token.colorText,
   },
   blockerItem: {
-    paddingBlock: token.paddingSM,
     borderBlockEnd: `${token.lineWidth}px ${token.lineType} ${token.colorSplit}`,
 
     '&:first-child': {
@@ -95,6 +98,13 @@ export const useStyles = createStyles(({ token }) => ({
       paddingBlockEnd: 0,
       borderBlockEnd: 0,
     },
+  },
+  blockerButton: {
+    height: 'auto',
+    paddingBlock: token.paddingSM,
+    paddingInline: 0,
+    textAlign: 'start',
+    whiteSpace: 'normal',
   },
   blockerHeader: {
     display: 'flex',

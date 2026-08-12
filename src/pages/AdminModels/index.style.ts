@@ -50,4 +50,8 @@ export const useStyles = createStyles(({ token }) => ({
     borderColor: token.colorBorderSecondary,
     boxShadow: token.boxShadowTertiary,
   },
+  chartFigure: {
+    width: '100%',
+    margin: 0,
+  },
 }));

@@ -6,3 +6,11 @@ export type SemanticTone =
   | 'warning'
   | 'danger'
   | 'purple';
+
+export interface ChartDatum {
+  key: string;
+  label: string;
+  value: number;
+  valueLabel?: string;
+  tone?: SemanticTone;
+}

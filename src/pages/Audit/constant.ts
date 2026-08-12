@@ -1,9 +1,8 @@
 import type { ProDescriptionsProps } from '@ant-design/pro-components';
 import { Typography } from 'antd';
 import { createElement } from 'react';
-import type { MiniBarDatum } from '@/components/MiniBarChart';
 import { SemanticTag } from '@/components/SemanticTag';
-import type { SemanticTone } from '@/types/presentation';
+import type { ChartDatum, SemanticTone } from '@/types/presentation';
 import { AuditRequestId } from './AuditRequestId';
 import type { AuditQueryParams, AuditRow } from './type';
 
@@ -84,7 +83,7 @@ export const AUDIT_TARGET_TYPE_OPTIONS = [
   value: NonNullable<AuditQueryParams['targetType']>;
 }>;
 
-export const AUDIT_TREND: readonly MiniBarDatum[] = [
+export const AUDIT_TREND: readonly ChartDatum[] = [
   { key: '08-04', label: '08-04', value: 0, valueLabel: '0' },
   { key: '08-05', label: '08-05', value: 1, valueLabel: '1' },
   { key: '08-06', label: '08-06', value: 0, valueLabel: '0' },
@@ -100,7 +99,7 @@ export const AUDIT_TREND: readonly MiniBarDatum[] = [
   },
 ];
 
-export const AUDIT_ACTION_DISTRIBUTION: readonly MiniBarDatum[] = [
+export const AUDIT_ACTION_DISTRIBUTION: readonly ChartDatum[] = [
   { key: 'config', label: '配置', value: 4, valueLabel: '4' },
   { key: 'artifact', label: '制品', value: 2, valueLabel: '2' },
   { key: 'promotion', label: '晋级', value: 2, valueLabel: '2' },
