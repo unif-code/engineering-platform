@@ -10,12 +10,13 @@
 
 ## Global Constraints
 
-- 原型文件固定为 `/Users/liulijun/Downloads/untitled/project/研发协作平台.dc.html`，基线 SHA-256 为 `d581fc03d7566836c8113bb705cf7687e522d45b2c71f661f505e78f008a879c`。
+- 原型文件固定为 `/Users/liulijun/Downloads/untitled/project/研发协作平台.dc.html`，基线 SHA-256 为 `34766593ecdca6e21a7a9332b70a93db3df060168b6432216292a83fd07524a3`；`/Users/liulijun/Downloads/内部研发平台架构设计/研发协作平台.dc.html` 为字节一致镜像。
 - 主色 `#EB6E00`，悬停色 `#FF8F2E`；浅色侧栏白底、深色侧栏 `#191919`。
 - 壳层头部 52px、展开侧栏 208px、折叠侧栏 56px、内容内边距 20px × 24px。
 - 原型表格和工具栏使用 `size="small"`；原型没有的搜索、筛选、摘要和操作不得显示。
 - 中文为主文案，API / domain key 仅作为次级标识；原始 key、模型名、错误码保持原值。
 - AdminOrganization、AdminGrants、AdminPolicies 保留为独立菜单，并仅在菜单名称加 `（新增）`；页面标题不加。
+- 超级管理员投影必须覆盖 Route Registry 中全部 16 个 `menu: true` 路由；新增可见路由时由回归测试防止遗漏。
 - `/admin` 仅保留直达兼容，不进入侧栏或菜单管理目录。
 - 不修改后端契约、OpenAPI 产物、权限模型或生成目录。
 - 不引入全局 `.ant-*` 覆盖；只使用公开 props、global/component tokens、`styles` 和 `classNames`。
@@ -271,7 +272,7 @@ Commit: `feat(ui): align login and user landing pages`
 - Consumes: 现有任务/工作区 fixtures、ProTable request、DetailDrawer、Modal/Steps。
 - Produces: 原型任务 list/board/archive、详情三栏、工作区主从布局；所有表格 small，编号可导航。
 
-- [ ] **Step 1: 写原型存在/不存在契约 RED**
+- [x] **Step 1: 写原型存在/不存在契约 RED**
 
 ```tsx
 expect(screen.getByRole('table')).toHaveAttribute('data-size', 'small');
@@ -282,11 +283,11 @@ expect(screen.getByRole('link', { name: 'REQ-2026-0142' })).toHaveAttribute(
 expect(screen.queryByText('任务指标总览')).not.toBeInTheDocument();
 ```
 
-- [ ] **Step 2: 逐页最小 GREEN**
+- [x] **Step 2: 逐页最小 GREEN**
 
 原型没有的指标、PageContainer 摘要或筛选逐项删除；原型存在的状态切换、Modal、Drawer 和键盘回焦保留。
 
-- [ ] **Step 3: focused 验证与提交**
+- [x] **Step 3: focused 验证与提交**
 
 Run: `pnpm exec vitest run src/pages/Tasks src/pages/TaskDetail src/pages/Workspaces`
 
