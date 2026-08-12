@@ -6,6 +6,22 @@ export const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     gap: token.margin,
   },
+  workbenchHeader: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginXXS,
+  },
+  greeting: {
+    margin: 0,
+    color: token.colorText,
+    fontSize: token.fontSizeHeading3,
+    lineHeight: token.lineHeightHeading3,
+  },
+  intro: {
+    margin: 0,
+    color: token.colorTextSecondary,
+    fontSize: token.fontSizeSM,
+  },
   metricsGrid: {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
@@ -26,7 +42,6 @@ export const useStyles = createStyles(({ token }) => ({
   },
   card: {
     borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
   },
   list: {
     margin: 0,

@@ -12,10 +12,12 @@ interface TotpFormValues {
   code: string;
 }
 
-// LoginForm 默认 min-width 为 328px；通过官方 contentStyle 统一为原型的 320px。
 const loginFormContentStyle: CSSProperties = {
-  minWidth: 320,
   width: 320,
+};
+
+const loginSubmitButtonStyle: CSSProperties = {
+  width: '100%',
 };
 
 export interface LoginFlowProps {
@@ -120,7 +122,10 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
         submitter={{
           resetButtonProps: false,
           searchConfig: { submitText: '验证并登录' },
-          submitButtonProps: { disabled: challengeExpired },
+          submitButtonProps: {
+            disabled: challengeExpired,
+            style: loginSubmitButtonStyle,
+          },
         }}
         title={false}
       >
@@ -157,11 +162,14 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
       submitter={{
         resetButtonProps: false,
         searchConfig: { submitText: '继续' },
-        submitButtonProps: { disabled: rateLimited },
+        submitButtonProps: {
+          disabled: rateLimited,
+          style: loginSubmitButtonStyle,
+        },
       }}
       title={false}
     >
-      <LoginStepHeader description="使用平台账号继续" title="账号登录" />
+      <LoginStepHeader title="账号登录" />
       {errorMessage}
       <ProFormText
         fieldProps={{ autoComplete: 'username', inputMode: 'numeric' }}

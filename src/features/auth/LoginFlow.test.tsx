@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/transport';
 
@@ -50,9 +51,50 @@ describe('LoginFlow', () => {
     expect(
       screen.getByRole('heading', { name: '账号登录' }),
     ).toBeInTheDocument();
+    expect(screen.queryByText('使用平台账号继续')).not.toBeInTheDocument();
     expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
     expect(screen.getByLabelText('密码')).toBeInTheDocument();
     expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
+  });
+
+  it('提交按钮继承根级 ConfigProvider 主题', async () => {
+    const user = userEvent.setup();
+    render(
+      <ConfigProvider theme={{ token: { colorPrimary: '#123456' } }}>
+        <LoginFlow onAuthenticated={mocks.onAuthenticated} />
+      </ConfigProvider>,
+    );
+
+    const credentialsButton = screen.getByRole('button', {
+      name: /继\s*续/,
+    });
+    expect(getComputedStyle(credentialsButton).backgroundColor).toBe('#123456');
+
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: /继\s*续/ }));
+
+    const totpButton = await screen.findByRole('button', {
+      name: /验\s*证\s*并\s*登\s*录/,
+    });
+    expect(getComputedStyle(totpButton).backgroundColor).toBe('#123456');
+  });
+
+  it('局部品牌色不会覆盖 LoginForm 的全宽提交按钮', async () => {
+    const user = userEvent.setup();
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    expect(screen.getByRole('button', { name: /继\s*续/ })).toHaveStyle({
+      width: '100%',
+    });
+
+    await fillCredentials(user);
+    await user.click(screen.getByRole('button', { name: /继\s*续/ }));
+
+    expect(
+      await screen.findByRole('button', { name: /验\s*证\s*并\s*登\s*录/ }),
+    ).toHaveStyle({
+      width: '100%',
+    });
   });
 
   it('完成凭据与 TOTP 两步后才通知页面刷新 Session', async () => {
@@ -130,6 +172,7 @@ describe('LoginFlow', () => {
       await screen.findByText('登录失败次数过多，请在 30 秒后重试'),
     ).toBeInTheDocument();
     expect(submit).toBeDisabled();
+    expect(submit).toHaveStyle({ width: '100%' });
     expect(
       screen.queryByText(/倒计时|剩余\s*\d+\s*秒/),
     ).not.toBeInTheDocument();

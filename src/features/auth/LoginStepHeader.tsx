@@ -1,7 +1,7 @@
 import { useLoginStepStyles } from './login.style';
 
 interface LoginStepHeaderProps {
-  description: string;
+  description?: string;
   title: string;
 }
 
@@ -14,7 +14,9 @@ export function LoginStepHeader({ description, title }: LoginStepHeaderProps) {
   return (
     <header className={styles.stepHeader}>
       <h2 className={styles.stepTitle}>{title}</h2>
-      <p className={styles.stepDescription}>{description}</p>
+      {description ? (
+        <p className={styles.stepDescription}>{description}</p>
+      ) : null}
     </header>
   );
 }

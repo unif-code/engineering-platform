@@ -209,8 +209,8 @@ describe('LoginPage', () => {
       screen.getByText('© 2026 集团企业开发部 · 仅限内网使用'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '主题设置' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: '主题设置' }),
+    ).not.toBeInTheDocument();
   });
 
   it('分步呈现既有认证字段且不同时暴露凭据与动态码', async () => {

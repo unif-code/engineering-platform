@@ -1,5 +1,14 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('@umijs/max', () => ({
+  useModel: () => ({
+    initialState: {
+      principal: { employeeId: '00000000', name: '平台管理员' },
+    },
+  }),
+}));
+
 import HomePage from './index';
 
 describe('HomePage', () => {
@@ -7,7 +16,6 @@ describe('HomePage', () => {
     render(<HomePage />);
 
     for (const label of [
-      '工作台',
       '待审批',
       '我的任务',
       '运行中 Agent',
@@ -20,6 +28,12 @@ describe('HomePage', () => {
     ]) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
+    expect(
+      screen.getByRole('heading', { name: '你好，平台管理员' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('聚合 Gate、任务、Agent Attempt 与交付动态'),
+    ).not.toBeInTheDocument();
   });
 
   it.each([

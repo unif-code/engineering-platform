@@ -46,6 +46,12 @@ describe('MessagesPage', () => {
         'listitem',
       ),
     ).toHaveLength(5);
+    expect(
+      screen.queryByText('集中查看 Gate、Agent Attempt、MR 与平台动态'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: /未读消息 \d+ 条/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('选择 Gate 后只展示 Gate 消息及其标签和时间', async () => {
@@ -91,25 +97,47 @@ describe('MessagesPage', () => {
     );
   });
 
-  it('全部标为已读只提示，重新选择分类后未读数量不变', async () => {
+  it('全部已读只提示，重新选择分类后未读消息集合不变', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    expect(
-      screen.getByRole('status', { name: '未读消息 4 条' }),
-    ).toBeInTheDocument();
+    const initialUnreadCount = screen.getAllByRole('listitem', {
+      name: /^未读消息：/,
+    }).length;
 
-    await user.click(screen.getByRole('button', { name: '全部标为已读' }));
+    await user.click(screen.getByRole('button', { name: '全部已读' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
-      '静态原型操作：全部标为已读，未保存任何业务数据。',
+      '静态原型操作：全部已读，未保存任何业务数据。',
     );
 
     await selectCategory(user, 'Gate');
     await selectCategory(user, '全部');
 
     expect(
-      screen.getByRole('status', { name: '未读消息 4 条' }),
+      screen.getAllByRole('listitem', { name: /^未读消息：/ }),
+    ).toHaveLength(initialUnreadCount);
+  });
+
+  it('点击消息提供明确反馈且不修改固定消息集合', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      screen.getByRole('button', {
+        name: '打开消息：Requirement Gate 等待审批',
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        '静态原型操作：打开消息 Requirement Gate 等待审批，未保存任何业务数据。',
+      ),
     ).toBeInTheDocument();
+    expect(
+      within(screen.getByRole('list', { name: '消息列表' })).getAllByRole(
+        'listitem',
+      ),
+    ).toHaveLength(5);
   });
 });

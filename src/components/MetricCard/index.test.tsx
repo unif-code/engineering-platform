@@ -17,5 +17,11 @@ describe('MetricCard', () => {
     expect(screen.getByText('8')).toBeInTheDocument();
     expect(screen.getByText('较昨日增加 2 项')).toBeInTheDocument();
     expect(screen.getByText('实时')).toBeInTheDocument();
+    const card = screen.getByText('运行中任务').closest('.ant-pro-card');
+    expect(card).toBeInstanceOf(HTMLElement);
+    if (!(card instanceof HTMLElement)) {
+      throw new TypeError('指标卡片没有渲染为 HTMLElement');
+    }
+    expect(getComputedStyle(card).boxShadow).toBe('');
   });
 });

@@ -1,4 +1,5 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
+import { useModel } from '@umijs/max';
 import { Button } from 'antd';
 import { MetricCard } from '@/components/MetricCard';
 import { SemanticTag } from '@/components/SemanticTag';
@@ -58,14 +59,19 @@ function WorkbenchSection({ id, items, title }: WorkbenchSectionProps) {
 
 const HomePage: React.FC = () => {
   const { styles } = useStyles();
+  const { initialState } = useModel('@@initialState');
+  const userName = initialState?.principal?.name ?? '平台用户';
 
   return (
-    <PageContainer
-      ghost
-      subTitle="聚合 Gate、任务、Agent Attempt 与交付动态"
-      title="工作台"
-    >
+    <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
+        <header className={styles.workbenchHeader}>
+          <h1 className={styles.greeting}>你好，{userName}</h1>
+          <p className={styles.intro}>
+            查看今天的 Gate、任务、Agent Attempt 与交付动态
+          </p>
+        </header>
+
         <section aria-label="关键指标" className={styles.metricsGrid}>
           {WORKBENCH_METRICS.map((metric) => (
             <MetricCard key={metric.title} {...metric} />

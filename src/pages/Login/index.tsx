@@ -3,7 +3,6 @@ import { App } from 'antd';
 import { useEffect, useState } from 'react';
 import { fetchMe, LoginFlow, LoginShell } from '@/features/auth';
 import { fetchNavigation, resolvePostLoginPath } from '@/features/navigation';
-import { ThemeSelector } from '@/features/theme';
 
 export default function LoginPage() {
   const [loginSucceeded, setLoginSucceeded] = useState(false);
@@ -32,7 +31,7 @@ export default function LoginPage() {
   };
 
   return (
-    <LoginShell headerAction={<ThemeSelector />}>
+    <LoginShell>
       <LoginFlow onAuthenticated={refreshSession} />
     </LoginShell>
   );

@@ -10,7 +10,6 @@ export const useStyles = createStyles(({ token }) => ({
   card: {
     height: '100%',
     borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
   },
   neutral: statisticTone(token.colorText),
   brand: statisticTone(token.colorPrimary),

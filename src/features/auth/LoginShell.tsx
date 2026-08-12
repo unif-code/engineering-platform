@@ -12,10 +12,9 @@ import { useLoginStyles } from './login.style';
 
 export interface LoginShellProps {
   children: ReactNode;
-  headerAction: ReactNode;
 }
 
-export function LoginShell({ children, headerAction }: LoginShellProps) {
+export function LoginShell({ children }: LoginShellProps) {
   const { resolvedTheme } = usePlatformTheme();
   const { styles } = useLoginStyles({
     isLightTheme: resolvedTheme === 'light',
@@ -25,10 +24,7 @@ export function LoginShell({ children, headerAction }: LoginShellProps) {
     <main className={styles.page}>
       <header className={styles.header}>
         <BrandMark />
-        <div className={styles.headerActions}>
-          <span className={styles.version}>{PLATFORM_RELEASE_LABEL}</span>
-          {headerAction}
-        </div>
+        <span className={styles.version}>{PLATFORM_RELEASE_LABEL}</span>
       </header>
 
       <section className={styles.hero} aria-labelledby="login-hero-title">

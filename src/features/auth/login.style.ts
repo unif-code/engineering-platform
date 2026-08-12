@@ -28,11 +28,6 @@ export const useLoginStyles = createStyles(
       justifyContent: 'space-between',
       paddingInline: 44,
     },
-    headerActions: {
-      display: 'flex',
-      alignItems: 'center',
-      gap: token.marginXS,
-    },
     version: {
       color: token.colorTextTertiary,
       fontSize: token.fontSizeSM,

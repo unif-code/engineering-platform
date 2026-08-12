@@ -17,6 +17,7 @@ export interface MessageFeedProps {
 
 export function MessageFeed({ records }: MessageFeedProps) {
   const { styles } = useStyles();
+  const showStaticAction = useStaticPrototypeAction();
 
   if (records.length === 0) {
     return (
@@ -34,31 +35,35 @@ export function MessageFeed({ records }: MessageFeedProps) {
           className={styles.listItem}
           key={record.id}
         >
-          <div className={styles.messageBody}>
-            <div className={styles.messageHeader}>
-              <Badge
-                status={record.unread ? 'processing' : 'default'}
-                text={<span className={styles.title}>{record.title}</span>}
-              />
-              <div className={styles.metadata}>
-                <SemanticTag
-                  label={MESSAGE_CATEGORY_LABELS[record.category]}
-                  tone={record.tone}
+          <Button
+            aria-label={`打开消息：${record.title}`}
+            block
+            className={styles.messageButton}
+            onClick={() => showStaticAction(`打开消息 ${record.title}`)}
+            type="text"
+          >
+            <div className={styles.messageBody}>
+              <div className={styles.messageHeader}>
+                <Badge
+                  status={record.unread ? 'processing' : 'default'}
+                  text={<span className={styles.title}>{record.title}</span>}
                 />
-                <time className={styles.time}>{record.time}</time>
+                <div className={styles.metadata}>
+                  <SemanticTag
+                    label={MESSAGE_CATEGORY_LABELS[record.category]}
+                    tone={record.tone}
+                  />
+                  <time className={styles.time}>{record.time}</time>
+                </div>
               </div>
+              <p className={styles.description}>{record.description}</p>
             </div>
-            <p className={styles.description}>{record.description}</p>
-          </div>
+          </Button>
         </li>
       ))}
     </ul>
   );
 }
-
-const unreadMessageCount = MESSAGE_FIXTURES.filter(
-  (record) => record.unread,
-).length;
 
 const MessagesPage: React.FC = () => {
   const { styles } = useStyles();
@@ -73,39 +78,19 @@ const MessagesPage: React.FC = () => {
         );
 
   return (
-    <PageContainer
-      ghost
-      subTitle="集中查看 Gate、Agent Attempt、MR 与平台动态"
-      title="消息中心"
-    >
+    <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
         <ProCard className={styles.card}>
           <div className={styles.toolbar}>
             <Segmented<MessageCategory>
               aria-label="消息分类"
-              block
-              className={styles.categoryFilter}
               onChange={setSelectedCategory}
               options={MESSAGE_CATEGORY_OPTIONS}
               value={selectedCategory}
             />
-            <div className={styles.actions}>
-              <Badge count={unreadMessageCount} showZero>
-                <span
-                  aria-label={`未读消息 ${unreadMessageCount} 条`}
-                  className={styles.unreadLabel}
-                  role="status"
-                >
-                  未读消息
-                </span>
-              </Badge>
-              <Button
-                onClick={() => showStaticAction('全部标为已读')}
-                type="primary"
-              >
-                全部标为已读
-              </Button>
-            </div>
+            <Button onClick={() => showStaticAction('全部已读')} type="link">
+              全部已读
+            </Button>
           </div>
           <MessageFeed records={filteredMessages} />
         </ProCard>

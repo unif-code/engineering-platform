@@ -15,7 +15,7 @@ import { LoginShell } from './LoginShell';
 describe('LoginShell', () => {
   it('按原型呈现统一品牌、Hero、交付链路和认证容器', () => {
     render(
-      <LoginShell headerAction={<button type="button">主题设置</button>}>
+      <LoginShell>
         <form aria-label="凭据步骤" />
       </LoginShell>,
     );
@@ -54,8 +54,8 @@ describe('LoginShell', () => {
       screen.getByText('© 2026 集团企业开发部 · 仅限内网使用'),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: '主题设置' }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: '主题设置' }),
+    ).not.toBeInTheDocument();
     expect(screen.getByRole('form', { name: '凭据步骤' })).toBeInTheDocument();
     expect(screen.queryByText(/重置演示数据/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();

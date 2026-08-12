@@ -8,7 +8,6 @@ export const useStyles = createStyles(({ token }) => ({
   },
   card: {
     borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
   },
   toolbar: {
     display: 'flex',
@@ -18,40 +17,24 @@ export const useStyles = createStyles(({ token }) => ({
     justifyContent: 'space-between',
     marginBottom: token.marginSM,
   },
-  categoryFilter: {
-    flex: 1,
-  },
-  actions: {
-    display: 'flex',
-    gap: token.margin,
-    alignItems: 'center',
-  },
-  unreadLabel: {
-    display: 'inline-flex',
-    minHeight: token.controlHeightSM,
-    alignItems: 'center',
-    paddingInline: token.paddingSM,
-    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadius,
-    color: token.colorTextSecondary,
-    backgroundColor: token.colorFillQuaternary,
-    fontSize: token.fontSizeSM,
-  },
   list: {
     margin: 0,
     padding: 0,
     listStyle: 'none',
   },
   listItem: {
-    display: 'flex',
-    gap: token.marginSM,
-    alignItems: 'flex-start',
-    paddingBlock: token.paddingSM,
     borderBlockEnd: `${token.lineWidth}px ${token.lineType} ${token.colorSplit}`,
 
     '&:last-child': {
       borderBlockEnd: 0,
     },
+  },
+  messageButton: {
+    height: 'auto',
+    paddingBlock: token.paddingSM,
+    paddingInline: 0,
+    textAlign: 'start',
+    whiteSpace: 'normal',
   },
   messageBody: {
     flex: 1,
