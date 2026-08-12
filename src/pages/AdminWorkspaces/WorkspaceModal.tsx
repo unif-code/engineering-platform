@@ -2,7 +2,6 @@ import {
   ModalForm,
   ProFormSelect,
   ProFormText,
-  ProFormTextArea,
 } from '@ant-design/pro-components';
 import { App } from 'antd';
 import {
@@ -10,13 +9,18 @@ import {
   type WorkspaceAccountRef,
   type WorkspaceSummary,
 } from '@/features/administration';
+import { WORKSPACE_OWNER_TEAM_BY_ID, WORKSPACE_TEAM_OPTIONS } from './constant';
 import type { WorkspaceFormValues } from './type';
 
 interface WorkspaceModalProps {
   leaderOptions: readonly WorkspaceAccountRef[];
   onClose: () => void;
-  onCreated: (workspace: WorkspaceSummary) => void;
-  onSubmit: (values: WorkspaceFormValues) => Promise<WorkspaceSummary>;
+  onCreated: (workspace: WorkspaceSummary, values: WorkspaceFormValues) => void;
+  onSubmit: (values: {
+    name: string;
+    ownerId: string;
+    reason: string;
+  }) => Promise<WorkspaceSummary>;
   open: boolean;
 }
 
@@ -34,9 +38,9 @@ export function WorkspaceModal({
       const workspace = await onSubmit({
         name: values.name.trim(),
         ownerId: values.ownerId,
-        reason: values.reason.trim(),
+        reason: '通过工作区管理创建工作区',
       });
-      onCreated(workspace);
+      onCreated(workspace, values);
       onClose();
       message.success('工作区已创建');
       return true;
@@ -65,40 +69,43 @@ export function WorkspaceModal({
       <ProFormText
         fieldProps={{ id: 'admin-workspace-create-name' }}
         formItemProps={{ htmlFor: 'admin-workspace-create-name' }}
-        label="名称"
+        label="工作区名称"
         name="name"
-        placeholder="请输入工作区名称"
+        placeholder="如：国际化工作区"
         rules={[
-          { required: true, message: '请输入名称' },
-          { whitespace: true, message: '名称不能为空' },
+          { required: true, message: '请输入工作区名称' },
+          { whitespace: true, message: '工作区名称不能为空' },
         ]}
       />
       <ProFormSelect
         fieldProps={{
-          'aria-label': 'Owner',
+          'aria-label': '所属 Team',
+          id: 'admin-workspace-create-team',
+          virtual: false,
+        }}
+        formItemProps={{ htmlFor: 'admin-workspace-create-team' }}
+        label="所属 Team"
+        name="team"
+        options={WORKSPACE_TEAM_OPTIONS}
+        rules={[{ required: true, message: '请选择所属 Team' }]}
+      />
+      <ProFormSelect
+        fieldProps={{
+          'aria-label': 'Owner（开发Leader）',
           id: 'admin-workspace-create-owner',
           virtual: false,
         }}
         formItemProps={{ htmlFor: 'admin-workspace-create-owner' }}
-        label="Owner"
+        label="Owner（开发Leader）"
         name="ownerId"
-        options={leaderOptions.map(({ displayName, id }) => ({
-          label: displayName,
-          value: id,
-        }))}
+        options={leaderOptions.flatMap(({ displayName, id }) => {
+          const team = WORKSPACE_OWNER_TEAM_BY_ID[id];
+          return team === undefined
+            ? []
+            : [{ label: `${displayName} · ${team}`, value: id }];
+        })}
         placeholder="请选择 Leader 作为 Owner"
         rules={[{ required: true, message: '请选择 Owner' }]}
-      />
-      <ProFormTextArea
-        fieldProps={{ id: 'admin-workspace-create-reason', rows: 3 }}
-        formItemProps={{ htmlFor: 'admin-workspace-create-reason' }}
-        label="创建原因"
-        name="reason"
-        placeholder="说明创建该工作区的原因"
-        rules={[
-          { required: true, message: '请输入创建原因' },
-          { whitespace: true, message: '创建原因不能为空' },
-        ]}
       />
     </ModalForm>
   );

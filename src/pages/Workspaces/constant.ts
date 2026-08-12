@@ -2,61 +2,84 @@ import type { WorkspaceFixture } from './type';
 
 export const WORKSPACE_FIXTURES = [
   {
-    id: 'platform-core',
-    name: 'Platform Core',
+    archived: false,
+    canManage: true,
+    foundRepositoryCount: 20,
+    id: 'marketing',
+    name: '营销工作区',
     membership: 'Owner',
-    description: '平台入口、Control Plane 与共享研发体验',
+    owner: '李强',
     members: [
-      { employeeId: 'E0000', name: '周天', role: 'Owner · 超级管理员' },
-      { employeeId: 'E0001', name: '孙杰', role: '平台管理员' },
-      { employeeId: 'E0102', name: '林澈', role: '平台工程师' },
+      {
+        employeeId: 'E1003',
+        name: '李强',
+        role: 'Owner · 开发Leader',
+        tag: 'owner',
+      },
+      { employeeId: 'E1001', name: '王悦', role: '产品' },
+      { employeeId: 'E1002', name: '吴桐', role: '产品Leader' },
+      { employeeId: 'E1004', name: '陈晓', role: '前端开发' },
+      { employeeId: 'E1005', name: '郑楠', role: '后端开发' },
+      {
+        employeeId: 'E1006',
+        name: '徐蕾',
+        role: '前端开发（账号已禁用）',
+        tag: 'disabled',
+      },
+      { employeeId: 'E1008', name: '高扬', role: '后端开发' },
+      {
+        employeeId: 'E1007',
+        name: '赵敏',
+        role: '经理 · 临时协作至 09-30',
+        tag: 'temporary',
+      },
     ],
     repositories: [
-      {
-        name: 'engineering-platform',
-        defaultBranch: 'main',
-        status: '受保护',
-      },
-      {
-        name: 'engineering-platform-backend',
-        defaultBranch: 'main',
-        status: '受保护',
-      },
-      {
-        name: 'engineering-platform-docs',
-        defaultBranch: 'main',
-        status: '只读关联',
-      },
+      { name: 'mk-activity-h5', selected: true, stack: 'React' },
+      { name: 'mk-miniapp', selected: true, stack: '原生小程序' },
+      { name: 'mk-coupon-center', selected: true, stack: 'Vue' },
+      { name: 'mk-member-app', selected: true, stack: 'RN' },
+      { name: 'mk-share-sdk', selected: true, stack: 'React' },
+      { name: 'mk-live-h5', selected: true, stack: 'React' },
+      { name: 'mk-poster-gen', selected: true, stack: 'Java' },
+      { name: 'mk-cms-admin', selected: true, stack: 'React' },
+      { name: 'mk-uniapp-mall', selected: true, stack: 'uniapp' },
+      { name: 'mk-data-report', selected: true, stack: 'Vue' },
+      { name: 'mk-legacy-h5', selected: false, stack: 'jQuery' },
+      { name: 'mk-lab-playground', selected: false, stack: 'React' },
     ],
+    team: '营销',
   },
   {
-    id: 'agent-runtime',
-    name: 'Agent Runtime',
-    membership: '成员',
-    description: 'Agent 编排、Model Route 与执行边界',
+    archived: true,
+    canManage: true,
+    foundRepositoryCount: 5,
+    id: 'marketing-archive',
+    name: '历史活动专区',
+    membership: 'Owner',
+    owner: '李强',
     members: [
-      { employeeId: 'E0201', name: '方舟', role: 'Owner · Runtime Leader' },
-      { employeeId: 'E0202', name: '宁安', role: 'Agent 工程师' },
+      {
+        employeeId: 'E1003',
+        name: '李强',
+        role: 'Owner · 开发Leader',
+        tag: 'owner',
+      },
+      { employeeId: 'E1004', name: '陈晓', role: '前端开发' },
+      { employeeId: 'E1001', name: '王悦', role: '产品' },
     ],
     repositories: [
-      {
-        name: 'platform-orchestrator',
-        defaultBranch: 'main',
-        status: '受保护',
-      },
-      {
-        name: 'model-gateway',
-        defaultBranch: 'main',
-        status: '受保护',
-      },
+      { name: 'mk-legacy-h5', selected: true, stack: 'jQuery' },
+      { name: 'mk-2024-camp', selected: true, stack: 'React' },
     ],
+    team: '营销',
   },
 ] as const satisfies readonly WorkspaceFixture[];
 
 export const MEMBER_CANDIDATE_OPTIONS = [
-  { label: '林一 · 平台工程师', value: 'E0108' },
-  { label: '宋佳 · 前端工程师', value: 'E2004' },
-  { label: '丁一 · 后端工程师', value: 'E2005' },
+  { label: '宋佳 · 前端开发 · 交易', value: 'E2004' },
+  { label: '丁一 · 后端开发 · 交易', value: 'E2005' },
+  { label: '白露 · 后端开发 · 中台', value: 'E3004' },
 ] as const;
 
 export const COLLABORATION_TERM_OPTIONS = [
@@ -70,9 +93,3 @@ export const GITLAB_CONNECTION = {
   credentialReference: 'secrets/gitlab/workspaces',
   scope: 'read_repository / write_repository',
 } as const;
-
-export const WORKSPACE_POLICY_ITEMS = [
-  '默认分支 main 禁止直接 push',
-  '合并必须通过确定性检查与人工 Review',
-  'Agent 仅可写入任务分支，不继承人员凭据',
-] as const;

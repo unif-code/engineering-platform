@@ -21,8 +21,13 @@ function renderPage() {
   );
 }
 
-async function selectOption(user: UserEvent, label: string, option: string) {
-  await user.click(screen.getByRole('combobox', { name: label }));
+async function selectOption(
+  user: UserEvent,
+  dialog: HTMLElement,
+  label: string,
+  option: string,
+) {
+  await user.click(within(dialog).getByRole('combobox', { name: label }));
   await user.click(await screen.findByRole('option', { name: option }));
 }
 
@@ -43,7 +48,7 @@ afterEach(() => {
 });
 
 describe('AdminModelsPage', () => {
-  it('默认呈现三个 Tabs 与 1120px 模型目录表格', async () => {
+  it('按原型呈现三个 Tabs、五个模型和精简目录工具栏', async () => {
     renderPage();
 
     const tabs = screen.getAllByRole('tab');
@@ -59,63 +64,42 @@ describe('AdminModelsPage', () => {
     expect(
       await within(catalog).findByRole(
         'row',
-        { name: /GPT-4\.1/ },
+        { name: /DeepSeek V4/ },
         PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
       ),
     ).toBeInTheDocument();
     expect(
-      within(catalog).getByRole('row', { name: /Claude Sonnet 4/ }),
+      within(catalog).getByRole('row', { name: /GPT-5\.6/ }),
     ).toBeInTheDocument();
 
     const table = within(catalog).getByRole('table');
-    expect(table).toHaveStyle({ width: '1120px' });
+    expect(table).toHaveStyle({ width: '1040px' });
+    expect(within(table).getAllByRole('row')).toHaveLength(6);
     expect(
-      screen.queryByText(
-        '管理模型目录、调用投影与评测结果；当前页面为静态数据投影',
+      within(table).getByRole('columnheader', { name: '部署名' }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByRole('columnheader', { name: '接入' }),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getByRole('columnheader', { name: '限流' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '接入模型' })).toBeVisible();
+    expect(
+      screen.getByText(
+        'Chat（对话）与 Execution（执行）独立治理；Agent 请求逻辑能力（coding-backend / review-code…），由 Route Policy（路由策略）解析到实际模型部署',
       ),
-    ).not.toBeInTheDocument();
-    expect(within(table).getAllByRole('row')).toHaveLength(5);
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(
+      screen.getByText(
+        'Provider 参数由 Adapter 映射，不渗入业务模型 · 联网搜索 / 深度思考为 Deployment Capability',
+      ),
+    ).toBeInTheDocument();
   });
 
-  it(
-    '通过搜索与短状态 Select 筛选模型目录',
-    async () => {
-      const user = userEvent.setup();
-      renderPage();
-      await screen.findByRole(
-        'row',
-        { name: /GPT-4\.1/ },
-        PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
-      );
-
-      const search = screen.getByRole('searchbox', { name: '搜索模型' });
-      await user.type(search, 'qwen');
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('row', { name: /Qwen3-Coder/ }),
-        ).toBeInTheDocument();
-        expect(
-          screen.queryByRole('row', { name: /GPT-4\.1/ }),
-        ).not.toBeInTheDocument();
-      });
-
-      await user.clear(search);
-      await selectOption(user, '模型状态', '已停用');
-
-      await waitFor(() => {
-        expect(
-          screen.getByRole('row', { name: /DeepSeek-R1/ }),
-        ).toBeInTheDocument();
-        expect(
-          screen.queryByRole('row', { name: /Claude Sonnet 4/ }),
-        ).not.toBeInTheDocument();
-      });
-    },
-    PAGE_INTERACTION_TEST_TIMEOUT,
-  );
-
-  it('调用看板呈现四项 KPI 与两个可访问图形', async () => {
+  it('调用看板呈现六项原型 KPI 与四个图形', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -124,25 +108,40 @@ describe('AdminModelsPage', () => {
     const metrics = await screen.findByRole('region', {
       name: '模型调用 KPI',
     });
-    expect(within(metrics).getAllByRole('article')).toHaveLength(4);
+    expect(within(metrics).getAllByRole('article')).toHaveLength(6);
     expect(
-      within(metrics).getByRole('article', { name: '今日调用：12,846' }),
+      within(metrics).getByRole('article', { name: '今日调用：42,318' }),
+    ).toBeInTheDocument();
+    expect(
+      within(metrics).getByRole('article', { name: 'Chat / Agent：38 / 62' }),
     ).toBeInTheDocument();
     const usageChart = screen.getByRole('figure', {
-      name: '近七日模型调用量',
+      name: '近十四日模型调用量',
     });
-    const providerChart = screen.getByRole('figure', {
-      name: 'Provider 调用分布',
+    const shareChart = screen.getByRole('figure', {
+      name: 'Chat 与 Agent 调用占比',
+    });
+    const modelChart = screen.getByRole('figure', {
+      name: '按模型调用分布',
+    });
+    const teamChart = screen.getByRole('figure', {
+      name: '按 Team 调用分布',
     });
     expect(
       usageChart.querySelector('[data-ant-design-chart="column"]'),
     ).toBeInTheDocument();
     expect(
-      providerChart.querySelector('[data-ant-design-chart="bar"]'),
+      shareChart.querySelector('[data-ant-design-chart="bar"]'),
+    ).toBeInTheDocument();
+    expect(
+      modelChart.querySelector('[data-ant-design-chart="bar"]'),
+    ).toBeInTheDocument();
+    expect(
+      teamChart.querySelector('[data-ant-design-chart="bar"]'),
     ).toBeInTheDocument();
   });
 
-  it('模型评测 Tab 呈现本地评测表格', async () => {
+  it('模型评测 Tab 呈现评测作业和不可变证据表格', async () => {
     const user = userEvent.setup();
     renderPage();
 
@@ -151,10 +150,22 @@ describe('AdminModelsPage', () => {
     const evaluation = await screen.findByRole('region', {
       name: '模型评测内容',
     });
+    expect(within(evaluation).getAllByRole('article')).toHaveLength(2);
+    expect(
+      within(evaluation).getByRole('article', { name: 'promptfoo 回归' }),
+    ).toBeInTheDocument();
+    expect(
+      within(evaluation).getByRole('article', { name: 'EvalScope 基准' }),
+    ).toBeInTheDocument();
+    expect(
+      within(evaluation).getByText(
+        /评测只经 ModelEvaluationPort → ModelGatewayPort/,
+      ),
+    ).toBeInTheDocument();
     expect(within(evaluation).getByRole('table')).toBeInTheDocument();
     expect(
       await within(evaluation).findByRole('row', {
-        name: /Qwen3-Coder.*Internal Code Eval/,
+        name: /EV-3312.*qwen3\.8-max.*126\/128 通过/,
       }),
     ).toBeInTheDocument();
   });
@@ -166,12 +177,12 @@ describe('AdminModelsPage', () => {
     renderPage();
     await screen.findByRole(
       'row',
-      { name: /GPT-4\.1/ },
+      { name: /DeepSeek V4/ },
       PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
     );
 
     await user.click(screen.getByRole('tab', { name: '调用看板' }));
-    await screen.findByRole('figure', { name: '近七日模型调用量' });
+    await screen.findByRole('figure', { name: '近十四日模型调用量' });
     await user.click(screen.getByRole('tab', { name: '模型评测' }));
     await screen.findByRole('region', { name: '模型评测内容' });
     await user.click(screen.getByRole('tab', { name: '模型目录' }));
@@ -188,7 +199,7 @@ describe('AdminModelsPage', () => {
       const table = await screen.findByRole('table');
       await screen.findByRole(
         'row',
-        { name: /GPT-4\.1/ },
+        { name: /DeepSeek V4/ },
         PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
       );
       const initialRowCount = within(table).getAllByRole('row').length;
@@ -197,22 +208,31 @@ describe('AdminModelsPage', () => {
       const dialog = await screen.findByRole('dialog', { name: '接入模型' });
 
       await user.type(
-        within(dialog).getByRole('textbox', { name: '名称' }),
-        'Prototype Model',
+        within(dialog).getByRole('textbox', { name: '模型名称' }),
+        'GLM-5',
       );
-      await selectOption(user, 'Provider', 'OpenAI');
-      const contextWindow = within(dialog).getByRole('spinbutton', {
-        name: '上下文窗口',
-      });
-      await user.clear(contextWindow);
-      await user.type(contextWindow, '32000');
       await user.type(
-        within(dialog).getByRole('textbox', { name: '用途' }),
-        '验证静态模型接入流程',
+        within(dialog).getByRole('textbox', { name: '部署名' }),
+        'glm-5',
       );
+      await selectOption(user, dialog, '用途', 'Chat + Execution');
+      await selectOption(user, dialog, '接入方式', '百炼 compatible-mode');
+      await user.type(
+        within(dialog).getByRole('textbox', { name: '上下文窗口' }),
+        '256K',
+      );
+      const rate = within(dialog).getByRole('spinbutton', {
+        name: '限流 (RPM)',
+      });
+      await user.type(rate, '200');
+      await selectOption(user, dialog, '初始状态', '灰度');
+
+      expect(within(dialog).getAllByRole('textbox')).toHaveLength(3);
+      expect(within(dialog).getAllByRole('combobox')).toHaveLength(3);
+      expect(within(dialog).getAllByRole('spinbutton')).toHaveLength(1);
       await user.click(within(dialog).getByRole('button', { name: /接\s*入/ }));
 
-      await expectStaticAction('接入模型 Prototype Model');
+      await expectStaticAction('接入模型 GLM-5');
       await waitFor(() => {
         expect(
           screen.queryByRole('dialog', { name: '接入模型' }),
@@ -222,7 +242,7 @@ describe('AdminModelsPage', () => {
         within(screen.getByRole('table')).getAllByRole('row'),
       ).toHaveLength(initialRowCount);
       expect(
-        screen.queryByRole('row', { name: /Prototype Model/ }),
+        screen.queryByRole('row', { name: /GLM-5/ }),
       ).not.toBeInTheDocument();
 
       await user.click(screen.getByRole('button', { name: '接入模型' }));
@@ -230,7 +250,12 @@ describe('AdminModelsPage', () => {
         name: '接入模型',
       });
       expect(
-        within(reopenedDialog).getByRole('textbox', { name: '名称' }),
+        within(reopenedDialog).getByRole('textbox', { name: '模型名称' }),
+      ).toHaveValue('');
+      expect(
+        within(reopenedDialog).getByRole('textbox', {
+          name: '上下文窗口',
+        }),
       ).toHaveValue('');
 
       await user.click(
@@ -252,7 +277,7 @@ describe('AdminModelsPage', () => {
       renderPage();
       const modelRow = await screen.findByRole(
         'row',
-        { name: /GPT-4\.1/ },
+        { name: /DeepSeek V4/ },
         PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
       );
       const initialRowCount = within(screen.getByRole('table')).getAllByRole(
@@ -260,49 +285,67 @@ describe('AdminModelsPage', () => {
       ).length;
 
       await user.click(
-        within(modelRow).getByRole('button', { name: '编辑 GPT-4.1' }),
+        within(modelRow).getByRole('button', { name: '配置 DeepSeek V4' }),
       );
-      const dialog = await screen.findByRole('dialog', { name: '编辑模型' });
-      const nameInput = within(dialog).getByRole('textbox', { name: '名称' });
-      expect(nameInput).toHaveValue('GPT-4.1');
+      const dialog = await screen.findByRole('dialog', {
+        name: '编辑模型配置',
+      });
+      const rateInput = within(dialog).getByRole('spinbutton', {
+        name: '限流 (RPM)',
+      });
+      expect(rateInput).toHaveValue('600');
+      expect(
+        within(dialog).getByRole('textbox', { name: '上下文窗口' }),
+      ).toHaveValue('256K');
+      expect(
+        within(dialog).getByRole('combobox', { name: '状态' }).parentElement,
+      ).toHaveTextContent('启用');
+      expect(
+        within(dialog).queryByRole('textbox', { name: '逻辑能力标签' }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('spinbutton', { name: 'Route 权重' }),
+      ).not.toBeInTheDocument();
+      expect(within(dialog).getAllByRole('textbox')).toHaveLength(1);
+      expect(within(dialog).getAllByRole('spinbutton')).toHaveLength(1);
+      expect(within(dialog).getAllByRole('combobox')).toHaveLength(1);
 
-      await user.clear(nameInput);
-      await user.type(nameInput, '不会保存的模型名');
+      await user.clear(rateInput);
+      await user.type(rateInput, '999');
       await user.click(within(dialog).getByRole('button', { name: /保\s*存/ }));
 
-      await expectStaticAction('编辑模型 GPT-4.1');
+      await expectStaticAction('编辑模型配置 DeepSeek V4');
       await waitFor(() => {
         expect(
-          screen.queryByRole('dialog', { name: '编辑模型' }),
+          screen.queryByRole('dialog', { name: '编辑模型配置' }),
         ).not.toBeInTheDocument();
       });
-      expect(screen.getByRole('row', { name: /GPT-4\.1/ })).toBeInTheDocument();
       expect(
-        screen.queryByRole('row', { name: /不会保存的模型名/ }),
-      ).not.toBeInTheDocument();
+        screen.getByRole('row', { name: /DeepSeek V4.*600 RPM/ }),
+      ).toBeInTheDocument();
       expect(
         within(screen.getByRole('table')).getAllByRole('row'),
       ).toHaveLength(initialRowCount);
 
       await user.click(
-        within(screen.getByRole('row', { name: /GPT-4\.1/ })).getByRole(
+        within(screen.getByRole('row', { name: /DeepSeek V4/ })).getByRole(
           'button',
-          { name: '编辑 GPT-4.1' },
+          { name: '配置 DeepSeek V4' },
         ),
       );
       const reopenedDialog = await screen.findByRole('dialog', {
-        name: '编辑模型',
+        name: '编辑模型配置',
       });
       expect(
-        within(reopenedDialog).getByRole('textbox', { name: '名称' }),
-      ).toHaveValue('GPT-4.1');
+        within(reopenedDialog).getByRole('spinbutton', { name: '限流 (RPM)' }),
+      ).toHaveValue('600');
 
       await user.click(
         within(reopenedDialog).getByRole('button', { name: /取\s*消/ }),
       );
       await waitFor(() => {
         expect(
-          screen.queryByRole('dialog', { name: '编辑模型' }),
+          screen.queryByRole('dialog', { name: '编辑模型配置' }),
         ).not.toBeInTheDocument();
       });
     },

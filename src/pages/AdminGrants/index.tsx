@@ -1,3 +1,4 @@
+import { PlusOutlined } from '@ant-design/icons';
 import {
   type ActionType,
   PageContainer,
@@ -6,9 +7,8 @@ import {
   type ProTableProps,
 } from '@ant-design/pro-components';
 import { useMutation, useQuery } from '@umijs/max';
-import { App, Button, Select, Space, Typography } from 'antd';
+import { App, Button, Segmented, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FilterToolbar } from '@/components/FilterToolbar';
 import { SemanticTag } from '@/components/SemanticTag';
 import {
   createGrant,
@@ -18,25 +18,32 @@ import {
   listWorkspaces,
   revokeGrant,
 } from '@/features/administration';
-import { GRANT_CAPABILITY_OPTIONS, GRANT_STATUS_META } from './constant';
+import {
+  GRANT_CAPABILITY_LABELS,
+  GRANT_FILTER_OPTIONS,
+  GRANT_PRINCIPAL_META,
+  INHERITED_GRANT_ROWS,
+  toGrantRow,
+} from './constant';
 import { GrantModal } from './GrantModal';
 import { useStyles } from './index.style';
 import { RevokeGrantModal } from './RevokeGrantModal';
-import type { GrantQueryParams, GrantRow, GrantSubmitInput } from './type';
-
-const positiveInteger = (value: number | undefined, fallback: number) =>
-  value !== undefined && Number.isSafeInteger(value) && value > 0
-    ? value
-    : fallback;
+import type {
+  GrantPrincipalOption,
+  GrantQueryParams,
+  GrantRow,
+  GrantScopeOption,
+  GrantSubmitInput,
+  GrantViewFilter,
+} from './type';
 
 export default function AdminGrantsPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
-  const [principalId, setPrincipalId] = useState<string>('all');
-  const [capability, setCapability] = useState<string>('all');
-  const [total, setTotal] = useState(0);
+  const [viewFilter, setViewFilter] = useState<GrantViewFilter>('all');
+  const [allGrants, setAllGrants] = useState<GrantRow[]>([]);
   const [grantOpen, setGrantOpen] = useState(false);
   const [revokingGrant, setRevokingGrant] = useState<GrantRow>();
 
@@ -75,8 +82,8 @@ export default function AdminGrantsPage() {
   );
 
   const params = useMemo<GrantQueryParams>(
-    () => ({ capability, principalId }),
-    [capability, principalId],
+    () => ({ filter: viewFilter }),
+    [viewFilter],
   );
 
   const requestGrants = useCallback<
@@ -86,25 +93,32 @@ export default function AdminGrantsPage() {
       const requestSequence = ++requestSequenceRef.current;
       try {
         const page = await listGrants({
-          page: positiveInteger(requestParams.current, 1),
-          pageSize: positiveInteger(requestParams.pageSize, 10),
-          ...(requestParams.principalId && requestParams.principalId !== 'all'
-            ? { principalId: requestParams.principalId }
-            : {}),
-          ...(requestParams.capability && requestParams.capability !== 'all'
-            ? { capability: requestParams.capability }
-            : {}),
+          page: 1,
+          pageSize: 100,
         });
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        setTotal(page.total);
-        return { data: page.items, success: true, total: page.total };
+        const rows = [...page.items.map(toGrantRow), ...INHERITED_GRANT_ROWS];
+        setAllGrants(rows);
+        const data = rows.filter((grant) => {
+          if (requestParams.filter === 'high-risk') {
+            return grant.risk === 'HIGH';
+          }
+          if (requestParams.filter === 'temporary') {
+            return grant.validTo !== null;
+          }
+          if (requestParams.filter === 'inherited') {
+            return grant.source === 'INHERITED';
+          }
+          return true;
+        });
+        return { data, success: true, total: data.length };
       } catch (error) {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        setTotal(0);
+        setAllGrants([]);
         message.error(formatGovernanceError(error, 'Grant 列表加载失败'));
         return { data: [], success: true, total: 0 };
       }
@@ -117,23 +131,66 @@ export default function AdminGrantsPage() {
     await actionRef.current?.reload();
   }, [invalidatePendingRequests]);
 
-  const principalOptions = useMemo(
-    () =>
-      (accountsQuery.data?.items ?? []).map(
+  const principalOptions = useMemo<GrantPrincipalOption[]>(
+    () => [
+      ...(accountsQuery.data?.items ?? []).map(
         ({ displayName, employeeNo, id }) => ({
           label: `${employeeNo} · ${displayName}`,
+          type: 'ACCOUNT' as const,
           value: id,
         }),
       ),
+      { label: '管理员', type: 'ROLE', value: 'role-administrator' },
+      {
+        label: '开发Leader',
+        type: 'ROLE',
+        value: 'role-development-leader',
+      },
+      {
+        label: 'svc-agent-runner',
+        type: 'SERVICE_ACCOUNT',
+        value: 'service-agent-runner',
+      },
+    ],
     [accountsQuery.data?.items],
   );
-  const workspaceOptions = useMemo(
-    () =>
-      (workspacesQuery.data?.items ?? []).map(({ id, name }) => ({
+  const scopeOptions = useMemo<GrantScopeOption[]>(
+    () => [
+      { label: '全平台', type: 'PLATFORM', value: 'PLATFORM' },
+      ...(workspacesQuery.data?.items ?? []).map(({ id, name }) => ({
         label: name,
+        type: 'WORKSPACE' as const,
         value: id,
       })),
+      ...['营销部门', '交易部门', '中台部门'].map((label) => ({
+        label,
+        type: 'DEPARTMENT' as const,
+        value: `department-${label}`,
+      })),
+    ],
     [workspacesQuery.data?.items],
+  );
+
+  const grantStats = useMemo(
+    () => [
+      {
+        label: '生效中授权',
+        value: allGrants.filter(({ status }) => status === 'ACTIVE').length,
+      },
+      {
+        label: '临时授权',
+        value: allGrants.filter(({ validTo }) => validTo !== null).length,
+      },
+      {
+        label: '高危能力授权',
+        value: allGrants.filter(({ risk }) => risk === 'HIGH').length,
+      },
+      {
+        label: '角色继承',
+        value: allGrants.filter(({ source }) => source === 'INHERITED').length,
+      },
+    ],
+    [allGrants],
   );
 
   const columns = useMemo<ProColumns<GrantRow>[]>(
@@ -142,64 +199,71 @@ export default function AdminGrantsPage() {
         dataIndex: ['principal', 'displayName'],
         render: (_, row) => (
           <span className={styles.principal}>
-            <strong>{row.principal.displayName}</strong>
-            <span className={styles.secondary}>{row.principal.employeeNo}</span>
+            <SemanticTag {...GRANT_PRINCIPAL_META[row.principal.type]} />
+            <span>{row.principal.displayName}</span>
           </span>
         ),
-        title: 'Principal',
-        width: 180,
+        title: '主体',
+        width: 170,
       },
       {
         dataIndex: 'capability',
         render: (_, row) => (
-          <span className={styles.code}>{row.capability}</span>
+          <span className={styles.capability}>
+            <span>
+              {GRANT_CAPABILITY_LABELS[row.capability] ?? row.capability}
+            </span>
+            <span className={styles.code}>{row.capability}</span>
+          </span>
         ),
-        title: 'Capability',
-        width: 240,
+        title: '能力',
+        width: 150,
       },
       {
         dataIndex: ['scope', 'label'],
+        title: '范围',
+        width: 130,
+      },
+      {
+        dataIndex: 'source',
+        render: (_, row) => (row.source === 'DIRECT' ? '直接' : '继承'),
+        title: '来源',
+        width: 80,
+      },
+      {
+        key: 'validity',
         render: (_, row) => (
-          <Space size="small">
-            <SemanticTag
-              label={row.scope.type === 'PLATFORM' ? 'Platform' : 'Workspace'}
-              tone={row.scope.type === 'PLATFORM' ? 'purple' : 'info'}
-            />
-            <span>{row.scope.label}</span>
-          </Space>
+          <Typography.Text type="secondary">
+            {row.validFrom?.slice(0, 10) ?? '立即'} 起 · 至{' '}
+            {row.validTo?.slice(0, 10) ?? '长期'}
+          </Typography.Text>
         ),
-        title: 'Scope',
-        width: 220,
+        title: '生效期',
+        width: 170,
       },
       {
-        dataIndex: 'status',
-        render: (_, row) => <SemanticTag {...GRANT_STATUS_META[row.status]} />,
-        title: '状态',
-        width: 110,
+        dataIndex: 'grantedBy',
+        title: '授予人',
+        width: 100,
       },
-      {
-        dataIndex: 'validFrom',
-        title: '生效时间',
-        valueType: 'dateTime',
-        width: 180,
-      },
-      { dataIndex: 'version', title: '版本', width: 80 },
       {
         fixed: 'right',
         render: (_, row) =>
-          row.status === 'ACTIVE' ? (
+          row.status === 'REVOKED' ? (
+            <Typography.Text type="secondary">已撤销</Typography.Text>
+          ) : row.source === 'INHERITED' ? (
+            <Typography.Text type="secondary">继承</Typography.Text>
+          ) : (
             <Button danger onClick={() => setRevokingGrant(row)} type="link">
               撤销
             </Button>
-          ) : (
-            <Typography.Text type="secondary">已撤销</Typography.Text>
           ),
         title: '操作',
         valueType: 'option',
-        width: 100,
+        width: 70,
       },
     ],
-    [styles.code, styles.principal, styles.secondary],
+    [styles.capability, styles.code, styles.principal],
   );
 
   const submitGrant = async (input: GrantSubmitInput) => {
@@ -208,74 +272,58 @@ export default function AdminGrantsPage() {
   };
 
   return (
-    <PageContainer
-      ghost
-      subTitle="按 Principal × Capability × Scope 管理直接授权"
-      title="Grant 管理"
-    >
+    <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
-        <FilterToolbar
-          actions={
-            <Button
-              aria-expanded={grantOpen}
-              aria-haspopup="dialog"
-              onClick={() => setGrantOpen(true)}
-              type="primary"
-            >
-              授予能力
-            </Button>
-          }
-          ariaLabel="Grant 筛选与操作"
-          filters={
-            <Space wrap>
-              <Select
-                aria-label="按 Principal 筛选"
-                className={styles.filter}
-                id="admin-grant-principal-filter"
-                onChange={(nextPrincipalId) => {
-                  invalidatePendingRequests();
-                  setPrincipalId(nextPrincipalId);
-                }}
-                options={[
-                  { label: '全部 Principal', value: 'all' },
-                  ...principalOptions,
-                ]}
-                value={principalId}
-                virtual={false}
-              />
-              <Select
-                aria-label="按 Capability 筛选"
-                className={styles.filter}
-                id="admin-grant-capability-filter"
-                onChange={(nextCapability) => {
-                  invalidatePendingRequests();
-                  setCapability(nextCapability);
-                }}
-                options={[
-                  { label: '全部 Capability', value: 'all' },
-                  ...GRANT_CAPABILITY_OPTIONS.map((option) => ({ ...option })),
-                ]}
-                value={capability}
-                virtual={false}
-              />
-              <Typography.Text type="secondary">
-                共 {total} 条 Grant
-              </Typography.Text>
-            </Space>
-          }
+        <div className={styles.toolbar}>
+          <Typography.Text type="secondary">
+            一条授权 = 主体 × 能力 ×
+            范围。菜单可见性只是体验，最终判定始终由服务端做
+          </Typography.Text>
+          <Button
+            aria-expanded={grantOpen}
+            aria-haspopup="dialog"
+            icon={<PlusOutlined aria-hidden="true" />}
+            onClick={() => setGrantOpen(true)}
+            type="primary"
+          >
+            新增授权
+          </Button>
+        </div>
+
+        <section aria-label="Grant 统计" className={styles.stats}>
+          {grantStats.map(({ label, value }) => (
+            <div key={label}>
+              <strong>{value}</strong>
+              <Typography.Text type="secondary">{label}</Typography.Text>
+            </div>
+          ))}
+        </section>
+
+        <Segmented<GrantViewFilter>
+          aria-label="Grant 分类"
+          className={styles.segmented}
+          name="grant-category"
+          onChange={(nextFilter) => {
+            invalidatePendingRequests();
+            setViewFilter(nextFilter);
+          }}
+          options={GRANT_FILTER_OPTIONS.map((option) => ({ ...option }))}
+          size="small"
+          value={viewFilter}
         />
 
         <ProTable<GrantRow, GrantQueryParams>
           actionRef={actionRef}
           columns={columns}
-          onChange={invalidatePendingRequests}
+          key={viewFilter}
           options={false}
-          pagination={{ pageSize: 10, showSizeChanger: false }}
+          pagination={false}
           params={params}
           request={requestGrants}
           rowKey="id"
-          scroll={{ x: 1110 }}
+          scroll={{ x: 870 }}
           search={false}
+          size="small"
           toolBarRender={false}
         />
 
@@ -285,7 +333,7 @@ export default function AdminGrantsPage() {
             onSubmit={submitGrant}
             open
             principalOptions={principalOptions}
-            workspaceOptions={workspaceOptions}
+            scopeOptions={scopeOptions}
           />
         ) : null}
 

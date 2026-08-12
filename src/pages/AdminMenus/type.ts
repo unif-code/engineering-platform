@@ -1,6 +1,10 @@
+import type { ReactNode } from 'react';
 import type { RouteKey } from '@/features/navigation';
 
 export interface MenuRow {
+  capability: string;
+  icon: ReactNode;
+  isNew?: boolean;
   key: RouteKey;
   name: string;
   path: string;
@@ -20,10 +24,9 @@ export interface MenuQueryParams {
 }
 
 export interface MenuFormValues {
-  key: string;
+  capability: string;
+  group?: MenuGroup;
   name: string;
-  path: string;
-  group: MenuGroup;
-  order: number;
-  visible: boolean;
+  order?: number;
+  path?: string;
 }

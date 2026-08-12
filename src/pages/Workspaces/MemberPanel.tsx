@@ -32,20 +32,23 @@ export function MemberPanel({ workspace }: MemberPanelProps) {
         <span className={styles.secondaryText}>
           正式成员 = Owner + 受邀 Leader 直属有效员工；临时协作有时间边界
         </span>
-        <Button
-          aria-label="添加成员"
-          icon={<PlusOutlined />}
-          onClick={() => setModalOpen(true)}
-          type="primary"
-        >
-          添加成员
-        </Button>
+        {workspace.canManage ? (
+          <Button
+            aria-label="添加成员"
+            icon={<PlusOutlined />}
+            onClick={() => setModalOpen(true)}
+            size="small"
+            type="primary"
+          >
+            添加成员
+          </Button>
+        ) : null}
       </header>
 
       <ul aria-label={`${workspace.name} 成员`} className={styles.memberList}>
         {workspace.members.map((member) => (
           <li
-            aria-label={`${member.name} ${member.employeeId} ${member.role}`}
+            aria-label={`${member.name} ${member.role}${member.tag === 'temporary' ? ' 临时协作' : ''}`}
             className={styles.memberItem}
             key={member.employeeId}
           >
@@ -55,13 +58,28 @@ export function MemberPanel({ workspace }: MemberPanelProps) {
             <span className={styles.memberBody}>
               <span className={styles.memberIdentity}>
                 <span className={styles.memberName}>{member.name}</span>
-                <SemanticTag
-                  label={member.role}
-                  tone={member.role.includes('Owner') ? 'brand' : 'neutral'}
-                />
+                {member.tag === 'owner' ? (
+                  <SemanticTag label="Owner" tone="brand" />
+                ) : null}
+                {member.tag === 'temporary' ? (
+                  <SemanticTag label="临时协作" tone="info" />
+                ) : null}
+                {member.tag === 'disabled' ? (
+                  <SemanticTag label="已停用" tone="neutral" />
+                ) : null}
               </span>
-              <span className={styles.code}>{member.employeeId}</span>
+              <span className={styles.secondaryText}>{member.role}</span>
             </span>
+            {workspace.canManage && member.tag !== 'owner' ? (
+              <Button
+                aria-label={`移除成员 ${member.name}`}
+                onClick={() => showStaticAction(`移除成员 ${member.name}`)}
+                size="small"
+                type="link"
+              >
+                移除
+              </Button>
+            ) : null}
           </li>
         ))}
       </ul>
@@ -86,7 +104,12 @@ export function MemberPanel({ workspace }: MemberPanelProps) {
           title="添加成员"
         >
           <ProFormSelect
-            fieldProps={{ virtual: false }}
+            fieldProps={{
+              'aria-label': '选择成员',
+              id: 'workspace-member-candidate',
+              virtual: false,
+            }}
+            formItemProps={{ htmlFor: 'workspace-member-candidate' }}
             label="选择成员"
             name="employeeId"
             options={MEMBER_CANDIDATE_OPTIONS.map((option) => ({ ...option }))}
@@ -94,7 +117,12 @@ export function MemberPanel({ workspace }: MemberPanelProps) {
             rules={[{ message: '请选择协作成员', required: true }]}
           />
           <ProFormSelect
-            fieldProps={{ virtual: false }}
+            fieldProps={{
+              'aria-label': '协作期限',
+              id: 'workspace-collaboration-term',
+              virtual: false,
+            }}
+            formItemProps={{ htmlFor: 'workspace-collaboration-term' }}
             label="协作期限"
             name="collaborationTerm"
             options={COLLABORATION_TERM_OPTIONS.map((option) => ({

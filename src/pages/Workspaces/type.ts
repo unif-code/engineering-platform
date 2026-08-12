@@ -1,14 +1,23 @@
 export interface WorkspaceFixture {
+  archived?: boolean;
+  canManage: boolean;
+  foundRepositoryCount: number;
   id: string;
   name: string;
-  membership: 'Owner' | '成员';
-  description: string;
-  members: readonly { employeeId: string; name: string; role: string }[];
+  membership: 'Owner' | '成员' | '平台视图' | '临时协作';
+  members: readonly {
+    employeeId: string;
+    name: string;
+    role: string;
+    tag?: 'disabled' | 'owner' | 'temporary';
+  }[];
+  owner: string;
   repositories: readonly {
     name: string;
-    defaultBranch: string;
-    status: string;
+    selected: boolean;
+    stack: string;
   }[];
+  team: '营销' | '交易' | '中台';
 }
 
 export interface AddMemberValues {

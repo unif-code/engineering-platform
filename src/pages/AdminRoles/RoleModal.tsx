@@ -1,9 +1,10 @@
 import {
   ModalForm,
+  ProFormSelect,
   ProFormText,
-  ProFormTextArea,
 } from '@ant-design/pro-components';
 import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
+import { INITIAL_CAPABILITY_OPTIONS } from './constant';
 import type { RoleFormValues } from './type';
 
 interface RoleModalProps {
@@ -40,24 +41,34 @@ export function RoleModal({ open, onClose }: RoleModalProps) {
           submitText: '创建',
         },
       }}
-      title="新建 Role"
-      width={560}
+      title="新建角色"
+      width={480}
     >
       <ProFormText
         fieldProps={{ id: 'admin-role-create-name' }}
         formItemProps={{ htmlFor: 'admin-role-create-name' }}
         label="角色名称"
         name="name"
-        placeholder="例如 Release Operator"
+        placeholder="如：测试工程师"
         rules={[{ required: true, message: '请输入角色名称' }]}
       />
-      <ProFormTextArea
-        fieldProps={{ id: 'admin-role-create-description', rows: 4 }}
+      <ProFormText
+        fieldProps={{ id: 'admin-role-create-description' }}
         formItemProps={{ htmlFor: 'admin-role-create-description' }}
-        label="角色说明"
+        label="描述"
         name="description"
-        placeholder="描述 Role 的职责与适用边界"
-        rules={[{ required: true, message: '请输入角色说明' }]}
+        placeholder="选填"
+      />
+      <ProFormSelect
+        fieldProps={{
+          id: 'admin-role-create-capability',
+          options: [...INITIAL_CAPABILITY_OPTIONS],
+          virtual: false,
+        }}
+        formItemProps={{ htmlFor: 'admin-role-create-capability' }}
+        label="初始能力"
+        name="initialCapability"
+        rules={[{ required: true, message: '请选择初始能力' }]}
       />
     </ModalForm>
   );

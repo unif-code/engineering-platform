@@ -1,4 +1,4 @@
-import { PageContainer, ProCard } from '@ant-design/pro-components';
+import { PageContainer } from '@ant-design/pro-components';
 import { Tabs } from 'antd';
 import { useState } from 'react';
 import { WORKSPACE_FIXTURES } from './constant';
@@ -18,6 +18,9 @@ export default function WorkspacesPage() {
   const selectedWorkspace =
     WORKSPACE_FIXTURES.find((workspace) => workspace.id === selectedId) ??
     DEFAULT_WORKSPACE;
+  const selectedRepositoryCount = selectedWorkspace.repositories.filter(
+    ({ selected }) => selected,
+  ).length;
 
   const selectWorkspace = (workspaceId: string) => {
     setSelectedId(workspaceId);
@@ -37,7 +40,7 @@ export default function WorkspacesPage() {
           aria-label={`${selectedWorkspace.name} 工作区详情`}
           className={styles.detailCard}
         >
-          <ProCard className={styles.card}>
+          <div className={styles.detailSurface} data-workspace-surface>
             <header className={styles.detailHeader}>
               <span
                 aria-label={`${selectedWorkspace.name} 工作区标识`}
@@ -49,9 +52,9 @@ export default function WorkspacesPage() {
               <div className={styles.detailIdentity}>
                 <h2 className={styles.detailTitle}>{selectedWorkspace.name}</h2>
                 <p className={styles.detailDescription}>
-                  Owner {selectedWorkspace.members[0]?.name ?? '—'} ·{' '}
-                  {selectedWorkspace.members.length} 成员 ·{' '}
-                  {selectedWorkspace.repositories.length} 仓库
+                  Owner：{selectedWorkspace.owner}（开发Leader）· GitLab 已连接
+                  · 成员与仓库构成业务资源边界
+                  {selectedWorkspace.archived ? ' · 已归档' : ''}
                 </p>
               </div>
             </header>
@@ -63,22 +66,46 @@ export default function WorkspacesPage() {
                 {
                   children: <MemberPanel workspace={selectedWorkspace} />,
                   key: 'members',
-                  label: '成员',
+                  label: (
+                    <span>
+                      成员{' '}
+                      <span aria-hidden>
+                        {selectedWorkspace.members.length}
+                      </span>
+                    </span>
+                  ),
                 },
                 {
                   children: <RepositoryPanel workspace={selectedWorkspace} />,
                   key: 'repositories',
-                  label: '仓库',
+                  label: (
+                    <span>
+                      仓库{' '}
+                      <span aria-hidden>
+                        {selectedWorkspace.canManage
+                          ? `${selectedRepositoryCount}/${selectedWorkspace.foundRepositoryCount}`
+                          : selectedRepositoryCount}
+                      </span>
+                    </span>
+                  ),
                 },
-                {
-                  children: <SettingsPanel workspace={selectedWorkspace} />,
-                  key: 'settings',
-                  label: '设置',
-                },
+                ...(selectedWorkspace.canManage
+                  ? [
+                      {
+                        children: (
+                          <SettingsPanel workspace={selectedWorkspace} />
+                        ),
+                        key: 'settings',
+                        label: '设置',
+                      },
+                    ]
+                  : []),
               ]}
               onChange={(key) => setActiveTab(key as WorkspaceTabKey)}
+              styles={{ body: { minWidth: 0 } }}
+              tabBarStyle={{ margin: 0, paddingInline: 20 }}
             />
-          </ProCard>
+          </div>
         </section>
       </div>
     </PageContainer>

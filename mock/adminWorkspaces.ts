@@ -1,4 +1,5 @@
 import { defineMock } from '@umijs/max';
+import { type GovernanceCatalog, governanceCatalog } from './governanceCatalog';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -14,9 +15,12 @@ interface AccountRef {
 interface WorkspaceRecord {
   id: string;
   invitedLeaders: AccountRef[];
+  memberCount?: number;
   name: string;
   owner: AccountRef;
+  repositoryCount?: number;
   status: WorkspaceStatus;
+  team?: string;
   version: number;
 }
 
@@ -36,49 +40,74 @@ interface MockResponse {
 
 export interface AdminWorkspacesMockOptions {
   authorize?: (request: MockRequest) => boolean;
+  catalog?: GovernanceCatalog;
 }
 
 const LEADERS = {
-  fang: { displayName: '方舟', employeeNo: '10002000', id: 'leader-fang' },
-  shen: { displayName: '沈一', employeeNo: '10002001', id: 'leader-shen' },
-  zhao: { displayName: '赵晨', employeeNo: '10002002', id: 'leader-zhao' },
+  gao: { displayName: '高翔', employeeNo: 'E3003', id: 'leader-gao' },
+  li: { displayName: '李强', employeeNo: 'E1003', id: 'leader-li' },
+  liu: { displayName: '刘洋', employeeNo: 'E2001', id: 'leader-liu' },
+  wu: { displayName: '吴桐', employeeNo: 'E1002', id: 'leader-wu' },
 } as const satisfies Record<string, AccountRef>;
 
 const DIRECT_REPORTS: Record<string, readonly AccountRef[]> = {
-  'leader-fang': [
-    { displayName: '林一', employeeNo: '10003000', id: 'member-lin' },
+  'leader-gao': [
+    { displayName: '白露', employeeNo: 'E3004', id: 'member-bai' },
+    { displayName: '纪辉', employeeNo: 'E3005', id: 'member-ji' },
   ],
-  'leader-shen': [
-    { displayName: '韩梅', employeeNo: '10003001', id: 'member-han' },
+  'leader-li': [
+    { displayName: '陈晓', employeeNo: 'E1004', id: 'member-chen' },
+    { displayName: '郑楠', employeeNo: 'E1005', id: 'member-zheng' },
   ],
-  'leader-zhao': [
-    { displayName: '吴桐', employeeNo: '10003002', id: 'member-wu' },
+  'leader-liu': [{ displayName: '何山', employeeNo: 'E2002', id: 'member-he' }],
+  'leader-wu': [
+    { displayName: '王悦', employeeNo: 'E1001', id: 'member-wang' },
   ],
 };
 
 const INITIAL_WORKSPACES = Object.freeze([
   Object.freeze({
     id: 'workspace-platform-core',
-    invitedLeaders: Object.freeze([LEADERS.shen]),
-    name: 'Platform Core',
-    owner: LEADERS.fang,
+    invitedLeaders: Object.freeze([LEADERS.wu]),
+    memberCount: 12,
+    name: '营销工作区',
+    owner: LEADERS.li,
+    repositoryCount: 10,
     status: 'ACTIVE',
+    team: '营销',
     version: 1,
   }),
   Object.freeze({
     id: 'workspace-agent-runtime',
     invitedLeaders: Object.freeze([]),
-    name: 'Agent Runtime',
-    owner: LEADERS.zhao,
+    memberCount: 9,
+    name: '交易工作区',
+    owner: LEADERS.liu,
+    repositoryCount: 8,
     status: 'ACTIVE',
+    team: '交易',
     version: 1,
   }),
   Object.freeze({
     id: 'workspace-delivery-governance',
     invitedLeaders: Object.freeze([]),
-    name: 'Delivery Governance',
-    owner: LEADERS.shen,
+    memberCount: 7,
+    name: '中台工作区',
+    owner: LEADERS.gao,
+    repositoryCount: 6,
+    status: 'ACTIVE',
+    team: '中台',
+    version: 1,
+  }),
+  Object.freeze({
+    id: 'workspace-marketing-archive',
+    invitedLeaders: Object.freeze([]),
+    memberCount: 3,
+    name: '历史活动专区',
+    owner: LEADERS.li,
+    repositoryCount: 2,
     status: 'ARCHIVED',
+    team: '营销',
     version: 3,
   }),
 ] as const);
@@ -107,11 +136,15 @@ export function createAdminWorkspacesMock(
   options: AdminWorkspacesMockOptions = {},
 ) {
   const authorize = options.authorize ?? (() => true);
+  const catalog = options.catalog ?? governanceCatalog;
   const workspaces: WorkspaceRecord[] = INITIAL_WORKSPACES.map((workspace) => ({
     ...workspace,
     invitedLeaders: workspace.invitedLeaders.map((leader) => ({ ...leader })),
     owner: { ...workspace.owner },
   }));
+  for (const workspace of workspaces) {
+    catalog.registerWorkspace({ id: workspace.id, name: workspace.name });
+  }
   let nextWorkspaceId = 1;
   let requestSequence = 0;
 
@@ -217,7 +250,7 @@ export function createAdminWorkspacesMock(
   const summary = (workspace: WorkspaceRecord) => ({
     id: workspace.id,
     leaders: formalLeaders(workspace).map((leader) => ({ ...leader })),
-    memberCount: memberProjection(workspace).length,
+    memberCount: workspace.memberCount ?? memberProjection(workspace).length,
     name: workspace.name,
     owner: { ...workspace.owner },
     status: workspace.status,
@@ -300,6 +333,7 @@ export function createAdminWorkspacesMock(
         version: 1,
       };
       workspaces.push(workspace);
+      catalog.registerWorkspace({ id: workspace.id, name: workspace.name });
       response.status(201).json(summary(workspace));
     },
     'POST /api/v1/admin/workspaces/:workspaceId/leaders': (

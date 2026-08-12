@@ -49,8 +49,14 @@ export function RevokeGrantModal({
       width={520}
     >
       <Typography.Paragraph type="secondary">
-        {grant.principal.employeeNo} · {grant.principal.displayName} ·{' '}
-        {grant.capability} · {grant.scope.label}
+        {[
+          grant.principal.employeeNo,
+          grant.principal.displayName,
+          grant.capability,
+          grant.scope.label,
+        ]
+          .filter(Boolean)
+          .join(' · ')}
       </Typography.Paragraph>
       <ProFormTextArea
         fieldProps={{ id: 'admin-grant-revoke-reason', rows: 3 }}

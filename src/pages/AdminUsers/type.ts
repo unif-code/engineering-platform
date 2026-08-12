@@ -2,12 +2,29 @@ import type {
   AccountCredentialReceipt,
   AccountStatus,
   AccountSummary,
-  CreateAccountInput,
 } from '@/features/administration';
 
-export type UserRow = AccountSummary;
+export interface UserRow extends AccountSummary {
+  lastLogin?: string;
+  roles?: readonly string[];
+  superior?: string;
+  team?: string;
+}
+
+export interface UserEditFormValues {
+  displayName: string;
+  role: string;
+  status: 'DISABLED' | 'ENABLED';
+  team: string;
+}
 export type UserStatus = AccountStatus;
-export type UserFormValues = CreateAccountInput;
+export interface UserFormValues {
+  displayName: string;
+  employeeNo: string;
+  role: string;
+  superior: string;
+  team: string;
+}
 export type CredentialReceipt = AccountCredentialReceipt;
 
 export interface UserQueryParams {

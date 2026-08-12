@@ -33,111 +33,114 @@ async function selectTeam(
 }
 
 describe('TeamBoardPage', () => {
-  it('默认展示 Platform 的完整交付视图', () => {
+  it('默认展示营销 Team 的原型完整分析视图', () => {
     renderPage();
 
     const teamSelector = screen.getByRole('radiogroup', {
       name: '选择团队',
     });
-    for (const team of ['Platform', 'Agent Runtime', 'Delivery Governance']) {
+    for (const team of ['营销', '交易', '中台']) {
       expect(
         within(teamSelector).getByRole('radio', { name: team }),
       ).toBeInTheDocument();
     }
     expect(
-      within(teamSelector).getByRole('radio', { name: 'Platform' }),
+      within(teamSelector).getByRole('radio', { name: '营销' }),
     ).toBeChecked();
 
-    const metrics = screen.getByRole('region', { name: 'Platform KPI' });
+    const metrics = screen.getByRole('region', { name: '营销 KPI' });
     expect(within(metrics).getAllByRole('article')).toHaveLength(4);
     expect(
-      within(metrics).getByRole('article', { name: '迭代完成率：86%' }),
+      within(metrics).getByRole('article', { name: '进行中：14' }),
     ).toBeInTheDocument();
 
     const throughput = screen.getByRole('figure', {
-      name: 'Platform 七日吞吐',
+      name: '营销近八周吞吐',
     });
     expect(
       throughput.querySelector('[data-ant-design-chart="column"]'),
     ).toBeInTheDocument();
 
     const distribution = screen.getByRole('figure', {
-      name: 'Platform 阶段分布',
+      name: '营销阶段分布',
     });
     expect(
       distribution.querySelector('[data-ant-design-chart="bar"]'),
     ).toBeInTheDocument();
 
     expect(
-      within(
-        screen.getByRole('list', { name: 'Platform 成员负载' }),
-      ).getAllByRole('listitem'),
-    ).toHaveLength(3);
+      within(screen.getByRole('list', { name: '营销成员负载' })).getAllByRole(
+        'listitem',
+      ),
+    ).toHaveLength(4);
     expect(
-      screen.getByRole('listitem', { name: '林澄：平台体验负责人，负载 72%' }),
+      screen.getByRole('listitem', {
+        name: '陈晓：5 项，Agent 参与率 82%',
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('list', { name: 'Platform 阻塞事项' }),
-    ).toHaveTextContent('制品权限矩阵待确认');
+      screen.getByRole('figure', { name: '营销合并请求处理周期' }),
+    ).toHaveTextContent('当前 1.8 天');
     expect(
-      screen.queryByText('按团队查看交付节奏、成员负载与当前阻塞'),
-    ).not.toBeInTheDocument();
+      screen.getByRole('list', { name: '营销阻塞事项' }),
+    ).toHaveTextContent('需求对齐超 3 天');
+    expect(screen.queryByText('Platform')).not.toBeInTheDocument();
   });
 
   it('切换 Team 后同步更新 KPI、吞吐、阶段、成员和阻塞事项', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    await selectTeam(user, 'Agent Runtime');
+    await selectTeam(user, '交易');
 
+    expect(screen.getByRole('region', { name: '交易 KPI' })).toHaveTextContent(
+      '进行中11',
+    );
     expect(
-      screen.getByRole('region', { name: 'Agent Runtime KPI' }),
-    ).toHaveTextContent('运行成功率94%');
-    expect(
-      screen.getByRole('figure', { name: 'Agent Runtime 七日吞吐' }),
+      screen.getByRole('figure', { name: '交易近八周吞吐' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('figure', { name: 'Agent Runtime 阶段分布' }),
+      screen.getByRole('figure', { name: '交易阶段分布' }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('listitem', {
-        name: '方舟：Agent 平台工程师，负载 84%',
+        name: '何山：4 项，Agent 参与率 77%',
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('list', { name: 'Agent Runtime 阻塞事项' }),
-    ).toHaveTextContent('沙箱镜像冷启动偏高');
+      screen.getByRole('list', { name: '交易阻塞事项' }),
+    ).toHaveTextContent('Agent 等待补充 K 线交互说明');
     expect(
-      screen.queryByRole('list', { name: 'Platform 成员负载' }),
+      screen.queryByRole('list', { name: '营销成员负载' }),
     ).not.toBeInTheDocument();
 
-    await selectTeam(user, 'Delivery Governance');
+    await selectTeam(user, '中台');
 
-    expect(
-      screen.getByRole('region', { name: 'Delivery Governance KPI' }),
-    ).toHaveTextContent('合并通过率91%');
+    expect(screen.getByRole('region', { name: '中台 KPI' })).toHaveTextContent(
+      '阻塞0',
+    );
     expect(
       screen.getByRole('figure', {
-        name: 'Delivery Governance 七日吞吐',
+        name: '中台近八周吞吐',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('figure', {
-        name: 'Delivery Governance 阶段分布',
+        name: '中台阶段分布',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('listitem', {
-        name: '沈一：交付治理负责人，负载 76%',
+        name: '康宁：3 项，Agent 参与率 70%',
       }),
     ).toBeInTheDocument();
     expect(
       screen.getByRole('list', {
-        name: 'Delivery Governance 阻塞事项',
+        name: '中台阻塞事项',
       }),
-    ).toHaveTextContent('发布 Gate 证据缺失');
+    ).toHaveTextContent('当前无阻塞任务');
     expect(
-      screen.queryByRole('list', { name: 'Agent Runtime 成员负载' }),
+      screen.queryByRole('list', { name: '交易成员负载' }),
     ).not.toBeInTheDocument();
   });
 
@@ -147,17 +150,17 @@ describe('TeamBoardPage', () => {
 
     await user.click(
       screen.getByRole('button', {
-        name: '处理阻塞：制品权限矩阵待确认',
+        name: '处理阻塞：需求对齐超 3 天',
       }),
     );
 
     expect(
       await screen.findByText(
-        '静态原型操作：处理阻塞 制品权限矩阵待确认，未保存任何业务数据。',
+        '静态原型操作：处理阻塞 需求对齐超 3 天，未保存任何业务数据。',
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('list', { name: 'Platform 阻塞事项' }),
-    ).toHaveTextContent('制品权限矩阵待确认');
+      screen.getByRole('list', { name: '营销阻塞事项' }),
+    ).toHaveTextContent('需求对齐超 3 天');
   });
 });

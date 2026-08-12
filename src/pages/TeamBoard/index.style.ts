@@ -6,43 +6,35 @@ export const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     gap: token.margin,
   },
-  card: {
-    height: '100%',
-    borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
-  },
-  selectorHeader: {
+  toolbar: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: token.margin,
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  teamName: {
-    margin: 0,
-    color: token.colorText,
-    fontSize: token.fontSizeHeading3,
-    lineHeight: token.lineHeightHeading3,
-  },
-  teamSummary: {
-    marginBlock: `${token.marginXXS}px 0`,
-    color: token.colorTextSecondary,
-    fontSize: token.fontSizeSM,
-    lineHeight: token.lineHeightSM,
+    gap: token.marginSM,
   },
   teamSelector: {
-    flex: '1 1 360px',
+    flex: 'none',
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: token.margin,
   },
   analysisGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: token.margin,
     alignItems: 'stretch',
+  },
+  rightStack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.margin,
+  },
+  card: {
+    height: '100%',
+    borderColor: token.colorBorderSecondary,
   },
   chartFigure: {
     width: '100%',
@@ -68,34 +60,32 @@ export const useStyles = createStyles(({ token }) => ({
   },
   memberHeader: {
     display: 'flex',
-    gap: token.marginSM,
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: token.marginXS,
+    gap: token.marginSM,
+    marginBottom: token.marginXXS,
   },
-  memberIdentity: {
+  memberMeta: {
     display: 'flex',
-    minWidth: 0,
-    flexDirection: 'column',
+    alignItems: 'center',
+    gap: token.marginXS,
   },
-  memberRole: {
-    color: token.colorTextSecondary,
-    fontSize: token.fontSizeSM,
-    lineHeight: token.lineHeightSM,
+  participationRow: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: token.marginSM,
+    marginTop: token.marginXS,
   },
-  loadValue: {
-    flexShrink: 0,
-    color: token.colorText,
+  participationProgress: {
+    flex: 1,
+  },
+  mergeAverage: {
+    color: token.colorPrimary,
   },
   blockerItem: {
     borderBlockEnd: `${token.lineWidth}px ${token.lineType} ${token.colorSplit}`,
 
-    '&:first-child': {
-      paddingBlockStart: 0,
-    },
-
     '&:last-child': {
-      paddingBlockEnd: 0,
       borderBlockEnd: 0,
     },
   },
@@ -108,14 +98,18 @@ export const useStyles = createStyles(({ token }) => ({
   },
   blockerHeader: {
     display: 'flex',
-    gap: token.marginSM,
     alignItems: 'center',
     justifyContent: 'space-between',
+    gap: token.marginSM,
   },
   blockerDescription: {
     marginBlock: `${token.marginXXS}px 0`,
     color: token.colorTextSecondary,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeightSM,
+  },
+  emptyBlocker: {
+    paddingBlock: token.paddingSM,
+    color: token.colorTextSecondary,
   },
 }));

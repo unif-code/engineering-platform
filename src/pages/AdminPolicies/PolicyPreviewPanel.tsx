@@ -6,7 +6,6 @@ import {
 import { useCallback, useMemo } from 'react';
 import type { PolicyPreview } from '@/features/administration';
 import { formatPolicyValue } from './constant';
-import { useStyles } from './index.style';
 import type { PolicyPreviewRow, PolicyTableQueryParams } from './type';
 
 interface PolicyPreviewPanelProps {
@@ -14,7 +13,6 @@ interface PolicyPreviewPanelProps {
 }
 
 export function PolicyPreviewPanel({ preview }: PolicyPreviewPanelProps) {
-  const { styles } = useStyles();
   const columns = useMemo<ProColumns<PolicyPreviewRow>[]>(
     () => [
       { dataIndex: 'label', title: 'Policy Key', width: 180 },
@@ -48,8 +46,9 @@ export function PolicyPreviewPanel({ preview }: PolicyPreviewPanelProps) {
   );
 
   return (
-    <section aria-label="Policy Preview" className={styles.preview}>
+    <section aria-label="Policy Preview" data-density="compact">
       <ProTable<PolicyPreviewRow, PolicyTableQueryParams>
+        cardProps={{ styles: { body: { paddingInline: 0 } } }}
         columns={columns}
         headerTitle="Policy Preview"
         options={false}
@@ -58,6 +57,7 @@ export function PolicyPreviewPanel({ preview }: PolicyPreviewPanelProps) {
         request={requestPreviewRows}
         rowKey="key"
         search={false}
+        size="small"
         toolBarRender={false}
       />
     </section>

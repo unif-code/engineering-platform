@@ -25,7 +25,7 @@ beforeEach(() => {
 });
 
 describe('HeaderActions', () => {
-  it('顶栏只呈现搜索、紧凑消息入口和当前用户菜单', async () => {
+  it('顶栏只呈现搜索和当前用户菜单，消息入口由侧栏承载', async () => {
     const user = userEvent.setup();
     const onLogout = vi.fn();
     render(
@@ -43,9 +43,7 @@ describe('HeaderActions', () => {
     expect(
       screen.getByRole('combobox', { name: '全局搜索' }).closest('.ant-select'),
     ).toHaveStyle({ width: '220px' });
-    expect(
-      screen.getByRole('button', { name: '消息入口，4 条未读' }),
-    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /消息入口/ })).toBeNull();
     expect(screen.queryByRole('button', { name: '主题设置' })).toBeNull();
     expect(screen.queryByRole('button', { name: '退出登录' })).toBeNull();
     expect(
@@ -92,22 +90,6 @@ describe('HeaderActions', () => {
     const selectedDark = await screen.findByRole('menuitem', { name: '深色' });
     expect(selectedDark).toHaveClass('ant-dropdown-menu-item-selected');
     expect(selectedDark.querySelector('.anticon-check')).toBeInTheDocument();
-  });
-
-  it('消息入口只展示静态提示', async () => {
-    render(
-      <AntdApp>
-        <ThemeProvider>
-          <HeaderActions onLogout={vi.fn()} user={null} />
-        </ThemeProvider>
-      </AntdApp>,
-    );
-
-    fireEvent.click(screen.getByRole('button', { name: '消息入口，4 条未读' }));
-
-    expect(
-      await screen.findByText('静态原型：消息入口暂未接入。'),
-    ).toBeInTheDocument();
   });
 
   it('选择静态搜索项只展示未接入提示', async () => {

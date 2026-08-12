@@ -1,4 +1,4 @@
-import { Column } from '@ant-design/charts';
+import { Bar, Column } from '@ant-design/charts';
 import {
   type ActionType,
   PageContainer,
@@ -21,22 +21,27 @@ import {
   AUDIT_METRICS,
   AUDIT_PAGE_SIZE,
   AUDIT_RANGE_OPTIONS,
-  AUDIT_RESULT_COUNTS,
+  AUDIT_RESULT_DISTRIBUTION,
   AUDIT_RESULT_META,
   AUDIT_RISK_META,
   AUDIT_RISK_OPTIONS,
-  AUDIT_TARGET_TYPE_OPTIONS,
   AUDIT_TREND,
 } from './constant';
 import { useStyles } from './index.style';
 import type { AuditQueryParams, AuditRange, AuditRow } from './type';
 import { mergeAndSelectAuditRows, queryAuditRows } from './util';
 
-const ACTION_TONE: Record<AuditRow['action'], 'brand' | 'info' | 'purple'> = {
-  'Capability Activate': 'purple',
-  'Artifact Accept': 'info',
-  Promotion: 'brand',
-  'Config Publish': 'purple',
+const ACTION_META: Record<
+  AuditRow['action'],
+  { label: string; tone: 'brand' | 'info' | 'purple' }
+> = {
+  'Capability Activate': {
+    label: '能力激活 · Capability Activate',
+    tone: 'purple',
+  },
+  'Artifact Accept': { label: '制品验收 · Artifact Accept', tone: 'info' },
+  Promotion: { label: '模型晋级 · Promotion', tone: 'brand' },
+  'Config Publish': { label: '配置发布 · Config Publish', tone: 'purple' },
 };
 
 export default function AuditPage() {
@@ -46,14 +51,12 @@ export default function AuditPage() {
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
   const loadedRowsRef = useRef<AuditRow[]>([]);
-  const [range, setRange] = useState<AuditRange>('all');
+  const [range, setRange] = useState<AuditRange>('7d');
   const [action, setAction] =
     useState<NonNullable<AuditQueryParams['action']>>('all');
   const [risk, setRisk] =
     useState<NonNullable<AuditQueryParams['risk']>>('all');
-  const [actor, setActor] = useState('');
-  const [targetType, setTargetType] =
-    useState<NonNullable<AuditQueryParams['targetType']>>('all');
+  const [keyword, setKeyword] = useState('');
   const [cursor, setCursor] = useState<string>();
   const [nextCursor, setNextCursor] = useState<string | null>();
   const [visibleCount, setVisibleCount] = useState(0);
@@ -78,14 +81,13 @@ export default function AuditPage() {
   const queryParams = useMemo<AuditQueryParams>(
     () => ({
       action,
-      actor,
       cursor,
+      keyword,
       pageSize: AUDIT_PAGE_SIZE,
       range,
       risk,
-      targetType,
     }),
-    [action, actor, cursor, range, risk, targetType],
+    [action, cursor, keyword, range, risk],
   );
 
   const requestAuditRows = useCallback<
@@ -153,32 +155,24 @@ export default function AuditPage() {
   const columns = useMemo<ProColumns<AuditRow>[]>(
     () => [
       {
-        dataIndex: 'id',
-        render: (_, row) => <span className={styles.code}>{row.id}</span>,
-        title: '事件 ID',
-        width: 180,
-      },
-      {
         dataIndex: 'occurredAt',
         sorter: true,
-        title: '发生时间',
+        title: '时间',
         valueType: 'dateTime',
-        width: 180,
+        width: 170,
       },
       { dataIndex: 'actor', title: '操作人', width: 100 },
       {
         dataIndex: 'action',
-        render: (_, row) => (
-          <SemanticTag label={row.action} tone={ACTION_TONE[row.action]} />
-        ),
+        render: (_, row) => <SemanticTag {...ACTION_META[row.action]} />,
         title: '动作',
-        width: 180,
+        width: 240,
       },
       {
         dataIndex: 'target',
         render: (_, row) => <span className={styles.code}>{row.target}</span>,
         title: '目标',
-        width: 240,
+        width: 260,
       },
       {
         dataIndex: 'risk',
@@ -193,17 +187,15 @@ export default function AuditPage() {
         width: 100,
       },
       {
-        dataIndex: 'correlationId',
-        render: (_, row) => (
-          <span className={styles.code}>{row.correlationId}</span>
-        ),
-        title: 'Correlation ID',
-        width: 200,
+        dataIndex: 'sourceIp',
+        render: (_, row) => <span className={styles.code}>{row.sourceIp}</span>,
+        title: '来源 IP',
+        width: 120,
       },
       {
         fixed: 'right',
         render: (_, row) => (
-          <Button onClick={() => setSelectedRow(row)} type="link">
+          <Button onClick={() => setSelectedRow(row)} size="small" type="link">
             查看详情
           </Button>
         ),
@@ -239,44 +231,38 @@ export default function AuditPage() {
                 height={140}
                 label={{ position: 'top', text: 'valueLabel' }}
                 style={{
-                  fill: (datum: (typeof AUDIT_TREND)[number]) =>
-                    datum.tone === 'success'
-                      ? token.colorSuccess
-                      : token.colorPrimary,
+                  fill: token.colorText,
                 }}
                 xField="label"
                 yField="value"
               />
             </figure>
           </ProCard>
-          <ProCard className={styles.card} title="动作分类">
+          <ProCard className={styles.card} title="动作分类占比">
             <figure aria-label="审计动作分类" className={styles.chartFigure}>
-              <Column
+              <Bar
                 animate={false}
-                axis={{ x: { title: false }, y: false }}
+                axis={{ x: false, y: { title: false } }}
                 data={[...AUDIT_ACTION_DISTRIBUTION]}
                 height={140}
-                label={{ position: 'top', text: 'valueLabel' }}
+                label={{ position: 'right', text: 'valueLabel' }}
+                legend={false}
                 style={{ fill: token.colorPrimary }}
-                xField="label"
-                yField="value"
+                xField="value"
+                yField="label"
               />
             </figure>
           </ProCard>
           <ProCard className={styles.card} title="结果分布">
             <ul aria-label="审计结果分布" className={styles.resultList}>
-              {(Object.keys(AUDIT_RESULT_COUNTS) as AuditRow['result'][]).map(
-                (result) => (
-                  <li className={styles.resultItem} key={result}>
-                    <span className={styles.resultLabel}>
-                      <SemanticTag {...AUDIT_RESULT_META[result]} />
-                    </span>
-                    <span className={styles.resultValue}>
-                      {AUDIT_RESULT_COUNTS[result]}
-                    </span>
-                  </li>
-                ),
-              )}
+              {AUDIT_RESULT_DISTRIBUTION.map((result) => (
+                <li className={styles.resultItem} key={result.key}>
+                  <span className={styles.resultLabel}>
+                    <SemanticTag label={result.label} tone={result.tone} />
+                  </span>
+                  <span className={styles.resultValue}>{result.value}%</span>
+                </li>
+              ))}
             </ul>
             <p className={styles.note}>
               全链路以 Correlation ID 串联；审计事实不可修改。
@@ -286,17 +272,12 @@ export default function AuditPage() {
 
         <FilterToolbar
           actions={
-            <Space wrap>
-              <Button onClick={() => showStaticAction('保存审计筛选')}>
-                保存筛选
-              </Button>
-              <Button
-                onClick={() => showStaticAction('导出审计报表')}
-                type="primary"
-              >
-                导出报表
-              </Button>
-            </Space>
+            <Button
+              onClick={() => showStaticAction('导出审计报表')}
+              size="small"
+            >
+              导出报表
+            </Button>
           }
           ariaLabel="审计筛选与操作"
           filters={
@@ -310,21 +291,8 @@ export default function AuditPage() {
                   setRange(nextRange);
                 }}
                 options={AUDIT_RANGE_OPTIONS.map((option) => ({ ...option }))}
+                size="small"
                 value={range}
-                virtual={false}
-              />
-              <Select<NonNullable<AuditQueryParams['targetType']>>
-                aria-label="目标类型"
-                className={styles.filter}
-                id="audit-target-type-filter"
-                onChange={(nextTargetType) => {
-                  resetCursor();
-                  setTargetType(nextTargetType);
-                }}
-                options={AUDIT_TARGET_TYPE_OPTIONS.map((option) => ({
-                  ...option,
-                }))}
-                value={targetType}
                 virtual={false}
               />
               <Select<NonNullable<AuditQueryParams['action']>>
@@ -336,6 +304,7 @@ export default function AuditPage() {
                   setAction(nextAction);
                 }}
                 options={AUDIT_ACTION_OPTIONS.map((option) => ({ ...option }))}
+                size="small"
                 value={action}
                 virtual={false}
               />
@@ -348,42 +317,45 @@ export default function AuditPage() {
                   setRisk(nextRisk);
                 }}
                 options={AUDIT_RISK_OPTIONS.map((option) => ({ ...option }))}
+                size="small"
                 value={risk}
                 virtual={false}
               />
+              <Input.Search
+                allowClear
+                aria-label="操作人 / 对象 / IP"
+                className={styles.search}
+                onChange={(event) => {
+                  resetCursor();
+                  setKeyword(event.target.value);
+                }}
+                placeholder="操作人 / 对象 / IP"
+                size="small"
+                value={keyword}
+              />
+              <Typography.Text type="secondary">
+                共 {visibleCount} 条
+              </Typography.Text>
             </Space>
-          }
-          search={
-            <Input.Search
-              allowClear
-              aria-label="操作人"
-              className={styles.search}
-              onChange={(event) => {
-                resetCursor();
-                setActor(event.target.value);
-              }}
-              placeholder="输入操作人"
-              value={actor}
-            />
-          }
-          summary={
-            <Typography.Text type="secondary">
-              已加载 {visibleCount} 条审计事件
-            </Typography.Text>
           }
         />
 
         <ProTable<AuditRow, AuditQueryParams>
           actionRef={actionRef}
           columns={columns}
+          key={JSON.stringify({ action, keyword, range, risk })}
           onChange={resetCursor}
+          onRow={(row) => ({
+            'aria-label': `${row.id} ${row.actor} ${row.action} ${row.target}`,
+          })}
           options={false}
           pagination={false}
           params={queryParams}
           request={requestAuditRows}
           rowKey="id"
-          scroll={{ x: 1180 }}
+          scroll={{ x: 1100 }}
           search={false}
+          size="small"
           toolBarRender={false}
         />
 

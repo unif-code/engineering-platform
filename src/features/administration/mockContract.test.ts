@@ -96,7 +96,8 @@ describe('admin accounts mock-only contract', () => {
   it('按员工号、姓名、状态、专业分类过滤后再服务端分页和排序', async () => {
     const response = await invokeRoute(routes, 'GET /api/v1/admin/accounts', {
       query: {
-        displayName: '示例用户',
+        displayName: '陈',
+        employeeNo: 'E100',
         page: '1',
         pageSize: '1',
         profession: '研发',
@@ -110,12 +111,12 @@ describe('admin accounts mock-only contract', () => {
     expect(response.body).toEqual({
       items: [
         expect.objectContaining({
-          employeeNo: '10000004',
+          employeeNo: 'E1004',
           profession: '研发',
           status: 'ENABLED',
         }),
       ],
-      total: 2,
+      total: 1,
     });
   });
 
@@ -167,12 +168,12 @@ describe('admin accounts mock-only contract', () => {
       'POST /api/v1/admin/accounts',
       writeRequest({
         displayName: '重复用户',
-        employeeNo: '10000001',
+        employeeNo: 'E1001',
         reason: '重复测试',
       }),
     );
 
-    expectProblem(response, 409, '员工号 10000001 已存在');
+    expectProblem(response, 409, '员工号 E1001 已存在');
   });
 
   it('写请求缺少 Idempotency-Key 或 reason 时返回 422 Problem', async () => {
@@ -217,7 +218,7 @@ describe('admin accounts mock-only contract', () => {
     expect(disabled.ended).toBe(true);
 
     const listed = await invokeRoute(routes, 'GET /api/v1/admin/accounts', {
-      query: { employeeNo: '10000001', page: '1', pageSize: '10' },
+      query: { employeeNo: 'E1001', page: '1', pageSize: '10' },
     });
     expect(listed.body).toEqual({
       items: [expect.objectContaining({ status: 'DISABLED' })],
@@ -272,7 +273,11 @@ describe('admin accounts mock-only contract', () => {
     );
 
     const listed = await invokeRoute(routes, 'GET /api/v1/admin/accounts', {
-      query: { employeeNo: '10000001', page: '1', pageSize: '10' },
+      query: { employeeNo: 'E1001', page: '1', pageSize: '10' },
+    });
+    expect(listed.body).toEqual({
+      items: [expect.objectContaining({ id: 'account-1' })],
+      total: 1,
     });
     expect(JSON.stringify(listed.body)).not.toContain('temporaryPassword');
   });
@@ -302,7 +307,7 @@ describe('admin accounts mock-only contract', () => {
 
     const isolated = createAdminAccountsMock();
     const listed = await invokeRoute(isolated, 'GET /api/v1/admin/accounts', {
-      query: { employeeNo: '10000001', page: '1', pageSize: '10' },
+      query: { employeeNo: 'E1001', page: '1', pageSize: '10' },
     });
     expect(listed.body).toEqual({
       items: [expect.objectContaining({ status: 'ENABLED' })],

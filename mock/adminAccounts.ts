@@ -1,4 +1,5 @@
 import { defineMock } from '@umijs/max';
+import { type GovernanceCatalog, governanceCatalog } from './governanceCatalog';
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -9,8 +10,12 @@ interface AccountSummary {
   id: string;
   employeeNo: string;
   displayName: string;
+  lastLogin?: string;
   profession: string | null;
+  roles?: readonly string[];
   status: AccountStatus;
+  superior?: string;
+  team?: string;
 }
 
 interface MockRequest {
@@ -29,50 +34,163 @@ interface MockResponse {
 
 export interface AdminAccountsMockOptions {
   authorize?: (request: MockRequest) => boolean;
+  catalog?: GovernanceCatalog;
 }
 
 const INITIAL_ACCOUNTS = Object.freeze([
   Object.freeze({
-    displayName: '示例用户甲',
-    employeeNo: '10000001',
+    displayName: '王悦',
+    employeeNo: 'E1001',
     id: 'account-1',
-    profession: '研发',
-    status: 'ENABLED',
-  }),
-  Object.freeze({
-    displayName: '示例用户乙',
-    employeeNo: '10000002',
-    id: 'account-2',
-    profession: '测试',
-    status: 'ENABLED',
-  }),
-  Object.freeze({
-    displayName: '示例用户丙',
-    employeeNo: '10000003',
-    id: 'account-3',
+    lastLogin: '08-06 09:02',
     profession: '产品',
-    status: 'DISABLED',
-  }),
-  Object.freeze({
-    displayName: '示例用户丁',
-    employeeNo: '10000004',
-    id: 'account-4',
-    profession: '研发',
+    roles: Object.freeze(['产品']),
     status: 'ENABLED',
+    superior: '吴桐 · 产品Leader · 营销',
+    team: '营销',
   }),
   Object.freeze({
-    displayName: '示例用户戊',
-    employeeNo: '10000005',
+    displayName: '吴桐',
+    employeeNo: 'E1002',
+    id: 'account-2',
+    lastLogin: '08-06 08:41',
+    profession: '产品',
+    roles: Object.freeze(['产品Leader']),
+    status: 'ENABLED',
+    superior: '赵敏 · 经理',
+    team: '营销',
+  }),
+  Object.freeze({
+    displayName: '李强',
+    employeeNo: 'E1003',
+    id: 'account-3',
+    lastLogin: '08-06 09:31',
+    profession: '研发',
+    roles: Object.freeze(['开发Leader']),
+    status: 'ENABLED',
+    superior: '赵敏 · 经理',
+    team: '营销',
+  }),
+  Object.freeze({
+    displayName: '陈晓',
+    employeeNo: 'E1004',
+    id: 'account-4',
+    lastLogin: '08-06 10:02',
+    profession: '研发',
+    roles: Object.freeze(['前端开发']),
+    status: 'ENABLED',
+    superior: '李强 · 开发Leader · 营销',
+    team: '营销',
+  }),
+  Object.freeze({
+    displayName: '郑楠',
+    employeeNo: 'E1005',
     id: 'account-5',
-    profession: null,
-    status: 'RESTRICTED',
+    lastLogin: '08-05 19:22',
+    profession: '研发',
+    roles: Object.freeze(['后端开发']),
+    status: 'ENABLED',
+    superior: '李强 · 开发Leader · 营销',
+    team: '营销',
   }),
   Object.freeze({
-    displayName: '示例用户己',
-    employeeNo: '10000006',
+    displayName: '徐蕾',
+    employeeNo: 'E1006',
     id: 'account-6',
-    profession: '运维',
-    status: 'PENDING_INIT',
+    lastLogin: '08-01 11:20',
+    profession: '研发',
+    roles: Object.freeze(['前端开发']),
+    status: 'DISABLED',
+    superior: '李强 · 开发Leader · 营销',
+    team: '营销',
+  }),
+  Object.freeze({
+    displayName: '赵敏',
+    employeeNo: 'E1007',
+    id: 'account-7',
+    lastLogin: '08-06 08:12',
+    profession: null,
+    roles: Object.freeze(['经理']),
+    status: 'ENABLED',
+    superior: '无',
+    team: '营销',
+  }),
+  Object.freeze({
+    displayName: '刘洋',
+    employeeNo: 'E2001',
+    id: 'account-8',
+    lastLogin: '08-06 09:40',
+    profession: '研发',
+    roles: Object.freeze(['开发Leader']),
+    status: 'ENABLED',
+    superior: '无',
+    team: '交易',
+  }),
+  Object.freeze({
+    displayName: '何山',
+    employeeNo: 'E2002',
+    id: 'account-9',
+    lastLogin: '08-06 10:44',
+    profession: '研发',
+    roles: Object.freeze(['前端开发', '后端开发']),
+    status: 'ENABLED',
+    superior: '刘洋 · 开发Leader · 交易',
+    team: '交易',
+  }),
+  Object.freeze({
+    displayName: '秦岚',
+    employeeNo: 'E2003',
+    id: 'account-10',
+    lastLogin: '08-05 16:03',
+    profession: '产品',
+    roles: Object.freeze(['产品']),
+    status: 'ENABLED',
+    superior: '无',
+    team: '交易',
+  }),
+  Object.freeze({
+    displayName: '罗成',
+    employeeNo: 'E3001',
+    id: 'account-11',
+    lastLogin: '08-06 07:55',
+    profession: null,
+    roles: Object.freeze(['经理']),
+    status: 'ENABLED',
+    superior: '无',
+    team: '中台',
+  }),
+  Object.freeze({
+    displayName: '康宁',
+    employeeNo: 'E3002',
+    id: 'account-12',
+    lastLogin: '08-04 18:30',
+    profession: '研发',
+    roles: Object.freeze(['后端开发']),
+    status: 'ENABLED',
+    superior: '高翔 · 开发Leader · 中台',
+    team: '中台',
+  }),
+  Object.freeze({
+    displayName: '孙杰',
+    employeeNo: 'E0001',
+    id: 'account-13',
+    lastLogin: '08-06 08:00',
+    profession: null,
+    roles: Object.freeze(['管理员']),
+    status: 'ENABLED',
+    superior: '无',
+    team: '平台',
+  }),
+  Object.freeze({
+    displayName: '周天',
+    employeeNo: 'E0000',
+    id: 'account-14',
+    lastLogin: '08-06 07:30',
+    profession: null,
+    roles: Object.freeze(['超级管理员']),
+    status: 'ENABLED',
+    superior: '无',
+    team: '平台',
   }),
 ] as const satisfies readonly AccountSummary[]);
 
@@ -111,13 +229,25 @@ const isSortField = (
   value === 'profession' ||
   value === 'status';
 
+const toContractAccount = (account: AccountSummary) => ({
+  displayName: account.displayName,
+  employeeNo: account.employeeNo,
+  id: account.id,
+  profession: account.profession,
+  status: account.status,
+});
+
 export const createAdminAccountsMock = (
   options: AdminAccountsMockOptions = {},
 ) => {
   const authorize = options.authorize ?? (() => true);
+  const catalog = options.catalog ?? governanceCatalog;
   const accounts: AccountSummary[] = INITIAL_ACCOUNTS.map((account) => ({
     ...account,
   }));
+  for (const account of accounts) {
+    catalog.registerAccount(toContractAccount(account));
+  }
   let nextAccountId = INITIAL_ACCOUNTS.length + 1;
   let requestSequence = 0;
 
@@ -207,7 +337,7 @@ export const createAdminAccountsMock = (
     account: AccountSummary,
     kind: 'create' | 'reset',
   ) => ({
-    account: { ...account },
+    account: toContractAccount(account),
     temporaryPassword: `${kind === 'create' ? 'Temp' : 'Reset'}!${globalThis.crypto.randomUUID()}`,
   });
 
@@ -273,9 +403,7 @@ export const createAdminAccountsMock = (
 
       const offset = (page - 1) * pageSize;
       sendJson(response, 200, {
-        items: sorted.slice(offset, offset + pageSize).map((account) => ({
-          ...account,
-        })),
+        items: sorted.slice(offset, offset + pageSize).map(toContractAccount),
         total: sorted.length,
       });
     },
@@ -289,22 +417,27 @@ export const createAdminAccountsMock = (
       }
       const body = request.body as Record<string, unknown>;
       const employeeNo =
-        typeof body.employeeNo === 'string' ? body.employeeNo.trim() : '';
+        typeof body.employeeNo === 'string'
+          ? body.employeeNo.trim().toUpperCase()
+          : '';
       const displayName =
         typeof body.displayName === 'string' ? body.displayName.trim() : '';
       const profession =
         typeof body.profession === 'string' && body.profession.trim().length > 0
           ? body.profession.trim()
           : null;
-      if (!/^\d{8}$/.test(employeeNo) || displayName.length === 0) {
+      if (!/^(?:E\d{4}|\d{8})$/.test(employeeNo) || displayName.length === 0) {
         sendProblem(
           response,
           422,
           'VALIDATION_ERROR',
-          '员工号必须为 8 位数字，且姓名不能为空',
+          '员工号必须为 E 加 4 位数字或 8 位数字，且姓名不能为空',
           {
             errors: [
-              { field: 'employeeNo', reason: '必须为 8 位数字' },
+              {
+                field: 'employeeNo',
+                reason: '必须为 E 加 4 位数字或 8 位数字',
+              },
               { field: 'displayName', reason: '不能为空' },
             ],
           },
@@ -329,6 +462,7 @@ export const createAdminAccountsMock = (
         status: 'PENDING_INIT',
       };
       accounts.push(account);
+      catalog.registerAccount(toContractAccount(account));
       sendJson(response, 201, credentialReceipt(account, 'create'));
     },
 

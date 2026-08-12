@@ -1,12 +1,10 @@
 import {
   ModalForm,
-  ProFormDigit,
   ProFormSelect,
-  ProFormSwitch,
   ProFormText,
 } from '@ant-design/pro-components';
 import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
-import { MENU_FORM_GROUP_OPTIONS, MENU_ROWS } from './constant';
+import { MENU_CAPABILITY_OPTIONS, MENU_FORM_GROUP_OPTIONS } from './constant';
 import type { MenuFormValues, MenuRow } from './type';
 
 interface MenuModalProps {
@@ -23,9 +21,8 @@ export function MenuModal({ open, menu, onClose }: MenuModalProps) {
   const initialValues = menu
     ? { ...menu }
     : {
+        capability: '任意登录用户',
         group: 'user',
-        order: MENU_ROWS.length + 1,
-        visible: true,
       };
 
   const submit = async (_values: MenuFormValues) => {
@@ -59,32 +56,12 @@ export function MenuModal({ open, menu, onClose }: MenuModalProps) {
       width={560}
     >
       <ProFormText
-        disabled={Boolean(menu)}
-        fieldProps={{ id: `${inputIdPrefix}-key` }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-key` }}
-        label="Route Key"
-        name="key"
-        placeholder="例如 adminReports"
-        rules={[{ required: true, message: '请输入 Route Key' }]}
-      />
-      <ProFormText
         fieldProps={{ id: `${inputIdPrefix}-name` }}
         formItemProps={{ htmlFor: `${inputIdPrefix}-name` }}
         label="菜单名称"
         name="name"
         placeholder="请输入菜单名称"
         rules={[{ required: true, message: '请输入菜单名称' }]}
-      />
-      <ProFormText
-        fieldProps={{ id: `${inputIdPrefix}-path` }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-path` }}
-        label="路径"
-        name="path"
-        placeholder="例如 /admin/reports"
-        rules={[
-          { required: true, message: '请输入路径' },
-          { pattern: /^\//, message: '路径必须以 / 开头' },
-        ]}
       />
       <ProFormSelect
         fieldProps={{
@@ -98,27 +75,31 @@ export function MenuModal({ open, menu, onClose }: MenuModalProps) {
         options={MENU_FORM_GROUP_OPTIONS.map((option) => ({ ...option }))}
         rules={[{ required: true, message: '请选择分组' }]}
       />
-      <ProFormDigit
+      <ProFormSelect
         fieldProps={{
-          'aria-label': '顺序',
-          id: `${inputIdPrefix}-order`,
-          min: 1,
-          precision: 0,
+          'aria-label': '绑定能力',
+          id: `${inputIdPrefix}-capability`,
+          virtual: false,
         }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-order` }}
-        label="顺序"
-        name="order"
-        rules={[{ required: true, message: '请输入顺序' }]}
+        formItemProps={{ htmlFor: `${inputIdPrefix}-capability` }}
+        label="绑定能力"
+        name="capability"
+        options={MENU_CAPABILITY_OPTIONS.map((option) => ({ ...option }))}
+        rules={[{ required: true, message: '请选择绑定能力' }]}
       />
-      <ProFormSwitch
-        fieldProps={{
-          'aria-label': '显示',
-          id: `${inputIdPrefix}-visible`,
-        }}
-        formItemProps={{ htmlFor: `${inputIdPrefix}-visible` }}
-        label="显示"
-        name="visible"
-      />
+      {menu ? null : (
+        <ProFormText
+          fieldProps={{ id: `${inputIdPrefix}-path` }}
+          formItemProps={{ htmlFor: `${inputIdPrefix}-path` }}
+          label="路由"
+          name="path"
+          placeholder="/calendar"
+          rules={[
+            { required: true, message: '请输入路由' },
+            { pattern: /^\//, message: '路由必须以 / 开头' },
+          ]}
+        />
+      )}
     </ModalForm>
   );
 }

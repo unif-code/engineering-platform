@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { theme } from 'antd';
-import { createElement } from 'react';
+import type { ReactNode } from 'react';
+import { Children, createElement, isValidElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import defaultSettings from '../config/defaultSettings';
 
@@ -130,10 +131,10 @@ describe('getInitialState', () => {
 });
 
 describe('layout', () => {
-  it('不覆盖 ProLayout 官方响应式侧栏配置', () => {
+  it('显式从展开态启动，同时保留 ProLayout 官方响应式 breakpoint', () => {
     const config = layout({});
 
-    expect(config).not.toHaveProperty('defaultCollapsed');
+    expect(config.defaultCollapsed).toBe(false);
     expect(config).not.toHaveProperty('breakpoint');
   });
 
@@ -263,6 +264,56 @@ describe('layout', () => {
         ],
       },
     ]);
+  });
+
+  it('消息菜单在展开时贴近文字显示未读数，折叠时仅显示圆点', () => {
+    const config = layout({});
+    const item = {
+      key: 'messages',
+      name: '消息中心',
+      unreadCount: 4,
+    };
+
+    const expanded = render(
+      createElement(
+        'div',
+        null,
+        config.menuTextRender?.(item, createElement('span', null, '消息中心'), {
+          collapsed: false,
+        }),
+      ),
+    );
+    expect(screen.getByText('消息中心')).toBeInTheDocument();
+    expect(screen.getByLabelText('4 条未读消息')).toHaveTextContent('4');
+    expanded.unmount();
+
+    const collapsedDom = config.menuItemRender?.(
+      { ...item, isUrl: false, onClick: vi.fn() },
+      createElement('span', null, '消息入口'),
+      { collapsed: true },
+    );
+    render(createElement('div', null, collapsedDom));
+    expect(screen.getByLabelText('4 条未读消息')).toBeInTheDocument();
+  });
+
+  it('原型新增标记使用 antd 6 当前 Tag variant API', () => {
+    const config = layout({});
+    const menuText = config.menuTextRender?.(
+      { key: 'admin.grants', name: 'Grant 管理', prototypeBadge: '新增' },
+      createElement('span', null, 'Grant 管理'),
+      { collapsed: false },
+    );
+    if (!isValidElement<{ children?: ReactNode }>(menuText)) {
+      throw new Error('Missing menu text wrapper');
+    }
+    const tag = Children.toArray(menuText.props.children).find(
+      (child) =>
+        isValidElement<{ children?: ReactNode }>(child) &&
+        child.props.children === '新增',
+    );
+    expect(tag).toBeDefined();
+    expect(tag).toMatchObject({ props: { variant: 'filled' } });
+    expect(tag).not.toMatchObject({ props: { bordered: expect.anything() } });
   });
 
   it('只按后端 navigation 决定是否生成管理端分组', () => {

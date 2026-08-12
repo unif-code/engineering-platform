@@ -5,24 +5,18 @@ import {
   ProTable,
   type ProTableProps,
 } from '@ant-design/pro-components';
-import { App, Button, Input, Select, Space, Typography } from 'antd';
+import { App, Avatar, Button, Space } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { FilterToolbar } from '@/components/FilterToolbar';
 import { SemanticTag } from '@/components/SemanticTag';
 import {
   disableAccount,
   enableAccount,
-  resetAccountPassword,
   resetAccountTotp,
 } from '@/features/administration';
+import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
 import { AccountActionModal } from './AccountActionModal';
 import { CredentialModal } from './CredentialModal';
-import {
-  USER_ACTION_META,
-  USER_PROFESSION_OPTIONS,
-  USER_STATUS_META,
-  USER_STATUS_OPTIONS,
-} from './constant';
+import { USER_ACTION_META, USER_STATUS_META } from './constant';
 import { useStyles } from './index.style';
 import type {
   CredentialReceipt,
@@ -30,6 +24,7 @@ import type {
   UserQueryParams,
   UserRow,
 } from './type';
+import { UserEditModal } from './UserEditModal';
 import { UserModal } from './UserModal';
 import { formatAccountError, queryUserRows } from './util';
 
@@ -39,25 +34,19 @@ interface ActionState {
 }
 
 interface CredentialState {
-  kind: 'create' | 'reset';
+  kind: 'create';
   receipt: CredentialReceipt;
 }
 
 export default function AdminUsersPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
+  const showStaticAction = useStaticPrototypeAction();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
-  const [employeeNoInput, setEmployeeNoInput] = useState('');
-  const [displayNameInput, setDisplayNameInput] = useState('');
-  const [employeeNo, setEmployeeNo] = useState('');
-  const [displayName, setDisplayName] = useState('');
-  const [status, setStatus] =
-    useState<NonNullable<UserQueryParams['status']>>('all');
-  const [profession, setProfession] =
-    useState<NonNullable<UserQueryParams['profession']>>('all');
-  const [total, setTotal] = useState(0);
+  const presentationOverridesRef = useRef(new Map<string, Partial<UserRow>>());
   const [createOpen, setCreateOpen] = useState(false);
+  const [editAccount, setEditAccount] = useState<UserRow>();
   const [actionState, setActionState] = useState<ActionState>();
   const [credentialState, setCredentialState] = useState<CredentialState>();
 
@@ -72,11 +61,6 @@ export default function AdminUsersPage() {
     [invalidatePendingRequests],
   );
 
-  const queryParams = useMemo<UserQueryParams>(
-    () => ({ displayName, employeeNo, profession, status }),
-    [displayName, employeeNo, profession, status],
-  );
-
   const requestAccounts = useCallback<
     NonNullable<ProTableProps<UserRow, UserQueryParams>['request']>
   >(
@@ -87,13 +71,17 @@ export default function AdminUsersPage() {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        setTotal(result.total ?? 0);
-        return result;
+        return {
+          ...result,
+          data: result.data?.map((row) => ({
+            ...row,
+            ...presentationOverridesRef.current.get(row.id),
+          })),
+        };
       } catch (error) {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        setTotal(0);
         message.error(formatAccountError(error, '账号列表加载失败'));
         return { data: [], success: true, total: 0 };
       }
@@ -113,29 +101,45 @@ export default function AdminUsersPage() {
         render: (_, row) => (
           <span className={styles.employeeNo}>{row.employeeNo}</span>
         ),
-        sorter: true,
-        title: '员工编号',
-        width: 140,
+        title: '工号',
+        width: 90,
       },
       {
         dataIndex: 'displayName',
-        sorter: true,
+        render: (_, row) => (
+          <span className={styles.userCell}>
+            <Avatar size={26}>{row.displayName.slice(0, 1)}</Avatar>
+            {row.displayName}
+          </span>
+        ),
         title: '姓名',
-        width: 160,
+        width: 150,
       },
       {
-        dataIndex: 'profession',
-        render: (_, row) => row.profession ?? '未分类',
-        sorter: true,
-        title: '专业分类',
-        width: 140,
+        dataIndex: 'team',
+        render: (_, row) => row.team ?? '—',
+        title: 'Team',
+        width: 100,
+      },
+      {
+        dataIndex: 'roles',
+        render: (_, row) => row.roles?.join(' · ') ?? '—',
+        title: '角色标签',
+        width: 220,
       },
       {
         dataIndex: 'status',
         render: (_, row) => <SemanticTag {...USER_STATUS_META[row.status]} />,
-        sorter: true,
         title: '状态',
-        width: 120,
+        width: 100,
+      },
+      {
+        dataIndex: 'lastLogin',
+        render: (_, row) => (
+          <span className={styles.lastLogin}>{row.lastLogin ?? '—'}</span>
+        ),
+        title: '最近登录',
+        width: 140,
       },
       {
         fixed: 'right',
@@ -145,187 +149,126 @@ export default function AdminUsersPage() {
           return (
             <Space size={0} wrap>
               <Button
-                danger={statusAction === 'disable'}
-                onClick={() =>
-                  setActionState({ action: statusAction, account: row })
-                }
+                onClick={() => setEditAccount(row)}
+                size="small"
                 type="link"
               >
-                {statusAction === 'disable' ? '停用' : '启用'}
-              </Button>
-              <Button
-                onClick={() =>
-                  setActionState({ action: 'resetPassword', account: row })
-                }
-                type="link"
-              >
-                重置密码
+                编辑
               </Button>
               <Button
                 onClick={() =>
                   setActionState({ action: 'resetTotp', account: row })
                 }
+                size="small"
                 type="link"
               >
                 重置 TOTP
+              </Button>
+              <Button
+                danger={statusAction === 'disable'}
+                onClick={() =>
+                  setActionState({ action: statusAction, account: row })
+                }
+                size="small"
+                type="link"
+              >
+                {statusAction === 'disable' ? '停用' : '启用'}
+              </Button>
+              <Button
+                danger
+                onClick={() => showStaticAction(`删除用户 ${row.displayName}`)}
+                size="small"
+                type="link"
+              >
+                删除
               </Button>
             </Space>
           );
         },
         title: '操作',
         valueType: 'option',
-        width: 360,
+        width: 260,
       },
     ],
-    [styles.employeeNo],
+    [showStaticAction, styles.employeeNo, styles.lastLogin, styles.userCell],
   );
 
   const confirmAction = async (state: ActionState, reason: string) => {
-    let receipt: CredentialReceipt | undefined;
     if (state.action === 'enable') {
       await enableAccount(state.account.id, { reason });
     } else if (state.action === 'disable') {
       await disableAccount(state.account.id, { reason });
-    } else if (state.action === 'resetPassword') {
-      receipt = await resetAccountPassword(state.account.id, { reason });
     } else {
       await resetAccountTotp(state.account.id, { reason });
     }
 
     setActionState(undefined);
-    if (receipt !== undefined) {
-      setCredentialState({ kind: 'reset', receipt });
-    }
     message.success(USER_ACTION_META[state.action].successText);
     await reloadAccounts();
   };
 
   return (
-    <PageContainer
-      ghost
-      subTitle="管理平台账号、初始化状态与凭据治理操作"
-      title="账号管理"
-    >
+    <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
-        <FilterToolbar
-          actions={
-            <Button
-              aria-expanded={createOpen}
-              aria-haspopup="dialog"
-              onClick={() => setCreateOpen(true)}
-              type="primary"
-            >
-              新增账号
-            </Button>
-          }
-          ariaLabel="账号筛选与操作"
-          filters={
-            <span className={styles.filters}>
-              <Select<NonNullable<UserQueryParams['status']>>
-                aria-label="账号状态"
-                className={styles.filter}
-                id="admin-account-status-filter"
-                onChange={(nextStatus) => {
-                  if (nextStatus !== status) {
-                    invalidatePendingRequests();
-                    setStatus(nextStatus);
-                  }
-                }}
-                options={USER_STATUS_OPTIONS.map((option) => ({ ...option }))}
-                value={status}
-                virtual={false}
-              />
-              <Select<NonNullable<UserQueryParams['profession']>>
-                aria-label="专业分类"
-                className={styles.filter}
-                id="admin-account-profession-filter"
-                onChange={(nextProfession) => {
-                  if (nextProfession !== profession) {
-                    invalidatePendingRequests();
-                    setProfession(nextProfession);
-                  }
-                }}
-                options={USER_PROFESSION_OPTIONS.map((option) => ({
-                  ...option,
-                }))}
-                value={profession}
-                virtual={false}
-              />
-              <Typography.Text type="secondary">
-                共 {total} 个账号
-              </Typography.Text>
-            </span>
-          }
-          search={
-            <span className={styles.searchFields}>
-              <Input.Search
-                allowClear
-                aria-label="搜索员工编号"
-                className={styles.search}
-                inputMode="numeric"
-                onChange={(event) => {
-                  const nextValue = event.target.value;
-                  setEmployeeNoInput(nextValue);
-                  if (nextValue === '' && employeeNo !== '') {
-                    invalidatePendingRequests();
-                    setEmployeeNo('');
-                  }
-                }}
-                onSearch={(nextEmployeeNo) => {
-                  if (nextEmployeeNo !== employeeNo) {
-                    invalidatePendingRequests();
-                    setEmployeeNo(nextEmployeeNo);
-                  }
-                }}
-                placeholder="员工编号"
-                value={employeeNoInput}
-              />
-              <Input.Search
-                allowClear
-                aria-label="搜索姓名"
-                className={styles.search}
-                onChange={(event) => {
-                  const nextValue = event.target.value;
-                  setDisplayNameInput(nextValue);
-                  if (nextValue === '' && displayName !== '') {
-                    invalidatePendingRequests();
-                    setDisplayName('');
-                  }
-                }}
-                onSearch={(nextDisplayName) => {
-                  if (nextDisplayName !== displayName) {
-                    invalidatePendingRequests();
-                    setDisplayName(nextDisplayName);
-                  }
-                }}
-                placeholder="姓名"
-                value={displayNameInput}
-              />
-            </span>
-          }
-        />
+        <header className={styles.pageHeader}>
+          <p className={styles.pageDescription}>
+            单一用户表，平台端 / 管理端不区分账号；菜单与操作按角色能力动态渲染
+            · 本地账号 + TOTP 双因素
+          </p>
+          <Button
+            aria-expanded={createOpen}
+            aria-haspopup="dialog"
+            aria-label="新增用户"
+            onClick={() => setCreateOpen(true)}
+            type="primary"
+          >
+            ＋ 新增用户
+          </Button>
+        </header>
 
         <ProTable<UserRow, UserQueryParams>
           actionRef={actionRef}
           columns={columns}
           onChange={invalidatePendingRequests}
           options={false}
-          pagination={{ pageSize: 10, showSizeChanger: false }}
-          params={queryParams}
+          pagination={{ pageSize: 20, showSizeChanger: false }}
           request={requestAccounts}
           rowKey="id"
           scroll={{ x: 1120 }}
           search={false}
+          size="small"
           toolBarRender={false}
         />
+
+        <p className={styles.pageNote}>
+          禁用 / 删除即时失效 Session 与访问权；历史业务 actor 与 Audit 保留 ·
+          超级管理员账号受平台保护
+        </p>
 
         {createOpen ? (
           <UserModal
             onClose={() => setCreateOpen(false)}
-            onCreated={(receipt) => {
+            onCreated={(receipt, values) => {
+              presentationOverridesRef.current.set(receipt.account.id, {
+                lastLogin: '—',
+                roles: [values.role],
+                superior: values.superior,
+                team: values.team,
+              });
               setCredentialState({ kind: 'create', receipt });
               void reloadAccounts();
             }}
+            open
+          />
+        ) : null}
+
+        {editAccount ? (
+          <UserEditModal
+            account={editAccount}
+            onClose={() => setEditAccount(undefined)}
+            onSubmit={() =>
+              showStaticAction(`编辑用户 ${editAccount.displayName}`)
+            }
             open
           />
         ) : null}

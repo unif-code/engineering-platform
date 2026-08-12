@@ -1,20 +1,22 @@
+import { PageContainer } from '@ant-design/pro-components';
+import { useMutation, useQuery } from '@umijs/max';
 import {
-  type ActionType,
-  PageContainer,
-  type ProColumns,
-  ProTable,
-  type ProTableProps,
-} from '@ant-design/pro-components';
-import { useMutation } from '@umijs/max';
-import { App, Button, Empty, Modal, Space, Typography } from 'antd';
+  Alert,
+  App,
+  Button,
+  Empty,
+  Modal,
+  Segmented,
+  Space,
+  Spin,
+  Typography,
+} from 'antd';
 import { useCallback, useMemo, useRef, useState } from 'react';
-import { SemanticTag } from '@/components/SemanticTag';
 import {
   createPolicyDraft,
   formatGovernanceError,
   listPolicyCatalog,
   listPolicyVersions,
-  type PolicyCatalogResponse,
   type PolicyDraft,
   type PolicyPreview,
   type PolicyValidationResult,
@@ -25,7 +27,13 @@ import {
   updatePolicyDraft,
   validatePolicyDraft,
 } from '@/features/administration';
-import { formatPolicyValue, POLICY_NAMESPACE } from './constant';
+import {
+  formatPolicyValue,
+  POLICY_GROUPS,
+  POLICY_NAMESPACE,
+  type PolicyGroupKey,
+  policyGroupForKey,
+} from './constant';
 import { useStyles } from './index.style';
 import { PolicyDraftEditor } from './PolicyDraftEditor';
 import { PolicyPreviewPanel } from './PolicyPreviewPanel';
@@ -33,11 +41,12 @@ import { PolicyVersionHistory } from './PolicyVersionHistory';
 import { PublishPolicyModal } from './PublishPolicyModal';
 import type {
   DraftContent,
-  PolicyCatalogRow,
-  PolicyTableQueryParams,
   PolicyVersionRow,
   PublishPolicyFormValues,
 } from './type';
+
+const POLICY_DESCRIPTION =
+  '改动先落草稿，经校验与预览后整批发布；每次发布都记录原因与操作人，可按版本回滚';
 
 const problemStatus = (error: unknown) => {
   if (typeof error !== 'object' || error === null || !('problem' in error)) {
@@ -55,10 +64,8 @@ const problemStatus = (error: unknown) => {
 export default function AdminPoliciesPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
-  const catalogActionRef = useRef<ActionType | undefined>(undefined);
-  const versionsActionRef = useRef<ActionType | undefined>(undefined);
   const candidateGenerationRef = useRef(0);
-  const [catalog, setCatalog] = useState<PolicyCatalogResponse>();
+  const [activeGroup, setActiveGroup] = useState<PolicyGroupKey>('session');
   const [draft, setDraft] = useState<PolicyDraft>();
   const [draftContent, setDraftContent] = useState<DraftContent>({});
   const [validation, setValidation] = useState<PolicyValidationResult>();
@@ -67,6 +74,17 @@ export default function AdminPoliciesPage() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishError, setPublishError] = useState<string>();
   const [rollbackVersion, setRollbackVersion] = useState<PolicyVersionRow>();
+
+  const catalogQuery = useQuery({
+    queryFn: listPolicyCatalog,
+    queryKey: ['admin-policies', 'catalog'],
+    retry: false,
+  });
+  const versionsQuery = useQuery({
+    queryFn: () => listPolicyVersions(POLICY_NAMESPACE),
+    queryKey: ['admin-policies', POLICY_NAMESPACE, 'versions'],
+    retry: false,
+  });
 
   const createMutation = useMutation({
     mutationFn: () =>
@@ -105,101 +123,58 @@ export default function AdminPoliciesPage() {
       rollbackPolicyVersion(POLICY_NAMESPACE, { toVersion: version }),
   });
 
-  const requestCatalog = useCallback<
-    NonNullable<
-      ProTableProps<PolicyCatalogRow, PolicyTableQueryParams>['request']
-    >
-  >(async () => {
-    try {
-      const response = await listPolicyCatalog();
-      setCatalog(response);
-      return {
-        data: response.items,
-        success: true,
-        total: response.items.length,
-      };
-    } catch (error) {
-      message.error(formatGovernanceError(error, 'Policy Catalog 加载失败'));
-      return { data: [], success: true, total: 0 };
+  const catalog = catalogQuery.data;
+  const visibleCatalog = useMemo(
+    () =>
+      catalog?.items.filter(
+        ({ key }) => policyGroupForKey(key) === activeGroup,
+      ) ?? [],
+    [activeGroup, catalog],
+  );
+  const activeGroupLabel =
+    POLICY_GROUPS.find(({ value }) => value === activeGroup)?.label ?? '';
+  const effectiveContent = useMemo<DraftContent>(
+    () => ({
+      ...Object.fromEntries(
+        catalog?.items.map(({ activeValue, key }) => [key, activeValue]) ?? [],
+      ),
+      ...draftContent,
+    }),
+    [catalog, draftContent],
+  );
+  const candidateContent = useMemo<
+    Record<string, PolicyValue> | undefined
+  >(() => {
+    if (
+      catalog === undefined ||
+      !catalog.items.every(
+        ({ key }) =>
+          effectiveContent[key] !== undefined && effectiveContent[key] !== null,
+      )
+    ) {
+      return undefined;
     }
-  }, [message]);
-
-  const requestVersions = useCallback<
-    NonNullable<
-      ProTableProps<PolicyVersionRow, PolicyTableQueryParams>['request']
-    >
-  >(async () => {
-    try {
-      const response = await listPolicyVersions(POLICY_NAMESPACE);
-      return {
-        data: response.items,
-        success: true,
-        total: response.items.length,
-      };
-    } catch (error) {
-      message.error(formatGovernanceError(error, 'Policy 版本历史加载失败'));
-      return { data: [], success: true, total: 0 };
-    }
-  }, [message]);
-
-  const catalogColumns = useMemo<ProColumns<PolicyCatalogRow>[]>(
-    () => [
-      {
-        dataIndex: 'label',
-        render: (_, row) => (
-          <span>
-            <strong>{row.label}</strong>
-            <br />
-            <span className={styles.code}>{row.key}</span>
-          </span>
-        ),
-        title: 'Policy Key',
-        width: 230,
-      },
-      {
-        dataIndex: 'activeValue',
-        render: (_, row) => formatPolicyValue(row.activeValue, row.unit),
-        title: '当前生效值',
-        width: 140,
-      },
-      {
-        dataIndex: 'activeVersion',
-        render: (_, row) => `版本 ${row.activeVersion}`,
-        title: '版本',
-        width: 100,
-      },
-      {
-        dataIndex: 'valueType',
-        render: (_, row) => (
-          <SemanticTag
-            label={row.valueType === 'INTEGER' ? '数字' : '枚举'}
-            tone={row.valueType === 'INTEGER' ? 'info' : 'purple'}
-          />
-        ),
-        title: '类型',
-        width: 90,
-      },
-      { dataIndex: 'effectSemantics', title: '生效语义' },
-    ],
-    [styles.code],
+    return Object.fromEntries(
+      catalog.items.map(({ key }) => [
+        key,
+        effectiveContent[key] as PolicyValue,
+      ]),
+    );
+  }, [catalog, effectiveContent]);
+  const pendingChanges = useMemo(
+    () =>
+      catalog?.items.filter(
+        ({ activeValue, key }) => effectiveContent[key] !== activeValue,
+      ) ?? [],
+    [catalog, effectiveContent],
   );
   const draftDirty = useMemo(
     () =>
       draft !== undefined &&
-      Object.entries(draftContent).some(
-        ([key, value]) => draft.content[key] !== value,
-      ),
-    [draft, draftContent],
-  );
-  const draftComplete = useMemo(
-    () =>
-      draft !== undefined &&
-      (catalog?.items.every(
-        ({ key }) =>
-          draftContent[key] !== undefined && draftContent[key] !== null,
-      ) ??
-        false),
-    [catalog, draft, draftContent],
+      catalog?.items.some(
+        ({ key }) => draft.content[key] !== effectiveContent[key],
+      ) === true,
+    [catalog, draft, effectiveContent],
   );
 
   const resetDerivedState = useCallback(() => {
@@ -212,78 +187,76 @@ export default function AdminPoliciesPage() {
     resetDerivedState();
   }, [resetDerivedState]);
 
-  const beginDraft = async () => {
-    try {
-      const created = await createMutation.mutateAsync();
-      setDraft(created);
-      setDraftContent({ ...created.content });
-      invalidateCandidate();
-      message.success('Draft 已创建');
-    } catch (error) {
-      message.error(formatGovernanceError(error, 'Draft 创建失败'));
-    }
-  };
-
   const changeDraftValue = (key: string, value: PolicyValue | null) => {
     setDraftContent((current) => ({ ...current, [key]: value }));
     invalidateCandidate();
   };
 
-  const saveDraft = async () => {
-    if (!draft || !draftComplete) {
-      return;
-    }
-    const content = Object.fromEntries(
-      Object.entries(draftContent).filter(
-        (entry): entry is [string, PolicyValue] => entry[1] !== null,
-      ),
-    );
+  const undoLocalDraftChanges = () => {
+    setDraftContent(draft ? { ...draft.content } : {});
+    invalidateCandidate();
+  };
+
+  const ensureSavedDraft = async (content: Record<string, PolicyValue>) => {
     try {
-      const updated = await updateMutation.mutateAsync({
-        content,
-        draftId: draft.id,
-        etag: draft.etag,
-      });
-      setDraft(updated);
-      setDraftContent({ ...updated.content });
-      resetDerivedState();
-      message.success('Draft 已保存');
+      let savedDraft = draft ?? (await createMutation.mutateAsync());
+      const mustUpdate = Object.entries(content).some(
+        ([key, value]) => savedDraft.content[key] !== value,
+      );
+      if (mustUpdate) {
+        savedDraft = await updateMutation.mutateAsync({
+          content,
+          draftId: savedDraft.id,
+          etag: savedDraft.etag,
+        });
+      }
+      setDraft(savedDraft);
+      return savedDraft;
     } catch (error) {
       if (problemStatus(error) === 409) {
         setConflict('已被并发修改，刷新后重试');
-        return;
+        return undefined;
       }
-      message.error(formatGovernanceError(error, 'Draft 保存失败'));
+      message.error(formatGovernanceError(error, 'Draft 自动保存失败'));
+      return undefined;
     }
   };
 
   const validateDraft = async () => {
-    if (!draft) {
+    if (candidateContent === undefined || pendingChanges.length === 0) {
       return;
     }
     const candidateGeneration = candidateGenerationRef.current;
+    const savedDraft = await ensureSavedDraft(candidateContent);
+    if (savedDraft === undefined) {
+      return;
+    }
     try {
-      const result = await validateMutation.mutateAsync(draft.id);
+      const result = await validateMutation.mutateAsync(savedDraft.id);
       if (candidateGenerationRef.current === candidateGeneration) {
         setValidation(result);
       }
     } catch (error) {
-      message.error(formatGovernanceError(error, 'Policy Validate 失败'));
+      message.error(formatGovernanceError(error, 'Policy 校验失败'));
     }
   };
 
   const previewDraft = async () => {
-    if (!draft) {
+    if (candidateContent === undefined || pendingChanges.length === 0) {
       return;
     }
     const candidateGeneration = candidateGenerationRef.current;
+    const savedDraft = await ensureSavedDraft(candidateContent);
+    if (savedDraft === undefined) {
+      return;
+    }
     try {
-      const result = await previewMutation.mutateAsync(draft.id);
+      const result = await previewMutation.mutateAsync(savedDraft.id);
       if (candidateGenerationRef.current === candidateGeneration) {
         setPreview(result);
       }
     } catch (error) {
-      message.error(formatGovernanceError(error, 'Policy Preview 失败'));
+      message.error(formatGovernanceError(error, 'Policy 预览失败'));
     }
   };
 
@@ -299,10 +272,7 @@ export default function AdminPoliciesPage() {
       setDraftContent({});
       invalidateCandidate();
       message.success('Policy 已发布');
-      await Promise.all([
-        catalogActionRef.current?.reload(),
-        versionsActionRef.current?.reload(),
-      ]);
+      await Promise.all([catalogQuery.refetch(), versionsQuery.refetch()]);
     } catch (error) {
       setPublishError(formatGovernanceError(error, 'Policy 发布失败'));
     }
@@ -325,75 +295,202 @@ export default function AdminPoliciesPage() {
       message.error(formatGovernanceError(error, '回滚 Draft 创建失败'));
     }
   };
+  const candidateSaving = createMutation.isPending || updateMutation.isPending;
+  const hasCandidate = pendingChanges.length > 0;
+  const hasLocalDraftChanges = draft ? draftDirty : hasCandidate;
 
   return (
-    <PageContainer
-      ghost
-      subTitle="以 Draft、Preview 与 TOTP 审批发布 Platform Policy"
-      title="Policy 发布"
-    >
+    <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
-        <div className={styles.workspace}>
-          <section aria-label="Policy Catalog" className={styles.catalog}>
-            <ProTable<PolicyCatalogRow, PolicyTableQueryParams>
-              actionRef={catalogActionRef}
-              columns={catalogColumns}
-              headerTitle="Policy Catalog"
-              options={false}
-              pagination={false}
-              request={requestCatalog}
-              rowKey="key"
-              scroll={{ x: 900 }}
-              search={false}
-              toolBarRender={() => [
-                <Button
-                  disabled={draft !== undefined}
-                  key="new-draft"
-                  loading={createMutation.isPending}
-                  onClick={beginDraft}
-                  type="primary"
-                >
-                  新建 Draft
-                </Button>,
-              ]}
-            />
-          </section>
+        <Typography.Text type="secondary">{POLICY_DESCRIPTION}</Typography.Text>
 
-          {draft && catalog ? (
-            <PolicyDraftEditor
-              catalog={catalog.items}
-              conflict={conflict}
-              content={draftContent}
-              dirty={draftDirty}
-              draft={draft}
-              onChange={changeDraftValue}
-              onPreview={previewDraft}
-              onPublish={() => {
-                setPublishError(undefined);
-                setPublishOpen(true);
-              }}
-              onSave={saveDraft}
-              onValidate={validateDraft}
-              previewing={previewMutation.isPending}
-              saveDisabled={!draftDirty || !draftComplete}
-              saving={updateMutation.isPending}
-              validating={validateMutation.isPending}
-              validation={validation}
-            />
-          ) : (
-            <div className={styles.editor}>
-              <Empty description="从 Catalog 新建 Draft 后开始编辑" />
+        <Segmented<PolicyGroupKey>
+          aria-label="Policy 分类"
+          className={styles.groupSelector}
+          name="policy-group"
+          onChange={setActiveGroup}
+          options={POLICY_GROUPS.map((group) => ({ ...group }))}
+          size="small"
+          value={activeGroup}
+        />
+
+        <section
+          aria-label={draft || hasCandidate ? 'Draft 编辑' : 'Policy 设置'}
+          className={styles.workspace}
+        >
+          <div className={styles.settingsPanel}>
+            <div className={styles.sectionHeader}>
+              <div>
+                <Typography.Title className={styles.sectionTitle} level={4}>
+                  {activeGroupLabel}
+                </Typography.Title>
+                <Typography.Text type="secondary">
+                  修改任意设置即进入待发布草稿
+                </Typography.Text>
+              </div>
             </div>
-          )}
-        </div>
 
-        {preview ? <PolicyPreviewPanel preview={preview} /> : null}
+            {catalogQuery.isPending ? (
+              <Spin aria-label="正在加载 Policy 设置" />
+            ) : null}
+            {catalogQuery.isError ? (
+              <Alert
+                showIcon
+                title={formatGovernanceError(
+                  catalogQuery.error,
+                  'Policy 设置加载失败',
+                )}
+                type="error"
+              />
+            ) : null}
+            {!catalogQuery.isPending && visibleCatalog.length === 0 ? (
+              <Empty description="该分类暂无已冻结策略" />
+            ) : null}
+            {visibleCatalog.length > 0 ? (
+              <PolicyDraftEditor
+                catalog={visibleCatalog}
+                content={effectiveContent}
+                onChange={changeDraftValue}
+              />
+            ) : null}
+          </div>
 
+          <section aria-label="待发布草稿" className={styles.draftSummary}>
+            <div className={styles.summaryHeader}>
+              <Typography.Title className={styles.sectionTitle} level={4}>
+                待发布草稿
+              </Typography.Title>
+              <Typography.Text type="secondary">
+                {pendingChanges.length} 项改动
+              </Typography.Text>
+              <Button
+                disabled={!hasLocalDraftChanges}
+                onClick={undoLocalDraftChanges}
+                size="small"
+                title={
+                  draft ? '恢复服务端已保存候选' : '恢复当前生效的 Policy 值'
+                }
+                type="link"
+              >
+                撤销本地编辑
+              </Button>
+            </div>
+
+            {pendingChanges.length === 0 ? (
+              <Typography.Text className={styles.emptyHint} type="secondary">
+                当前没有改动，修改左侧任意取值即进入草稿
+              </Typography.Text>
+            ) : (
+              <div className={styles.changeList}>
+                {pendingChanges.map((item) => (
+                  <div className={styles.changeItem} key={item.key}>
+                    <Typography.Text strong>{item.label}</Typography.Text>
+                    <Typography.Text type="secondary">
+                      {formatPolicyValue(item.activeValue, item.unit)} →{' '}
+                      <Typography.Text className={styles.changedValue}>
+                        {effectiveContent[item.key] === null
+                          ? '未填写'
+                          : formatPolicyValue(
+                              effectiveContent[item.key] ?? item.activeValue,
+                              item.unit,
+                            )}
+                      </Typography.Text>
+                    </Typography.Text>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {conflict ? <Alert showIcon title={conflict} type="error" /> : null}
+            {validation ? (
+              validation.valid ? (
+                <Alert showIcon title="校验通过" type="success" />
+              ) : (
+                <Alert
+                  description={
+                    <ul aria-label="校验问题">
+                      {validation.issues.map((issue) => (
+                        <li key={`${issue.key}-${issue.code}`}>
+                          {issue.message}
+                        </li>
+                      ))}
+                    </ul>
+                  }
+                  showIcon
+                  title="校验未通过"
+                  type="warning"
+                />
+              )
+            ) : (
+              <Typography.Text type="secondary">
+                {candidateContent === undefined && hasCandidate
+                  ? '请补全设置后再校验'
+                  : '尚未校验'}
+              </Typography.Text>
+            )}
+
+            <div className={styles.summaryActions}>
+              <Button
+                disabled={!hasCandidate || candidateContent === undefined}
+                loading={candidateSaving || validateMutation.isPending}
+                onClick={validateDraft}
+                size="small"
+              >
+                校验
+              </Button>
+              <Button
+                disabled={!hasCandidate || candidateContent === undefined}
+                loading={candidateSaving || previewMutation.isPending}
+                onClick={previewDraft}
+                size="small"
+              >
+                预览
+              </Button>
+              <Button
+                className={styles.publishButton}
+                disabled={!draft || draftDirty || validation?.valid !== true}
+                onClick={() => {
+                  setPublishError(undefined);
+                  setPublishOpen(true);
+                }}
+                type="primary"
+              >
+                发布
+              </Button>
+            </div>
+          </section>
+        </section>
+
+        {preview ? (
+          <Modal
+            destroyOnHidden
+            footer={null}
+            onCancel={() => setPreview(undefined)}
+            open
+            title="Policy Preview"
+            width={880}
+          >
+            <PolicyPreviewPanel preview={preview} />
+          </Modal>
+        ) : null}
+
+        {versionsQuery.isError ? (
+          <Alert
+            showIcon
+            title={formatGovernanceError(
+              versionsQuery.error,
+              'Policy 版本历史加载失败',
+            )}
+            type="error"
+          />
+        ) : null}
         <PolicyVersionHistory
-          actionRef={versionsActionRef}
+          items={versionsQuery.data?.items ?? []}
+          loading={versionsQuery.isPending}
           onRollback={setRollbackVersion}
-          request={requestVersions}
-          rollbackDisabled={draftDirty}
+          rollbackDisabled={
+            draftDirty || (draft === undefined && pendingChanges.length > 0)
+          }
         />
 
         {publishOpen && draft ? (
@@ -433,7 +530,7 @@ export default function AdminPoliciesPage() {
           >
             <Typography.Paragraph>
               将从版本 {rollbackVersion.version} 的不可变 Snapshot 创建新
-              Draft； 当前生效版本不会立即改变。
+              Draft；当前生效版本不会立即改变。
             </Typography.Paragraph>
             {draft ? (
               <Typography.Paragraph type="warning">

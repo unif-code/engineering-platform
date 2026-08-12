@@ -7,7 +7,11 @@ vi.mock('@/features/administration', () => ({
 }));
 
 import type { WorkspaceQueryParams } from './type';
-import { queryWorkspaceRows, toWorkspaceListQuery } from './util';
+import {
+  flattenLeaders,
+  queryWorkspaceRows,
+  toWorkspaceListQuery,
+} from './util';
 
 async function runQuery(
   params: WorkspaceQueryParams = {},
@@ -25,7 +29,21 @@ beforeEach(() => {
 describe('queryWorkspaceRows', () => {
   it('去除关键词首尾空白后交给服务端筛选', async () => {
     listWorkspacesMock.mockResolvedValue({
-      items: [{ id: 'workspace-agent-runtime', name: 'Agent Runtime' }],
+      items: [
+        {
+          id: 'workspace-platform-core',
+          leaders: [],
+          memberCount: 12,
+          name: '营销工作区',
+          owner: {
+            displayName: '李强',
+            employeeNo: 'E1003',
+            id: 'leader-li',
+          },
+          status: 'ACTIVE',
+          version: 1,
+        },
+      ],
       total: 1,
     });
     const result = await runQuery({
@@ -41,7 +59,13 @@ describe('queryWorkspaceRows', () => {
       pageSize: 20,
     });
     expect(result).toEqual({
-      data: [expect.objectContaining({ name: 'Agent Runtime' })],
+      data: [
+        expect.objectContaining({
+          name: '营销工作区',
+          repositoryCount: 10,
+          team: '营销',
+        }),
+      ],
       success: true,
       total: 1,
     });
@@ -116,5 +140,39 @@ describe('queryWorkspaceRows', () => {
     });
 
     expect(listWorkspacesMock).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('flattenLeaders', () => {
+  it('只把开发 Leader 投影为 Workspace Owner 候选', () => {
+    expect(
+      flattenLeaders([
+        {
+          children: [
+            {
+              children: [],
+              displayName: '吴桐',
+              employeeNo: 'E1002',
+              id: 'leader-wu',
+              kind: 'LEADER',
+              superiorId: 'manager-zhao',
+            },
+            {
+              children: [],
+              displayName: '李强',
+              employeeNo: 'E1003',
+              id: 'leader-li',
+              kind: 'LEADER',
+              superiorId: 'manager-zhao',
+            },
+          ],
+          displayName: '赵敏',
+          employeeNo: 'E1007',
+          id: 'manager-zhao',
+          kind: 'MANAGER',
+          superiorId: null,
+        },
+      ]),
+    ).toEqual([{ displayName: '李强', employeeNo: 'E1003', id: 'leader-li' }]);
   });
 });

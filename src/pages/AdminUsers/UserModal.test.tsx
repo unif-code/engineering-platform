@@ -9,7 +9,7 @@ vi.mock('@/features/administration', () => ({
 import { UserModal } from './UserModal';
 
 describe('UserModal', () => {
-  it('open 为 true 时呈现可访问的新增账号抽屉', async () => {
+  it('open 为 true 时呈现可访问的新增用户抽屉', async () => {
     const onClose = vi.fn();
     render(
       <ConfigProvider theme={{ token: { motion: false } }}>
@@ -20,7 +20,7 @@ describe('UserModal', () => {
     );
 
     expect(
-      await screen.findByRole('dialog', { name: '新增账号' }),
+      await screen.findByRole('dialog', { name: '新增用户' }),
     ).toBeInTheDocument();
     expect(onClose).not.toHaveBeenCalled();
   });

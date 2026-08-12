@@ -1,5 +1,5 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
+import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
@@ -15,6 +15,7 @@ vi.mock('@umijs/max', () => ({
 }));
 
 vi.mock('@ant-design/charts', () => ({
+  Bar: () => <div data-ant-design-chart="bar" />,
   Column: () => <div data-ant-design-chart="column" />,
 }));
 
@@ -35,6 +36,13 @@ function renderPage() {
   );
 }
 
+async function selectOption(user: UserEvent, label: string, option: string) {
+  await user.click(screen.getByRole('combobox', { name: label }));
+  await user.click(
+    await screen.findByRole('option', { name: option }, INITIAL_WAIT),
+  );
+}
+
 beforeEach(() => {
   routes = createAdminAuditMock();
   requestMock.mockReset();
@@ -46,13 +54,16 @@ afterEach(() => {
 });
 
 describe('AuditPage', () => {
-  it('呈现审计指标、趋势、筛选工具栏和契约表格', async () => {
+  it('按原型呈现审计指标、三块分析、紧凑筛选和契约表格', async () => {
     renderPage();
 
     const metrics = screen.getByRole('region', { name: '审计指标' });
     expect(within(metrics).getAllByRole('article')).toHaveLength(4);
     expect(
-      within(metrics).getByRole('article', { name: '高风险事件：4' }),
+      within(metrics).getByRole('article', { name: '近 7 日操作：395' }),
+    ).toBeInTheDocument();
+    expect(
+      within(metrics).getByRole('article', { name: '高危操作：3' }),
     ).toBeInTheDocument();
     const trendChart = screen.getByRole('figure', {
       name: '近 7 日审计趋势',
@@ -64,23 +75,45 @@ describe('AuditPage', () => {
       trendChart.querySelector('[data-ant-design-chart="column"]'),
     ).toBeInTheDocument();
     expect(
-      actionChart.querySelector('[data-ant-design-chart="column"]'),
+      actionChart.querySelector('[data-ant-design-chart="bar"]'),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole('list', { name: '审计结果分布' }),
+    ).toHaveTextContent('成功92%');
     expect(
       screen.getByRole('toolbar', { name: '审计筛选与操作' }),
     ).toBeInTheDocument();
+    expect(screen.getByText('近 7 天')).toBeInTheDocument();
     expect(
-      await screen.findByRole(
-        'row',
-        { name: /AUD-2026-0810-001/ },
-        INITIAL_WAIT,
-      ),
+      screen.getByPlaceholderText('操作人 / 对象 / IP'),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: '目标类型' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: '保存筛选' }),
+    ).not.toBeInTheDocument();
+    const firstAuditRow = await screen.findByRole(
+      'row',
+      { name: /AUD-2026-0810-001/ },
+      INITIAL_WAIT,
+    );
+    expect(firstAuditRow).toHaveTextContent('10.1.1.9');
     expect(screen.getByRole('table')).toBeInTheDocument();
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/audit-events', {
-      method: 'GET',
-      params: { limit: 3 },
-    });
+    expect(
+      screen.getByRole('columnheader', { name: '来源 IP' }),
+    ).toBeInTheDocument();
+    expect(requestMock).toHaveBeenCalledWith(
+      '/api/v1/admin/audit-events',
+      expect.objectContaining({ method: 'GET' }),
+    );
+    expect(
+      screen.queryByRole('columnheader', { name: '事件 ID' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('columnheader', { name: 'Correlation ID' }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByText('共 3 条')).toBeInTheDocument();
     expect(
       screen.queryByText(
         '查看不可变审计事实，并通过 Correlation ID 串联排查链路',
@@ -142,26 +175,19 @@ describe('AuditPage', () => {
     ).toBeInTheDocument();
   });
 
-  it('保存筛选只提示静态操作且不改变审计行', async () => {
-    const user = userEvent.setup();
+  it('不展示原型没有的保存筛选和目标类型筛选', async () => {
     renderPage();
 
-    const table = await screen.findByRole('table');
     await screen.findByRole('row', { name: /AUD-2026-0810-001/ });
-    const initialRowCount = within(table).getAllByRole('row').length;
-
-    await user.click(screen.getByRole('button', { name: '保存筛选' }));
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '静态原型操作：保存审计筛选，未保存任何业务数据。',
-    );
-    expect(within(table).getAllByRole('row')).toHaveLength(initialRowCount);
     expect(
-      screen.getByRole('row', { name: /AUD-2026-0810-001/ }),
-    ).toBeInTheDocument();
+      screen.queryByRole('button', { name: '保存筛选' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('combobox', { name: '目标类型' }),
+    ).not.toBeInTheDocument();
   });
 
-  it('按时间、actor 与 targetType 查询契约端点', async () => {
+  it('按时间查询契约端点，通用关键字只在页面本地过滤', async () => {
     vi.useFakeTimers({
       now: new Date(2026, 7, 10, 12, 0, 0),
       toFake: ['Date'],
@@ -175,34 +201,51 @@ describe('AuditPage', () => {
     renderPage();
     await screen.findByRole('table', {}, INITIAL_WAIT);
 
-    await user.click(screen.getByRole('combobox', { name: '时间范围' }));
-    await user.click(await screen.findByRole('option', { name: '今天' }));
-    await user.type(screen.getByRole('searchbox', { name: '操作人' }), '孙杰');
-    await user.click(screen.getByRole('combobox', { name: '目标类型' }));
-    await user.click(await screen.findByRole('option', { name: '配置' }));
-
+    await selectOption(user, '时间范围', '今天');
     await waitFor(() => {
       expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/audit-events', {
         method: 'GET',
         params: {
-          actor: '孙杰',
           from: from.toISOString(),
           limit: 3,
-          targetType: 'CONFIGURATION',
           to: to.toISOString(),
         },
       });
-    });
+    }, INITIAL_WAIT);
+    await user.type(
+      screen.getByRole('searchbox', { name: '操作人 / 对象 / IP' }),
+      '孙杰',
+    );
+
+    await waitFor(() => {
+      const [, options] = requestMock.mock.calls.at(-1) ?? [];
+      expect(options).toEqual({
+        method: 'GET',
+        params: {
+          from: from.toISOString(),
+          limit: 3,
+          to: to.toISOString(),
+        },
+      });
+    }, INITIAL_WAIT);
     expect(
       await screen.findByRole('row', { name: /AUD-2026-0810-001/ }),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('row', { name: /AUD-2026-0810-003/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('连续加载三页时按事件 ID 去重，并在末页移除加载更多', async () => {
     const user = userEvent.setup();
     renderPage();
-    const table = await screen.findByRole('table', {}, INITIAL_WAIT);
+    await screen.findByRole('table', {}, INITIAL_WAIT);
     await screen.findByRole('row', { name: /AUD-2026-0810-001/ });
+    await selectOption(user, '时间范围', '全部时间');
+    await waitFor(() => {
+      const [, options] = requestMock.mock.calls.at(-1) ?? [];
+      expect(options?.params).toEqual({ limit: 3 });
+    }, INITIAL_WAIT);
 
     const firstLoadMore = screen.getByRole('button', { name: '加载更多' });
     await waitFor(() => expect(firstLoadMore).toBeEnabled());
@@ -231,14 +274,17 @@ describe('AuditPage', () => {
     });
     await screen.findByRole('row', { name: /AUD-2026-0802-009/ });
 
-    const eventIds = within(table)
-      .getAllByText(/^AUD-2026-/)
-      .map((node) => node.textContent);
-    expect(eventIds).toHaveLength(9);
-    expect(new Set(eventIds).size).toBe(9);
-    expect(
-      screen.queryByRole('button', { name: '加载更多' }),
-    ).not.toBeInTheDocument();
+    const currentTable = screen.getByRole('table');
+    await waitFor(() => {
+      const eventIds = within(currentTable)
+        .getAllByRole('row', { name: /AUD-2026-/ })
+        .map((row) => row.getAttribute('aria-label')?.split(' ')[0]);
+      expect(eventIds).toHaveLength(9);
+      expect(new Set(eventIds).size).toBe(9);
+      expect(
+        screen.queryByRole('button', { name: '加载更多' }),
+      ).not.toBeInTheDocument();
+    }, INITIAL_WAIT);
     expect(
       requestMock.mock.calls.filter(
         ([url, options]) =>
@@ -269,17 +315,17 @@ describe('AuditPage', () => {
     await screen.findByRole('row', { name: /AUD-2026-0808-006/ }, INITIAL_WAIT);
     const callsBeforeSort = requestMock.mock.calls.length;
 
-    await user.click(
-      within(table).getByRole('columnheader', { name: /发生时间/ }),
-    );
+    await user.click(within(table).getByRole('columnheader', { name: /时间/ }));
 
     await waitFor(() => {
       expect(requestMock.mock.calls.length).toBeGreaterThan(callsBeforeSort);
       const [, options] = requestMock.mock.calls.at(-1) ?? [];
       expect(options?.params?.cursor).toBeUndefined();
-    });
+    }, INITIAL_WAIT);
     await waitFor(() => {
-      expect(within(table).getAllByText(/^AUD-2026-/)).toHaveLength(3);
+      expect(
+        within(table).getAllByRole('row', { name: /AUD-2026-/ }),
+      ).toHaveLength(3);
     });
     expect(
       screen.queryByRole('row', { name: /AUD-2026-0808-006/ }),

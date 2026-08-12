@@ -28,10 +28,10 @@ describe('queryUserRows', () => {
     listAccountsMock.mockResolvedValue({
       items: [
         {
-          displayName: '示例用户乙',
-          employeeNo: '10000002',
+          displayName: '吴桐',
+          employeeNo: 'E1002',
           id: 'account-2',
-          profession: '测试',
+          profession: '产品',
           status: 'ENABLED',
         },
       ],
@@ -56,7 +56,15 @@ describe('queryUserRows', () => {
       status: 'ENABLED',
     });
     expect(result).toEqual({
-      data: [expect.objectContaining({ employeeNo: '10000002' })],
+      data: [
+        expect.objectContaining({
+          employeeNo: 'E1002',
+          lastLogin: '08-06 08:41',
+          roles: ['产品Leader'],
+          superior: '赵敏 · 经理',
+          team: '营销',
+        }),
+      ],
       success: true,
       total: 1,
     });

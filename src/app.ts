@@ -5,6 +5,7 @@ import {
   type RunTimeLayoutConfig,
   type RuntimeAntdConfig,
 } from '@umijs/max';
+import { Badge, Tag } from 'antd';
 import { createElement, type ReactNode } from 'react';
 import { fetchMe, logout, type Principal } from '@/features/auth';
 import {
@@ -133,6 +134,7 @@ export const layout = (({
     logo: false,
     title: false,
     siderWidth: 208,
+    defaultCollapsed: false,
     fixedHeader: true,
     fixSiderbar: true,
     menu: {
@@ -155,6 +157,60 @@ export const layout = (({
       }),
     ],
     menuDataRender: () => buildMenuData(initialState?.navigation ?? []),
+    menuItemRender: (item, defaultDom, menuProps) =>
+      typeof item.unreadCount === 'number' &&
+      item.unreadCount > 0 &&
+      menuProps.collapsed
+        ? createElement(
+            Badge,
+            {
+              'aria-label': `${item.unreadCount} 条未读消息`,
+              dot: true,
+              offset: [-2, 2],
+            },
+            defaultDom,
+          )
+        : defaultDom,
+    menuTextRender: (item, defaultText, menuProps) => {
+      const unreadCount =
+        typeof item.unreadCount === 'number' ? item.unreadCount : 0;
+      if (item.prototypeBadge === undefined && unreadCount === 0) {
+        return defaultText;
+      }
+
+      return createElement(
+        'span',
+        {
+          style: {
+            alignItems: 'center',
+            display: 'flex',
+            gap: 8,
+            width: '100%',
+          },
+        },
+        createElement('span', { style: { flex: 1 } }, defaultText),
+        item.prototypeBadge
+          ? createElement(
+              Tag,
+              {
+                'aria-hidden': true,
+                color: 'orange',
+                style: { marginInlineEnd: 0 },
+                variant: 'filled',
+              },
+              item.prototypeBadge,
+            )
+          : null,
+        unreadCount > 0 && !menuProps.collapsed
+          ? createElement(Badge, {
+              'aria-label': `${unreadCount} 条未读消息`,
+              count: unreadCount,
+              overflowCount: 99,
+              showZero: false,
+            })
+          : null,
+      );
+    },
     token: {
       header: { heightLayoutHeader: 52 },
       pageContainer: {

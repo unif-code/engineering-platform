@@ -1,11 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -22,6 +15,23 @@ import AdminUsersPage from '.';
 
 const PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS = { timeout: 5_000 };
 const PRO_TABLE_UPDATE_WAIT_OPTIONS = { timeout: 5_000 };
+const INTERACTION_TEST_TIMEOUT = 30_000;
+const PROTOTYPE_USERS = [
+  ['E1001', '王悦'],
+  ['E1002', '吴桐'],
+  ['E1003', '李强'],
+  ['E1004', '陈晓'],
+  ['E1005', '郑楠'],
+  ['E1006', '徐蕾'],
+  ['E1007', '赵敏'],
+  ['E2001', '刘洋'],
+  ['E2002', '何山'],
+  ['E2003', '秦岚'],
+  ['E3001', '罗成'],
+  ['E3002', '康宁'],
+  ['E0001', '孙杰'],
+  ['E0000', '周天'],
+] as const;
 
 interface MockRequest {
   body?: unknown;
@@ -163,33 +173,38 @@ async function fillCreateForm(
   values: {
     displayName: string;
     employeeNo: string;
-    profession?: string;
-    reason: string;
+    role?: string;
+    superior?: string;
+    team?: string;
   },
 ) {
-  await screen.findByText('共 6 个账号', undefined, {
-    timeout: PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS.timeout,
-  });
-  const createButton = screen.getByRole('button', { name: '新增账号' });
+  await screen.findByRole(
+    'row',
+    { name: /E1001.*王悦/ },
+    PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+  );
+  const createButton = screen.getByRole('button', { name: '新增用户' });
   await user.click(createButton);
   expect(createButton).toHaveAttribute('aria-expanded', 'true');
-  const dialog = await screen.findByRole('dialog', { name: '新增账号' });
+  const dialog = await screen.findByRole('dialog', { name: '新增用户' });
   expect(dialog).toBeVisible();
   await user.type(
-    within(dialog).getByRole('textbox', { name: '员工编号' }),
+    within(dialog).getByRole('textbox', { name: '工号' }),
     values.employeeNo,
   );
   await user.type(
     within(dialog).getByRole('textbox', { name: '姓名' }),
     values.displayName,
   );
-  if (values.profession) {
-    await selectOption(user, '专业分类', values.profession, dialog);
-  }
-  await user.type(
-    within(dialog).getByRole('textbox', { name: '创建原因' }),
-    values.reason,
+  await selectOption(user, '所属 Team', values.team ?? '营销', dialog);
+  await user.click(within(dialog).getByRole('combobox', { name: '角色' }));
+  expect(
+    screen.queryByRole('option', { name: '超级管理员' }),
+  ).not.toBeInTheDocument();
+  await user.click(
+    await screen.findByRole('option', { name: values.role ?? '前端开发' }),
   );
+  await selectOption(user, '直属上级', values.superior ?? '无', dialog);
   return dialog;
 }
 
@@ -200,9 +215,6 @@ async function submitAction(
   dialogName: string,
   reason: string,
 ) {
-  await screen.findByText('共 6 个账号', undefined, {
-    timeout: PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS.timeout,
-  });
   const row = await screen.findByRole(
     'row',
     { name: rowName },
@@ -228,161 +240,136 @@ beforeEach(() => {
 });
 
 describe('AdminUsersPage', () => {
-  it('呈现服务端账号、筛选工具栏和 1120px 横向表格', async () => {
+  it('账号 mock 列表只返回冻结的 AccountSummary 契约字段', async () => {
+    const page = (await requestThroughMock('/api/v1/admin/accounts', {
+      params: { page: 1, pageSize: 20 },
+    })) as { items: Array<Record<string, unknown>> };
+
+    expect(page.items).toHaveLength(14);
+    for (const account of page.items) {
+      expect(Object.keys(account).sort()).toEqual([
+        'displayName',
+        'employeeNo',
+        'id',
+        'profession',
+        'status',
+      ]);
+    }
+  });
+
+  it('按原型呈现 14 条用户 fixture、七列表格与新增入口', async () => {
     renderPage();
 
     expect(
-      screen.getByRole('toolbar', { name: '账号筛选与操作' }),
+      screen.getByText(
+        '单一用户表，平台端 / 管理端不区分账号；菜单与操作按角色能力动态渲染 · 本地账号 + TOTP 双因素',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '新增用户' }),
     ).toBeInTheDocument();
     expect(
       await screen.findByRole(
         'row',
-        { name: /示例用户甲/ },
+        { name: /E1001.*王悦/ },
         PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole('row', { name: /示例用户乙/ })).toBeInTheDocument();
-    expect(screen.getByRole('row', { name: /示例用户丙/ })).toBeInTheDocument();
-    expect(screen.getByRole('row', { name: /示例用户丁/ })).toBeInTheDocument();
-    expect(screen.getByRole('row', { name: /示例用户戊/ })).toHaveTextContent(
-      '受限',
+    for (const [employeeNo, displayName] of PROTOTYPE_USERS) {
+      expect(
+        screen.getByRole('row', {
+          name: new RegExp(`${employeeNo}.*${displayName}`),
+        }),
+      ).toBeInTheDocument();
+    }
+    expect(screen.getByRole('row', { name: /E1006.*徐蕾/ })).toHaveTextContent(
+      '已停用',
     );
-    expect(screen.getByRole('row', { name: /示例用户己/ })).toHaveTextContent(
-      '待初始化',
+    expect(screen.getByRole('row', { name: /E2002.*何山/ })).toHaveTextContent(
+      '前端开发 · 后端开发',
     );
+    const firstUserRow = screen.getByRole('row', { name: /E1001.*王悦/ });
+    expect(firstUserRow).toHaveTextContent('营销');
+    expect(firstUserRow).toHaveTextContent('产品');
+    expect(firstUserRow).toHaveTextContent('08-06 09:02');
 
     const table = screen.getByRole('table');
     expect(table).toHaveStyle({ width: '1120px' });
-    expect(within(table).getAllByRole('row')).toHaveLength(7);
-    expect(screen.getByText('共 6 个账号')).toBeInTheDocument();
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual(['工号', '姓名', 'Team', '角色标签', '状态', '最近登录', '操作']);
+    expect(within(table).getAllByRole('row')).toHaveLength(15);
     expect(screen.queryByText(/静态原型操作/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('管理平台账号、初始化状态与凭据治理操作'),
+    ).not.toBeInTheDocument();
   });
 
-  it('可组合员工号、姓名、状态与专业分类服务端筛选', async () => {
-    const user = userEvent.setup();
+  it(
+    '编辑用户只使用原型四字段并保持静态预览语义',
+    async () => {
+      const user = userEvent.setup();
+      renderPage();
+      const row = await screen.findByRole(
+        'row',
+        { name: /E2002.*何山/ },
+        PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+      );
+
+      await user.click(within(row).getByRole('button', { name: '编辑' }));
+      const dialog = await screen.findByRole('dialog', { name: '编辑用户' });
+
+      expect(within(dialog).getByRole('textbox', { name: '姓名' })).toHaveValue(
+        '何山',
+      );
+      expect(
+        within(dialog).getByRole('combobox', { name: '所属 Team' }),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).getByRole('combobox', { name: '角色' }),
+      ).toBeInTheDocument();
+      expect(dialog).toHaveTextContent('前端开发');
+      expect(
+        within(dialog).getByRole('combobox', { name: '状态' }),
+      ).toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('combobox', { name: '直属上级' }),
+      ).not.toBeInTheDocument();
+      expect(
+        within(dialog).queryByRole('combobox', { name: '专业分类' }),
+      ).not.toBeInTheDocument();
+      expect(dialog).toHaveTextContent('正常');
+
+      const nameInput = within(dialog).getByRole('textbox', { name: '姓名' });
+      await user.clear(nameInput);
+      await user.type(nameInput, '不会保存的姓名');
+      await user.click(within(dialog).getByRole('button', { name: /保\s*存/ }));
+
+      expect(
+        await screen.findByText(
+          '静态原型操作：编辑用户 何山，未保存任何业务数据。',
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('row', { name: /E2002.*何山/ }),
+      ).not.toHaveTextContent('不会保存的姓名');
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
+
+  it('不显示原型没有的账号搜索、筛选与汇总', async () => {
     renderPage();
     await screen.findByRole(
       'row',
-      { name: /示例用户甲/ },
+      { name: /E1001.*王悦/ },
       PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
     );
 
-    await user.type(
-      screen.getByRole('searchbox', { name: '搜索员工编号' }),
-      '10000004',
-    );
-    await user.keyboard('{Enter}');
-    await user.type(
-      screen.getByRole('searchbox', { name: '搜索姓名' }),
-      '示例用户丁',
-    );
-    await user.keyboard('{Enter}');
-    await selectOption(user, '账号状态', '已启用');
-    await selectOption(user, '专业分类', '研发');
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole('row', { name: /示例用户丁/ }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole('row', { name: /示例用户甲/ }),
-      ).not.toBeInTheDocument();
-    });
-    expect(screen.getByText('共 1 个账号')).toBeInTheDocument();
-
-    await user.clear(screen.getByRole('searchbox', { name: '搜索员工编号' }));
-    await user.clear(screen.getByRole('searchbox', { name: '搜索姓名' }));
-    await selectOption(user, '账号状态', '全部状态');
-    await selectOption(user, '专业分类', '全部专业分类');
-    expect(await screen.findByText('共 6 个账号')).toBeInTheDocument();
-  });
-
-  it('较慢的旧请求返回后不会覆盖最新筛选结果与 total', async () => {
-    const user = userEvent.setup();
-    const initialPage = await requestThroughMock('/api/v1/admin/accounts', {
-      params: { page: 1, pageSize: 10 },
-    });
-    let resolveInitialRequest: (value: unknown) => void = () => {
-      throw new Error('initial account request was not started');
-    };
-    requestMock.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveInitialRequest = resolve;
-        }),
-    );
-    renderPage();
-
-    await user.type(
-      screen.getByRole('searchbox', { name: '搜索员工编号' }),
-      '10000004',
-    );
-    await user.keyboard('{Enter}');
-    expect(
-      await screen.findByRole(
-        'row',
-        { name: /示例用户丁/ },
-        PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText('共 1 个账号')).toBeInTheDocument();
-
-    await act(async () => {
-      resolveInitialRequest(initialPage);
-    });
-    await waitFor(() => {
-      expect(screen.getByText('共 1 个账号')).toBeInTheDocument();
-      expect(
-        screen.queryByRole('row', { name: /示例用户甲/ }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  it('筛选已提交但新请求尚未启动时忽略旧请求的 Problem', async () => {
-    const user = userEvent.setup();
-    let rejectInitialRequest: (reason: unknown) => void = () => {
-      throw new Error('initial account request was not started');
-    };
-    requestMock.mockImplementationOnce(
-      () =>
-        new Promise((_resolve, reject) => {
-          rejectInitialRequest = reject;
-        }),
-    );
-    renderPage();
-
-    const employeeNoSearch = screen.getByRole('searchbox', {
-      name: '搜索员工编号',
-    });
-    await user.type(employeeNoSearch, '10000004');
-    fireEvent.keyDown(employeeNoSearch, { code: 'Enter', key: 'Enter' });
-    expect(requestMock).toHaveBeenCalledTimes(1);
-
-    await act(async () => {
-      rejectInitialRequest({
-        response: {
-          data: {
-            type: 'https://engineering-platform.example/problems/forbidden',
-            title: 'FORBIDDEN',
-            status: 403,
-            detail: '旧筛选请求已失效',
-            requestId: 'stale-admin-account-request',
-          },
-          status: 403,
-          statusText: '403',
-        },
-      });
-    });
-
-    expect(
-      await screen.findByRole(
-        'row',
-        { name: /示例用户丁/ },
-        PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText('共 1 个账号')).toBeInTheDocument();
-    expect(screen.queryByText(/旧筛选请求已失效/)).not.toBeInTheDocument();
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByText('共 14 个账号')).not.toBeInTheDocument();
   });
 
   it('页面卸载后忽略仍在途请求的 Problem', async () => {
@@ -438,8 +425,9 @@ describe('AdminUsersPage', () => {
     const drawer = await fillCreateForm(user, {
       displayName: '临时用户',
       employeeNo: '00000009',
-      profession: '测试',
-      reason: '项目入职',
+      role: '前端开发',
+      superior: '李强 · 开发Leader · 营销',
+      team: '营销',
     });
     await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
 
@@ -465,149 +453,175 @@ describe('AdminUsersPage', () => {
     expect(
       await screen.findByRole('row', { name: /临时用户/ }),
     ).toHaveTextContent('00000009');
-  });
-
-  it('重复员工号保留创建抽屉并展示 409 detail 与 requestId', async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByRole('table');
-
-    const drawer = await fillCreateForm(user, {
-      displayName: '重复用户',
-      employeeNo: '10000001',
-      reason: '重复测试',
-    });
-    await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
-
-    expect(await screen.findByText(/员工号 10000001 已存在/)).toHaveTextContent(
-      /requestId: mock-admin-account-/,
+    expect(screen.getByRole('row', { name: /临时用户/ })).toHaveTextContent(
+      '营销',
     );
-    expect(
-      screen.getByRole('dialog', { name: '新增账号' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('dialog', { name: '账号创建成功' }),
-    ).not.toBeInTheDocument();
-  });
+    expect(screen.getByRole('row', { name: /临时用户/ })).toHaveTextContent(
+      '前端开发',
+    );
+  }, 45_000);
 
-  it('服务端返回 422 时保留创建抽屉并展示 detail 与 requestId 原文', async () => {
+  it(
+    '重复员工号保留创建抽屉并展示 409 detail 与 requestId',
+    async () => {
+      const user = userEvent.setup();
+      renderPage();
+      await screen.findByRole('table');
+
+      const drawer = await fillCreateForm(user, {
+        displayName: '重复用户',
+        employeeNo: 'E1001',
+        team: '营销',
+      });
+      await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
+
+      expect(await screen.findByText(/员工号 E1001 已存在/)).toHaveTextContent(
+        /requestId: mock-admin-account-/,
+      );
+      expect(
+        screen.getByRole('dialog', { name: '新增用户' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('dialog', { name: '账号创建成功' }),
+      ).not.toBeInTheDocument();
+      await user.click(within(drawer).getByRole('button', { name: /取\s*消/ }));
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('dialog', { name: '新增用户' }),
+        ).not.toBeInTheDocument();
+      });
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
+
+  it(
+    '服务端返回 422 时保留创建抽屉并展示 detail 与 requestId 原文',
+    async () => {
+      const user = userEvent.setup();
+      routes = {
+        ...routes,
+        'POST /api/v1/admin/accounts': (
+          _request: MockRequest,
+          response: MockResponse,
+        ) => {
+          response.status(422);
+          response.setHeader('Content-Type', 'application/problem+json');
+          response.json({
+            type: 'https://engineering-platform.example/problems/validation_error',
+            title: 'VALIDATION_ERROR',
+            status: 422,
+            detail: '该专业分类当前不可用于新账号',
+            requestId: 'mock-admin-account-page-422',
+          });
+        },
+      };
+      renderPage();
+      await screen.findByRole('table');
+
+      const drawer = await fillCreateForm(user, {
+        displayName: '服务端校验用户',
+        employeeNo: '10000009',
+        team: '营销',
+      });
+      await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
+
+      expect(
+        await screen.findByText(/该专业分类当前不可用于新账号/),
+      ).toHaveTextContent('requestId: mock-admin-account-page-422');
+      expect(
+        screen.getByRole('dialog', { name: '新增用户' }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('dialog', { name: '账号创建成功' }),
+      ).not.toBeInTheDocument();
+      await user.click(within(drawer).getByRole('button', { name: /取\s*消/ }));
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('dialog', { name: '新增用户' }),
+        ).not.toBeInTheDocument();
+      });
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
+
+  it(
+    '停用必须确认并填写 reason，成功后刷新为已停用',
+    async () => {
+      const user = userEvent.setup();
+      renderPage();
+      const userRow = await screen.findByRole(
+        'row',
+        { name: /E1001.*王悦/ },
+        PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+      );
+      await user.click(within(userRow).getByRole('button', { name: '停用' }));
+      const dialog = await screen.findByRole('dialog', {
+        name: '确认停用账号',
+      });
+      await user.click(
+        within(dialog).getByRole('button', { name: '确认停用' }),
+      );
+      expect(await within(dialog).findByText('请输入操作原因')).toBeVisible();
+      expect(userRow).toHaveTextContent('已启用');
+
+      await user.type(
+        within(dialog).getByRole('textbox', { name: '操作原因' }),
+        '人员离职',
+      );
+      await user.click(
+        within(dialog).getByRole('button', { name: '确认停用' }),
+      );
+
+      expect(await screen.findByText('账号已停用')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByRole('row', { name: /E1001.*王悦/ }),
+        ).toHaveTextContent('已停用');
+      });
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
+
+  it('原型用户操作不额外暴露重置密码入口', async () => {
     const user = userEvent.setup();
-    routes = {
-      ...routes,
-      'POST /api/v1/admin/accounts': (
-        _request: MockRequest,
-        response: MockResponse,
-      ) => {
-        response.status(422);
-        response.setHeader('Content-Type', 'application/problem+json');
-        response.json({
-          type: 'https://engineering-platform.example/problems/validation_error',
-          title: 'VALIDATION_ERROR',
-          status: 422,
-          detail: '该专业分类当前不可用于新账号',
-          requestId: 'mock-admin-account-page-422',
-        });
-      },
-    };
     renderPage();
-    await screen.findByRole('table');
 
-    const drawer = await fillCreateForm(user, {
-      displayName: '服务端校验用户',
-      employeeNo: '10000009',
-      profession: '测试',
-      reason: '验证服务端校验失败',
-    });
-    await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
-
-    expect(
-      await screen.findByText(/该专业分类当前不可用于新账号/),
-    ).toHaveTextContent('requestId: mock-admin-account-page-422');
-    expect(
-      screen.getByRole('dialog', { name: '新增账号' }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole('dialog', { name: '账号创建成功' }),
-    ).not.toBeInTheDocument();
-  });
-
-  it('停用必须确认并填写 reason，成功后刷新为已停用', async () => {
-    const user = userEvent.setup();
-    renderPage();
-    const userRow = await screen.findByRole(
+    const row = await screen.findByRole(
       'row',
-      { name: /示例用户甲/ },
+      { name: /E1001.*王悦/ },
       PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
     );
-    await user.click(within(userRow).getByRole('button', { name: '停用' }));
-    const dialog = await screen.findByRole('dialog', {
-      name: '确认停用账号',
-    });
-    await user.click(within(dialog).getByRole('button', { name: '确认停用' }));
-    expect(await within(dialog).findByText('请输入操作原因')).toBeVisible();
-    expect(userRow).toHaveTextContent('已启用');
-
-    await user.type(
-      within(dialog).getByRole('textbox', { name: '操作原因' }),
-      '人员离职',
-    );
-    await user.click(within(dialog).getByRole('button', { name: '确认停用' }));
-
-    expect(await screen.findByText('账号已停用')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByRole('row', { name: /示例用户甲/ })).toHaveTextContent(
-        '已停用',
-      );
-    });
-  });
-
-  it('重置密码确认后展示一次性临时密码，关闭后不可再取', async () => {
-    const user = userEvent.setup();
-    renderPage();
-
-    await submitAction(
-      user,
-      /示例用户甲/,
-      '重置密码',
-      '确认重置密码',
-      '用户忘记密码',
-    );
-
-    const receipt = await screen.findByRole('dialog', {
-      name: '密码重置成功',
-    });
-    expect(receipt).toHaveTextContent('仅此一次，请立即传达');
+    expect(within(row).queryByRole('button', { name: '重置密码' })).toBeNull();
+    await user.click(within(row).getByRole('button', { name: '编辑' }));
     expect(
-      within(receipt).getByText(/^Reset![\da-f-]{36}$/),
-    ).toBeInTheDocument();
-    await user.click(
-      within(receipt).getByRole('button', { name: '我已安全记录' }),
-    );
-    await waitFor(() => {
-      expect(
-        screen.queryByText(/^Reset![\da-f-]{36}$/),
-      ).not.toBeInTheDocument();
-    });
+      within(
+        await screen.findByRole('dialog', { name: '编辑用户' }),
+      ).queryByRole('button', { name: '重置密码' }),
+    ).toBeNull();
   });
 
-  it('启用经过确认和 reason，并刷新账号状态', async () => {
-    const user = userEvent.setup();
-    renderPage();
+  it(
+    '启用经过确认和 reason，并刷新账号状态',
+    async () => {
+      const user = userEvent.setup();
+      renderPage();
 
-    await submitAction(
-      user,
-      /示例用户丙/,
-      '启用',
-      '确认启用账号',
-      '恢复账号访问',
-    );
-    expect(await screen.findByText('账号已启用')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByRole('row', { name: /示例用户丙/ })).toHaveTextContent(
-        '已启用',
+      await submitAction(
+        user,
+        /E1006.*徐蕾/,
+        '启用',
+        '确认启用账号',
+        '恢复账号访问',
       );
-    });
-  });
+      expect(await screen.findByText('账号已启用')).toBeInTheDocument();
+      await waitFor(() => {
+        expect(
+          screen.getByRole('row', { name: /E1006.*徐蕾/ }),
+        ).toHaveTextContent('已启用');
+      });
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
 
   it('TOTP 重置经过确认和 reason，并产生可观察反馈', async () => {
     const user = userEvent.setup();
@@ -615,7 +629,7 @@ describe('AdminUsersPage', () => {
 
     await submitAction(
       user,
-      /示例用户甲/,
+      /E1001.*王悦/,
       '重置 TOTP',
       '确认重置 TOTP',
       '用户更换认证设备',
@@ -632,35 +646,32 @@ describe('AdminUsersPage', () => {
     );
   });
 
-  it('列表成功后权限被撤销会清除旧账号并展示 403 Problem', async () => {
+  it('行动作成功后列表权限被撤销会清除旧账号并展示 403 Problem', async () => {
     const user = userEvent.setup();
-    let authorized = true;
-    routes = createAdminAccountsMock({ authorize: () => authorized });
+    let authorizationChecks = 0;
+    routes = createAdminAccountsMock({
+      authorize: () => {
+        authorizationChecks += 1;
+        return authorizationChecks <= 2;
+      },
+    });
     renderPage();
 
-    expect(
-      await screen.findByRole(
-        'row',
-        { name: /示例用户甲/ },
-        PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
-      ),
-    ).toBeInTheDocument();
-    authorized = false;
-
-    await user.type(
-      screen.getByRole('searchbox', { name: '搜索姓名' }),
-      '权限撤销后刷新',
+    await submitAction(
+      user,
+      /E1001.*王悦/,
+      '停用',
+      '确认停用账号',
+      '权限撤销验证',
     );
-    await user.keyboard('{Enter}');
 
     expect(await screen.findByText(/无账号治理权限/)).toHaveTextContent(
       /requestId: mock-admin-account-/,
     );
     await waitFor(() => {
       expect(
-        screen.queryByRole('row', { name: /示例用户甲/ }),
+        screen.queryByRole('row', { name: /E1001.*王悦/ }),
       ).not.toBeInTheDocument();
-      expect(screen.getByText('共 0 个账号')).toBeInTheDocument();
     }, PRO_TABLE_UPDATE_WAIT_OPTIONS);
   });
 });

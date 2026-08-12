@@ -1,28 +1,31 @@
 import {
   ModalForm,
+  type ProFormInstance,
   ProFormSelect,
   ProFormTextArea,
 } from '@ant-design/pro-components';
 import { App, Typography } from 'antd';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { formatGovernanceError } from '@/features/administration';
 import {
-  formatGovernanceError,
-  type GrantScopeType,
-} from '@/features/administration';
-import { GRANT_CAPABILITY_OPTIONS, GRANT_SCOPE_OPTIONS } from './constant';
-import type { GrantFormValues, GrantSubmitInput } from './type';
-
-interface SelectOption {
-  label: string;
-  value: string;
-}
+  GRANT_CAPABILITY_OPTIONS,
+  GRANT_PRINCIPAL_TYPE_OPTIONS,
+  GRANT_VALIDITY_OPTIONS,
+} from './constant';
+import type {
+  GrantFormValues,
+  GrantPrincipalOption,
+  GrantPrincipalType,
+  GrantScopeOption,
+  GrantSubmitInput,
+} from './type';
 
 interface GrantModalProps {
   onClose: () => void;
   onSubmit: (input: GrantSubmitInput) => Promise<void>;
   open: boolean;
-  principalOptions: readonly SelectOption[];
-  workspaceOptions: readonly SelectOption[];
+  principalOptions: readonly GrantPrincipalOption[];
+  scopeOptions: readonly GrantScopeOption[];
 }
 
 export function GrantModal({
@@ -30,25 +33,41 @@ export function GrantModal({
   onSubmit,
   open,
   principalOptions,
-  workspaceOptions,
+  scopeOptions,
 }: GrantModalProps) {
   const { message } = App.useApp();
-  const [scopeType, setScopeType] = useState<GrantScopeType>('PLATFORM');
+  const formRef = useRef<ProFormInstance<GrantFormValues> | undefined>(
+    undefined,
+  );
+  const [principalType, setPrincipalType] =
+    useState<GrantPrincipalType>('ACCOUNT');
 
   const submit = async (values: GrantFormValues) => {
     try {
-      const workspaceId = values.workspaceId;
-      if (values.scopeType === 'WORKSPACE' && workspaceId === undefined) {
-        throw new Error('请选择 Workspace');
+      const principal = principalOptions.find(
+        ({ value }) => value === values.principalId,
+      );
+      if (principal?.type !== values.principalType) {
+        throw new Error('请选择与主体类型匹配的主体');
+      }
+      const scope = scopeOptions.find(({ value }) => value === values.scopeId);
+      if (scope === undefined) {
+        throw new Error('请选择范围');
+      }
+      if (scope.type === 'DEPARTMENT') {
+        throw new Error('当前契约尚未开放部门范围授权');
+      }
+      if (values.validity !== 'LONG_TERM') {
+        throw new Error('当前契约尚未开放临时有效期授权');
       }
       await onSubmit({
         capability: values.capability,
         principalId: values.principalId,
         reason: values.reason.trim(),
         scope:
-          values.scopeType === 'PLATFORM'
+          scope.type === 'PLATFORM'
             ? { type: 'PLATFORM' }
-            : { id: workspaceId, type: 'WORKSPACE' },
+            : { id: scope.value, type: 'WORKSPACE' },
       });
       onClose();
       message.success('能力已授予');
@@ -61,7 +80,12 @@ export function GrantModal({
 
   return (
     <ModalForm<GrantFormValues>
-      initialValues={{ scopeType: 'PLATFORM' }}
+      formRef={formRef}
+      initialValues={{
+        principalType: 'ACCOUNT',
+        scopeId: 'PLATFORM',
+        validity: 'LONG_TERM',
+      }}
       modalProps={{ destroyOnHidden: true, onCancel: onClose }}
       onFinish={submit}
       onOpenChange={(nextOpen) => {
@@ -73,7 +97,7 @@ export function GrantModal({
       submitter={{
         searchConfig: { resetText: '取消', submitText: '确认授予' },
       }}
-      title="授予能力"
+      title="新增授权"
       width={560}
     >
       <Typography.Paragraph type="secondary">
@@ -81,25 +105,41 @@ export function GrantModal({
       </Typography.Paragraph>
       <ProFormSelect
         fieldProps={{
-          'aria-label': 'Principal',
+          'aria-label': '主体类型',
+          id: 'admin-grant-principal-type',
+          onChange: (nextType: GrantPrincipalType) => {
+            setPrincipalType(nextType);
+            formRef.current?.setFieldValue('principalId', undefined);
+          },
+          virtual: false,
+        }}
+        formItemProps={{ htmlFor: 'admin-grant-principal-type' }}
+        label="主体类型"
+        name="principalType"
+        options={GRANT_PRINCIPAL_TYPE_OPTIONS.map((option) => ({ ...option }))}
+        rules={[{ required: true, message: '请选择主体类型' }]}
+      />
+      <ProFormSelect
+        fieldProps={{
+          'aria-label': '主体',
           id: 'admin-grant-principal',
           virtual: false,
         }}
         formItemProps={{ htmlFor: 'admin-grant-principal' }}
-        label="Principal"
+        label="主体"
         name="principalId"
-        options={[...principalOptions]}
-        placeholder="请选择账号"
-        rules={[{ required: true, message: '请选择 Principal' }]}
+        options={principalOptions.filter(({ type }) => type === principalType)}
+        placeholder="请选择主体"
+        rules={[{ required: true, message: '请选择主体' }]}
       />
       <ProFormSelect
         fieldProps={{
-          'aria-label': 'Capability',
+          'aria-label': '能力',
           id: 'admin-grant-capability',
           virtual: false,
         }}
         formItemProps={{ htmlFor: 'admin-grant-capability' }}
-        label="Capability"
+        label="能力"
         name="capability"
         options={GRANT_CAPABILITY_OPTIONS.map((option) => ({ ...option }))}
         placeholder="请选择 Capability"
@@ -107,38 +147,34 @@ export function GrantModal({
       />
       <ProFormSelect
         fieldProps={{
-          'aria-label': 'Scope 类型',
-          id: 'admin-grant-scope-type',
-          onChange: setScopeType,
+          'aria-label': '范围',
+          id: 'admin-grant-scope',
           virtual: false,
         }}
-        formItemProps={{ htmlFor: 'admin-grant-scope-type' }}
-        label="Scope 类型"
-        name="scopeType"
-        options={GRANT_SCOPE_OPTIONS.map((option) => ({ ...option }))}
-        rules={[{ required: true, message: '请选择 Scope 类型' }]}
+        formItemProps={{ htmlFor: 'admin-grant-scope' }}
+        label="范围"
+        name="scopeId"
+        options={scopeOptions.map(({ label, value }) => ({ label, value }))}
+        rules={[{ required: true, message: '请选择范围' }]}
       />
-      {scopeType === 'WORKSPACE' ? (
-        <ProFormSelect
-          fieldProps={{
-            'aria-label': 'Workspace',
-            id: 'admin-grant-workspace',
-            virtual: false,
-          }}
-          formItemProps={{ htmlFor: 'admin-grant-workspace' }}
-          label="Workspace"
-          name="workspaceId"
-          options={[...workspaceOptions]}
-          placeholder="请选择 Workspace"
-          rules={[{ required: true, message: '请选择 Workspace' }]}
-        />
-      ) : null}
+      <ProFormSelect
+        fieldProps={{
+          'aria-label': '有效期',
+          id: 'admin-grant-validity',
+          virtual: false,
+        }}
+        formItemProps={{ htmlFor: 'admin-grant-validity' }}
+        label="有效期"
+        name="validity"
+        options={GRANT_VALIDITY_OPTIONS.map((option) => ({ ...option }))}
+        rules={[{ required: true, message: '请选择有效期' }]}
+      />
       <ProFormTextArea
         fieldProps={{ id: 'admin-grant-reason', rows: 3 }}
         formItemProps={{ htmlFor: 'admin-grant-reason' }}
-        label="授予原因"
+        label="授权原因"
         name="reason"
-        placeholder="说明本次授权的业务原因"
+        placeholder="将写入审计日志"
         rules={[
           { required: true, message: '请输入授予原因' },
           { whitespace: true, message: '授予原因不能为空' },

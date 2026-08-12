@@ -4,20 +4,13 @@ export const useStyles = createStyles(({ token }) => ({
   masterDetail: {
     display: 'flex',
     gap: token.margin,
-    alignItems: 'start',
+    alignItems: 'flex-start',
   },
   selectorCard: {
     display: 'flex',
     flex: '0 0 236px',
     flexDirection: 'column',
     gap: token.marginXS,
-  },
-  detailCard: {
-    flex: 1,
-    minWidth: 0,
-  },
-  card: {
-    borderColor: token.colorBorderSecondary,
   },
   selectorHeader: {
     display: 'flex',
@@ -72,6 +65,13 @@ export const useStyles = createStyles(({ token }) => ({
     gap: token.marginXS,
     alignItems: 'center',
   },
+  workspaceTeamDot: {
+    width: token.controlHeightXS / 2,
+    height: token.controlHeightXS / 2,
+    flex: '0 0 auto',
+    borderRadius: '50%',
+    background: token.colorPrimary,
+  },
   workspaceName: {
     flex: 1,
     minWidth: 0,
@@ -91,11 +91,22 @@ export const useStyles = createStyles(({ token }) => ({
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeightSM,
   },
+  detailCard: {
+    flex: 1,
+    minWidth: 0,
+  },
+  detailSurface: {
+    overflow: 'hidden',
+    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusLG,
+    background: token.colorBgContainer,
+  },
   detailHeader: {
     display: 'flex',
     gap: token.marginSM,
     alignItems: 'center',
-    marginBlockEnd: token.marginXS,
+    padding: `${token.paddingSM}px ${token.padding}px`,
+    borderBlockEnd: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
   },
   detailAvatar: {
     display: 'inline-flex',
@@ -125,7 +136,7 @@ export const useStyles = createStyles(({ token }) => ({
   },
   panel: {
     minHeight: 360,
-    paddingBlock: token.paddingSM,
+    padding: `${token.paddingSM}px ${token.padding}px ${token.padding}px`,
   },
   panelHeader: {
     display: 'flex',
@@ -135,7 +146,7 @@ export const useStyles = createStyles(({ token }) => ({
     marginBlockEnd: token.marginSM,
   },
   panelTitle: {
-    margin: 0,
+    margin: `0 0 ${token.marginSM}px`,
     color: token.colorText,
     fontSize: token.fontSizeLG,
     fontWeight: token.fontWeightStrong,
@@ -192,10 +203,50 @@ export const useStyles = createStyles(({ token }) => ({
     fontFamily: token.fontFamilyCode,
     fontSize: token.fontSizeSM,
   },
+  connectionCard: {
+    display: 'flex',
+    gap: token.marginSM,
+    alignItems: 'center',
+    marginBlockEnd: token.marginSM,
+    padding: token.paddingSM,
+    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusLG,
+    background: token.colorFillQuaternary,
+  },
+  gitLabMark: {
+    fontSize: token.fontSizeHeading2,
+    lineHeight: 1,
+  },
+  connectionBody: {
+    display: 'flex',
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'column',
+    gap: token.marginXXS,
+  },
+  connectionTitle: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: token.marginXS,
+    alignItems: 'center',
+    color: token.colorText,
+    fontWeight: token.fontWeightStrong,
+  },
+  repositorySummary: {
+    display: 'flex',
+    gap: token.marginSM,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBlockEnd: token.marginSM,
+  },
+  selectedCount: {
+    flexShrink: 0,
+    color: token.colorPrimary,
+  },
   repositoryList: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-    gap: token.marginSM,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+    gap: token.marginXS,
     margin: 0,
     padding: 0,
     listStyle: 'none',
@@ -204,18 +255,14 @@ export const useStyles = createStyles(({ token }) => ({
     display: 'flex',
     gap: token.marginSM,
     alignItems: 'center',
+    minWidth: 0,
     padding: token.paddingSM,
     border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
   },
-  repositoryBody: {
-    display: 'flex',
+  repositoryName: {
     flex: 1,
     minWidth: 0,
-    flexDirection: 'column',
-    gap: token.marginXXS,
-  },
-  repositoryName: {
     overflow: 'hidden',
     color: token.colorText,
     fontFamily: token.fontFamilyCode,
@@ -223,64 +270,53 @@ export const useStyles = createStyles(({ token }) => ({
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
   },
-  branch: {
-    color: token.colorTextSecondary,
+  repositoryNote: {
+    margin: `${token.marginSM}px 0 0`,
+    color: token.colorTextTertiary,
     fontSize: token.fontSizeSM,
   },
-  settingsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-    gap: token.margin,
+  settingsForm: {
+    maxWidth: 520,
   },
-  settingsSection: {
+  settingsLabel: {
+    display: 'block',
+    marginBlockEnd: token.marginXXS,
+    color: token.colorText,
+    fontWeight: token.fontWeightStrong,
+  },
+  settingsNameRow: {
     display: 'flex',
-    minWidth: 0,
-    flexDirection: 'column',
-    gap: token.marginSM,
-    padding: token.padding,
-    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusLG,
-    background: token.colorBgContainer,
+    gap: token.marginXS,
   },
-  settingsHeading: {
+  archiveCard: {
     display: 'flex',
     gap: token.marginSM,
     alignItems: 'center',
     justifyContent: 'space-between',
+    maxWidth: 520,
+    marginBlockStart: token.marginXL,
+    padding: token.paddingSM,
+    border: `${token.lineWidth}px ${token.lineType} ${token.colorErrorBorder}`,
+    borderRadius: token.borderRadiusLG,
+    background: token.colorErrorBg,
   },
-  settingsTitle: {
-    margin: 0,
+  archiveTitle: {
+    display: 'block',
     color: token.colorText,
-    fontSize: token.fontSizeLG,
-    fontWeight: token.fontWeightStrong,
   },
-  keyValueList: {
-    display: 'grid',
-    gridTemplateColumns: 'max-content minmax(0, 1fr)',
-    gap: `${token.marginXS}px ${token.marginSM}px`,
-    margin: 0,
-  },
-  key: {
-    color: token.colorTextTertiary,
-  },
-  value: {
-    minWidth: 0,
-    margin: 0,
-    overflowWrap: 'anywhere',
+  archiveDescription: {
+    display: 'block',
+    marginBlockStart: token.marginXXS,
     color: token.colorTextSecondary,
+    fontSize: token.fontSizeSM,
   },
-  policyList: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.marginXS,
-    margin: 0,
-    paddingInlineStart: token.paddingLG,
-    color: token.colorTextSecondary,
-  },
-  settingsActions: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: token.marginXS,
-    marginBlockStart: 'auto',
+  visuallyHidden: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    overflow: 'hidden',
+    clip: 'rect(0 0 0 0)',
+    whiteSpace: 'nowrap',
+    clipPath: 'inset(50%)',
   },
 }));

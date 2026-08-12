@@ -244,7 +244,7 @@ describe('mock API session assembly', () => {
         sort: 40,
       },
       {
-        meta: { section: 'workspace' },
+        meta: { section: 'workspace', unreadCount: 4 },
         name: '消息中心',
         order: 5,
         routeKey: 'messages',

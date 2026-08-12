@@ -8,33 +8,31 @@ export const useStyles = createStyles(({ token }) => ({
   },
   metricsGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+    gridTemplateColumns: 'repeat(4, 1fr)',
     gap: token.margin,
   },
   analysisGrid: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: '1.2fr 1fr 1fr',
     gap: token.margin,
     alignItems: 'stretch',
   },
   card: {
     height: '100%',
     borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
   },
   chartFigure: {
     width: '100%',
     margin: 0,
   },
   filter: {
-    minWidth: 136,
+    width: 120,
   },
   actionFilter: {
-    minWidth: 190,
+    width: 220,
   },
   search: {
-    width: 280,
-    maxWidth: '100%',
+    width: 200,
   },
   loadMore: {
     display: 'flex',

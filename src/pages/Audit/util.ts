@@ -1,6 +1,6 @@
 import type { ProTableProps } from '@ant-design/pro-components';
 import { listAuditEvents } from '@/features/administration';
-import { AUDIT_PAGE_SIZE } from './constant';
+import { AUDIT_PAGE_SIZE, toAuditRow } from './constant';
 import type { AuditQueryParams, AuditRow } from './type';
 
 type AuditRequest = NonNullable<
@@ -54,6 +54,7 @@ export function selectAuditRows(
   sort: AuditSort = {},
   filter: AuditFilter = {},
 ): AuditRow[] {
+  const keyword = params.keyword?.trim().toLocaleLowerCase();
   const actions =
     params.action && params.action !== 'all'
       ? [params.action]
@@ -66,8 +67,21 @@ export function selectAuditRows(
   const filtered = rows.filter((row) => {
     const matchesAction = !actions?.length || actions.includes(row.action);
     const matchesRisk = !risks?.length || risks.includes(row.risk);
+    const matchesKeyword =
+      !keyword ||
+      [
+        row.actor,
+        row.targetType,
+        row.targetId,
+        row.target,
+        row.summary,
+        row.sourceIp,
+      ]
+        .join(' ')
+        .toLocaleLowerCase()
+        .includes(keyword);
 
-    return matchesAction && matchesRisk;
+    return matchesAction && matchesRisk && matchesKeyword;
   });
 
   if (sort.occurredAt === 'ascend' || sort.occurredAt === 'descend') {
@@ -119,9 +133,10 @@ export const queryAuditRows = async (
   filter: AuditFilter = {},
 ) => {
   const response = await listAuditEvents(toAuditEventsQuery(params));
+  const rows = response.items.map(toAuditRow);
 
   return {
-    data: selectAuditRows(response.items, params, sort, filter),
+    data: selectAuditRows(rows, params, sort, filter),
     nextCursor: response.nextCursor,
     success: true,
   };

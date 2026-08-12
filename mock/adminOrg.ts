@@ -4,17 +4,27 @@ const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 type OrganizationKind = 'MANAGER' | 'LEADER' | 'MEMBER';
+type OrganizationAccountStatus = 'ACTIVE' | 'DISABLED';
 
 interface OrganizationRecord {
+  departmentKey: string;
+  displayName: string;
+  employeeNo: string;
+  id: string;
+  kind: OrganizationKind;
+  lastLoginAt: string;
+  roles: readonly string[];
+  status: OrganizationAccountStatus;
+  superiorId: string | null;
+}
+
+interface OrganizationNode {
+  children: OrganizationNode[];
   displayName: string;
   employeeNo: string;
   id: string;
   kind: OrganizationKind;
   superiorId: string | null;
-}
-
-interface OrganizationNode extends OrganizationRecord {
-  children: OrganizationNode[];
 }
 
 interface MockRequest {
@@ -36,60 +46,169 @@ export interface AdminOrganizationMockOptions {
 
 const INITIAL_ORGANIZATION = Object.freeze([
   Object.freeze({
-    displayName: '周天',
-    employeeNo: '10001000',
-    id: 'manager-zhou',
+    departmentKey: 'marketing',
+    displayName: '赵敏',
+    employeeNo: 'E1007',
+    id: 'manager-zhao',
     kind: 'MANAGER',
+    lastLoginAt: '08-06 08:12',
+    roles: Object.freeze(['经理']),
+    status: 'ACTIVE',
     superiorId: null,
   }),
   Object.freeze({
-    displayName: '顾北',
-    employeeNo: '10001001',
-    id: 'manager-gu',
+    departmentKey: 'trading',
+    displayName: '秦岚',
+    employeeNo: 'E2003',
+    id: 'manager-qin',
     kind: 'MANAGER',
+    lastLoginAt: '08-05 16:03',
+    roles: Object.freeze(['产品']),
+    status: 'ACTIVE',
     superiorId: null,
   }),
   Object.freeze({
-    displayName: '方舟',
-    employeeNo: '10002000',
-    id: 'leader-fang',
-    kind: 'LEADER',
-    superiorId: 'manager-zhou',
+    departmentKey: 'platform',
+    displayName: '罗成',
+    employeeNo: 'E3001',
+    id: 'manager-luo',
+    kind: 'MANAGER',
+    lastLoginAt: '08-06 07:55',
+    roles: Object.freeze(['经理']),
+    status: 'ACTIVE',
+    superiorId: null,
   }),
   Object.freeze({
-    displayName: '沈一',
-    employeeNo: '10002001',
-    id: 'leader-shen',
-    kind: 'LEADER',
-    superiorId: 'manager-zhou',
+    departmentKey: 'operations',
+    displayName: '康宁',
+    employeeNo: 'E3002',
+    id: 'manager-kang',
+    kind: 'MANAGER',
+    lastLoginAt: '08-04 18:30',
+    roles: Object.freeze(['后端开发']),
+    status: 'ACTIVE',
+    superiorId: null,
   }),
   Object.freeze({
-    displayName: '赵晨',
-    employeeNo: '10002002',
-    id: 'leader-zhao',
-    kind: 'LEADER',
-    superiorId: 'manager-gu',
-  }),
-  Object.freeze({
-    displayName: '林一',
-    employeeNo: '10003000',
-    id: 'member-lin',
-    kind: 'MEMBER',
-    superiorId: 'leader-fang',
-  }),
-  Object.freeze({
-    displayName: '韩梅',
-    employeeNo: '10003001',
-    id: 'member-han',
-    kind: 'MEMBER',
-    superiorId: 'leader-shen',
-  }),
-  Object.freeze({
+    departmentKey: 'marketing',
     displayName: '吴桐',
-    employeeNo: '10003002',
-    id: 'member-wu',
+    employeeNo: 'E1002',
+    id: 'leader-wu',
+    kind: 'LEADER',
+    lastLoginAt: '08-06 08:41',
+    roles: Object.freeze(['产品Leader']),
+    status: 'ACTIVE',
+    superiorId: 'manager-zhao',
+  }),
+  Object.freeze({
+    departmentKey: 'marketing',
+    displayName: '李强',
+    employeeNo: 'E1003',
+    id: 'leader-li',
+    kind: 'LEADER',
+    lastLoginAt: '08-06 09:31',
+    roles: Object.freeze(['开发Leader']),
+    status: 'ACTIVE',
+    superiorId: 'manager-zhao',
+  }),
+  Object.freeze({
+    departmentKey: 'trading',
+    displayName: '刘洋',
+    employeeNo: 'E2001',
+    id: 'leader-liu',
+    kind: 'LEADER',
+    lastLoginAt: '08-06 09:40',
+    roles: Object.freeze(['开发Leader']),
+    status: 'ACTIVE',
+    superiorId: 'manager-qin',
+  }),
+  Object.freeze({
+    departmentKey: 'platform',
+    displayName: '高翔',
+    employeeNo: 'E3003',
+    id: 'leader-gao',
+    kind: 'LEADER',
+    lastLoginAt: '08-06 09:18',
+    roles: Object.freeze(['开发Leader']),
+    status: 'ACTIVE',
+    superiorId: 'manager-luo',
+  }),
+  Object.freeze({
+    departmentKey: 'operations',
+    displayName: '孙杰',
+    employeeNo: 'E0001',
+    id: 'leader-sun',
+    kind: 'LEADER',
+    lastLoginAt: '08-06 08:00',
+    roles: Object.freeze(['管理员']),
+    status: 'ACTIVE',
+    superiorId: 'manager-kang',
+  }),
+  Object.freeze({
+    departmentKey: 'marketing',
+    displayName: '王悦',
+    employeeNo: 'E1001',
+    id: 'member-wang',
     kind: 'MEMBER',
-    superiorId: 'leader-zhao',
+    lastLoginAt: '08-06 09:02',
+    roles: Object.freeze(['产品']),
+    status: 'ACTIVE',
+    superiorId: 'leader-wu',
+  }),
+  Object.freeze({
+    departmentKey: 'marketing',
+    displayName: '陈晓',
+    employeeNo: 'E1004',
+    id: 'member-chen',
+    kind: 'MEMBER',
+    lastLoginAt: '08-06 10:02',
+    roles: Object.freeze(['前端开发']),
+    status: 'ACTIVE',
+    superiorId: 'leader-li',
+  }),
+  Object.freeze({
+    departmentKey: 'marketing',
+    displayName: '郑楠',
+    employeeNo: 'E1005',
+    id: 'member-zheng',
+    kind: 'MEMBER',
+    lastLoginAt: '08-05 19:22',
+    roles: Object.freeze(['后端开发']),
+    status: 'ACTIVE',
+    superiorId: 'leader-li',
+  }),
+  Object.freeze({
+    departmentKey: 'marketing',
+    displayName: '徐蕾',
+    employeeNo: 'E1006',
+    id: 'member-xu',
+    kind: 'MEMBER',
+    lastLoginAt: '08-01 11:20',
+    roles: Object.freeze(['前端开发']),
+    status: 'DISABLED',
+    superiorId: 'leader-li',
+  }),
+  Object.freeze({
+    departmentKey: 'trading',
+    displayName: '何山',
+    employeeNo: 'E2002',
+    id: 'member-he',
+    kind: 'MEMBER',
+    lastLoginAt: '08-06 10:44',
+    roles: Object.freeze(['前端开发', '后端开发']),
+    status: 'ACTIVE',
+    superiorId: 'leader-liu',
+  }),
+  Object.freeze({
+    departmentKey: 'operations',
+    displayName: '周天',
+    employeeNo: 'E0000',
+    id: 'member-zhou',
+    kind: 'MEMBER',
+    lastLoginAt: '08-06 07:30',
+    roles: Object.freeze(['超级管理员']),
+    status: 'ACTIVE',
+    superiorId: 'leader-sun',
   }),
 ] as const satisfies readonly OrganizationRecord[]);
 
@@ -170,10 +289,14 @@ export function createAdminOrganizationMock(
   };
 
   const toNode = (record: OrganizationRecord): OrganizationNode => ({
-    ...record,
     children: records
       .filter(({ superiorId }) => superiorId === record.id)
       .map(toNode),
+    displayName: record.displayName,
+    employeeNo: record.employeeNo,
+    id: record.id,
+    kind: record.kind,
+    superiorId: record.superiorId,
   });
 
   return defineMock({
@@ -234,6 +357,7 @@ export function createAdminOrganizationMock(
         return;
       }
       account.superiorId = superior.id;
+      account.departmentKey = superior.departmentKey;
       response.status(204).end();
     },
   });

@@ -45,10 +45,9 @@ async function selectOption(user: UserEvent, label: string, option: string) {
 }
 
 async function openSuperiorDialog(user: UserEvent, displayName: string) {
-  const node = await screen.findByRole('group', {
-    name: `${displayName} 组织节点`,
-  });
-  await user.click(within(node).getByRole('button', { name: '调整归属' }));
+  await user.click(
+    await screen.findByRole('button', { name: `调整归属 ${displayName}` }),
+  );
   return screen.findByRole('dialog', { name: `调整${displayName}归属` });
 }
 
@@ -74,42 +73,85 @@ beforeEach(() => {
 });
 
 describe('AdminOrganizationPage', () => {
-  it('按经理、Leader、普通员工三层展示组织树', async () => {
+  it('新建部门按原型呈现四个字段，并明确不伪造未冻结的写契约', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('region', { name: '部门概览' });
+    const initialRequestCount = requestMock.mock.calls.length;
+
+    await user.click(screen.getByRole('button', { name: '新建部门' }));
+    const dialog = await screen.findByRole('dialog', { name: '新建部门' });
+    expect(
+      within(dialog).getByRole('textbox', { name: '部门名称' }),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('combobox', { name: '负责人' }),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('combobox', { name: '上级部门' }),
+    ).toBeVisible();
+    expect(
+      within(dialog).getByRole('textbox', { name: '子团队' }),
+    ).toBeVisible();
+    await user.type(
+      within(dialog).getByRole('textbox', { name: '部门名称' }),
+      '国际化技术部',
+    );
+    await selectOption(user, '负责人', '李强 · 开发Leader');
+    await selectOption(user, '上级部门', '营销技术部');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: '子团队' }),
+      '国际化前端, 多语言中台',
+    );
+    await user.click(within(dialog).getByRole('button', { name: '确认创建' }));
+
+    expect(
+      await screen.findByText('静态原型：部门写契约尚未冻结'),
+    ).toBeInTheDocument();
+    expect(requestMock.mock.calls).toHaveLength(initialRequestCount);
+    expect(screen.queryByText('国际化技术部')).not.toBeInTheDocument();
+  });
+
+  it('按新版原型展示四个部门概览和当前部门成员表', async () => {
     renderPage();
 
-    const tree = await screen.findByRole('tree', { name: '组织关系树' });
-    expect(await within(tree).findByText('周天')).toBeInTheDocument();
-    expect(within(tree).getByText('方舟')).toBeInTheDocument();
-    expect(within(tree).getByText('林一')).toBeInTheDocument();
     expect(
-      within(tree)
-        .getByRole('group', { name: '周天 组织节点' })
-        .closest('[role="treeitem"]'),
-    ).toHaveAttribute('aria-level', '1');
+      await screen.findByText(
+        '部门决定人员归属与默认可见范围；工作区成员由 Owner 另行配置，两者不互相覆盖',
+      ),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: '新建部门' })).toBeVisible();
     expect(
-      within(tree)
-        .getByRole('group', { name: '方舟 组织节点' })
-        .closest('[role="treeitem"]'),
-    ).toHaveAttribute('aria-level', '2');
-    expect(
-      within(tree)
-        .getByRole('group', { name: '林一 组织节点' })
-        .closest('[role="treeitem"]'),
-    ).toHaveAttribute('aria-level', '3');
-    expect(screen.queryByText(/静态原型操作/)).not.toBeInTheDocument();
+      await screen.findByRole('region', { name: '部门概览' }),
+    ).toBeVisible();
+    for (const department of [
+      '营销技术部',
+      '交易技术部',
+      '中台技术部',
+      '平台运营组',
+    ]) {
+      expect(
+        await screen.findByRole('button', { name: new RegExp(department) }),
+      ).toBeVisible();
+    }
+
+    const members = screen.getByRole('region', { name: '营销技术部成员' });
+    expect(within(members).getByRole('row', { name: /王悦/ })).toBeVisible();
+    expect(within(members).getByRole('row', { name: /陈晓/ })).toBeVisible();
+    expect(members).toHaveTextContent('负责人 吴桐 · 在册 7 人');
   });
 
   it('普通员工只可选择 Leader，Leader 只可选择经理', async () => {
     const user = userEvent.setup();
     renderPage();
 
-    const memberDialog = await openSuperiorDialog(user, '林一');
+    const memberDialog = await openSuperiorDialog(user, '陈晓');
     await user.click(screen.getByRole('combobox', { name: '新上级' }));
-    expect(await screen.findByRole('option', { name: '方舟' })).toBeVisible();
-    expect(screen.getByRole('option', { name: '沈一' })).toBeVisible();
-    expect(screen.getByRole('option', { name: '赵晨' })).toBeVisible();
+    expect(await screen.findByRole('option', { name: '李强' })).toBeVisible();
+    expect(screen.getByRole('option', { name: '吴桐' })).toBeVisible();
+    expect(screen.getByRole('option', { name: '刘洋' })).toBeVisible();
     expect(
-      screen.queryByRole('option', { name: '周天' }),
+      screen.queryByRole('option', { name: '赵敏' }),
     ).not.toBeInTheDocument();
     await user.click(
       within(memberDialog).getByRole('button', { name: /取\s*消/i }),
@@ -118,15 +160,15 @@ describe('AdminOrganizationPage', () => {
       expect(memberDialog).not.toBeInTheDocument();
     });
 
-    await openSuperiorDialog(user, '方舟');
+    await openSuperiorDialog(user, '李强');
     await user.click(screen.getByRole('combobox', { name: '新上级' }));
-    expect(await screen.findByRole('option', { name: '周天' })).toBeVisible();
-    expect(screen.getByRole('option', { name: '顾北' })).toBeVisible();
+    expect(await screen.findByRole('option', { name: '赵敏' })).toBeVisible();
+    expect(screen.getByRole('option', { name: '秦岚' })).toBeVisible();
     expect(
-      screen.queryByRole('option', { name: '沈一' }),
+      screen.queryByRole('option', { name: '吴桐' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('option', { name: '林一' }),
+      screen.queryByRole('option', { name: '陈晓' }),
     ).not.toBeInTheDocument();
   });
 
@@ -134,8 +176,8 @@ describe('AdminOrganizationPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    const dialog = await openSuperiorDialog(user, '林一');
-    await selectOption(user, '新上级', '沈一');
+    const dialog = await openSuperiorDialog(user, '陈晓');
+    await selectOption(user, '新上级', '刘洋');
     await user.click(within(dialog).getByRole('button', { name: '确认调整' }));
     expect(await within(dialog).findByText('请输入调整原因')).toBeVisible();
     await user.type(
@@ -149,9 +191,9 @@ describe('AdminOrganizationPage', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
     expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/accounts/member-lin/superior',
+      '/api/v1/admin/accounts/member-chen/superior',
       expect.objectContaining({
-        data: { reason: '团队重组', superiorId: 'leader-shen' },
+        data: { reason: '团队重组', superiorId: 'leader-liu' },
         headers: {
           'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
         },
@@ -198,7 +240,7 @@ describe('AdminOrganizationPage', () => {
       const user = userEvent.setup();
       renderPage();
 
-      const dialog = await submitSuperiorChange(user, '林一', '沈一');
+      const dialog = await submitSuperiorChange(user, '陈晓', '刘洋');
 
       expect(await screen.findByText(new RegExp(detail))).toHaveTextContent(
         `requestId: ${requestId}`,

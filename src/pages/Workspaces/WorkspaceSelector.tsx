@@ -29,6 +29,9 @@ export function WorkspaceSelector({
         <ul className={styles.workspaceList}>
           {workspaces.map((workspace) => {
             const selected = workspace.id === selectedId;
+            const selectedRepositoryCount = workspace.repositories.filter(
+              ({ selected: repositorySelected }) => repositorySelected,
+            ).length;
 
             return (
               <li key={workspace.id}>
@@ -43,8 +46,10 @@ export function WorkspaceSelector({
                   type="text"
                 >
                   <span className={styles.workspaceTitleRow}>
+                    <span aria-hidden className={styles.workspaceTeamDot} />
                     <span className={styles.workspaceName}>
                       {workspace.name}
+                      {workspace.archived ? '（已归档）' : ''}
                     </span>
                     <SemanticTag
                       label={workspace.membership}
@@ -54,8 +59,8 @@ export function WorkspaceSelector({
                     />
                   </span>
                   <span className={styles.workspaceMeta}>
-                    {workspace.members.length} 成员 ·{' '}
-                    {workspace.repositories.length} 仓库
+                    {workspace.members.length} 成员 · {selectedRepositoryCount}{' '}
+                    仓库
                   </span>
                 </Button>
               </li>

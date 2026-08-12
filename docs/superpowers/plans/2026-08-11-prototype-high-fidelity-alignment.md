@@ -10,15 +10,16 @@
 
 ## Global Constraints
 
-- 原型文件固定为 `/Users/liulijun/Downloads/untitled/project/研发协作平台.dc.html`，基线 SHA-256 为 `34766593ecdca6e21a7a9332b70a93db3df060168b6432216292a83fd07524a3`；`/Users/liulijun/Downloads/内部研发平台架构设计/研发协作平台.dc.html` 为字节一致镜像。
+- 原型文件固定为 `/Users/liulijun/Downloads/untitled/project/研发协作平台.dc.html`，基线 SHA-256 为 `92c50fc62578f96e6136a0673bb594c427fb57b696d2052361af5cd77ac9ff11`；`/Users/liulijun/Downloads/内部研发平台架构设计/研发协作平台.dc.html` 为字节一致镜像。
 - 主色 `#EB6E00`，悬停色 `#FF8F2E`；浅色侧栏白底、深色侧栏 `#191919`。
 - 壳层头部 52px、展开侧栏 208px、折叠侧栏 56px、内容内边距 20px × 24px。
 - 原型表格和工具栏使用 `size="small"`；原型没有的搜索、筛选、摘要和操作不得显示。
 - 中文为主文案，API / domain key 仅作为次级标识；原始 key、模型名、错误码保持原值。
-- AdminOrganization、AdminGrants、AdminPolicies 保留为独立菜单，并仅在菜单名称加 `（新增）`；页面标题不加。
+- AdminOrganization、AdminGrants、AdminPolicies 已有正式原型屏幕；保留独立菜单，使用独立“新增”徽标且不改菜单 accessible name。
 - 超级管理员投影必须覆盖 Route Registry 中全部 16 个 `menu: true` 路由；新增可见路由时由回归测试防止遗漏。
 - `/admin` 仅保留直达兼容，不进入侧栏或菜单管理目录。
 - 不修改后端契约、OpenAPI 产物、权限模型或生成目录。
+- Policy 页的七组结构与交互以原型为准；可编辑条目只来自服务端 catalog。原型里尚未进入当前 V0.2 catalog 的跨领域示例 Key 不得伪造为可发布 API，缺少 catalog 的分组显示诚实空态并列入最终争议清单。
 - 不引入全局 `.ant-*` 覆盖；只使用公开 props、global/component tokens、`styles` 和 `classNames`。
 - 不建立统一 Table、Select、Button 包装器；官方组件已经匹配原型时保持原组件边界。
 - 每个行为修复先取得有效 RED，再做最小 GREEN；已有行为测试不得整体删除重写。
@@ -90,7 +91,7 @@ components: {
 
 - [ ] **Step 4: 对齐 Header 和菜单投影**
 
-保持 220px 全局搜索、紧凑消息 badge、用户菜单内的主题/退出；AdminOrganization、AdminGrants、AdminPolicies 菜单加 `（新增）`，其他菜单不加；`/admin` 不投影。
+保持 220px 全局搜索、用户菜单内的主题/退出；消息未读数由消息菜单承载；AdminOrganization、AdminGrants、AdminPolicies 使用独立“新增”徽标，其他菜单不加；`/admin` 不投影。
 
 - [ ] **Step 5: 验证并提交**
 
@@ -343,7 +344,7 @@ Run: `pnpm exec vitest run src/pages/TeamBoard src/pages/Audit src/pages/AdminSk
 
 Commit: `feat(admin): align prototype management screens`
 
-### Task 7: 对齐无独立原型的架构保留页面
+### Task 7: 对齐组织、Grant 与 Policy 正式原型页面
 
 **Files:**
 - Modify: `src/pages/AdminOrganization/index.tsx`
@@ -362,19 +363,20 @@ Commit: `feat(admin): align prototype management screens`
 
 **Interfaces:**
 - Consumes: 既有 organization/grant/policy service seam、reason/If-Match/Problem/竞态保护。
-- Produces: 与最近原型管理页一致的紧凑页面，独立菜单名称带 `（新增）`，不新增平行能力。
+- Produces: 原型部门卡片与成员表、Grant 统计/筛选/授权表、Policy 分组编辑/待发布草稿/版本历史；独立菜单徽标不污染名称。
 
-- [ ] **Step 1: 写架构保留与菜单一致性 RED**
+- [ ] **Step 1: 写新版正式页面与菜单一致性 RED**
 
 ```tsx
-expect(screen.getByRole('link', { name: '组织管理（新增）' })).toBeVisible();
-expect(screen.getByRole('heading', { name: '组织管理' })).toBeVisible();
-expect(screen.queryByRole('heading', { name: /新增/ })).not.toBeInTheDocument();
+expect(screen.getByRole('link', { name: '组织管理' })).toBeVisible();
+expect(screen.getByText('部门决定人员归属与默认可见范围')).toBeVisible();
+expect(screen.getByRole('button', { name: '新增授权' })).toBeVisible();
+expect(screen.getByText('会话与登录策略', { selector: 'label' })).toBeVisible();
 ```
 
-- [ ] **Step 2: 最小复用相邻原型视觉**
+- [ ] **Step 2: 按新版三张正式屏幕逐页最小 GREEN**
 
-Organization 使用 AdminWorkspaces 的主从比例但不共享业务组件；Grants 使用 AdminUsers 的紧凑表格节奏；Policies 使用 AdminModels 的 Tabs/Drawer 节奏。仅复用全局 tokens 和已有基础组件。
+Organization 使用部门概览卡片 + 当前部门成员表；Grants 使用 4 个统计值 + 胶囊筛选 + 7 列授权表；Policies 使用 7 个策略分组 + 左侧编辑 + 330px 待发布草稿 + 版本历史。现有契约动作收纳到这些原型结构中，不复制原型手写基础控件。
 
 - [ ] **Step 3: focused 验证与提交**
 
@@ -394,7 +396,7 @@ Commit: `feat(admin): align governance pages with prototype system`
 
 - [ ] **Step 1: 逐页浏览器对照**
 
-在浅色和深色下逐页核对 15 个原型页面；记录区块/控件/文案 100%、关键间距误差 ≤4px、列宽比例误差 ≤5%、无额外可见内容。
+在浅色和深色下逐页核对 19 个原型页面；记录区块/控件/文案 100%、关键间距误差 ≤4px、列宽比例误差 ≤5%、无额外可见内容。
 
 - [ ] **Step 2: 单列争议项**
 

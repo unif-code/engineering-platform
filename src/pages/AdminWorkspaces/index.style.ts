@@ -3,24 +3,44 @@ import { createStyles } from 'antd-style';
 export const useStyles = createStyles(({ token }) => ({
   page: {
     display: 'flex',
+    width: '100%',
+    maxWidth: 1080,
     flexDirection: 'column',
-    gap: token.margin,
+    gap: token.marginSM,
   },
-  filter: {
-    minWidth: 136,
+  pageHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: token.marginSM,
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  search: {
-    width: 280,
-    maxWidth: '100%',
+  pageDescription: {
+    margin: 0,
+    color: token.colorTextSecondary,
+    fontSize: token.fontSizeSM,
   },
   workspaceName: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.marginXXS,
+    height: 'auto',
+    padding: 0,
+    fontWeight: token.fontWeightStrong,
   },
-  workspaceId: {
+  owner: {
+    display: 'inline-flex',
+    gap: token.marginXXS,
+    alignItems: 'baseline',
+  },
+  ownerRole: {
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
+  },
+  team: {
     color: token.colorTextSecondary,
-    fontFamily: token.fontFamilyCode,
+    fontSize: token.fontSizeSM,
+  },
+  pageNote: {
+    margin: 0,
+    color: token.colorTextTertiary,
     fontSize: token.fontSizeSM,
   },
   leader: {

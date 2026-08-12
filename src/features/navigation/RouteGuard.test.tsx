@@ -54,6 +54,12 @@ vi.mock('@umijs/max', () => ({
   useParams: () => ({ taskId: 'TASK-42' }),
 }));
 
+vi.mock('@ant-design/charts', () => ({
+  Bar: () => <div data-ant-design-chart="bar" />,
+  Column: () => <div data-ant-design-chart="column" />,
+}));
+
+import AdminPage from '@/pages/Admin';
 import AdminMenusPage from '@/pages/AdminMenus';
 import AdminModelsPage from '@/pages/AdminModels';
 import AdminRolesPage from '@/pages/AdminRoles';
@@ -167,7 +173,7 @@ describe('RouteGuard', () => {
       routeKey: 'tasks.archived',
     },
     {
-      findPage: () => screen.findByText('任务 TASK-42'),
+      findPage: () => screen.findByRole('region', { name: '任务 TASK-42' }),
       Page: TaskDetailPage,
       path: '/tasks/TASK-42',
       routeKey: 'tasks.detail',
@@ -183,6 +189,12 @@ describe('RouteGuard', () => {
       Page: TeamBoardPage,
       path: '/team-board',
       routeKey: 'team-board',
+    },
+    {
+      findPage: () => screen.findByRole('region', { name: '平台关键指标' }),
+      Page: AdminPage,
+      path: '/admin',
+      routeKey: 'admin',
     },
     {
       findPage: () => screen.findByRole('region', { name: '技能目录' }),
@@ -203,7 +215,7 @@ describe('RouteGuard', () => {
       routeKey: 'admin.roles',
     },
     {
-      findPage: () => screen.findByRole('toolbar', { name: '菜单筛选与操作' }),
+      findPage: () => screen.findByRole('button', { name: '新增菜单' }),
       Page: AdminMenusPage,
       path: '/admin/menus',
       routeKey: 'admin.menus',

@@ -1,6 +1,6 @@
 import { Bar, Column } from '@ant-design/charts';
 import { PageContainer, ProCard } from '@ant-design/pro-components';
-import { Button, Progress, Segmented, theme } from 'antd';
+import { Button, Progress, Segmented, Typography, theme } from 'antd';
 import { useState } from 'react';
 import { MetricCard } from '@/components/MetricCard';
 import { SemanticTag } from '@/components/SemanticTag';
@@ -16,8 +16,7 @@ export default function TeamBoardPage() {
   const { styles } = useStyles();
   const { token } = theme.useToken();
   const showStaticAction = useStaticPrototypeAction();
-  const [selectedTeamName, setSelectedTeamName] =
-    useState<TeamName>('Platform');
+  const [selectedTeamName, setSelectedTeamName] = useState<TeamName>('营销');
   const selectedTeam: TeamBoardFixture =
     TEAM_FIXTURES.find((team) => team.name === selectedTeamName) ??
     DEFAULT_TEAM;
@@ -25,23 +24,20 @@ export default function TeamBoardPage() {
   return (
     <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
-        <ProCard className={styles.card}>
-          <div className={styles.selectorHeader}>
-            <div>
-              <h2 className={styles.teamName}>{selectedTeam.name}</h2>
-              <p className={styles.teamSummary}>{selectedTeam.summary}</p>
-            </div>
-            <Segmented<TeamName>
-              aria-label="选择团队"
-              block
-              className={styles.teamSelector}
-              name="team-board-selector"
-              onChange={setSelectedTeamName}
-              options={TEAM_OPTIONS}
-              value={selectedTeamName}
-            />
-          </div>
-        </ProCard>
+        <div className={styles.toolbar}>
+          <Segmented<TeamName>
+            aria-label="选择团队"
+            className={styles.teamSelector}
+            name="team-board-selector"
+            onChange={setSelectedTeamName}
+            options={TEAM_OPTIONS}
+            size="small"
+            value={selectedTeamName}
+          />
+          <Typography.Text type="secondary">
+            经理及以上可跨 Team 查看 · 数据为 Read Model 投影
+          </Typography.Text>
+        </div>
 
         <section
           aria-label={`${selectedTeam.name} KPI`}
@@ -63,122 +59,166 @@ export default function TeamBoardPage() {
         </section>
 
         <div className={styles.analysisGrid}>
-          <ProCard className={styles.card} title="七日吞吐">
+          <ProCard className={styles.card} title="任务吞吐 · 近 8 周完成数">
             <figure
-              aria-label={`${selectedTeam.name} 七日吞吐`}
+              aria-label={`${selectedTeam.name}近八周吞吐`}
               className={styles.chartFigure}
             >
               <Column
                 animate={false}
                 axis={{ x: { title: false }, y: false }}
                 data={[...selectedTeam.throughput]}
-                height={160}
-                label={{
-                  position: 'top',
-                  text: (datum: ChartDatum) =>
-                    datum.valueLabel ?? String(datum.value),
-                }}
-                style={{
-                  fill: (datum: ChartDatum) =>
-                    datum.tone === 'success'
-                      ? token.colorSuccess
-                      : token.colorPrimary,
-                }}
+                height={180}
+                label={{ position: 'top', text: 'value' }}
+                style={{ fill: token.colorPrimary }}
                 xField="label"
                 yField="value"
               />
             </figure>
           </ProCard>
-          <ProCard className={styles.card} title="阶段分布">
+
+          <ProCard className={styles.card} title="进行中任务 · 阶段分布">
             <figure
-              aria-label={`${selectedTeam.name} 阶段分布`}
+              aria-label={`${selectedTeam.name}阶段分布`}
               className={styles.chartFigure}
             >
               <Bar
                 animate={false}
-                axis={{ x: false, y: false }}
+                axis={{ x: false, y: { title: false } }}
                 colorField="label"
                 data={[...selectedTeam.distribution]}
-                height={160}
+                height={180}
                 label={{ position: 'right', text: 'value' }}
-                legend={{ color: { position: 'bottom' } }}
+                legend={false}
                 scale={{
                   color: {
                     range: [
-                      token.colorTextSecondary,
                       token.colorInfo,
-                      token.colorPrimary,
                       token.colorWarning,
+                      token.colorPrimary,
+                      token.purple6,
                       token.colorSuccess,
                     ],
                   },
                 }}
-                stack
                 xField="value"
-                yField={() => selectedTeam.name}
+                yField="label"
               />
             </figure>
           </ProCard>
         </div>
 
         <div className={styles.analysisGrid}>
-          <ProCard className={styles.card} title="成员负载">
+          <ProCard className={styles.card} title="成员负载 · 进行中任务数">
             <ul
-              aria-label={`${selectedTeam.name} 成员负载`}
+              aria-label={`${selectedTeam.name}成员负载`}
               className={styles.list}
             >
               {selectedTeam.members.map((member) => (
                 <li
-                  aria-label={`${member.name}：${member.role}，负载 ${member.load}%`}
+                  aria-label={`${member.name}：${member.activeTasks} 项，Agent 参与率 ${member.agentParticipation}%`}
                   className={styles.memberItem}
                   key={member.key}
                 >
                   <div className={styles.memberHeader}>
-                    <div className={styles.memberIdentity}>
-                      <strong>{member.name}</strong>
-                      <span className={styles.memberRole}>{member.role}</span>
+                    <strong>{member.name}</strong>
+                    <div className={styles.memberMeta}>
+                      <Typography.Text type="secondary">
+                        {member.activeTasks} 项
+                      </Typography.Text>
+                      {member.overloaded ? (
+                        <SemanticTag label="过载" tone="danger" />
+                      ) : null}
                     </div>
-                    <strong className={styles.loadValue}>{member.load}%</strong>
                   </div>
                   <Progress
-                    aria-label={`${member.name} 负载 ${member.load}%`}
-                    percent={member.load}
+                    aria-label={`${member.name} 进行中任务 ${member.activeTasks} 项`}
+                    percent={Math.round((member.activeTasks / 6) * 100)}
                     showInfo={false}
                     size="small"
+                    status={member.overloaded ? 'exception' : 'normal'}
                   />
+                  <div className={styles.participationRow}>
+                    <Typography.Text type="secondary">
+                      Agent 参与率
+                    </Typography.Text>
+                    <Progress
+                      aria-label={`${member.name} Agent 参与率 ${member.agentParticipation}%`}
+                      className={styles.participationProgress}
+                      percent={member.agentParticipation}
+                      size="small"
+                    />
+                  </div>
                 </li>
               ))}
             </ul>
           </ProCard>
 
-          <ProCard className={styles.card} title="阻塞事项">
-            <ul
-              aria-label={`${selectedTeam.name} 阻塞事项`}
-              className={styles.list}
-            >
-              {selectedTeam.blockers.map((blocker) => (
-                <li className={styles.blockerItem} key={blocker.key}>
-                  <Button
-                    aria-label={`处理阻塞：${blocker.title}`}
-                    block
-                    className={styles.blockerButton}
-                    onClick={() =>
-                      showStaticAction(`处理阻塞 ${blocker.title}`)
-                    }
-                    type="text"
-                  >
-                    <div className={styles.blockerHeader}>
-                      <strong>{blocker.title}</strong>
-                      <SemanticTag label={blocker.status} tone={blocker.tone} />
-                    </div>
-                    <p className={styles.blockerDescription}>
-                      {blocker.description}
-                    </p>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </ProCard>
+          <div className={styles.rightStack}>
+            <ProCard className={styles.card} title="合并请求处理周期">
+              <figure
+                aria-label={`${selectedTeam.name}合并请求处理周期`}
+                className={styles.chartFigure}
+              >
+                <Typography.Text type="secondary">
+                  从合并请求创建到合并 · 周均 · 当前{' '}
+                  <strong className={styles.mergeAverage}>
+                    {selectedTeam.mergeCycleAverage}
+                  </strong>
+                </Typography.Text>
+                <Column
+                  animate={false}
+                  axis={false}
+                  data={[...selectedTeam.mergeCycle]}
+                  height={96}
+                  label={{
+                    position: 'top',
+                    text: (datum: ChartDatum) =>
+                      datum.valueLabel ?? datum.value,
+                  }}
+                  style={{ fill: token.colorInfo }}
+                  xField="label"
+                  yField="value"
+                />
+              </figure>
+            </ProCard>
+
+            <ProCard className={styles.card} title="阻塞 / 异常任务">
+              <ul
+                aria-label={`${selectedTeam.name}阻塞事项`}
+                className={styles.list}
+              >
+                {selectedTeam.blockers.length === 0 ? (
+                  <li className={styles.emptyBlocker}>当前无阻塞任务 ✓</li>
+                ) : (
+                  selectedTeam.blockers.map((blocker) => (
+                    <li className={styles.blockerItem} key={blocker.key}>
+                      <Button
+                        aria-label={`处理阻塞：${blocker.title}`}
+                        block
+                        className={styles.blockerButton}
+                        onClick={() =>
+                          showStaticAction(`处理阻塞 ${blocker.title}`)
+                        }
+                        type="text"
+                      >
+                        <div className={styles.blockerHeader}>
+                          <strong>{blocker.title}</strong>
+                          <SemanticTag
+                            label={blocker.status}
+                            tone={blocker.tone}
+                          />
+                        </div>
+                        <p className={styles.blockerDescription}>
+                          {blocker.description}
+                        </p>
+                      </Button>
+                    </li>
+                  ))
+                )}
+              </ul>
+            </ProCard>
+          </div>
         </div>
       </div>
     </PageContainer>

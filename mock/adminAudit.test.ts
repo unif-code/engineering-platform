@@ -31,6 +31,23 @@ describe('admin audit mock-only contract', () => {
         nextCursor: string | null;
       };
       expect(response.items).toHaveLength(3);
+      for (const event of response.items) {
+        expect(Object.keys(event).sort()).toEqual([
+          'action',
+          'actor',
+          'correlationId',
+          'id',
+          'occurredAt',
+          'reason',
+          'requestId',
+          'result',
+          'risk',
+          'summary',
+          'target',
+          'targetId',
+          'targetType',
+        ]);
+      }
       expect(
         response.items.every(({ requestId }) => requestId.length > 0),
       ).toBe(true);

@@ -26,11 +26,20 @@ const GROUP_RANK: Record<NavigationGroupKey, number> = {
   admin: 1,
 };
 
-const ARCHITECTURE_MENU_NAMES: Partial<Record<string, string>> = {
-  'admin.grants': 'Grant 管理（新增）',
-  'admin.organization': '组织管理（新增）',
-  'admin.policies': 'Policy 发布（新增）',
-};
+const PROTOTYPE_BADGED_ROUTE_KEYS = new Set([
+  'admin.grants',
+  'admin.organization',
+  'admin.policies',
+]);
+
+function readUnreadCount(meta: Record<string, unknown>): number | undefined {
+  const unreadCount = meta.unreadCount;
+  return typeof unreadCount === 'number' &&
+    Number.isSafeInteger(unreadCount) &&
+    unreadCount > 0
+    ? unreadCount
+    : undefined;
+}
 
 function compareNavigationItems(
   first: RegisteredNavigationItem,
@@ -76,12 +85,19 @@ export function buildMenuData(items: NavigationItem[]): MenuDataItem[] {
   return GROUPS.flatMap<MenuDataItem>(({ group, key, name }) => {
     const children = registeredItems
       .filter(({ registration }) => registration.group === group)
-      .map(({ item, registration }) => ({
-        key: item.routeKey,
-        name: ARCHITECTURE_MENU_NAMES[item.routeKey] ?? item.name,
-        path: registration.path,
-        icon: registration.icon,
-      }));
+      .map(({ item, registration }) => {
+        const unreadCount = readUnreadCount(item.meta);
+        return {
+          key: item.routeKey,
+          name: item.name,
+          path: registration.path,
+          icon: registration.icon,
+          ...(PROTOTYPE_BADGED_ROUTE_KEYS.has(item.routeKey)
+            ? { prototypeBadge: '新增' }
+            : {}),
+          ...(unreadCount === undefined ? {} : { unreadCount }),
+        };
+      });
 
     return children.length === 0
       ? []

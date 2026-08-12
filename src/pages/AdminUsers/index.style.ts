@@ -3,29 +3,41 @@ import { createStyles } from 'antd-style';
 export const useStyles = createStyles(({ token }) => ({
   page: {
     display: 'flex',
-    minWidth: 0,
     flexDirection: 'column',
-    gap: token.margin,
+    gap: token.marginSM,
   },
-  filters: {
+  pageHeader: {
     display: 'flex',
     flexWrap: 'wrap',
     gap: token.marginSM,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBlockEnd: token.marginXXS,
   },
-  filter: {
-    minWidth: 144,
-  },
-  search: {
-    width: 180,
-    maxWidth: '100%',
-  },
-  searchFields: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: token.marginSM,
+  pageDescription: {
+    margin: 0,
+    color: token.colorTextSecondary,
+    fontSize: token.fontSizeSM,
   },
   employeeNo: {
+    color: token.colorTextSecondary,
     fontFamily: token.fontFamilyCode,
+    fontSize: token.fontSizeSM,
+  },
+  userCell: {
+    display: 'inline-flex',
+    gap: token.marginXS,
+    alignItems: 'center',
+  },
+  lastLogin: {
+    color: token.colorTextSecondary,
+    fontFamily: token.fontFamilyCode,
+    fontSize: token.fontSizeSM,
+  },
+  pageNote: {
+    margin: 0,
+    color: token.colorTextTertiary,
+    fontSize: token.fontSizeSM,
   },
   credential: {
     width: '100%',

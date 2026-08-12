@@ -43,7 +43,7 @@ describe('buildMenuData', () => {
     expect(groups[1]?.children).toHaveLength(9);
   });
 
-  it('仅给三个架构新增页面追加菜单标识', () => {
+  it('三个新版治理页面保留正常名称并使用独立视觉徽标', () => {
     const groups = buildMenuData([
       navigationItem('admin.workspaces', '工作区管理', 10),
       navigationItem('admin.organization', '组织管理', 20),
@@ -53,10 +53,13 @@ describe('buildMenuData', () => {
 
     expect(groups[0]?.children?.map(({ name }) => name)).toEqual([
       '工作区管理',
-      '组织管理（新增）',
-      'Grant 管理（新增）',
-      'Policy 发布（新增）',
+      '组织管理',
+      'Grant 管理',
+      'Policy 发布',
     ]);
+    expect(
+      groups[0]?.children?.map(({ prototypeBadge }) => prototypeBadge),
+    ).toEqual([undefined, '新增', '新增', '新增']);
   });
 
   it('普通用户 navigation 不生成管理端分组', () => {
@@ -93,20 +96,23 @@ describe('buildMenuData', () => {
         {
           icon: ROUTE_REGISTRY['admin.organization'].icon,
           key: 'admin.organization',
-          name: '组织管理（新增）',
+          name: '组织管理',
           path: '/admin/organization',
+          prototypeBadge: '新增',
         },
         {
           icon: ROUTE_REGISTRY['admin.grants'].icon,
           key: 'admin.grants',
-          name: 'Grant 管理（新增）',
+          name: 'Grant 管理',
           path: '/admin/grants',
+          prototypeBadge: '新增',
         },
         {
           icon: ROUTE_REGISTRY['admin.policies'].icon,
           key: 'admin.policies',
-          name: 'Policy 发布（新增）',
+          name: 'Policy 发布',
           path: '/admin/policies',
+          prototypeBadge: '新增',
         },
         {
           icon: ROUTE_REGISTRY['admin.users'].icon,
@@ -140,8 +146,9 @@ describe('buildMenuData', () => {
           {
             icon: ROUTE_REGISTRY['admin.organization'].icon,
             key: 'admin.organization',
-            name: '组织管理（新增）',
+            name: '组织管理',
             path: '/admin/organization',
+            prototypeBadge: '新增',
           },
         ],
         key: 'group-admin',
@@ -206,7 +213,10 @@ describe('buildMenuData', () => {
       buildMenuData([
         navigationItem('tasks', '任务', 1),
         navigationItem('tasks.archived', '归档数据', 2),
-        navigationItem('messages', '消息中心', 3),
+        {
+          ...navigationItem('messages', '消息中心', 3),
+          meta: { unreadCount: 4 },
+        },
         navigationItem('team-board', '团队看板', 4),
         navigationItem('admin.skills', '技能管理', 5),
         navigationItem('admin.models', '模型管理', 6),
@@ -233,6 +243,7 @@ describe('buildMenuData', () => {
             key: 'messages',
             name: '消息中心',
             path: '/messages',
+            unreadCount: 4,
           },
           {
             icon: ROUTE_REGISTRY['team-board'].icon,

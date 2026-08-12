@@ -4,6 +4,7 @@ import {
   mergeAndSelectAuditRows,
   mergeAuditRows,
   queryAuditRows,
+  selectAuditRows,
 } from './util';
 
 const listAuditEventsMock = vi.hoisted(() => vi.fn());
@@ -22,7 +23,8 @@ const auditEvent = (overrides: Partial<AuditRow> = {}): AuditRow => ({
   requestId: 'req-audit-0810-001',
   result: 'success',
   risk: 'high',
-  summary: '生产策略 access-policy-v8 已发布。',
+  sourceIp: '10.1.1.9',
+  summary: '生产策略 access-policy-v8 已发布，版本由 7 提升至 8。',
   target: '生产策略 / access-policy-v8',
   targetId: 'access-policy-v8',
   targetType: 'CONFIGURATION',
@@ -47,6 +49,23 @@ beforeEach(() => {
 });
 
 describe('queryAuditRows', () => {
+  it('在页面适配器中补充原型来源 IP，不扩展 AuditEvent 契约', async () => {
+    const { sourceIp: _sourceIp, ...serviceEvent } = auditEvent();
+    listAuditEventsMock.mockResolvedValue({
+      items: [serviceEvent],
+      nextCursor: null,
+    });
+
+    const result = await runQuery({ pageSize: 3, range: 'all' });
+
+    expect(result.data).toEqual([
+      expect.objectContaining({
+        id: 'AUD-2026-0810-001',
+        sourceIp: '10.1.1.9',
+      }),
+    ]);
+  });
+
   it('按当前本地日期动态计算时间范围，而不是固定到 mock 日期', async () => {
     vi.useFakeTimers();
     const now = new Date(2026, 8, 15, 12, 30, 0);
@@ -166,6 +185,57 @@ describe('queryAuditRows', () => {
     });
     expect(result.data?.map((row) => row.id)).toEqual(['AUD-page-2']);
     expect(result.nextCursor).toBe('opaque-page-3');
+  });
+
+  it.each([
+    ['操作人', '孙杰'],
+    ['对象类型', 'configuration'],
+    ['对象标识', 'access-policy-v8'],
+    ['对象摘要', '版本由 7 提升至 8'],
+    ['来源 IP', '10.1.1.9'],
+  ])('关键字可在页面本地匹配%s', (_field, keyword) => {
+    const rows = [
+      auditEvent(),
+      auditEvent({
+        actor: '刘洋',
+        id: 'AUD-unmatched',
+        requestId: 'req-unmatched',
+        sourceIp: '10.9.3.22',
+        summary: '策略服务完成生产晋级。',
+        target: '策略服务 / release-2026.08',
+        targetId: 'release-2026.08',
+        targetType: 'WORKSPACE',
+      }),
+    ];
+
+    expect(selectAuditRows(rows, { keyword })).toEqual([rows[0]]);
+  });
+
+  it('通用关键字不冒充 actor 或其他不存在的服务端契约参数', async () => {
+    listAuditEventsMock.mockResolvedValue({
+      items: [
+        auditEvent(),
+        auditEvent({
+          actor: '周遥',
+          id: 'AUD-theme-v3',
+          requestId: 'req-theme-v3',
+          sourceIp: '10.8.12.31',
+          summary: '开发策略 theme-v3 已发布。',
+          target: '开发策略 / theme-v3',
+          targetId: 'theme-v3',
+        }),
+      ],
+      nextCursor: null,
+    });
+
+    const result = await runQuery({
+      keyword: ' theme-v3 ',
+      pageSize: 20,
+      range: 'all',
+    });
+
+    expect(listAuditEventsMock).toHaveBeenCalledWith({ limit: 20 });
+    expect(result.data?.map((row) => row.id)).toEqual(['AUD-theme-v3']);
   });
 
   it('无匹配项时返回空页和零总数', async () => {

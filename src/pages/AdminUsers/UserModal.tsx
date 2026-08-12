@@ -2,18 +2,21 @@ import {
   DrawerForm,
   ProFormSelect,
   ProFormText,
-  ProFormTextArea,
 } from '@ant-design/pro-components';
 import { App } from 'antd';
 import { createAccount } from '@/features/administration';
-import { USER_FORM_PROFESSION_OPTIONS } from './constant';
+import {
+  USER_CREATE_ROLE_OPTIONS,
+  USER_SUPERIOR_OPTIONS,
+  USER_TEAM_OPTIONS,
+} from './constant';
 import type { CredentialReceipt, UserFormValues } from './type';
 import { formatAccountError } from './util';
 
 interface UserModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated: (receipt: CredentialReceipt) => void;
+  onCreated: (receipt: CredentialReceipt, values: UserFormValues) => void;
 }
 
 export function UserModal({ open, onClose, onCreated }: UserModalProps) {
@@ -23,14 +26,12 @@ export function UserModal({ open, onClose, onCreated }: UserModalProps) {
   const submit = async (values: UserFormValues) => {
     try {
       const receipt = await createAccount({
-        ...values,
         displayName: values.displayName.trim(),
-        employeeNo: values.employeeNo.trim(),
-        profession: values.profession?.trim() || undefined,
-        reason: values.reason.trim(),
+        employeeNo: values.employeeNo.trim().toUpperCase(),
+        reason: '通过用户管理新增用户',
       });
       onClose();
-      onCreated(receipt);
+      onCreated(receipt, values);
       return true;
     } catch (error) {
       message.error(formatAccountError(error, '账号创建失败'));
@@ -56,9 +57,20 @@ export function UserModal({ open, onClose, onCreated }: UserModalProps) {
       submitter={{
         searchConfig: { resetText: '取消', submitText: '创建' },
       }}
-      title={<span id={titleId}>新增账号</span>}
+      title={<span id={titleId}>新增用户</span>}
       width={480}
     >
+      <ProFormText
+        fieldProps={{ id: 'admin-user-create-display-name' }}
+        formItemProps={{ htmlFor: 'admin-user-create-display-name' }}
+        label="姓名"
+        name="displayName"
+        placeholder="如：林一"
+        rules={[
+          { required: true, message: '请输入姓名' },
+          { whitespace: true, message: '姓名不能为空' },
+        ]}
+      />
       <ProFormText
         fieldProps={{
           autoComplete: 'off',
@@ -66,48 +78,52 @@ export function UserModal({ open, onClose, onCreated }: UserModalProps) {
           inputMode: 'numeric',
         }}
         formItemProps={{ htmlFor: 'admin-user-create-employee-no' }}
-        label="员工编号"
+        label="工号"
         name="employeeNo"
-        placeholder="请输入 8 位员工编号"
+        placeholder="E1xxx"
         rules={[
-          { required: true, message: '请输入员工编号' },
-          { pattern: /^\d{8}$/, message: '员工编号为 8 位数字' },
-        ]}
-      />
-      <ProFormText
-        fieldProps={{ id: 'admin-user-create-display-name' }}
-        formItemProps={{ htmlFor: 'admin-user-create-display-name' }}
-        label="姓名"
-        name="displayName"
-        placeholder="请输入姓名"
-        rules={[
-          { required: true, message: '请输入姓名' },
-          { whitespace: true, message: '姓名不能为空' },
+          { required: true, message: '请输入工号' },
+          {
+            pattern: /^(?:E\d{4}|\d{8})$/i,
+            message: '员工编号须为 E 加 4 位数字或 8 位数字',
+          },
         ]}
       />
       <ProFormSelect
         fieldProps={{
-          'aria-label': '专业分类',
-          allowClear: true,
-          id: 'admin-user-create-profession',
+          'aria-label': '所属 Team',
+          id: 'admin-user-create-team',
           virtual: false,
         }}
-        formItemProps={{ htmlFor: 'admin-user-create-profession' }}
-        label="专业分类"
-        name="profession"
-        options={USER_FORM_PROFESSION_OPTIONS.map((option) => ({ ...option }))}
-        placeholder="可选"
+        formItemProps={{ htmlFor: 'admin-user-create-team' }}
+        label="所属 Team"
+        name="team"
+        options={USER_TEAM_OPTIONS}
+        rules={[{ required: true, message: '请选择所属 Team' }]}
       />
-      <ProFormTextArea
-        fieldProps={{ id: 'admin-user-create-reason', rows: 3 }}
-        formItemProps={{ htmlFor: 'admin-user-create-reason' }}
-        label="创建原因"
-        name="reason"
-        placeholder="说明创建该账号的原因"
-        rules={[
-          { required: true, message: '请输入创建原因' },
-          { whitespace: true, message: '创建原因不能为空' },
-        ]}
+      <ProFormSelect
+        fieldProps={{
+          'aria-label': '角色',
+          id: 'admin-user-create-role',
+          virtual: false,
+        }}
+        formItemProps={{ htmlFor: 'admin-user-create-role' }}
+        label="角色"
+        name="role"
+        options={USER_CREATE_ROLE_OPTIONS}
+        rules={[{ required: true, message: '请选择角色' }]}
+      />
+      <ProFormSelect
+        fieldProps={{
+          'aria-label': '直属上级',
+          id: 'admin-user-create-superior',
+          virtual: false,
+        }}
+        formItemProps={{ htmlFor: 'admin-user-create-superior' }}
+        label="直属上级"
+        name="superior"
+        options={USER_SUPERIOR_OPTIONS}
+        rules={[{ required: true, message: '请选择直属上级' }]}
       />
     </DrawerForm>
   );

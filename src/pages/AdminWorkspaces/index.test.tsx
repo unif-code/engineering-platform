@@ -70,61 +70,73 @@ beforeEach(() => {
 });
 
 describe('AdminWorkspacesPage', () => {
-  it('呈现服务端工作区、筛选工具栏和 1050px 横向表格', async () => {
+  it('按原型呈现服务端工作区与七列紧凑表格', async () => {
     renderPage();
 
     expect(
-      screen.getByRole('toolbar', { name: '工作区筛选与操作' }),
+      screen.getByText(
+        '管理员创建工作区并指定 Owner（开发Leader）；成员与仓库由 Owner 自行配置，管理端不代管',
+      ),
     ).toBeInTheDocument();
     expect(
-      await screen.findByRole('row', { name: /Platform Core/ }),
+      screen.getByRole('button', { name: '创建工作区' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('row', { name: /Agent Runtime/ }),
+      await screen.findByRole('row', { name: /营销工作区/ }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /交易工作区/ })).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /中台工作区/ })).toBeInTheDocument();
     expect(
-      screen.getByRole('row', { name: /Delivery Governance/ }),
+      screen.getByRole('row', { name: /历史活动专区/ }),
     ).toBeInTheDocument();
 
     const table = screen.getByRole('table');
     expect(table).toHaveStyle({ width: '1050px' });
-    expect(within(table).getAllByRole('row')).toHaveLength(4);
+    expect(
+      within(table)
+        .getAllByRole('columnheader')
+        .map((header) => header.textContent),
+    ).toEqual(['工作区', 'Owner', 'Team', '成员', '仓库', '状态', '操作']);
+    expect(within(table).getAllByRole('row')).toHaveLength(5);
+    expect(
+      within(screen.getByRole('row', { name: /营销工作区/ })).getByRole(
+        'button',
+        { name: '查看配置 营销工作区' },
+      ),
+    ).toBeInTheDocument();
+    const firstWorkspaceRow = screen.getByRole('row', { name: /营销工作区/ });
+    expect(firstWorkspaceRow).toHaveTextContent('李强');
+    expect(firstWorkspaceRow).toHaveTextContent('营销');
+    expect(firstWorkspaceRow).toHaveTextContent('12 人');
+    expect(firstWorkspaceRow).toHaveTextContent('10 个');
+    expect(
+      screen.getByText(
+        '每个工作区恰有一个 Owner；正式成员为动态投影（Owner + 受邀 Leader 直属有效员工）；归档前须安全停止活动执行',
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('管理工作区 Owner、Leader 与只读成员投影'),
+    ).not.toBeInTheDocument();
   });
 
-  it('可通过搜索与状态筛选可见工作区', async () => {
+  it('不显示原型没有的搜索、状态筛选与汇总，归档入口只反馈不篡改契约数据', async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole('row', { name: /Platform Core/ });
+    const row = await screen.findByRole('row', { name: /营销工作区/ });
 
-    const search = screen.getByRole('searchbox', { name: '搜索工作区' });
-    await user.type(search, 'Agent');
+    expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByText(/共 \d+ 个工作区/)).not.toBeInTheDocument();
 
-    await waitFor(() => {
-      expect(
-        screen.getByRole('row', { name: /Agent Runtime/ }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole('row', { name: /Platform Core/ }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('row', { name: /Delivery Governance/ }),
-      ).not.toBeInTheDocument();
-    });
-
-    await user.clear(search);
-    await selectOption(user, '工作区状态', '已归档');
-
-    await waitFor(() => {
-      expect(
-        screen.getByRole('row', { name: /Delivery Governance/ }),
-      ).toBeInTheDocument();
-      expect(
-        screen.queryByRole('row', { name: /Platform Core/ }),
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByRole('row', { name: /Agent Runtime/ }),
-      ).not.toBeInTheDocument();
-    });
+    await user.click(
+      within(row).getByRole('button', { name: '归档 营销工作区' }),
+    );
+    expect(
+      await screen.findByText(
+        '静态原型操作：归档工作区 营销工作区，未保存任何业务数据。',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /营销工作区/ })).toBeInTheDocument();
   });
 
   it('创建 Modal 通过契约保存并刷新工作区列表', async () => {
@@ -133,20 +145,17 @@ describe('AdminWorkspacesPage', () => {
 
     const table = await screen.findByRole('table');
     await waitFor(() => {
-      expect(within(table).getAllByRole('row')).toHaveLength(4);
+      expect(within(table).getAllByRole('row')).toHaveLength(5);
     });
     await user.click(screen.getByRole('button', { name: '创建工作区' }));
     const dialog = await screen.findByRole('dialog', { name: '创建工作区' });
 
     await user.type(
-      within(dialog).getByRole('textbox', { name: '名称' }),
+      within(dialog).getByRole('textbox', { name: '工作区名称' }),
       'Prototype Workspace',
     );
-    await selectOption(user, 'Owner', '方舟');
-    await user.type(
-      within(dialog).getByRole('textbox', { name: '创建原因' }),
-      '验证 Workspace 治理契约',
-    );
+    await selectOption(user, '所属 Team', '平台');
+    await selectOption(user, 'Owner（开发Leader）', '李强 · 营销');
     await user.click(within(dialog).getByRole('button', { name: /创\s*建/ }));
 
     expect(await screen.findByText('工作区已创建')).toBeInTheDocument();
@@ -155,9 +164,11 @@ describe('AdminWorkspacesPage', () => {
         screen.queryByRole('dialog', { name: '创建工作区' }),
       ).not.toBeInTheDocument();
     });
-    expect(
-      await screen.findByRole('row', { name: /Prototype Workspace/ }),
-    ).toBeInTheDocument();
+    const createdRow = await screen.findByRole('row', {
+      name: /Prototype Workspace/,
+    });
+    expect(createdRow).toHaveTextContent('平台');
+    expect(createdRow).toHaveTextContent('0');
     expect(screen.queryByText(/静态原型操作/)).not.toBeInTheDocument();
   });
 
@@ -167,17 +178,19 @@ describe('AdminWorkspacesPage', () => {
 
     await screen.findByRole('table');
     const workspaceRow = await screen.findByRole('row', {
-      name: /Platform Core/,
+      name: /营销工作区/,
     });
     await user.click(
-      within(workspaceRow).getByRole('button', { name: '查看' }),
+      within(workspaceRow).getByRole('button', {
+        name: '查看配置 营销工作区',
+      }),
     );
     const drawer = await screen.findByRole('dialog', {
-      name: '工作区详情：Platform Core',
+      name: '工作区详情：营销工作区',
     });
     expect(drawer).toHaveTextContent('Leader 名单');
-    expect(drawer).toHaveTextContent('方舟');
-    expect(drawer).toHaveTextContent('沈一');
+    expect(drawer).toHaveTextContent('李强');
+    expect(drawer).toHaveTextContent('吴桐');
     expect(drawer).toHaveTextContent('成员投影（只读）');
     expect(drawer).toHaveTextContent('Owner');
     expect(drawer).toHaveTextContent('Leader');
@@ -187,38 +200,41 @@ describe('AdminWorkspacesPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('旧筛选请求晚返回时不会覆盖最新结果', async () => {
-    const user = userEvent.setup();
+  it('列表请求延迟返回时仍只渲染服务端结果', async () => {
     const initialPage = await requestThroughMock('/api/v1/admin/workspaces', {
       params: { page: 1, pageSize: 10 },
     });
     let resolveInitial: (value: unknown) => void = () => {
       throw new Error('initial workspace request was not started');
     };
-    requestMock.mockImplementationOnce(
-      () =>
-        new Promise((resolve) => {
-          resolveInitial = resolve;
-        }),
+    requestMock.mockImplementation(
+      (path: string, options?: Parameters<typeof requestThroughMock>[1]) => {
+        if (path === '/api/v1/admin/workspaces') {
+          return new Promise((resolve) => {
+            resolveInitial = resolve;
+          });
+        }
+        return requestThroughMock(path, options);
+      },
     );
     renderPage();
 
-    await user.type(
-      screen.getByRole('searchbox', { name: '搜索工作区' }),
-      'Agent',
-    );
     expect(
-      await screen.findByRole('row', { name: /Agent Runtime/ }, INITIAL_WAIT),
-    ).toBeInTheDocument();
-    expect(screen.getByText('共 1 个工作区')).toBeInTheDocument();
+      screen.queryByRole('row', { name: /营销工作区/ }),
+    ).not.toBeInTheDocument();
 
-    resolveInitial(initialPage);
     await waitFor(() => {
-      expect(screen.getByText('共 1 个工作区')).toBeInTheDocument();
       expect(
-        screen.queryByRole('row', { name: /Platform Core/ }),
-      ).not.toBeInTheDocument();
+        requestMock.mock.calls.some(
+          ([path]) => path === '/api/v1/admin/workspaces',
+        ),
+      ).toBe(true);
     });
+    resolveInitial(initialPage);
+    expect(
+      await screen.findByRole('row', { name: /营销工作区/ }, INITIAL_WAIT),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('row', { name: /交易工作区/ })).toBeInTheDocument();
   });
 
   it('Owner 移除入口禁用并提示先转让，转让候选仅含受邀 Leader', async () => {
@@ -226,17 +242,19 @@ describe('AdminWorkspacesPage', () => {
     renderPage();
     const row = await screen.findByRole(
       'row',
-      { name: /Platform Core/ },
+      { name: /营销工作区/ },
       INITIAL_WAIT,
     );
-    await user.click(within(row).getByRole('button', { name: '查看' }));
+    await user.click(
+      within(row).getByRole('button', { name: '查看配置 营销工作区' }),
+    );
     const drawer = await screen.findByRole('dialog', {
-      name: '工作区详情：Platform Core',
+      name: '工作区详情：营销工作区',
     });
 
-    const ownerRow = within(drawer).getByRole('listitem', { name: /方舟/ });
+    const ownerRow = within(drawer).getByRole('listitem', { name: /李强/ });
     expect(
-      within(ownerRow).getByRole('button', { name: '移除 Leader 方舟' }),
+      within(ownerRow).getByRole('button', { name: '移除 Leader 李强' }),
     ).toBeDisabled();
     expect(within(ownerRow).getByTitle('请先转让 Owner')).toBeInTheDocument();
 
@@ -244,12 +262,12 @@ describe('AdminWorkspacesPage', () => {
       within(drawer).getByRole('button', { name: '转让 Owner' }),
     );
     await user.click(screen.getByRole('combobox', { name: '新 Owner' }));
-    expect(await screen.findByRole('option', { name: '沈一' })).toBeVisible();
+    expect(await screen.findByRole('option', { name: '吴桐' })).toBeVisible();
     expect(
-      screen.queryByRole('option', { name: '赵晨' }),
+      screen.queryByRole('option', { name: '刘洋' }),
     ).not.toBeInTheDocument();
     expect(
-      screen.queryByRole('option', { name: '方舟' }),
+      screen.queryByRole('option', { name: '李强' }),
     ).not.toBeInTheDocument();
   });
 
@@ -258,12 +276,14 @@ describe('AdminWorkspacesPage', () => {
     renderPage();
     const row = await screen.findByRole(
       'row',
-      { name: /Platform Core/ },
+      { name: /营销工作区/ },
       INITIAL_WAIT,
     );
-    await user.click(within(row).getByRole('button', { name: '查看' }));
+    await user.click(
+      within(row).getByRole('button', { name: '查看配置 营销工作区' }),
+    );
     const drawer = await screen.findByRole('dialog', {
-      name: '工作区详情：Platform Core',
+      name: '工作区详情：营销工作区',
     });
 
     await user.click(
@@ -271,7 +291,7 @@ describe('AdminWorkspacesPage', () => {
     );
     const transferDialog = await findTopmostDialog();
     expect(transferDialog).toHaveTextContent('转让 Owner');
-    await selectOption(user, '新 Owner', '沈一');
+    await selectOption(user, '新 Owner', '吴桐');
     await user.type(
       within(transferDialog).getByRole('textbox', { name: '操作原因' }),
       '职责交接',
@@ -283,24 +303,24 @@ describe('AdminWorkspacesPage', () => {
     expect(await screen.findByText('Owner 已转让')).toBeInTheDocument();
     await waitFor(() => {
       const nextOwnerRow = within(drawer).getByRole('listitem', {
-        name: /沈一/,
+        name: /吴桐/,
       });
       expect(
         within(nextOwnerRow).getByRole('button', {
-          name: '移除 Leader 沈一',
+          name: '移除 Leader 吴桐',
         }),
       ).toBeDisabled();
       expect(
-        within(drawer).queryByRole('listitem', { name: /方舟/ }),
+        within(drawer).queryByRole('listitem', { name: /李强/ }),
       ).not.toBeInTheDocument();
       expect(
-        within(drawer).queryByRole('row', { name: /林一/ }),
+        within(drawer).queryByRole('row', { name: /陈晓/ }),
       ).not.toBeInTheDocument();
     });
     expect(requestMock).toHaveBeenCalledWith(
       '/api/v1/admin/workspaces/workspace-platform-core/transfer-owner',
       {
-        data: { accountId: 'leader-shen', reason: '职责交接' },
+        data: { accountId: 'leader-wu', reason: '职责交接' },
         headers: {
           'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
         },
@@ -314,12 +334,14 @@ describe('AdminWorkspacesPage', () => {
     renderPage();
     const row = await screen.findByRole(
       'row',
-      { name: /Platform Core/ },
+      { name: /营销工作区/ },
       INITIAL_WAIT,
     );
-    await user.click(within(row).getByRole('button', { name: '查看' }));
+    await user.click(
+      within(row).getByRole('button', { name: '查看配置 营销工作区' }),
+    );
     let drawer = await screen.findByRole('dialog', {
-      name: '工作区详情：Platform Core',
+      name: '工作区详情：营销工作区',
     });
 
     await user.click(
@@ -327,7 +349,7 @@ describe('AdminWorkspacesPage', () => {
     );
     const inviteDialog = await findTopmostDialog();
     expect(inviteDialog).toHaveTextContent('邀请 Leader');
-    await selectOption(user, 'Leader', '赵晨');
+    await selectOption(user, 'Leader', '刘洋');
     await user.click(
       within(inviteDialog).getByRole('button', { name: '确认邀请' }),
     );
@@ -343,14 +365,14 @@ describe('AdminWorkspacesPage', () => {
     );
     expect(await screen.findByText('Leader 已邀请')).toBeInTheDocument();
     drawer = await screen.findByRole('dialog', {
-      name: '工作区详情：Platform Core',
+      name: '工作区详情：营销工作区',
     });
     const invitedRow = await within(drawer).findByRole('listitem', {
-      name: /赵晨/,
+      name: /刘洋/,
     });
 
     await user.click(
-      within(invitedRow).getByRole('button', { name: '移除 Leader 赵晨' }),
+      within(invitedRow).getByRole('button', { name: '移除 Leader 刘洋' }),
     );
     const removeDialog = await findTopmostDialog();
     expect(removeDialog).toHaveTextContent('移除 Leader');
@@ -364,7 +386,7 @@ describe('AdminWorkspacesPage', () => {
     expect(await screen.findByText('Leader 已移除')).toBeInTheDocument();
     await waitFor(() => {
       expect(
-        within(drawer).queryByRole('listitem', { name: /赵晨/ }),
+        within(drawer).queryByRole('listitem', { name: /刘洋/ }),
       ).not.toBeInTheDocument();
     });
   });
@@ -376,18 +398,15 @@ describe('AdminWorkspacesPage', () => {
     await user.click(screen.getByRole('button', { name: '创建工作区' }));
     const dialog = await screen.findByRole('dialog', { name: '创建工作区' });
     await user.type(
-      within(dialog).getByRole('textbox', { name: '名称' }),
-      'Platform Core',
+      within(dialog).getByRole('textbox', { name: '工作区名称' }),
+      '营销工作区',
     );
-    await selectOption(user, 'Owner', '方舟');
-    await user.type(
-      within(dialog).getByRole('textbox', { name: '创建原因' }),
-      '重复名称测试',
-    );
+    await selectOption(user, '所属 Team', '营销');
+    await selectOption(user, 'Owner（开发Leader）', '李强 · 营销');
     await user.click(within(dialog).getByRole('button', { name: /创\s*建/ }));
 
     expect(
-      await screen.findByText(/工作区名称 Platform Core 已存在/),
+      await screen.findByText(/工作区名称 营销工作区 已存在/),
     ).toHaveTextContent(/requestId: mock-admin-workspace-/);
     expect(dialog).toBeInTheDocument();
   });
@@ -413,19 +432,21 @@ describe('AdminWorkspacesPage', () => {
     renderPage();
     const row = await screen.findByRole(
       'row',
-      { name: /Platform Core/ },
+      { name: /营销工作区/ },
       INITIAL_WAIT,
     );
-    await user.click(within(row).getByRole('button', { name: '查看' }));
+    await user.click(
+      within(row).getByRole('button', { name: '查看配置 营销工作区' }),
+    );
     const drawer = await screen.findByRole('dialog', {
-      name: '工作区详情：Platform Core',
+      name: '工作区详情：营销工作区',
     });
     await user.click(
       within(drawer).getByRole('button', { name: '邀请 Leader' }),
     );
     const dialog = await findTopmostDialog();
     expect(dialog).toHaveTextContent('邀请 Leader');
-    await selectOption(user, 'Leader', '赵晨');
+    await selectOption(user, 'Leader', '刘洋');
     await user.type(
       within(dialog).getByRole('textbox', { name: '操作原因' }),
       '测试服务端校验',
@@ -449,8 +470,8 @@ describe('AdminWorkspacesPage', () => {
       /requestId: mock-admin-workspace-/,
     );
     expect(
-      screen.queryByRole('row', { name: /Platform Core/ }),
+      screen.queryByRole('row', { name: /营销工作区/ }),
     ).not.toBeInTheDocument();
-    expect(screen.getByText('共 0 个工作区')).toBeInTheDocument();
+    expect(screen.queryByText(/共 \d+ 个工作区/)).not.toBeInTheDocument();
   });
 });

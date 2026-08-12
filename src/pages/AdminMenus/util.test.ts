@@ -28,31 +28,31 @@ const EXPECTED_MENUS = [
   },
   {
     group: 'user',
+    key: 'tasks.archived',
+    name: '归档数据',
+    order: 4,
+    path: '/tasks/archived',
+  },
+  {
+    group: 'user',
     key: 'messages',
     name: '消息中心',
-    order: 4,
+    order: 5,
     path: '/messages',
   },
   {
     group: 'user',
     key: 'team-board',
     name: '团队看板',
-    order: 5,
+    order: 6,
     path: '/team-board',
   },
   {
     group: 'user',
     key: 'audit',
     name: '审计看板',
-    order: 6,
-    path: '/audit',
-  },
-  {
-    group: 'admin',
-    key: 'admin',
-    name: '管理概览',
     order: 7,
-    path: '/admin',
+    path: '/audit',
   },
   {
     group: 'admin',
@@ -63,37 +63,58 @@ const EXPECTED_MENUS = [
   },
   {
     group: 'admin',
+    key: 'admin.organization',
+    name: '组织管理',
+    order: 9,
+    path: '/admin/organization',
+  },
+  {
+    group: 'admin',
     key: 'admin.skills',
     name: '技能管理',
-    order: 9,
+    order: 10,
     path: '/admin/skills',
   },
   {
     group: 'admin',
     key: 'admin.models',
     name: '模型管理',
-    order: 10,
+    order: 11,
     path: '/admin/models',
   },
   {
     group: 'admin',
     key: 'admin.roles',
     name: '角色管理',
-    order: 11,
+    order: 12,
     path: '/admin/roles',
   },
   {
     group: 'admin',
     key: 'admin.users',
     name: '用户管理',
-    order: 12,
+    order: 13,
     path: '/admin/users',
+  },
+  {
+    group: 'admin',
+    key: 'admin.grants',
+    name: 'Grant 管理',
+    order: 14,
+    path: '/admin/grants',
+  },
+  {
+    group: 'admin',
+    key: 'admin.policies',
+    name: 'Policy 发布',
+    order: 15,
+    path: '/admin/policies',
   },
   {
     group: 'admin',
     key: 'admin.menus',
     name: '菜单管理',
-    order: 13,
+    order: 16,
     path: '/admin/menus',
   },
 ] as const;
@@ -111,7 +132,7 @@ afterEach(() => {
 });
 
 describe('MENU_ROWS', () => {
-  it('13 个原型菜单行全部引用公共 Registry 中的 page route', () => {
+  it('16 个独立菜单行全部引用公共 Registry 中的 page route', () => {
     expect(
       MENU_ROWS.map(({ group, key, name, order, path }) => ({
         group,
@@ -150,21 +171,24 @@ describe('queryMenuRows', () => {
       'home',
       'tasks',
       'workspaces',
+      'tasks.archived',
       'messages',
       'team-board',
       'audit',
     ]);
-    expect(userResult.total).toBe(6);
+    expect(userResult.total).toBe(7);
     expect(adminResult.data?.map((row) => row.key)).toEqual([
-      'admin',
       'admin.workspaces',
+      'admin.organization',
       'admin.skills',
       'admin.models',
       'admin.roles',
       'admin.users',
+      'admin.grants',
+      'admin.policies',
       'admin.menus',
     ]);
-    expect(adminResult.total).toBe(7);
+    expect(adminResult.total).toBe(9);
   });
 
   it('在分组内按 order 升序或降序排序', async () => {
@@ -178,10 +202,10 @@ describe('queryMenuRows', () => {
     );
 
     expect(ascending.data?.map((row) => row.order)).toEqual([
-      7, 8, 9, 10, 11, 12, 13,
+      8, 9, 10, 11, 12, 13, 14, 15, 16,
     ]);
     expect(descending.data?.map((row) => row.order)).toEqual([
-      13, 12, 11, 10, 9, 8, 7,
+      16, 15, 14, 13, 12, 11, 10, 9, 8,
     ]);
   });
 
@@ -200,7 +224,7 @@ describe('queryMenuRows', () => {
     expect(visible.data?.map((row) => row.key)).toEqual(
       EXPECTED_MENUS.map(({ key }) => key),
     );
-    expect(visible.total).toBe(13);
+    expect(visible.total).toBe(16);
     expect(hidden).toEqual({ data: [], success: true, total: 0 });
   });
 
@@ -211,13 +235,13 @@ describe('queryMenuRows', () => {
     );
 
     expect(result.data?.map((row) => row.key)).toEqual([
+      'team-board',
       'audit',
-      'admin',
       'admin.workspaces',
+      'admin.organization',
       'admin.skills',
-      'admin.models',
     ]);
-    expect(result.total).toBe(13);
+    expect(result.total).toBe(16);
   });
 
   it('不修改冻结 fixture，并且每次返回新的数据数组', async () => {

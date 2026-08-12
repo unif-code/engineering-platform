@@ -1,62 +1,42 @@
 import { createStyles } from 'antd-style';
 
 export const useStyles = createStyles(({ token }) => ({
-  page: {
-    display: 'flex',
-    minWidth: 0,
-    flexDirection: 'column',
-    gap: token.margin,
-  },
   masterDetail: {
     display: 'flex',
     flexWrap: 'wrap',
-    gap: token.margin,
-    alignItems: 'start',
+    gap: 14,
+    alignItems: 'flex-start',
   },
   roleList: {
-    flex: '0 1 292px',
-  },
-  matrix: {
-    flex: '1 1 520px',
-    minWidth: 0,
-  },
-  card: {
-    borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
-  },
-  selectorTitle: {
     display: 'flex',
+    flex: '0 1 270px',
     flexDirection: 'column',
-    gap: token.marginXXS,
+    gap: token.marginXS,
+  },
+  selectorHeadingRow: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBlockEnd: 2,
   },
   selectorHeading: {
     margin: 0,
     color: token.colorText,
-    fontSize: token.fontSizeLG,
+    fontSize: token.fontSize,
     fontWeight: token.fontWeightStrong,
   },
-  selectorHint: {
-    color: token.colorTextSecondary,
-    fontSize: token.fontSizeSM,
-  },
   roleButton: {
-    width: '100%',
     height: 'auto',
-    marginBlockEnd: token.marginXS,
-    padding: token.paddingSM,
+    padding: '11px 14px',
     border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
+    background: token.colorBgContainer,
     textAlign: 'start',
     whiteSpace: 'normal',
 
     '&:hover': {
       borderColor: token.colorPrimaryBorder,
       background: token.colorPrimaryBg,
-    },
-
-    '&:focus-visible': {
-      outline: `${token.lineWidthFocus}px solid ${token.colorPrimaryBorder}`,
-      outlineOffset: token.marginXXS,
     },
   },
   roleButtonActive: {
@@ -66,117 +46,110 @@ export const useStyles = createStyles(({ token }) => ({
   roleButtonContent: {
     display: 'flex',
     width: '100%',
-    minWidth: 0,
-    flexDirection: 'column',
-    gap: token.marginXXS,
-  },
-  roleTitleRow: {
-    display: 'flex',
-    width: '100%',
     gap: token.marginXS,
     alignItems: 'center',
   },
   roleName: {
     flex: 1,
-    minWidth: 0,
     color: token.colorText,
     fontWeight: token.fontWeightStrong,
   },
-  roleDescription: {
+  roleMeta: {
     color: token.colorTextSecondary,
     fontSize: token.fontSizeSM,
-    lineHeight: token.lineHeightSM,
   },
-  matrixHeader: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: token.marginSM,
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    marginBlockEnd: token.margin,
-  },
-  matrixTitleBlock: {
-    display: 'flex',
-    minWidth: 0,
-    flexDirection: 'column',
-    gap: token.marginXXS,
-  },
-  matrixTitle: {
+  roleNote: {
     margin: 0,
-    color: token.colorText,
-    fontSize: token.fontSizeHeading3,
-    lineHeight: token.lineHeightHeading3,
-  },
-  matrixDescription: {
-    margin: 0,
+    padding: '4px 2px',
     color: token.colorTextSecondary,
+    fontSize: token.fontSizeSM,
+    lineHeight: 1.7,
   },
-  matrixTags: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: token.marginXS,
-  },
-  capabilityGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
-    gap: token.margin,
-  },
-  capabilityGroup: {
-    minWidth: 0,
-    margin: 0,
-    padding: token.padding,
+  matrix: {
+    flex: '1 1 600px',
+    padding: '18px 22px',
     border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     background: token.colorBgContainer,
   },
-  capabilityLegend: {
-    paddingInline: token.paddingXS,
+  matrixHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: token.marginXS,
+    alignItems: 'center',
+    marginBlockEnd: token.marginXXS,
+  },
+  matrixTitle: {
+    margin: 0,
     color: token.colorText,
+    fontSize: token.fontSizeLG,
     fontWeight: token.fontWeightStrong,
   },
-  capabilityDescription: {
-    marginBlock: `0 ${token.marginSM}px`,
+  deleteButton: {
+    marginInlineStart: 'auto',
+  },
+  matrixDescription: {
+    marginBlock: `0 ${token.marginXXS}px`,
     color: token.colorTextSecondary,
     fontSize: token.fontSizeSM,
   },
-  checkboxGroup: {
+  staticPreviewNote: {
+    width: 'fit-content',
+    marginBlock: `0 ${token.margin}px`,
+    padding: `${token.paddingXXS}px ${token.paddingXS}px`,
+    border: `${token.lineWidth}px ${token.lineType} ${token.colorPrimaryBorder}`,
+    borderRadius: token.borderRadiusSM,
+    background: token.colorPrimaryBg,
+    color: token.colorPrimaryText,
+    fontSize: token.fontSizeSM,
+  },
+  capabilitySections: {
     display: 'flex',
-    width: '100%',
     flexDirection: 'column',
+    gap: token.margin,
+  },
+  capabilityGroup: {
+    margin: 0,
+    padding: 0,
+    border: 0,
+  },
+  capabilityLegend: {
+    marginBlockEnd: token.marginXS,
+    color: token.colorTextSecondary,
+    fontSize: token.fontSize,
+    fontWeight: token.fontWeightStrong,
+  },
+  checkboxGroup: {
+    display: 'grid',
+    width: '100%',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
     gap: token.marginXS,
   },
   checkboxOption: {
     display: 'flex',
-    alignItems: 'flex-start',
+    marginInlineStart: 0,
+    padding: '10px 13px',
+    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadius,
+    alignItems: 'center',
+
+    '&:hover': {
+      borderColor: token.colorPrimary,
+    },
   },
   optionBody: {
-    display: 'inline-flex',
-    minWidth: 0,
-    flexDirection: 'column',
-    gap: token.marginXXS,
+    display: 'flex',
+    width: '100%',
+    gap: token.marginXS,
+    alignItems: 'center',
   },
   optionLabel: {
+    flex: 1,
     color: token.colorText,
   },
   capabilityCode: {
-    color: token.colorTextSecondary,
+    color: token.colorTextTertiary,
     fontFamily: token.fontFamilyCode,
-    fontSize: token.fontSizeSM,
-  },
-  matrixFooter: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: token.marginSM,
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBlockStart: token.marginLG,
-    paddingBlockStart: token.padding,
-    borderBlockStart: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
-  },
-  boundaryNote: {
-    maxWidth: 580,
-    margin: 0,
-    color: token.colorTextSecondary,
     fontSize: token.fontSizeSM,
   },
 }));

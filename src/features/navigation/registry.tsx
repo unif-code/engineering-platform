@@ -177,7 +177,7 @@ export const ROUTE_REGISTRY = {
     menu: false,
     parent: 'app',
     path: APP_PATHS.admin,
-    prototype: false,
+    prototype: true,
     redirectTo: null,
   },
   'admin.workspaces': {

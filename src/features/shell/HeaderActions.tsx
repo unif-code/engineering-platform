@@ -1,5 +1,4 @@
 import {
-  BellOutlined,
   DownOutlined,
   LogoutOutlined,
   SearchOutlined,
@@ -9,13 +8,11 @@ import {
   App,
   AutoComplete,
   Avatar,
-  Badge,
   Button,
   Dropdown,
   Input,
   type MenuProps,
   Space,
-  Tooltip,
   Typography,
 } from 'antd';
 import { useState } from 'react';
@@ -32,8 +29,6 @@ const SEARCH_OPTIONS = [
   { label: '搜索工作区', value: '搜索工作区' },
   { label: '搜索 Artifact', value: '搜索 Artifact' },
 ];
-
-const PROTOTYPE_UNREAD_COUNT = 4;
 
 export interface HeaderActionsProps {
   onLogout: () => Promise<void>;
@@ -101,18 +96,6 @@ export function HeaderActions({ onLogout, user }: HeaderActionsProps) {
           prefix={<SearchOutlined aria-hidden="true" />}
         />
       </AutoComplete>
-      <Tooltip title="消息入口">
-        <Badge count={PROTOTYPE_UNREAD_COUNT} offset={[-4, 4]} size="small">
-          <Button
-            aria-label={`消息入口，${PROTOTYPE_UNREAD_COUNT} 条未读`}
-            icon={<BellOutlined aria-hidden="true" />}
-            onClick={() => {
-              void message.info('静态原型：消息入口暂未接入。');
-            }}
-            type="text"
-          />
-        </Badge>
-      </Tooltip>
       <Dropdown
         menu={{
           items: userMenuItems,

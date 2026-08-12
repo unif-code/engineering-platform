@@ -109,6 +109,7 @@ const expectedRoutes = {
     group: 'admin',
     kind: 'page',
     path: '/admin',
+    prototype: true,
   },
   'admin.workspaces': {
     access: 'session',

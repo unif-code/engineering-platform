@@ -1,6 +1,6 @@
 import type { ChartDatum, SemanticTone } from '@/types/presentation';
 
-export type TeamName = 'Platform' | 'Agent Runtime' | 'Delivery Governance';
+export type TeamName = '营销' | '交易' | '中台';
 
 export interface TeamMetric {
   key: string;
@@ -13,8 +13,9 @@ export interface TeamMetric {
 export interface TeamMember {
   key: string;
   name: string;
-  role: string;
-  load: number;
+  activeTasks: number;
+  agentParticipation: number;
+  overloaded?: boolean;
 }
 
 export interface TeamBlocker {
@@ -27,11 +28,12 @@ export interface TeamBlocker {
 
 export interface TeamBoardFixture {
   name: TeamName;
-  summary: string;
   metrics: readonly TeamMetric[];
   throughput: readonly ChartDatum[];
   distribution: readonly ChartDatum[];
   members: readonly TeamMember[];
+  mergeCycle: readonly ChartDatum[];
+  mergeCycleAverage: string;
   blockers: readonly TeamBlocker[];
 }
 

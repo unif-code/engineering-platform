@@ -184,6 +184,7 @@ describe('route registry integration', () => {
       'tasks.detail',
       'messages',
       'team-board',
+      'admin',
       'admin.skills',
       'admin.models',
       'admin.roles',

@@ -1,9 +1,9 @@
 export interface RoleFixture {
   id: string;
   name: string;
-  description: string;
   capabilities: readonly string[];
   memberCount: number;
+  locked?: boolean;
 }
 
 export interface CapabilityOption {
@@ -12,13 +12,13 @@ export interface CapabilityOption {
 }
 
 export interface CapabilityGroup {
-  key: 'requirement' | 'artifact' | 'execution' | 'promotion';
+  key: 'business' | 'view' | 'admin';
   title: string;
-  description: string;
   capabilities: readonly CapabilityOption[];
 }
 
 export interface RoleFormValues {
   name: string;
-  description: string;
+  description?: string;
+  initialCapability: string;
 }

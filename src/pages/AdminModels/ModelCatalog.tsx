@@ -1,91 +1,92 @@
 import { type ProColumns, ProTable } from '@ant-design/pro-components';
-import { Button, Input, Select, Typography } from 'antd';
+import { Button, Space, Typography } from 'antd';
 import { useMemo, useState } from 'react';
 import { FilterToolbar } from '@/components/FilterToolbar';
 import { SemanticTag } from '@/components/SemanticTag';
-import { MODEL_STATUS_META, MODEL_STATUS_OPTIONS } from './constant';
+import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
+import { MODEL_STATUS_META } from './constant';
 import { useStyles } from './index.style';
 import { ModelModal } from './ModelModal';
 import type { ModelQueryParams, ModelRow } from './type';
-import { queryModelRows, selectModelRows } from './util';
+import { queryModelRows } from './util';
 
 type ModelModalState = { model?: ModelRow } | null;
 
-const contextWindowFormatter = new Intl.NumberFormat('zh-CN');
-
 export function ModelCatalog() {
   const { styles } = useStyles();
-  const [keyword, setKeyword] = useState('');
-  const [status, setStatus] =
-    useState<NonNullable<ModelQueryParams['status']>>('all');
   const [modalState, setModalState] = useState<ModelModalState>(null);
-
-  const queryParams = useMemo<ModelQueryParams>(
-    () => ({ keyword, status }),
-    [keyword, status],
-  );
-  const visibleCount = selectModelRows(queryParams).length;
+  const showStaticAction = useStaticPrototypeAction();
 
   const columns = useMemo<ProColumns<ModelRow>[]>(
     () => [
       {
         dataIndex: 'name',
-        render: (_, row) => (
-          <span className={styles.modelName}>
-            <strong>{row.name}</strong>
-            <span className={styles.modelId}>{row.id}</span>
-          </span>
-        ),
+        render: (_, row) => <strong>{row.name}</strong>,
         title: '模型',
-        width: 230,
-      },
-      { dataIndex: 'provider', title: 'Provider', width: 140 },
-      {
-        dataIndex: 'contextWindow',
-        render: (_, row) => (
-          <span className={styles.contextWindow}>
-            {contextWindowFormatter.format(row.contextWindow)}
-          </span>
-        ),
-        sorter: true,
-        title: '上下文窗口',
         width: 150,
       },
-      { dataIndex: 'purpose', title: '用途', width: 220 },
+      {
+        className: styles.code,
+        dataIndex: 'deployment',
+        title: '部署名',
+        width: 150,
+      },
+      { dataIndex: 'use', title: '用途', width: 170 },
+      { dataIndex: 'access', title: '接入', width: 190 },
+      {
+        dataIndex: 'context',
+        title: '上下文',
+        width: 70,
+      },
+      {
+        className: styles.code,
+        dataIndex: 'rateLimit',
+        render: (_, row) => `${row.rateLimit} RPM`,
+        title: '限流',
+        width: 90,
+      },
       {
         dataIndex: 'status',
         render: (_, row) => <SemanticTag {...MODEL_STATUS_META[row.status]} />,
         title: '状态',
-        width: 110,
-      },
-      {
-        dataIndex: 'updatedAt',
-        sorter: true,
-        title: '更新时间',
-        valueType: 'dateTime',
-        width: 170,
+        width: 70,
       },
       {
         fixed: 'right',
         render: (_, row) => (
-          <Button
-            aria-label={`编辑 ${row.name}`}
-            onClick={() => setModalState({ model: row })}
-            type="link"
-          >
-            编辑
-          </Button>
+          <Space size="small">
+            <Button
+              aria-label={`配置 ${row.name}`}
+              onClick={() => setModalState({ model: row })}
+              size="small"
+              type="link"
+            >
+              配置
+            </Button>
+            <Button
+              aria-label={`${row.status === 'active' ? '停用' : '启用'} ${row.name}`}
+              onClick={() =>
+                showStaticAction(
+                  `${row.status === 'active' ? '停用' : '启用'}模型 ${row.name}`,
+                )
+              }
+              size="small"
+              type="link"
+            >
+              {row.status === 'active' ? '停用' : '启用'}
+            </Button>
+          </Space>
         ),
         title: '操作',
         valueType: 'option',
-        width: 100,
+        width: 150,
       },
     ],
-    [styles.contextWindow, styles.modelId, styles.modelName],
+    [showStaticAction, styles.code],
   );
 
   return (
-    <section aria-label="模型目录内容" className={styles.tabPanel}>
+    <section aria-label="模型目录内容">
       <FilterToolbar
         actions={
           <Button onClick={() => setModalState({})} type="primary">
@@ -93,46 +94,31 @@ export function ModelCatalog() {
           </Button>
         }
         ariaLabel="模型筛选与操作"
-        filters={
-          <Select<NonNullable<ModelQueryParams['status']>>
-            aria-label="模型状态"
-            className={styles.filter}
-            id="admin-model-status-filter"
-            onChange={setStatus}
-            options={MODEL_STATUS_OPTIONS.map((option) => ({ ...option }))}
-            value={status}
-            virtual={false}
-          />
-        }
-        search={
-          <Input.Search
-            allowClear
-            aria-label="搜索模型"
-            className={styles.search}
-            onChange={(event) => setKeyword(event.target.value)}
-            placeholder="名称 / Provider / 用途"
-            value={keyword}
-          />
-        }
         summary={
           <Typography.Text type="secondary">
-            共 {visibleCount} 个模型
+            Chat（对话）与 Execution（执行）独立治理；Agent
+            请求逻辑能力（coding-backend / review-code…），由 Route
+            Policy（路由策略）解析到实际模型部署
           </Typography.Text>
         }
       />
 
       <ProTable<ModelRow, ModelQueryParams>
         columns={columns}
-        key={JSON.stringify(queryParams)}
         options={false}
-        pagination={{ pageSize: 10, showSizeChanger: false }}
-        params={queryParams}
+        pagination={false}
         request={queryModelRows}
         rowKey="id"
-        scroll={{ x: 1120 }}
+        scroll={{ x: 1040 }}
         search={false}
+        size="small"
         toolBarRender={false}
       />
+
+      <Typography.Text className={styles.catalogNote} type="secondary">
+        Provider 参数由 Adapter 映射，不渗入业务模型 · 联网搜索 / 深度思考为
+        Deployment Capability
+      </Typography.Text>
 
       {modalState ? (
         <ModelModal
