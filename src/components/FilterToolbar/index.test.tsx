@@ -23,4 +23,17 @@ describe('FilterToolbar', () => {
       within(toolbar).getByRole('button', { name: '创建' }),
     ).toBeInTheDocument();
   });
+
+  it('自身不创建额外卡片表面', () => {
+    render(
+      <FilterToolbar ariaLabel="筛选工具栏" filters={<span>筛选</span>} />,
+    );
+
+    const toolbar = screen.getByRole('toolbar', { name: '筛选工具栏' });
+    const computedStyle = getComputedStyle(toolbar);
+
+    expect(computedStyle.backgroundColor).toBe('');
+    expect(computedStyle.borderTopWidth).toBe('');
+    expect(computedStyle.boxShadow).toBe('');
+  });
 });
