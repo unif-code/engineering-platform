@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
+import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import TaskDetailPage from '.';
 
@@ -12,6 +13,18 @@ vi.hoisted(() => {
 });
 
 vi.mock('@umijs/max', () => ({
+  Link: ({
+    children,
+    to,
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
+    children: ReactNode;
+    to: string;
+  }) => (
+    <a {...props} href={to}>
+      {children}
+    </a>
+  ),
   useParams: () => ({ taskId: 'REQ-2026-0142' }),
 }));
 
@@ -42,6 +55,14 @@ describe('TaskDetailPage', () => {
       name: '任务 REQ-2026-0142',
     });
     expect(task).toHaveAccessibleName('任务 REQ-2026-0142');
+    expect(
+      within(task).getByRole('link', { name: '返回任务列表' }),
+    ).toHaveAttribute('href', '/tasks');
+    expect(
+      within(task).getByRole('heading', { name: '统一任务创建链路' }),
+    ).toBeInTheDocument();
+    expect(within(task).getByText('REQ-2026-0142')).toBeInTheDocument();
+    expect(within(task).getByText('engineering-platform')).toBeInTheDocument();
 
     const conversation = screen.getByRole('region', { name: '任务对话' });
     expect(conversation).toHaveTextContent('Implementation');
@@ -53,7 +74,7 @@ describe('TaskDetailPage', () => {
     );
   });
 
-  it('在五个 Inspector Tab 间只显示当前选中面板', async () => {
+  it('在三个原型 Inspector Tab 间只显示当前选中面板', async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
@@ -62,10 +83,8 @@ describe('TaskDetailPage', () => {
       name: '任务 Inspector',
     });
     const panels = [
-      ['总览', '任务状态'],
-      ['文档', '需求说明.md'],
-      ['代码', 'engineering-platform'],
-      ['执行', '最近执行'],
+      ['总览', '任务进度'],
+      ['交付', '需求说明.md'],
       ['预览', 'Sandbox Preview'],
     ] as const;
 
@@ -77,6 +96,9 @@ describe('TaskDetailPage', () => {
       const panel = within(inspector).getByRole('tabpanel');
       expect(panel).toHaveTextContent(panelContent);
     }
+    expect(within(inspector).queryByRole('tab', { name: '文档' })).toBeNull();
+    expect(within(inspector).queryByRole('tab', { name: '代码' })).toBeNull();
+    expect(within(inspector).queryByRole('tab', { name: '执行' })).toBeNull();
   });
 
   it('查看并关闭 Artifact 与 Diff Drawer', async () => {

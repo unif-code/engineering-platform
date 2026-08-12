@@ -12,10 +12,13 @@ export type TaskView = 'table' | 'board';
 export interface TaskRow {
   id: string;
   title: string;
+  team: string;
   workspace: string;
+  repository: string;
   stage: TaskStage;
   status: TaskStatus;
   owner: string;
+  agent: string;
   updatedAt: string;
 }
 

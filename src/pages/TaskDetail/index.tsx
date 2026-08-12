@@ -1,9 +1,10 @@
-import { MoreOutlined } from '@ant-design/icons';
+import { ArrowLeftOutlined, MoreOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
-import { useParams } from '@umijs/max';
+import { Link, useParams } from '@umijs/max';
 import { Button, Drawer, Dropdown, type MenuProps, Space } from 'antd';
 import { useRef, useState } from 'react';
 import { DetailDrawer } from '@/components/DetailDrawer';
+import { SemanticTag } from '@/components/SemanticTag';
 import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
 import { ConversationPane } from './ConversationPane';
 import {
@@ -77,8 +78,31 @@ export default function TaskDetailPage() {
   );
 
   return (
-    <PageContainer extra={topActions} title={`任务 ${resolvedTaskId}`}>
-      <section aria-label={`任务 ${resolvedTaskId}`}>
+    <PageContainer ghost pageHeaderRender={false}>
+      <section
+        aria-label={`任务 ${resolvedTaskId}`}
+        className={styles.detailShell}
+      >
+        <header className={styles.detailHeader}>
+          <Link
+            aria-label="返回任务列表"
+            className={styles.backLink}
+            to="/tasks"
+          >
+            <ArrowLeftOutlined />
+          </Link>
+          <span className={styles.detailCode}>{resolvedTaskId}</span>
+          <h1 className={styles.detailTitle}>{TASK_DETAIL_FIXTURE.title}</h1>
+          <SemanticTag label={TASK_DETAIL_FIXTURE.status} tone="brand" />
+          <SemanticTag
+            label={`优先级 ${TASK_DETAIL_FIXTURE.priority}`}
+            tone="neutral"
+          />
+          <span className={styles.detailRepository}>
+            {TASK_DETAIL_FIXTURE.repository}
+          </span>
+          <div className={styles.detailActions}>{topActions}</div>
+        </header>
         <div className={styles.detailGrid}>
           <ConversationPane />
           <InspectorPanel activeKey={activeTab} onChange={setActiveTab} />

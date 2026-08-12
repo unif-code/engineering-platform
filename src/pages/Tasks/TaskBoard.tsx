@@ -1,4 +1,5 @@
 import { ProCard } from '@ant-design/pro-components';
+import { Link } from '@umijs/max';
 import { Typography } from 'antd';
 import { SemanticTag } from '@/components/SemanticTag';
 import { TASK_STAGES, TASK_STATUS_META } from './constant';
@@ -29,19 +30,22 @@ export function TaskBoard({ rows }: TaskBoardProps) {
                   const status = TASK_STATUS_META[row.status];
 
                   return (
-                    <ProCard
-                      className={styles.taskCard}
+                    <Link
+                      aria-label={`查看任务 ${row.id}：${row.title}`}
+                      className={styles.taskCardLink}
                       key={row.id}
-                      size="small"
+                      to={`/tasks/${row.id}`}
                     >
-                      <div className={styles.taskCode}>{row.id}</div>
-                      <div className={styles.taskTitle}>{row.title}</div>
-                      <div className={styles.taskMeta}>
-                        <span>{row.workspace}</span>
-                        <span>{row.owner}</span>
-                      </div>
-                      <SemanticTag label={status.label} tone={status.tone} />
-                    </ProCard>
+                      <ProCard className={styles.taskCard} size="small">
+                        <div className={styles.taskCode}>{row.id}</div>
+                        <div className={styles.taskTitle}>{row.title}</div>
+                        <div className={styles.taskMeta}>
+                          <span>{row.workspace}</span>
+                          <span>{row.owner}</span>
+                        </div>
+                        <SemanticTag label={status.label} tone={status.tone} />
+                      </ProCard>
+                    </Link>
                   );
                 })}
                 {stageRows.length === 0 ? (

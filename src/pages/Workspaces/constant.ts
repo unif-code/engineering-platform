@@ -4,6 +4,7 @@ export const WORKSPACE_FIXTURES = [
   {
     id: 'platform-core',
     name: 'Platform Core',
+    membership: 'Owner',
     description: '平台入口、Control Plane 与共享研发体验',
     members: [
       { employeeId: 'E0000', name: '周天', role: 'Owner · 超级管理员' },
@@ -31,6 +32,7 @@ export const WORKSPACE_FIXTURES = [
   {
     id: 'agent-runtime',
     name: 'Agent Runtime',
+    membership: '成员',
     description: 'Agent 编排、Model Route 与执行边界',
     members: [
       { employeeId: 'E0201', name: '方舟', role: 'Owner · Runtime Leader' },

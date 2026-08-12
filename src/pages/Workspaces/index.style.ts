@@ -1,43 +1,35 @@
 import { createStyles } from 'antd-style';
 
 export const useStyles = createStyles(({ token }) => ({
-  page: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.margin,
-  },
-  metricsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: token.margin,
-  },
   masterDetail: {
     display: 'flex',
-    flexWrap: 'wrap',
     gap: token.margin,
     alignItems: 'start',
   },
   selectorCard: {
-    flex: '0 1 260px',
+    display: 'flex',
+    flex: '0 0 236px',
+    flexDirection: 'column',
+    gap: token.marginXS,
   },
   detailCard: {
-    flex: '1 1 560px',
+    flex: 1,
     minWidth: 0,
   },
   card: {
     borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
   },
   selectorHeader: {
     display: 'flex',
-    flexDirection: 'column',
     gap: token.marginXXS,
+    alignItems: 'baseline',
     marginBlockEnd: token.marginSM,
+    paddingInline: token.paddingXXS,
   },
   selectorTitle: {
     margin: 0,
     color: token.colorText,
-    fontSize: token.fontSizeLG,
+    fontSize: token.fontSize,
     fontWeight: token.fontWeightStrong,
   },
   secondaryText: {
@@ -92,9 +84,9 @@ export const useStyles = createStyles(({ token }) => ({
     color: token.colorTextSecondary,
     fontSize: token.fontSizeSM,
   },
-  workspaceDescription: {
-    display: 'block',
-    marginBlockStart: token.marginXXS,
+  selectorNote: {
+    margin: 0,
+    paddingInline: token.paddingXXS,
     color: token.colorTextTertiary,
     fontSize: token.fontSizeSM,
     lineHeight: token.lineHeightSM,
@@ -102,9 +94,24 @@ export const useStyles = createStyles(({ token }) => ({
   detailHeader: {
     display: 'flex',
     gap: token.marginSM,
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBlockEnd: token.marginXS,
+  },
+  detailAvatar: {
+    display: 'inline-flex',
+    width: 38,
+    height: 38,
+    flexShrink: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: token.borderRadiusLG,
+    background: token.colorPrimary,
+    color: token.colorTextLightSolid,
+    fontSize: token.fontSizeLG,
+    fontWeight: token.fontWeightStrong,
+  },
+  detailIdentity: {
+    minWidth: 0,
   },
   detailTitle: {
     margin: 0,

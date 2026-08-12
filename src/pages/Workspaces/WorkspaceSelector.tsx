@@ -1,4 +1,3 @@
-import { ProCard } from '@ant-design/pro-components';
 import { Button } from 'antd';
 import clsx from 'clsx';
 import { SemanticTag } from '@/components/SemanticTag';
@@ -19,13 +18,13 @@ export function WorkspaceSelector({
   const { styles } = useStyles();
 
   return (
-    <ProCard className={clsx(styles.card, styles.selectorCard)}>
+    <aside aria-label="工作区选择" className={styles.selectorCard}>
       <nav aria-labelledby="workspace-selector-title">
         <header className={styles.selectorHeader}>
           <h2 className={styles.selectorTitle} id="workspace-selector-title">
             我的工作区
           </h2>
-          <span className={styles.secondaryText}>按当前成员关系可见</span>
+          <span className={styles.secondaryText}>按成员关系可见</span>
         </header>
         <ul className={styles.workspaceList}>
           {workspaces.map((workspace) => {
@@ -48,16 +47,15 @@ export function WorkspaceSelector({
                       {workspace.name}
                     </span>
                     <SemanticTag
-                      label={selected ? '当前' : '可用'}
-                      tone={selected ? 'brand' : 'neutral'}
+                      label={workspace.membership}
+                      tone={
+                        workspace.membership === 'Owner' ? 'brand' : 'neutral'
+                      }
                     />
                   </span>
                   <span className={styles.workspaceMeta}>
                     {workspace.members.length} 成员 ·{' '}
                     {workspace.repositories.length} 仓库
-                  </span>
-                  <span className={styles.workspaceDescription}>
-                    {workspace.description}
                   </span>
                 </Button>
               </li>
@@ -65,6 +63,9 @@ export function WorkspaceSelector({
           })}
         </ul>
       </nav>
-    </ProCard>
+      <p className={styles.selectorNote}>
+        超管 / 管理员可见全部工作区；成员只见自己所在的。
+      </p>
+    </aside>
   );
 }

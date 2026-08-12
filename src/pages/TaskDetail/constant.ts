@@ -11,6 +11,7 @@ export const TASK_DETAIL_FIXTURE: TaskDetailFixture = Object.freeze({
   id: 'REQ-2026-0142',
   title: '统一任务创建链路',
   status: '运行中',
+  priority: '中',
   stage: 'Implementation',
   owner: '陈晓',
   workspace: '平台工作区',
@@ -92,9 +93,7 @@ export const INSPECTOR_TABS: readonly {
   label: string;
 }[] = [
   { key: 'overview', label: '总览' },
-  { key: 'documents', label: '文档' },
-  { key: 'code', label: '代码' },
-  { key: 'execution', label: '执行' },
+  { key: 'delivery', label: '交付' },
   { key: 'preview', label: '预览' },
 ];
 

@@ -1,6 +1,7 @@
 export interface WorkspaceFixture {
   id: string;
   name: string;
+  membership: 'Owner' | '成员';
   description: string;
   members: readonly { employeeId: string; name: string; role: string }[];
   repositories: readonly {

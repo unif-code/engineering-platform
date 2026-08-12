@@ -6,19 +6,18 @@ export const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     gap: token.margin,
   },
-  metricsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-    gap: token.margin,
-  },
   search: {
-    width: 280,
+    width: 170,
     maxWidth: '100%',
   },
   code: {
     color: token.colorTextTertiary,
     fontFamily: token.fontFamilyCode,
     fontSize: token.fontSizeSM,
+  },
+  titleLink: {
+    color: token.colorText,
+    fontWeight: token.fontWeightStrong,
   },
   board: {
     maxWidth: '100%',
@@ -66,7 +65,16 @@ export const useStyles = createStyles(({ token }) => ({
   },
   taskCard: {
     borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
+  },
+  taskCardLink: {
+    color: 'inherit',
+    textDecoration: 'none',
+
+    '&:focus-visible': {
+      borderRadius: token.borderRadiusLG,
+      outline: `${token.lineWidthFocus}px solid ${token.colorPrimaryBorder}`,
+      outlineOffset: token.marginXXS,
+    },
   },
   taskCode: {
     marginBlockEnd: token.marginXXS,

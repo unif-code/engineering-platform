@@ -20,12 +20,46 @@ async function openTab(user: ReturnType<typeof userEvent.setup>, name: string) {
 }
 
 describe('WorkspacesPage', () => {
+  it('以原型的左侧选择栏和右侧详情组成主从布局', () => {
+    renderPage();
+
+    expect(screen.queryByRole('region', { name: '工作区指标' })).toBeNull();
+    const selector = screen.getByRole('complementary', {
+      name: '工作区选择',
+    });
+    expect(
+      within(selector).getByRole('heading', { name: '我的工作区' }),
+    ).toBeInTheDocument();
+    expect(within(selector).getByText('按成员关系可见')).toBeInTheDocument();
+    expect(
+      screen.getByRole('region', { name: 'Platform Core 工作区详情' }),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Platform Core 工作区标识')).toHaveTextContent(
+      'P',
+    );
+    expect(
+      screen.getByText('Owner 周天 · 3 成员 · 3 仓库'),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('当前 Workspace')).not.toBeInTheDocument();
+    const detailCard = screen
+      .getByRole('region', { name: 'Platform Core 工作区详情' })
+      .querySelector('.ant-pro-card');
+    expect(detailCard).toBeInstanceOf(HTMLElement);
+    if (!(detailCard instanceof HTMLElement)) {
+      throw new TypeError('工作区详情卡片没有渲染为 HTMLElement');
+    }
+    expect(getComputedStyle(detailCard).boxShadow).toBe('');
+  });
+
   it('默认选中 Platform Core 并展示成员面板', () => {
     renderPage();
 
     expect(
       screen.getByRole('button', { name: /Platform Core/ }),
     ).toHaveAttribute('aria-pressed', 'true');
+    expect(
+      screen.getByRole('button', { name: /Platform Core.*Owner/ }),
+    ).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: '成员' })).toHaveAttribute(
       'aria-selected',
       'true',

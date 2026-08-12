@@ -22,9 +22,15 @@ export function selectTaskRows(
   const filtered = source.filter((row) => {
     const matchesKeyword =
       !keyword ||
-      [row.id, row.title, row.workspace, row.owner].some((value) =>
-        value.toLocaleLowerCase().includes(keyword),
-      );
+      [
+        row.id,
+        row.title,
+        row.team,
+        row.workspace,
+        row.repository,
+        row.owner,
+        row.agent,
+      ].some((value) => value.toLocaleLowerCase().includes(keyword));
     const matchesStatus = !statuses?.length || statuses.includes(row.status);
 
     return matchesKeyword && matchesStatus;

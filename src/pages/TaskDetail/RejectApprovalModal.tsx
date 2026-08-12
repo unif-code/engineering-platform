@@ -62,9 +62,9 @@ export function RejectApprovalModal({
           ]}
         >
           <Input.TextArea
-            autoSize={{ maxRows: 6, minRows: 4 }}
             maxLength={300}
             placeholder="说明需要补充或调整的内容"
+            rows={4}
             showCount
           />
         </Form.Item>

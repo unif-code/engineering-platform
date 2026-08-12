@@ -4,7 +4,7 @@ import userEvent, {
   type UserEvent,
 } from '@testing-library/user-event';
 import { App } from 'antd';
-import { type ReactNode, useState } from 'react';
+import { type AnchorHTMLAttributes, type ReactNode, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import ArchivedTasksPage from './Archived';
 import { AssignTaskSteps } from './AssignTaskSteps';
@@ -14,20 +14,17 @@ import TasksPage from './index';
 vi.mock('@umijs/max', () => ({
   Link: ({
     children,
-    className,
     to,
-  }: {
+    ...props
+  }: AnchorHTMLAttributes<HTMLAnchorElement> & {
     children: ReactNode;
-    className?: string;
     to: string;
   }) => (
-    <a className={className} href={to}>
+    <a {...props} href={to}>
       {children}
     </a>
   ),
 }));
-
-const PRO_TABLE_ROW_WAIT = { timeout: 5_000 };
 
 function renderPage(page: React.ReactNode) {
   return render(<App>{page}</App>);
@@ -49,20 +46,9 @@ async function switchTaskView(user: UserEvent, view: '列表' | '看板') {
   await user.click(within(viewSwitcher).getByText(view));
 }
 
-async function openAssignment(user: UserEvent) {
-  const taskRow = await screen.findByRole(
-    'row',
-    {
-      name: /REQ-2026-0142/,
-    },
-    PRO_TABLE_ROW_WAIT,
-  );
-  await user.click(
-    within(taskRow).getByRole('button', {
-      name: '分配任务',
-    }),
-  );
-  return { dialog: await screen.findByRole('dialog'), taskRow };
+async function selectTaskStatus(user: UserEvent, status: string) {
+  const statusFilter = screen.getByRole('radiogroup', { name: '任务状态' });
+  await user.click(within(statusFilter).getByText(status));
 }
 
 function AssignmentHarness() {
@@ -88,8 +74,45 @@ describe('TasksPage', () => {
     renderPage(<TasksPage />);
 
     expect(await screen.findByText('REQ-2026-0142')).toBeInTheDocument();
-    expect(screen.getByRole('table')).toBeInTheDocument();
+    const table = screen.getByRole('table');
+    expect(table).toBeInTheDocument();
+    expect(table.closest('.ant-table')).toHaveClass('ant-table-small');
     expect(screen.getByText('统一任务创建链路')).toBeInTheDocument();
+    expect(
+      screen.queryByRole('region', { name: '任务指标' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('集中查看任务阶段、责任人和交付状态'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('radiogroup', { name: '任务状态' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('searchbox', { name: '搜索任务' })).toHaveAttribute(
+      'placeholder',
+      '搜索标题 / 编号',
+    );
+    expect(
+      screen.queryByRole('link', { name: '查看归档' }),
+    ).not.toBeInTheDocument();
+    for (const columnName of [
+      '编号',
+      '任务标题',
+      'Team',
+      '仓库',
+      '状态',
+      '责任人',
+      'Agent',
+      '更新',
+      '操作',
+    ]) {
+      expect(
+        screen.getByRole('columnheader', { name: columnName }),
+      ).toBeVisible();
+    }
+    const taskRow = screen.getByRole('row', { name: /REQ-2026-0142/ });
+    expect(
+      within(taskRow).getByRole('button', { name: '分配任务' }),
+    ).toBeInTheDocument();
   });
 
   it('每个任务编号都提供对应的详情链接', async () => {
@@ -124,6 +147,13 @@ describe('TasksPage', () => {
         within(board).getByRole('heading', { name: stage }),
       ).toBeInTheDocument();
     }
+    for (const row of TASK_ROWS) {
+      expect(
+        within(board).getByRole('link', {
+          name: `查看任务 ${row.id}：${row.title}`,
+        }),
+      ).toHaveAttribute('href', `/tasks/${row.id}`);
+    }
 
     await switchTaskView(user, '列表');
 
@@ -138,7 +168,7 @@ describe('TasksPage', () => {
 
     const search = screen.getByRole('searchbox', { name: '搜索任务' });
     await user.type(search, '工作区');
-    await selectOption(user, '任务状态', '运行中');
+    await selectTaskStatus(user, '运行中');
 
     await waitFor(() => {
       expect(screen.getByText('REQ-2026-0142')).toBeInTheDocument();
@@ -195,8 +225,8 @@ describe('TasksPage', () => {
 
   it('分配任务逐步校验成员与仓库', async () => {
     const user = setupUser();
-    renderPage(<TasksPage />);
-    const { dialog } = await openAssignment(user);
+    renderPage(<AssignmentHarness />);
+    const dialog = await screen.findByRole('dialog');
 
     await user.click(within(dialog).getByRole('button', { name: '下一步' }));
     expect(await screen.findByText('请选择成员')).toBeInTheDocument();
@@ -209,6 +239,11 @@ describe('TasksPage', () => {
     });
     await user.click(submitButton);
     expect(await screen.findByText('请选择仓库')).toBeInTheDocument();
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
   });
 
   it('合法分配只提示并关闭弹窗，不修改 owner', async () => {
@@ -241,9 +276,11 @@ describe('ArchivedTasksPage', () => {
   it('呈现只读归档列表且不提供创建或分配入口', async () => {
     renderPage(<ArchivedTasksPage />);
 
-    expect(await screen.findByText('归档任务')).toBeInTheDocument();
     expect(screen.getByText('只读')).toBeInTheDocument();
-    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(screen.getByText(/已归档任务 · 只读留存/)).toBeInTheDocument();
+    expect(screen.getByRole('table').closest('.ant-table')).toHaveClass(
+      'ant-table-small',
+    );
     expect(
       screen.queryByRole('button', { name: '创建任务' }),
     ).not.toBeInTheDocument();

@@ -27,22 +27,11 @@ export function MemberPanel({ workspace }: MemberPanelProps) {
   };
 
   return (
-    <section
-      aria-labelledby={`${workspace.id}-members-title`}
-      className={styles.panel}
-    >
+    <section aria-label={`${workspace.name} 成员管理`} className={styles.panel}>
       <header className={styles.panelHeader}>
-        <div>
-          <h3
-            className={styles.panelTitle}
-            id={`${workspace.id}-members-title`}
-          >
-            成员
-          </h3>
-          <span className={styles.secondaryText}>
-            正式成员与有时间边界的临时协作成员
-          </span>
-        </div>
+        <span className={styles.secondaryText}>
+          正式成员 = Owner + 受邀 Leader 直属有效员工；临时协作有时间边界
+        </span>
         <Button
           aria-label="添加成员"
           icon={<PlusOutlined />}

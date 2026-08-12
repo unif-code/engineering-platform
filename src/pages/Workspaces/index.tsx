@@ -1,9 +1,6 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { Tabs } from 'antd';
-import clsx from 'clsx';
 import { useState } from 'react';
-import { MetricCard } from '@/components/MetricCard';
-import { SemanticTag } from '@/components/SemanticTag';
 import { WORKSPACE_FIXTURES } from './constant';
 import { useStyles } from './index.style';
 import { MemberPanel } from './MemberPanel';
@@ -28,42 +25,35 @@ export default function WorkspacesPage() {
   };
 
   return (
-    <PageContainer
-      ghost
-      subTitle="管理成员关系、关联仓库与当前 Workspace Policy"
-      title="工作区"
-    >
-      <div className={styles.page}>
-        <section aria-label="工作区指标" className={styles.metricsGrid}>
-          <MetricCard
-            description="当前工作区的静态成员投影"
-            title="正式成员"
-            value={selectedWorkspace.members.length}
-          />
-          <MetricCard
-            description="可绑定任务的关联仓库"
-            title="关联仓库"
-            tone="brand"
-            value={selectedWorkspace.repositories.length}
-          />
-        </section>
+    <PageContainer ghost pageHeaderRender={false}>
+      <div className={styles.masterDetail}>
+        <WorkspaceSelector
+          onSelect={selectWorkspace}
+          selectedId={selectedWorkspace.id}
+          workspaces={WORKSPACE_FIXTURES}
+        />
 
-        <div className={styles.masterDetail}>
-          <WorkspaceSelector
-            onSelect={selectWorkspace}
-            selectedId={selectedWorkspace.id}
-            workspaces={WORKSPACE_FIXTURES}
-          />
-
-          <ProCard className={clsx(styles.card, styles.detailCard)}>
+        <section
+          aria-label={`${selectedWorkspace.name} 工作区详情`}
+          className={styles.detailCard}
+        >
+          <ProCard className={styles.card}>
             <header className={styles.detailHeader}>
-              <div>
+              <span
+                aria-label={`${selectedWorkspace.name} 工作区标识`}
+                className={styles.detailAvatar}
+                role="img"
+              >
+                {selectedWorkspace.name.slice(0, 1)}
+              </span>
+              <div className={styles.detailIdentity}>
                 <h2 className={styles.detailTitle}>{selectedWorkspace.name}</h2>
                 <p className={styles.detailDescription}>
-                  {selectedWorkspace.description}
+                  Owner {selectedWorkspace.members[0]?.name ?? '—'} ·{' '}
+                  {selectedWorkspace.members.length} 成员 ·{' '}
+                  {selectedWorkspace.repositories.length} 仓库
                 </p>
               </div>
-              <SemanticTag label="当前 Workspace" tone="brand" />
             </header>
 
             <Tabs
@@ -89,7 +79,7 @@ export default function WorkspacesPage() {
               onChange={(key) => setActiveTab(key as WorkspaceTabKey)}
             />
           </ProCard>
-        </div>
+        </section>
       </div>
     </PageContainer>
   );

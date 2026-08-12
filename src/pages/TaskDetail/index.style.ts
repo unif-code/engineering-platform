@@ -4,30 +4,68 @@ import { createStyles } from 'antd-style';
 const previewToken = theme.getDesignToken();
 
 export const useStyles = createStyles(({ token }) => ({
+  detailShell: {
+    overflow: 'hidden',
+    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusLG,
+    background: token.colorBgContainer,
+  },
+  detailHeader: {
+    display: 'flex',
+    gap: token.marginSM,
+    alignItems: 'center',
+    padding: `${token.paddingSM}px ${token.padding}px`,
+    borderBlockEnd: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+  },
+  backLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    color: token.colorTextTertiary,
+  },
+  detailCode: {
+    color: token.colorTextTertiary,
+    fontFamily: token.fontFamilyCode,
+    fontSize: token.fontSizeSM,
+  },
+  detailTitle: {
+    margin: 0,
+    color: token.colorText,
+    fontSize: token.fontSizeLG,
+    fontWeight: token.fontWeightStrong,
+    lineHeight: token.lineHeightLG,
+  },
+  detailRepository: {
+    color: token.colorTextTertiary,
+    fontFamily: token.fontFamilyCode,
+    fontSize: token.fontSizeSM,
+  },
+  detailActions: {
+    marginInlineStart: 'auto',
+  },
   detailGrid: {
     display: 'flex',
-    flexWrap: 'wrap',
-    gap: token.margin,
-    alignItems: 'start',
+    minHeight: 560,
+    alignItems: 'stretch',
   },
   conversationPane: {
-    flex: '1 1 640px',
+    flex: 1,
     minWidth: 0,
-  },
-  conversationCard: {
-    borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
+    borderInlineEnd: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
   },
   conversationBody: {
     display: 'flex',
+    height: '100%',
     flexDirection: 'column',
-    gap: token.margin,
   },
   conversationScroll: {
-    maxHeight: 'calc(100vh - 340px)',
-    minHeight: 360,
+    flex: 1,
+    minHeight: 420,
     overflowY: 'auto',
-    paddingInlineEnd: token.paddingXS,
+    padding: token.paddingLG,
+  },
+  senderArea: {
+    padding: `${token.paddingSM}px ${token.paddingLG}px`,
+    borderBlockStart: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
   },
   senderHint: {
     display: 'block',
@@ -36,14 +74,13 @@ export const useStyles = createStyles(({ token }) => ({
     fontSize: token.fontSizeSM,
   },
   inspector: {
-    position: 'sticky',
-    top: token.margin,
-    flex: '0 1 344px',
-    maxWidth: '100%',
+    flex: '0 0 344px',
+    minWidth: 0,
+    padding: `${token.paddingSM}px ${token.paddingSM}px ${token.padding}px`,
+    background: token.colorFillQuaternary,
   },
-  inspectorCard: {
-    borderColor: token.colorBorderSecondary,
-    boxShadow: token.boxShadowTertiary,
+  inspectorTabs: {
+    height: '100%',
   },
   panelStack: {
     display: 'flex',
@@ -122,7 +159,6 @@ export const useStyles = createStyles(({ token }) => ({
     border: `${token.lineWidth}px ${token.lineType} ${previewToken.colorBorderSecondary}`,
     borderRadius: token.borderRadius,
     backgroundColor: previewToken.colorBgContainer,
-    boxShadow: previewToken.boxShadowTertiary,
   },
   previewEyebrow: {
     marginBlockEnd: token.marginXS,

@@ -1,9 +1,4 @@
-export type InspectorTabKey =
-  | 'overview'
-  | 'documents'
-  | 'code'
-  | 'execution'
-  | 'preview';
+export type InspectorTabKey = 'overview' | 'delivery' | 'preview';
 
 export interface ArtifactRecord {
   name: string;
@@ -18,6 +13,7 @@ export interface TaskDetailFixture {
   id: string;
   title: string;
   status: string;
+  priority: string;
   stage: string;
   owner: string;
   workspace: string;

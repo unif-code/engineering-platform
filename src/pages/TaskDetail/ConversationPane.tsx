@@ -1,5 +1,4 @@
 import { RobotOutlined, UserOutlined } from '@ant-design/icons';
-import { ProCard } from '@ant-design/pro-components';
 import { Bubble, type BubbleListProps, Sender } from '@ant-design/x';
 import { Avatar, Typography } from 'antd';
 import { CONVERSATION_ITEMS } from './constant';
@@ -21,23 +20,21 @@ export function ConversationPane() {
 
   return (
     <section aria-label="任务对话" className={styles.conversationPane}>
-      <ProCard className={styles.conversationCard} title="阶段对话">
-        <div className={styles.conversationBody}>
-          <div className={styles.conversationScroll}>
-            <Bubble.List items={CONVERSATION_ITEMS} role={bubbleRoles} />
-          </div>
-          <div>
-            <Typography.Text className={styles.senderHint}>
-              静态原型，不会发送消息
-            </Typography.Text>
-            <Sender
-              autoSize={false}
-              disabled
-              placeholder="静态原型，不会发送消息"
-            />
-          </div>
+      <div className={styles.conversationBody}>
+        <div className={styles.conversationScroll}>
+          <Bubble.List items={CONVERSATION_ITEMS} role={bubbleRoles} />
         </div>
-      </ProCard>
+        <div className={styles.senderArea}>
+          <Typography.Text className={styles.senderHint}>
+            静态原型，不会发送消息
+          </Typography.Text>
+          <Sender
+            autoSize={false}
+            disabled
+            placeholder="静态原型，不会发送消息"
+          />
+        </div>
+      </div>
     </section>
   );
 }
