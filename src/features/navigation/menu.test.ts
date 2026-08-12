@@ -25,6 +25,24 @@ function permutations<T>(items: readonly T[]): T[][] {
 }
 
 describe('buildMenuData', () => {
+  it('超级管理员投影覆盖 Route Registry 中全部可见菜单', () => {
+    const visibleRouteKeys = Object.entries(ROUTE_REGISTRY)
+      .filter(([, registration]) => registration.menu)
+      .map(([routeKey]) => routeKey);
+    const superAdminNavigation = visibleRouteKeys.map((routeKey, index) =>
+      navigationItem(routeKey, routeKey, (index + 1) * 10),
+    );
+
+    const groups = buildMenuData(superAdminNavigation);
+
+    expect(groups.map(({ name }) => name)).toEqual(['用户端', '管理端']);
+    expect(
+      groups.flatMap(({ children }) => children?.map(({ key }) => key) ?? []),
+    ).toEqual(visibleRouteKeys);
+    expect(groups[0]?.children).toHaveLength(7);
+    expect(groups[1]?.children).toHaveLength(9);
+  });
+
   it('仅给三个架构新增页面追加菜单标识', () => {
     const groups = buildMenuData([
       navigationItem('admin.workspaces', '工作区管理', 10),
