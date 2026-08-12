@@ -16,6 +16,7 @@
 /.umi-production
 /.umi-test
 /.mfsu
+/.turbopack/
 .cache/
 
 # 本地配置（不入库）
