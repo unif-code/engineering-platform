@@ -214,7 +214,7 @@ async function cmdFetch() {
     );
   }
   if (fs.existsSync(SPEC_PATH)) {
-    const prev = fs.readFileSync(SPEC_PATH);
+    const prev = canonicalizeLf(fs.readFileSync(SPEC_PATH));
     if (!prev.equals(buf)) assertCompatible(prev, buf);
   }
   fs.mkdirSync(path.dirname(SPEC_PATH), { recursive: true });

@@ -210,6 +210,16 @@ function checkBiome(biome, issues) {
   }
 }
 
+function checkPnpmWorkspace(contents, issues) {
+  if (contents === undefined) return;
+  const setting = contents.match(
+    /^enableGlobalVirtualStore:\s*([^#\s]+)(?:\s*#.*)?$/mu,
+  );
+  if (setting?.[1] !== 'false') {
+    issues.push('enableGlobalVirtualStore 必须显式设为 false');
+  }
+}
+
 function checkSkillLock(lock, issues) {
   if (!lock) {
     issues.push('缺少共享 Skill 声明');
@@ -297,6 +307,10 @@ export async function verifyStructure(root = process.cwd()) {
   checkConfig(await readText(root, 'config/config.ts', issues), issues);
   checkTsconfig(await readJson(root, 'tsconfig.json', issues), issues);
   checkBiome(await readJson(root, 'biome.json', issues), issues);
+  checkPnpmWorkspace(
+    await readText(root, 'pnpm-workspace.yaml', issues),
+    issues,
+  );
   checkSkillLock(await readJson(root, 'skills-lock.json', issues), issues);
   await checkHooks(root, issues);
   await checkSourceFiles(root, issues);

@@ -1,6 +1,8 @@
 packages:
   - .
 
+enableGlobalVirtualStore: false
+
 allowBuilds:
   core-js: false
   core-js-pure: false

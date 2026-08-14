@@ -1,5 +1,8 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { classifyBreakingRelease } from './openapi-baseline.mjs';
@@ -21,6 +24,67 @@ test('canonicalizes CRLF worktree bytes before validating an OpenAPI digest', ()
     canonicalizeLf(Buffer.from('{\r\n  "openapi": "3.1.0"\r\n}\r\n')),
     Buffer.from('{\n  "openapi": "3.1.0"\n}\n'),
   );
+});
+
+test('preserves non-CRLF bytes while canonicalizing line endings', () => {
+  assert.deepEqual(
+    canonicalizeLf(Buffer.from([0xff, 0x0d, 0x0a, 0x80, 0x0d, 0x42])),
+    Buffer.from([0xff, 0x0a, 0x80, 0x0d, 0x42]),
+  );
+});
+
+test('fetch accepts a CRLF checkout whose LF bytes match the locked artifact', () => {
+  const fixtureRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'openapi-fetch-'));
+  const scriptsDir = path.join(fixtureRoot, 'scripts');
+  const openapiDir = path.join(fixtureRoot, 'openapi');
+  const artifact = Buffer.from(
+    '{\n  "info": { "version": "0.2.0" },\n  "openapi": "3.1.0"\n}\n',
+  );
+
+  try {
+    fs.mkdirSync(scriptsDir, { recursive: true });
+    fs.mkdirSync(openapiDir, { recursive: true });
+    for (const script of [
+      'openapi-baseline.mjs',
+      'openapi-generator-command.mjs',
+      'openapi-line-endings.mjs',
+      'openapi.mjs',
+    ]) {
+      fs.copyFileSync(
+        path.join(ROOT, 'scripts', script),
+        path.join(scriptsDir, script),
+      );
+    }
+    fs.writeFileSync(path.join(openapiDir, 'artifact.json'), artifact);
+    fs.writeFileSync(
+      path.join(openapiDir, 'artifact.lock.json'),
+      `${JSON.stringify({
+        sha256: createHash('sha256').update(artifact).digest('hex'),
+        source: 'file:openapi/artifact.json',
+        version: '0.2.0',
+      })}\n`,
+    );
+    fs.writeFileSync(
+      path.join(openapiDir, 'spec.json'),
+      Buffer.from(artifact.toString('utf8').replaceAll('\n', '\r\n'), 'utf8'),
+    );
+
+    execFileSync(
+      process.execPath,
+      [path.join(scriptsDir, 'openapi.mjs'), 'fetch'],
+      {
+        cwd: fixtureRoot,
+        encoding: 'utf8',
+      },
+    );
+
+    assert.deepEqual(
+      fs.readFileSync(path.join(openapiDir, 'spec.json')),
+      artifact,
+    );
+  } finally {
+    fs.rmSync(fixtureRoot, { force: true, recursive: true });
+  }
 });
 
 test('runs the generator CLI through Node on Windows', () => {

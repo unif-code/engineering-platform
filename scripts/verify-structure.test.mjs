@@ -59,6 +59,11 @@ async function createValidFixture() {
   );
   await write(
     root,
+    'pnpm-workspace.yaml',
+    'packages:\n  - .\n\nenableGlobalVirtualStore: false\n',
+  );
+  await write(
+    root,
     'config/config.ts',
     "import { defineConfig } from '@umijs/max';\nexport default defineConfig({ utoopack: {} });\n",
   );
@@ -340,6 +345,20 @@ test('requires @umijs/max only in devDependencies', async () => {
   assert.match(
     (await verifyStructure(root)).join('\n'),
     /@umijs\/max 必须仅位于 devDependencies/,
+  );
+});
+
+test('requires a stable local virtual store for hook dependency resolution', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'pnpm-workspace.yaml',
+    'packages:\n  - .\n\nenableGlobalVirtualStore: true\n',
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /enableGlobalVirtualStore 必须显式设为 false/u,
   );
 });
 
