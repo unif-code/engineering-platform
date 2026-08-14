@@ -104,7 +104,11 @@ export function BootstrapWizard() {
     setSubmitting(true);
     try {
       try {
-        await setBootstrapPassword({ password });
+        const result = await setBootstrapPassword({ password });
+        if (result.state === 'PASSWORD_UPDATED_LOGIN_REQUIRED') {
+          history.replace('/login');
+          return;
+        }
       } catch (error) {
         const fieldErrors = getPasswordFieldErrors(error);
         if (fieldErrors.length > 0) {

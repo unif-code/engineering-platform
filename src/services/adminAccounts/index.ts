@@ -8,21 +8,40 @@ import type {
   CreateAccountInput,
 } from './type';
 
+const ACCOUNT_CURSOR_LIMIT = 100;
+
 export async function listAccounts(
   query: AccountListQuery,
 ): Promise<AccountListResponse> {
-  const page = requireApiData(
-    await api.GET('/api/v1/admin/accounts', {
-      params: {
-        query: { cursor: query.cursor, limit: query.pageSize },
-      },
-    }),
-  );
+  // V0.2 尚未提供筛选与排序参数；必须先遍历完整 cursor 集合，才能保持现有列表语义。
+  const accounts: AccountListResponse['items'] = [];
+  const seenCursors = new Set<string>();
+  let cursor = query.cursor;
+  while (true) {
+    if (cursor !== undefined) {
+      if (seenCursors.has(cursor)) {
+        throw new Error('账号列表返回了重复 cursor，已停止继续分页');
+      }
+      seenCursors.add(cursor);
+    }
+    const page = requireApiData(
+      await api.GET('/api/v1/admin/accounts', {
+        params: {
+          query: { cursor, limit: ACCOUNT_CURSOR_LIMIT },
+        },
+      }),
+    );
+    accounts.push(...page.items);
+    cursor = page.nextCursor ?? undefined;
+    if (cursor === undefined) {
+      break;
+    }
+  }
   const employeeNo = query.employeeNo?.trim().toLocaleLowerCase();
   const displayName = query.displayName?.trim().toLocaleLowerCase();
   const profession = query.profession?.trim().toLocaleLowerCase();
   const direction = query.sortOrder === 'desc' ? -1 : 1;
-  const items = page.items
+  const matchingItems = accounts
     .filter(
       (account) =>
         (!employeeNo ||
@@ -43,13 +62,10 @@ export async function listAccounts(
         direction
       );
     });
+  const offset = (query.page - 1) * query.pageSize;
   return {
-    ...page,
-    items,
-    total:
-      (query.page - 1) * query.pageSize +
-      items.length +
-      (page.nextCursor ? 1 : 0),
+    items: matchingItems.slice(offset, offset + query.pageSize),
+    total: matchingItems.length,
   };
 }
 

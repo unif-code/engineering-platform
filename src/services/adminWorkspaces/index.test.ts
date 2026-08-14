@@ -43,9 +43,8 @@ describe('admin workspaces V0.2 generated client seam', () => {
       }),
     );
 
-    await expect(
-      listWorkspaces({ page: 1, pageSize: 20 }),
-    ).resolves.toMatchObject({
+    const page = await listWorkspaces({ page: 1, pageSize: 20 });
+    expect(page).toMatchObject({
       items: [
         {
           id: 'workspace-1',
@@ -57,6 +56,7 @@ describe('admin workspaces V0.2 generated client seam', () => {
       ],
       total: 1,
     });
+    expect(page.items[0]).not.toHaveProperty('memberCount');
     expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/admin/workspaces');
   });
 

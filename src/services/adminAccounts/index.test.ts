@@ -36,7 +36,7 @@ describe('admin accounts V0.2 generated client seam', () => {
           },
           account,
         ],
-        nextCursor: 'cursor-2',
+        nextCursor: null,
       }),
     );
 
@@ -49,10 +49,71 @@ describe('admin accounts V0.2 generated client seam', () => {
         sortOrder: 'asc',
         status: 'ENABLED',
       }),
-    ).resolves.toEqual({ items: [account], nextCursor: 'cursor-2', total: 2 });
+    ).resolves.toEqual({ items: [account], total: 1 });
     expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/admin/accounts', {
-      params: { query: { cursor: undefined, limit: 20 } },
+      params: { query: { cursor: undefined, limit: 100 } },
     });
+  });
+
+  it('遍历 cursor 后再做全局分页，第二页不会重复第一页', async () => {
+    const firstAccount = {
+      displayName: '第一页用户',
+      employeeNo: '10000001',
+      etag: '"v1"',
+      id: 'account-1',
+      profession: '研发',
+      status: 'ENABLED' as const,
+    };
+    const secondAccount = {
+      displayName: '第二页用户',
+      employeeNo: '10000002',
+      etag: '"v1"',
+      id: 'account-2',
+      profession: '产品',
+      status: 'ENABLED' as const,
+    };
+    apiMock.GET.mockResolvedValueOnce(
+      result({ items: [firstAccount], nextCursor: 'cursor-2' }),
+    ).mockResolvedValueOnce(result({ items: [secondAccount] }));
+
+    await expect(listAccounts({ page: 2, pageSize: 1 })).resolves.toEqual({
+      items: [secondAccount],
+      total: 2,
+    });
+    expect(apiMock.GET).toHaveBeenNthCalledWith(2, '/api/v1/admin/accounts', {
+      params: { query: { cursor: 'cursor-2', limit: 100 } },
+    });
+  });
+
+  it('筛选会覆盖全部 cursor 页面而不是只检查第一页', async () => {
+    const matchingAccount = {
+      displayName: '后续页目标用户',
+      employeeNo: '10000002',
+      etag: '"v1"',
+      id: 'account-2',
+      profession: '产品',
+      status: 'ENABLED' as const,
+    };
+    apiMock.GET.mockResolvedValueOnce(
+      result({
+        items: [
+          {
+            ...matchingAccount,
+            displayName: '第一页其他用户',
+            id: 'account-1',
+          },
+        ],
+        nextCursor: 'cursor-2',
+      }),
+    ).mockResolvedValueOnce(result({ items: [matchingAccount] }));
+
+    await expect(
+      listAccounts({
+        displayName: '目标',
+        page: 1,
+        pageSize: 20,
+      }),
+    ).resolves.toEqual({ items: [matchingAccount], total: 1 });
   });
 
   it('账号写操作同时携带 Idempotency-Key 与服务端 etag', async () => {

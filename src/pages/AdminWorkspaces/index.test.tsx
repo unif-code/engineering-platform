@@ -116,7 +116,9 @@ describe('AdminWorkspacesPage', () => {
     const firstWorkspaceRow = screen.getByRole('row', { name: /营销工作区/ });
     expect(firstWorkspaceRow).toHaveTextContent('李强');
     expect(firstWorkspaceRow).toHaveTextContent('营销');
-    expect(firstWorkspaceRow).toHaveTextContent('12 人');
+    expect(within(firstWorkspaceRow).getAllByRole('cell')[3]).toHaveTextContent(
+      '—',
+    );
     expect(firstWorkspaceRow).toHaveTextContent('10 个');
     expect(
       screen.getByText(

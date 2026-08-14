@@ -16,7 +16,7 @@ export interface GrantRow extends Omit<GrantSummary, 'principal' | 'source'> {
   risk: GrantRisk;
   source: GrantViewSource;
 }
-export type GrantViewFilter = 'all' | 'high-risk' | 'temporary' | 'inherited';
+export type GrantViewFilter = 'all' | 'high-risk' | 'temporary';
 
 export interface GrantQueryParams {
   current?: number;

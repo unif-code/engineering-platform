@@ -390,11 +390,29 @@ describe('AdminPoliciesPage', {
     }>((resolve) => {
       resolveValidation = resolve;
     });
-    requestMock.mockImplementation((path) =>
-      path === '/api/v1/admin/policies/identity/drafts/draft-1/validate'
-        ? validationResponse
-        : undefined,
-    );
+    requestMock.mockImplementation((path, options) => {
+      if (path === '/api/v1/admin/policies/identity/drafts/draft-1/validate') {
+        return validationResponse;
+      }
+      if (
+        path === '/api/v1/admin/policies/identity/drafts/draft-1' &&
+        options?.method === 'PATCH' &&
+        options.headers?.['If-Match'] === '"v3"'
+      ) {
+        return {
+          baseVersion: 1,
+          content: options.data?.values,
+          id: 'draft-1',
+          lastMeaningfulActivityAt: '2026-08-14T00:00:00Z',
+          namespace: 'identity',
+          revision: 4,
+          scope: 'PLATFORM',
+          stale: false,
+          status: 'DRAFT',
+        };
+      }
+      return undefined;
+    });
     const user = userEvent.setup();
     renderPage();
     await findPolicySettings();
@@ -422,6 +440,19 @@ describe('AdminPoliciesPage', {
     });
 
     expect(screen.queryByText('校验通过')).not.toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole('button', { name: VALIDATE_BUTTON_NAME }),
+    );
+    await waitFor(() => {
+      expect(requestMock).toHaveBeenCalledWith(
+        '/api/v1/admin/policies/identity/drafts/draft-1',
+        expect.objectContaining({
+          headers: expect.objectContaining({ 'If-Match': '"v3"' }),
+          method: 'PATCH',
+        }),
+      );
+    });
   });
 
   it('Preview 呈现 Draft 前后值与生效语义', async () => {

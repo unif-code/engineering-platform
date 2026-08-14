@@ -27,7 +27,6 @@ const toWorkspaceSummary = (
 ): WorkspaceSummary => ({
   id: item.id,
   leaders: [],
-  memberCount: 0,
   name: item.name,
   owner: accountRef(item.ownerId),
   status: item.archivedAt ? 'ARCHIVED' : 'ACTIVE',

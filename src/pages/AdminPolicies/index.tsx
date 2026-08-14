@@ -64,6 +64,7 @@ export default function AdminPoliciesPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
   const candidateGenerationRef = useRef(0);
+  const draftRef = useRef<PolicyDraft | undefined>(undefined);
   const [activeGroup, setActiveGroup] = useState<PolicyGroupKey>('session');
   const [draft, setDraft] = useState<PolicyDraft>();
   const [draftContent, setDraftContent] = useState<DraftContent>({});
@@ -74,6 +75,24 @@ export default function AdminPoliciesPage() {
   const [publishError, setPublishError] = useState<string>();
   const [rollbackVersion, setRollbackVersion] = useState<PolicyVersionRow>();
   const [rollbackError, setRollbackError] = useState<string>();
+
+  const replaceDraft = useCallback((nextDraft: PolicyDraft | undefined) => {
+    draftRef.current = nextDraft;
+    setDraft(nextDraft);
+  }, []);
+
+  const mergeDraftRevision = useCallback(
+    (draftId: string, etag: string, revision: number) => {
+      const current = draftRef.current;
+      if (current?.id !== draftId || revision < current.revision) {
+        return;
+      }
+      const next = { ...current, etag, revision };
+      draftRef.current = next;
+      setDraft(next);
+    },
+    [],
+  );
 
   const catalogQuery = useQuery({
     queryFn: listPolicyCatalog,
@@ -205,7 +224,7 @@ export default function AdminPoliciesPage() {
 
   const ensureSavedDraft = async (content: Record<string, PolicyValue>) => {
     try {
-      let savedDraft = draft ?? (await createMutation.mutateAsync());
+      let savedDraft = draftRef.current ?? (await createMutation.mutateAsync());
       const mustUpdate = Object.entries(content).some(
         ([key, value]) => savedDraft.content[key] !== value,
       );
@@ -216,7 +235,7 @@ export default function AdminPoliciesPage() {
           etag: savedDraft.etag,
         });
       }
-      setDraft(savedDraft);
+      replaceDraft(savedDraft);
       return savedDraft;
     } catch (error) {
       if (problemStatus(error) === 409) {
@@ -242,13 +261,9 @@ export default function AdminPoliciesPage() {
         draftId: savedDraft.id,
         etag: savedDraft.etag,
       });
+      mergeDraftRevision(savedDraft.id, result.etag, result.revision);
       if (candidateGenerationRef.current === candidateGeneration) {
         setValidation(result);
-        setDraft((current) =>
-          current?.id === savedDraft.id
-            ? { ...current, etag: result.etag, revision: result.revision }
-            : current,
-        );
       }
     } catch (error) {
       message.error(formatGovernanceError(error, 'Policy 校验失败'));
@@ -271,11 +286,7 @@ export default function AdminPoliciesPage() {
       });
       if (candidateGenerationRef.current === candidateGeneration) {
         setPreview(result);
-        setDraft((current) =>
-          current?.id === savedDraft.id
-            ? { ...current, etag: result.etag, revision: result.revision }
-            : current,
-        );
+        mergeDraftRevision(savedDraft.id, result.etag, result.revision);
       }
     } catch (error) {
       message.error(formatGovernanceError(error, 'Policy 预览失败'));
@@ -283,18 +294,19 @@ export default function AdminPoliciesPage() {
   };
 
   const publishDraft = async (values: PublishPolicyFormValues) => {
-    if (!draft) {
+    const currentDraft = draftRef.current;
+    if (!currentDraft) {
       return;
     }
     setPublishError(undefined);
     try {
       await publishMutation.mutateAsync({
-        draftId: draft.id,
-        etag: draft.etag,
+        draftId: currentDraft.id,
+        etag: currentDraft.etag,
         values,
       });
       setPublishOpen(false);
-      setDraft(undefined);
+      replaceDraft(undefined);
       setDraftContent({});
       invalidateCandidate();
       message.success('Policy 已发布');
@@ -314,7 +326,7 @@ export default function AdminPoliciesPage() {
         activeVersion: catalog.activeVersion,
         input: { ...values, toVersion: rollbackVersion.version },
       });
-      setDraft(created);
+      replaceDraft(created);
       setDraftContent({ ...created.content });
       invalidateCandidate();
       setRollbackVersion(undefined);

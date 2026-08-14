@@ -22,7 +22,6 @@ import {
   GRANT_CAPABILITY_LABELS,
   GRANT_FILTER_OPTIONS,
   GRANT_PRINCIPAL_META,
-  INHERITED_GRANT_ROWS,
   toGrantRow,
 } from './constant';
 import { GrantModal } from './GrantModal';
@@ -126,29 +125,26 @@ export default function AdminGrantsPage() {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        const rows = [
-          ...page.items.map((grant) => {
-            const account = accountsById.get(grant.principal.id);
-            const workspace =
-              grant.scope.id === null
-                ? undefined
-                : workspacesById.get(grant.scope.id);
-            return toGrantRow({
-              ...grant,
-              principal: account
-                ? {
-                    displayName: account.displayName,
-                    employeeNo: account.employeeNo,
-                    id: account.id,
-                  }
-                : grant.principal,
-              scope: workspace
-                ? { ...grant.scope, label: workspace.name }
-                : grant.scope,
-            });
-          }),
-          ...INHERITED_GRANT_ROWS,
-        ];
+        const rows = page.items.map((grant) => {
+          const account = accountsById.get(grant.principal.id);
+          const workspace =
+            grant.scope.id === null
+              ? undefined
+              : workspacesById.get(grant.scope.id);
+          return toGrantRow({
+            ...grant,
+            principal: account
+              ? {
+                  displayName: account.displayName,
+                  employeeNo: account.employeeNo,
+                  id: account.id,
+                }
+              : grant.principal,
+            scope: workspace
+              ? { ...grant.scope, label: workspace.name }
+              : grant.scope,
+          });
+        });
         setAllGrants(rows);
         const data = rows.filter((grant) => {
           if (requestParams.filter === 'high-risk') {
@@ -156,9 +152,6 @@ export default function AdminGrantsPage() {
           }
           if (requestParams.filter === 'temporary') {
             return grant.validTo !== null;
-          }
-          if (requestParams.filter === 'inherited') {
-            return grant.source === 'INHERITED';
           }
           return true;
         });
@@ -239,10 +232,6 @@ export default function AdminGrantsPage() {
       {
         label: '高危能力授权',
         value: allGrants.filter(({ risk }) => risk === 'HIGH').length,
-      },
-      {
-        label: '角色继承',
-        value: allGrants.filter(({ source }) => source === 'INHERITED').length,
       },
     ],
     [allGrants],

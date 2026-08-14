@@ -97,6 +97,20 @@ describe('BootstrapWizard', () => {
     expect(mocks.push).toHaveBeenCalledWith('/login');
   });
 
+  it('密码更新要求重新登录时不再使用已失效的 bootstrap Session 绑定 TOTP', async () => {
+    const user = userEvent.setup();
+    mocks.setBootstrapPassword.mockResolvedValue({
+      state: 'PASSWORD_UPDATED_LOGIN_REQUIRED',
+    });
+    render(<BootstrapWizard />);
+
+    await advanceToPassword(user);
+    await submitPermanentPassword(user);
+
+    await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/login'));
+    expect(mocks.enrollBootstrapTotp).not.toHaveBeenCalled();
+  });
+
   it('刷新后不从 URL 恢复 bootstrap 状态，避免泄露会话凭据', () => {
     render(<BootstrapWizard />);
 

@@ -241,7 +241,8 @@ export default function AdminWorkspacesPage() {
       },
       {
         dataIndex: 'memberCount',
-        render: (_, row) => `${row.memberCount} 人`,
+        render: (_, row) =>
+          row.memberCount === undefined ? '—' : `${row.memberCount} 人`,
         title: '成员',
         width: 90,
       },

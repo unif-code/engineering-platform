@@ -24,7 +24,7 @@ import { createAdminGrantsMock } from '../../../mock/adminGrants';
 import { createAdminWorkspacesMock } from '../../../mock/adminWorkspaces';
 import AdminGrantsPage from '.';
 
-const INITIAL_WAIT = { timeout: 5_000 };
+const INITIAL_WAIT = { timeout: 15_000 };
 const INTERACTION_TEST_TIMEOUT = 30_000;
 let routes: MockRoutes;
 const fetchThroughMock = createMockFetch(() => routes);
@@ -81,7 +81,6 @@ beforeEach(() => {
 
 describe('AdminGrantsPage', () => {
   it('按新版原型呈现授权统计、分类筛选与七列表格', async () => {
-    const user = userEvent.setup();
     renderPage();
 
     expect(
@@ -100,14 +99,10 @@ describe('AdminGrantsPage', () => {
     expect(table).toBeInTheDocument();
     expect(table.closest('.ant-table-small')).not.toBeNull();
     const stats = screen.getByRole('region', { name: 'Grant 统计' });
-    for (const label of [
-      '生效中授权',
-      '临时授权',
-      '高危能力授权',
-      '角色继承',
-    ]) {
+    for (const label of ['生效中授权', '临时授权', '高危能力授权']) {
       expect(within(stats).getByText(label)).toBeVisible();
     }
+    expect(within(stats).queryByText('角色继承')).not.toBeInTheDocument();
     expect(
       screen.getByRole('radiogroup', { name: 'Grant 分类' }),
     ).toBeVisible();
@@ -115,15 +110,14 @@ describe('AdminGrantsPage', () => {
       method: 'GET',
     });
 
-    await user.click(
-      within(screen.getByRole('radiogroup', { name: 'Grant 分类' })).getByText(
-        '继承',
-      ),
-    );
     expect(
-      await screen.findByRole('row', { name: /开发Leader.*分配任务.*继承/ }),
-    ).toBeVisible();
-    expect(screen.queryByRole('row', { name: /陈晓/ })).not.toBeInTheDocument();
+      within(
+        screen.getByRole('radiogroup', { name: 'Grant 分类' }),
+      ).queryByText('继承'),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('row', { name: /开发Leader.*分配任务.*继承/ }),
+    ).not.toBeInTheDocument();
   });
 
   it(

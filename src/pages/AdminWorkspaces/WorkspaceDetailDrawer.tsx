@@ -68,10 +68,14 @@ export function WorkspaceDetailDrawer({
           <SemanticTag {...WORKSPACE_STATUS_META[workspace.status]} />
         ),
       },
-      { dataIndex: 'memberCount', label: '成员数' },
+      {
+        dataIndex: 'memberCount',
+        label: '成员数',
+        render: () => members?.length ?? '—',
+      },
       { dataIndex: 'version', label: '版本' },
     ],
-    [workspace],
+    [members?.length, workspace],
   );
 
   const invitedLeaderIds = useMemo(

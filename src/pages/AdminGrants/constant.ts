@@ -26,7 +26,6 @@ export const GRANT_FILTER_OPTIONS = [
   { label: '全部', value: 'all' },
   { label: '高危能力', value: 'high-risk' },
   { label: '临时授权', value: 'temporary' },
-  { label: '继承', value: 'inherited' },
 ] as const;
 
 export const GRANT_PRINCIPAL_META = {
@@ -110,45 +109,6 @@ const GRANT_PRESENTATION_BY_ID: Readonly<
   },
 };
 
-export const INHERITED_GRANT_ROWS = Object.freeze([
-  Object.freeze({
-    capability: 'task.assign',
-    grantedBy: '系统',
-    id: 'grant-role-development-leader',
-    principal: Object.freeze({
-      displayName: '开发Leader',
-      employeeNo: 'role-development-leader',
-      id: 'role-development-leader',
-      type: 'ROLE',
-    }),
-    risk: 'NORMAL',
-    scope: Object.freeze({ id: null, label: '全平台', type: 'PLATFORM' }),
-    source: 'INHERITED',
-    status: 'ACTIVE',
-    validFrom: '2026-05-20T08:00:00.000Z',
-    validTo: null,
-    version: 1,
-  }),
-  Object.freeze({
-    capability: 'admin.policy',
-    grantedBy: '系统',
-    id: 'grant-role-administrator',
-    principal: Object.freeze({
-      displayName: '管理员',
-      employeeNo: 'role-administrator',
-      id: 'role-administrator',
-      type: 'ROLE',
-    }),
-    risk: 'HIGH',
-    scope: Object.freeze({ id: null, label: '全平台', type: 'PLATFORM' }),
-    source: 'INHERITED',
-    status: 'ACTIVE',
-    validFrom: '2026-05-20T08:00:00.000Z',
-    validTo: null,
-    version: 1,
-  }),
-] as const satisfies readonly GrantRow[]);
-
 export function toGrantRow(grant: GrantSummary): GrantRow {
   const metadata = GRANT_PRESENTATION_BY_ID[grant.id] ?? {
     grantedBy: '当前管理员',
@@ -162,6 +122,6 @@ export function toGrantRow(grant: GrantSummary): GrantRow {
     grantedBy: metadata.grantedBy,
     principal: { ...grant.principal, type: metadata.principalType },
     risk: metadata.risk,
-    source: 'DIRECT',
+    source: grant.source === 'INHERITED' ? 'INHERITED' : 'DIRECT',
   };
 }

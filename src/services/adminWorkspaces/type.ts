@@ -12,7 +12,7 @@ export interface WorkspaceAccountRef {
 export interface WorkspaceSummary {
   id: string;
   leaders: WorkspaceAccountRef[];
-  memberCount: number;
+  memberCount?: number;
   name: string;
   owner: WorkspaceAccountRef;
   status: WorkspaceStatus;
