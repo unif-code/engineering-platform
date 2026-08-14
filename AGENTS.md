@@ -42,3 +42,10 @@ Vitest 在 `happy-dom` 环境中运行，并结合 Testing Library 与 `jest-dom
 ## 配置与安全
 
 通过 `REACT_APP_ENV` 和 `config/proxy.ts` 选择代理配置。禁止提交凭据；敏感值应保存在本地环境配置中，并在 Pull Request 中说明所需环境变量名称。
+
+## Codex 原生记忆
+
+- 平台共享记忆位于同级 `engineering-platform-docs/memories_1.sqlite`，同步规则以该仓 `MEMORIES.md` 为准。
+- 仅当用户明确发送 `【同步记忆】` 时，进入同级 `engineering-platform-docs` 运行 `npm run memory:sync`；禁止直接复制或覆盖任一 SQLite 文件。
+- 共享记忆同步进本机 Codex 原生数据库后由 Codex 自身消费，不在成员仓展开、复制或提交记忆正文。
+- 记忆与事实冲突时，以当前用户指令、本仓当前 Git/代码、docs 架构文档和可执行测试为准。
