@@ -11,8 +11,9 @@ vi.mock('@umijs/max', () => ({
 import { createAdminWorkspacesMock } from './adminWorkspaces';
 
 const mutationOptions = {
-  data: { accountId: 'leader-wu', reason: '职责交接' },
+  data: { newOwnerId: 'leader-wu', reason: '职责交接' },
   headers: {
+    'If-Match': '"v1"',
     'Idempotency-Key': '00000000-0000-4000-8000-000000000001',
   },
   method: 'POST',
@@ -30,13 +31,8 @@ describe('admin workspaces mock contract', () => {
     const page = (await requestThroughMock('/api/v1/admin/workspaces', {
       params: { page: 1, pageSize: 10 },
     })) as {
-      items: Array<{
-        memberCount: number;
-        name: string;
-        owner: { displayName: string };
-        status: string;
-      }>;
-      total: number;
+      items: Array<Record<string, unknown> & { name: string }>;
+      nextCursor: string | null;
     };
 
     expect(page.items.map(({ name }) => name)).toEqual([
@@ -45,15 +41,13 @@ describe('admin workspaces mock contract', () => {
       '中台工作区',
       '历史活动专区',
     ]);
-    expect(page.total).toBe(4);
+    expect(page.nextCursor).toBeNull();
     for (const workspace of page.items) {
       expect(Object.keys(workspace).sort()).toEqual([
+        'archivedAt',
         'id',
-        'leaders',
-        'memberCount',
         'name',
-        'owner',
-        'status',
+        'ownerId',
         'version',
       ]);
     }
@@ -63,10 +57,9 @@ describe('admin workspaces mock contract', () => {
     const workspace = (await requestThroughMock(
       '/api/v1/admin/workspaces/workspace-platform-core/transfer-owner',
       mutationOptions,
-    )) as { leaders: Array<{ id: string }>; owner: { id: string } };
+    )) as { ownerId: string; version: number };
 
-    expect(workspace.owner.id).toBe('leader-wu');
-    expect(workspace.leaders.map(({ id }) => id)).toEqual(['leader-wu']);
+    expect(workspace).toMatchObject({ ownerId: 'leader-wu', version: 2 });
 
     const members = (await requestThroughMock(
       '/api/v1/admin/workspaces/workspace-platform-core/members',

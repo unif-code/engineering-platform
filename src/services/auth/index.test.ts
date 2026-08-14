@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requestMock = vi.hoisted(() => vi.fn());
+const apiMock = vi.hoisted(() => ({ GET: vi.fn(), POST: vi.fn() }));
 
-vi.mock('@umijs/max', () => ({ request: requestMock }));
+vi.mock('@/services/generated', () => ({ api: apiMock }));
 
 import {
   confirmBootstrapTotp,
@@ -14,275 +14,152 @@ import {
   verifyTotp,
 } from './index';
 
-beforeEach(() => {
-  requestMock.mockReset();
+const result = <T>(data: T) => ({
+  data,
+  response: new Response(null, { status: 200 }),
 });
 
-describe('auth service', () => {
-  it('GET /api/v1/me 并返回裸 Principal 投影', async () => {
-    requestMock.mockResolvedValue({
-      capabilities: ['identity.account.manage', 'audit.read'],
-      employeeId: '00000000',
-      name: '平台管理员',
-    });
+beforeEach(() => {
+  apiMock.GET.mockReset();
+  apiMock.POST.mockReset();
+});
+
+describe('auth service V0.2 generated client seam', () => {
+  it('读取 generated Principal，并把 scoped capabilities 投影为现有权限字符串', async () => {
+    apiMock.GET.mockResolvedValue(
+      result({
+        capabilities: [
+          {
+            capability: 'identity.account.manage',
+            scopeType: 'PLATFORM',
+          },
+        ],
+        employeeId: '00000000',
+        name: '平台管理员',
+      }),
+    );
 
     await expect(getCurrentUser()).resolves.toEqual({
-      capabilities: ['identity.account.manage', 'audit.read'],
+      capabilities: ['identity.account.manage'],
       employeeId: '00000000',
       name: '平台管理员',
     });
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/me', {
-      method: 'GET',
-    });
+    expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/me');
   });
 
-  it('GET /me 将 Umi Axios rejection 归一为 ApiError', async () => {
-    requestMock.mockRejectedValue({
-      config: { url: '/api/v1/me' },
-      response: {
-        data: {
-          detail: 'Session 服务暂不可用',
-          requestId: 'req-me-503',
-          status: 503,
-        },
-        status: 503,
-      },
-    });
-
-    await expect(getCurrentUser()).rejects.toMatchObject({
-      name: 'ApiError',
-      problem: { detail: 'Session 服务暂不可用', status: 503 },
-      requestId: 'req-me-503',
-    });
-  });
-
-  it('POST /api/v1/auth/logout 携带新幂等键并保留 204 void 结果', async () => {
-    requestMock.mockResolvedValue(undefined);
-
-    await expect(logout()).resolves.toBeUndefined();
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/auth/logout', {
-      headers: {
-        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-      },
-      method: 'POST',
-    });
-  });
-
-  it('logout 将底层 Problem 归一且保留服务端 detail 原文', async () => {
-    requestMock.mockRejectedValue({
-      response: {
-        data: {
-          detail: '退出失败，请重试',
-          requestId: 'req-logout-1',
-          status: 503,
-          title: 'SERVICE_UNAVAILABLE',
-        },
-        status: 503,
-      },
-    });
-
-    await expect(logout()).rejects.toMatchObject({
-      name: 'ApiError',
-      problem: { detail: '退出失败，请重试', status: 503 },
-      requestId: 'req-logout-1',
-    });
-  });
-
-  it('POST /api/v1/auth/login 时发送凭据、幂等键并返回 TOTP challenge', async () => {
-    requestMock.mockResolvedValue({
-      challengeToken: 'challenge-00000000',
-      stage: 'TOTP',
-    });
+  it('登录使用 generated POST 并保留 V0.2 state 判别字段', async () => {
     const input = {
       employeeNo: '00000000',
       password: 'Valid-Password!2026',
     };
+    apiMock.POST.mockResolvedValue(
+      result({ challengeToken: 'challenge-1', state: 'TOTP_REQUIRED' }),
+    );
 
     await expect(startLogin(input)).resolves.toEqual({
-      challengeToken: 'challenge-00000000',
-      stage: 'TOTP',
+      challengeToken: 'challenge-1',
+      state: 'TOTP_REQUIRED',
     });
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/auth/login', {
-      data: input,
-      headers: {
-        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-      },
-      method: 'POST',
-    });
-  });
-
-  it('POST /api/v1/auth/totp 时发送 challenge 与 6 位动态码', async () => {
-    requestMock.mockResolvedValue({ ok: true });
-    const input = {
-      challengeToken: 'challenge-00000000',
-      code: '123456',
-    };
-
-    await expect(verifyTotp(input)).resolves.toEqual({ ok: true });
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/auth/totp', {
-      data: input,
-      headers: {
-        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-      },
-      method: 'POST',
-    });
-  });
-
-  it('POST /api/v1/auth/bootstrap/password 时发送 bootstrap token、正式密码与幂等键', async () => {
-    requestMock.mockResolvedValue({ ok: true });
-    const input = {
-      bootstrapToken: 'bootstrap-00000009',
-      password: 'New-Valid-Password!2026',
-    };
-
-    await expect(setBootstrapPassword(input)).resolves.toEqual({ ok: true });
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/auth/bootstrap/password',
-      {
-        data: input,
-        headers: {
+    expect(apiMock.POST).toHaveBeenCalledWith('/api/v1/auth/login', {
+      body: input,
+      params: {
+        header: {
           'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
         },
-        method: 'POST',
       },
-    );
+    });
   });
 
-  it('POST /api/v1/auth/bootstrap/totp/enroll 时返回 provisioning URI', async () => {
-    requestMock.mockResolvedValue({
-      provisioningUri:
-        'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP',
-    });
-    const input = { bootstrapToken: 'bootstrap-00000009' };
+  it('TOTP 验证返回 AUTHENTICATED', async () => {
+    const input = { challengeToken: 'challenge-1', code: '123456' };
+    apiMock.POST.mockResolvedValue(result({ state: 'AUTHENTICATED' }));
 
-    await expect(enrollBootstrapTotp(input)).resolves.toEqual({
-      provisioningUri:
-        'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP',
+    await expect(verifyTotp(input)).resolves.toEqual({
+      state: 'AUTHENTICATED',
     });
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/auth/bootstrap/totp/enroll',
-      {
-        data: input,
-        headers: {
+    expect(apiMock.POST).toHaveBeenCalledWith('/api/v1/auth/totp', {
+      body: input,
+      params: {
+        header: {
           'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
         },
-        method: 'POST',
       },
-    );
+    });
   });
 
-  it('POST /api/v1/auth/bootstrap/totp/confirm 时发送 bootstrap token、动态码与幂等键', async () => {
-    requestMock.mockResolvedValue({ ok: true });
-    const input = {
-      bootstrapToken: 'bootstrap-00000009',
-      code: '123456',
-    };
+  it('bootstrap 依赖 secure cookie，不再发送 bootstrap token', async () => {
+    apiMock.POST.mockResolvedValueOnce(result({ state: 'PASSWORD_SET' }))
+      .mockResolvedValueOnce(result({ provisioningUri: 'otpauth://example' }))
+      .mockResolvedValueOnce(result({ state: 'AUTHENTICATED' }));
 
-    await expect(confirmBootstrapTotp(input)).resolves.toEqual({ ok: true });
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/auth/bootstrap/totp/confirm',
-      {
-        data: input,
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-        },
-        method: 'POST',
-      },
-    );
-  });
+    await expect(
+      setBootstrapPassword({ password: 'New-Valid-Password!2026' }),
+    ).resolves.toEqual({ state: 'PASSWORD_SET' });
+    await expect(enrollBootstrapTotp()).resolves.toEqual({
+      provisioningUri: 'otpauth://example',
+    });
+    await expect(confirmBootstrapTotp({ code: '123456' })).resolves.toEqual({
+      state: 'AUTHENTICATED',
+    });
 
-  it('bootstrap 请求将底层 422 rejection 归一为带字段错误的 ApiError', async () => {
-    requestMock.mockRejectedValue({
-      response: {
-        data: {
-          title: 'VALIDATION_ERROR',
-          status: 422,
-          detail: '正式密码不满足 Security Floor',
-          errors: [
-            {
-              field: 'password',
-              reason: '密码需为 15～64 位，并包含大写字母、小写字母和特殊字符',
+    expect(apiMock.POST.mock.calls).toEqual([
+      [
+        '/api/v1/auth/bootstrap/password',
+        {
+          body: { password: 'New-Valid-Password!2026' },
+          params: {
+            header: {
+              'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
             },
-          ],
-        },
-        status: 422,
-      },
-    });
-
-    const error = await setBootstrapPassword({
-      bootstrapToken: 'bootstrap-00000009',
-      password: 'weak',
-    }).catch((caught: unknown) => caught);
-
-    expect(error).toMatchObject({
-      name: 'ApiError',
-      problem: {
-        status: 422,
-        errors: [
-          {
-            field: 'password',
-            reason: '密码需为 15～64 位，并包含大写字母、小写字母和特殊字符',
           },
-        ],
-      },
-    });
-  });
-
-  it('登录 Problem Details 保留服务端 detail 原文', async () => {
-    requestMock.mockRejectedValue({
-      response: {
-        data: {
-          type: 'https://engineering-platform.example/problems/login_backoff',
-          title: 'LOGIN_BACKOFF',
-          status: 429,
-          detail: '登录失败次数过多，请在 30 秒后重试',
-          requestId: 'req-login-1',
         },
-        status: 429,
-      },
-    });
+      ],
+      [
+        '/api/v1/auth/bootstrap/totp/enroll',
+        {
+          params: {
+            header: {
+              'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+            },
+          },
+        },
+      ],
+      [
+        '/api/v1/auth/bootstrap/totp/confirm',
+        {
+          body: { code: '123456' },
+          params: {
+            header: {
+              'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+            },
+          },
+        },
+      ],
+    ]);
+  });
 
-    const error = await startLogin({
-      employeeNo: '00000000',
-      password: 'wrong-password',
-    }).catch((caught: unknown) => caught);
+  it('logout 调 generated endpoint 并保持公开 seam 的 void 结果', async () => {
+    apiMock.POST.mockResolvedValue(result({ state: 'LOGGED_OUT' }));
 
-    expect(error).toMatchObject({
-      name: 'ApiError',
-      problem: {
-        status: 429,
-        detail: '登录失败次数过多，请在 30 秒后重试',
+    await expect(logout()).resolves.toBeUndefined();
+    expect(apiMock.POST).toHaveBeenCalledWith('/api/v1/auth/logout', {
+      params: {
+        header: {
+          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        },
       },
-      requestId: 'req-login-1',
     });
   });
 
-  it.each([
-    {
-      expected: {
-        problem: { detail: 'fetch failed', title: 'NETWORK_ERROR' },
-      },
-      rejection: new TypeError('fetch failed'),
-    },
-    {
-      expected: {
-        problem: { status: 502, title: 'Bad Gateway' },
-      },
-      rejection: {
-        response: { data: '', status: 502, statusText: 'Bad Gateway' },
-      },
-    },
-  ])(
-    '登录请求不泄露底层 network/HTTP 异常',
-    async ({ expected, rejection }) => {
-      requestMock.mockRejectedValue(rejection);
+  it('generated transport 的 ApiError 原样向上传递', async () => {
+    const error = Object.assign(new Error('登录失败'), {
+      name: 'ApiError',
+      problem: { detail: '登录失败', status: 401 },
+    });
+    apiMock.POST.mockRejectedValue(error);
 
-      const error = await startLogin({
-        employeeNo: '00000000',
-        password: 'Valid-Password!2026',
-      }).catch((caught: unknown) => caught);
-
-      expect(error).toMatchObject({ name: 'ApiError', ...expected });
-    },
-  );
+    await expect(
+      startLogin({ employeeNo: '00000000', password: 'wrong' }),
+    ).rejects.toBe(error);
+  });
 });

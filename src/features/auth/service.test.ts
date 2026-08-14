@@ -76,7 +76,7 @@ describe('auth feature service', () => {
   it('login 把员工凭据委托给下层 service 并返回认证阶段', async () => {
     authServiceMock.startLogin.mockResolvedValue({
       challengeToken: 'challenge-00000000',
-      stage: 'TOTP',
+      state: 'TOTP_REQUIRED',
     });
     const input = {
       employeeNo: '00000000',
@@ -85,7 +85,7 @@ describe('auth feature service', () => {
 
     await expect(login(input)).resolves.toEqual({
       challengeToken: 'challenge-00000000',
-      stage: 'TOTP',
+      state: 'TOTP_REQUIRED',
     });
     expect(authServiceMock.startLogin).toHaveBeenCalledWith(input);
   });
@@ -105,47 +105,53 @@ describe('auth feature service', () => {
   });
 
   it('verifyTotp 把 challenge 与动态码委托给下层 service', async () => {
-    authServiceMock.verifyTotp.mockResolvedValue({ ok: true });
+    authServiceMock.verifyTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
     const input = {
       challengeToken: 'challenge-00000000',
       code: '123456',
     };
 
-    await expect(verifyTotp(input)).resolves.toEqual({ ok: true });
+    await expect(verifyTotp(input)).resolves.toEqual({
+      state: 'AUTHENTICATED',
+    });
     expect(authServiceMock.verifyTotp).toHaveBeenCalledWith(input);
   });
 
-  it('setBootstrapPassword 把 token 与正式密码委托给下层 service', async () => {
-    authServiceMock.setBootstrapPassword.mockResolvedValue({ ok: true });
+  it('setBootstrapPassword 把正式密码委托给 cookie-based 下层 service', async () => {
+    authServiceMock.setBootstrapPassword.mockResolvedValue({
+      state: 'PASSWORD_SET',
+    });
     const input = {
-      bootstrapToken: 'bootstrap-00000009',
       password: 'New-Valid-Password!2026',
     };
 
-    await expect(setBootstrapPassword(input)).resolves.toEqual({ ok: true });
+    await expect(setBootstrapPassword(input)).resolves.toEqual({
+      state: 'PASSWORD_SET',
+    });
     expect(authServiceMock.setBootstrapPassword).toHaveBeenCalledWith(input);
   });
 
-  it('enrollBootstrapTotp 把 token 委托给下层 service 并返回 provisioning URI', async () => {
+  it('enrollBootstrapTotp 依赖 secure cookie 并返回 provisioning URI', async () => {
     const result = {
       provisioningUri:
         'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP',
     };
     authServiceMock.enrollBootstrapTotp.mockResolvedValue(result);
-    const input = { bootstrapToken: 'bootstrap-00000009' };
-
-    await expect(enrollBootstrapTotp(input)).resolves.toEqual(result);
-    expect(authServiceMock.enrollBootstrapTotp).toHaveBeenCalledWith(input);
+    await expect(enrollBootstrapTotp()).resolves.toEqual(result);
+    expect(authServiceMock.enrollBootstrapTotp).toHaveBeenCalledWith();
   });
 
-  it('confirmBootstrapTotp 把 token 与动态码委托给下层 service', async () => {
-    authServiceMock.confirmBootstrapTotp.mockResolvedValue({ ok: true });
+  it('confirmBootstrapTotp 只把动态码委托给下层 service', async () => {
+    authServiceMock.confirmBootstrapTotp.mockResolvedValue({
+      state: 'AUTHENTICATED',
+    });
     const input = {
-      bootstrapToken: 'bootstrap-00000009',
       code: '123456',
     };
 
-    await expect(confirmBootstrapTotp(input)).resolves.toEqual({ ok: true });
+    await expect(confirmBootstrapTotp(input)).resolves.toEqual({
+      state: 'AUTHENTICATED',
+    });
     expect(authServiceMock.confirmBootstrapTotp).toHaveBeenCalledWith(input);
   });
 });

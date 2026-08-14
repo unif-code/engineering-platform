@@ -100,6 +100,11 @@ const jsonRequest = (
   method: 'POST',
 });
 
+const bootstrapHeaders = () => ({
+  ...mutationHeaders(),
+  Cookie: 'ep_session=bootstrap-00000009',
+});
+
 const expectProblem = async (response: Response, status: number) => {
   expect(response.status).toBe(status);
   expect(response.headers.get('content-type')).toBe('application/problem+json');
@@ -123,17 +128,16 @@ const authPostCases = [
   { body: {}, route: '/api/v1/auth/logout' },
   {
     body: {
-      bootstrapToken: 'bootstrap-00000009',
       password: 'New-Valid-Password!2026',
     },
     route: '/api/v1/auth/bootstrap/password',
   },
   {
-    body: { bootstrapToken: 'bootstrap-00000009' },
+    body: {},
     route: '/api/v1/auth/bootstrap/totp/enroll',
   },
   {
-    body: { bootstrapToken: 'bootstrap-00000009', code: '123456' },
+    body: { code: '123456' },
     route: '/api/v1/auth/bootstrap/totp/confirm',
   },
 ] as const;
@@ -180,12 +184,12 @@ describe('auth mock contract', () => {
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
       challengeToken: 'challenge-00000001',
-      stage: 'TOTP',
+      state: 'TOTP_REQUIRED',
     });
     expect(response.rawHeaders.get('set-cookie')).toBeNull();
   });
 
-  it('待初始化账号返回 BOOTSTRAP token', async () => {
+  it('待初始化账号建立 HttpOnly bootstrap Session', async () => {
     const response = await fetchAuth(
       '/api/v1/auth/login',
       jsonRequest({
@@ -196,9 +200,11 @@ describe('auth mock contract', () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toEqual({
-      bootstrapToken: 'bootstrap-00000009',
-      stage: 'BOOTSTRAP',
+      state: 'BOOTSTRAP_REQUIRED',
     });
+    expect(response.rawHeaders.get('set-cookie')).toContain(
+      'ep_session=bootstrap-00000009',
+    );
   });
 
   it('密码错误返回 401 Problem Details', async () => {
@@ -280,7 +286,7 @@ describe('auth mock contract', () => {
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ ok: true });
+    await expect(response.json()).resolves.toEqual({ state: 'AUTHENTICATED' });
     expect(response.rawHeaders.get('set-cookie')).toContain('ep_session=');
     expect(response.rawHeaders.get('set-cookie')).toContain('HttpOnly');
     expect(response.rawHeaders.get('set-cookie')).toContain('Secure');
@@ -372,23 +378,25 @@ describe('auth mock contract', () => {
     expect(expiredProblem.challengeExpired).toBe(true);
   });
 
-  it('logout 返回 204 并清除 Session cookie', async () => {
+  it('logout 返回状态并清除 Session cookie', async () => {
     const response = await fetchAuth('/api/v1/auth/logout', jsonRequest({}));
 
-    expect(response.status).toBe(204);
+    expect(response.status).toBe(200);
     expect(response.rawHeaders.get('set-cookie')).toContain(
       'ep_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0',
     );
-    await expect(response.text()).resolves.toBe('');
+    await expect(response.json()).resolves.toEqual({ state: 'LOGGED_OUT' });
   });
 
   it('bootstrap password 对弱密码返回字段级 422 Problem', async () => {
     const response = await fetchAuth(
       '/api/v1/auth/bootstrap/password',
-      jsonRequest({
-        bootstrapToken: 'bootstrap-00000009',
-        password: 'weak',
-      }),
+      jsonRequest(
+        {
+          password: 'weak',
+        },
+        bootstrapHeaders(),
+      ),
     );
 
     const problem = await expectProblem(response, 422);
@@ -403,20 +411,22 @@ describe('auth mock contract', () => {
   it('bootstrap password 接受满足 Security Floor 的正式密码', async () => {
     const response = await fetchAuth(
       '/api/v1/auth/bootstrap/password',
-      jsonRequest({
-        bootstrapToken: 'bootstrap-00000009',
-        password: 'New-Valid-Password!2026',
-      }),
+      jsonRequest(
+        {
+          password: 'New-Valid-Password!2026',
+        },
+        bootstrapHeaders(),
+      ),
     );
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toEqual({ ok: true });
+    await expect(response.json()).resolves.toEqual({ state: 'PASSWORD_SET' });
   });
 
   it('bootstrap enroll 返回固定 provisioning URI', async () => {
     const response = await fetchAuth(
       '/api/v1/auth/bootstrap/totp/enroll',
-      jsonRequest({ bootstrapToken: 'bootstrap-00000009' }),
+      jsonRequest({}, bootstrapHeaders()),
     );
 
     expect(response.status).toBe(200);
@@ -429,22 +439,26 @@ describe('auth mock contract', () => {
   it('bootstrap confirm 仅接受固定 TOTP', async () => {
     const invalid = await fetchAuth(
       '/api/v1/auth/bootstrap/totp/confirm',
-      jsonRequest({
-        bootstrapToken: 'bootstrap-00000009',
-        code: '000000',
-      }),
+      jsonRequest(
+        {
+          code: '000000',
+        },
+        bootstrapHeaders(),
+      ),
     );
     await expectProblem(invalid, 401);
 
     const valid = await fetchAuth(
       '/api/v1/auth/bootstrap/totp/confirm',
-      jsonRequest({
-        bootstrapToken: 'bootstrap-00000009',
-        code: '123456',
-      }),
+      jsonRequest(
+        {
+          code: '123456',
+        },
+        bootstrapHeaders(),
+      ),
     );
 
     expect(valid.status).toBe(200);
-    await expect(valid.json()).resolves.toEqual({ ok: true });
+    await expect(valid.json()).resolves.toEqual({ state: 'AUTHENTICATED' });
   });
 });

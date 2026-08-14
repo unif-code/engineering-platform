@@ -1,58 +1,37 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requestMock = vi.hoisted(() => vi.fn());
-
-vi.mock('@umijs/max', () => ({ request: requestMock }));
+const apiMock = vi.hoisted(() => ({ GET: vi.fn() }));
+vi.mock('@/services/generated', () => ({ api: apiMock }));
 
 import { getNavigation } from './index';
 
-beforeEach(() => {
-  requestMock.mockReset();
-});
+beforeEach(() => apiMock.GET.mockReset());
 
-describe('navigation service', () => {
-  it('GET /api/v1/navigation 并返回裸导航投影', async () => {
-    requestMock.mockResolvedValue([
-      {
-        meta: { section: 'workspace' },
-        name: '首页',
-        order: 1,
-        routeKey: 'home',
-        sort: 10,
-      },
-    ]);
+describe('navigation service V0.2 generated client seam', () => {
+  it('用 order 兼容现有 sort，并将 nullable meta 归一为空对象', async () => {
+    apiMock.GET.mockResolvedValue({
+      data: [
+        { meta: null, name: '首页', order: 10, routeKey: 'home' },
+        {
+          meta: { section: 'admin' },
+          name: '账号',
+          order: 20,
+          routeKey: 'admin.users',
+        },
+      ],
+      response: new Response(null, { status: 200 }),
+    });
 
     await expect(getNavigation()).resolves.toEqual([
+      { meta: {}, name: '首页', order: 10, routeKey: 'home', sort: 10 },
       {
-        meta: { section: 'workspace' },
-        name: '首页',
-        order: 1,
-        routeKey: 'home',
-        sort: 10,
+        meta: { section: 'admin' },
+        name: '账号',
+        order: 20,
+        routeKey: 'admin.users',
+        sort: 20,
       },
     ]);
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/navigation', {
-      method: 'GET',
-    });
-  });
-
-  it('将 Umi Axios rejection 归一为 ApiError', async () => {
-    requestMock.mockRejectedValue({
-      config: { url: '/api/v1/navigation' },
-      response: {
-        data: {
-          detail: '导航投影暂不可用',
-          requestId: 'req-navigation-503',
-          status: 503,
-        },
-        status: 503,
-      },
-    });
-
-    await expect(getNavigation()).rejects.toMatchObject({
-      name: 'ApiError',
-      problem: { detail: '导航投影暂不可用', status: 503 },
-      requestId: 'req-navigation-503',
-    });
+    expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/navigation');
   });
 });

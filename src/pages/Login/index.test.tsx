@@ -169,9 +169,9 @@ beforeEach(() => {
   mocks.locationSearch = '';
   mocks.startLogin.mockResolvedValue({
     challengeToken: 'challenge-00000000',
-    stage: 'TOTP',
+    state: 'TOTP_REQUIRED',
   });
-  mocks.verifyTotp.mockResolvedValue({ ok: true });
+  mocks.verifyTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
   mocks.getCurrentUser.mockResolvedValue(me);
   mocks.fetchNavigation.mockResolvedValue(navigation);
   mocks.setInitialState.mockResolvedValue(undefined);

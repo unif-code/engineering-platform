@@ -1,6 +1,6 @@
 {
   "$comment": "后端仓 engineering-platform-backend 发布的 OpenAPI Artifact 锁定。source 支持 https:// 或 file:，sha256 为构件内容的十六进制摘要；三项齐备后运行 pnpm openapi:fetch && pnpm openapi:generate，提交 openapi/spec.json 与 src/services/generated。",
   "source": "file:../engineering-platform-backend/openapi.json",
-  "version": "0.1.0",
-  "sha256": "ff55588debfae8b4684b9db3a446cf6f5401b34ee8a1317ca51a27a6d120abf3"
+  "version": "0.2.0",
+  "sha256": "8a73b423ea23738d301927f183bf8f11747b85b91a9630556ee7b4303038fad2"
 }

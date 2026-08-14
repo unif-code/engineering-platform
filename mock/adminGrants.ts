@@ -235,16 +235,6 @@ const headerValue = (request: MockRequest, name: string) => {
   return Array.isArray(entry?.[1]) ? entry[1][0] : entry?.[1];
 };
 
-const queryValue = (request: MockRequest, name: string) => {
-  const value = request.query?.[name];
-  return Array.isArray(value) ? value[0] : value;
-};
-
-const positiveInteger = (value: string | undefined, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
-};
-
 const cloneGrant = (grant: GrantRecord): GrantRecord => ({
   ...grant,
   principal: { ...grant.principal },
@@ -253,15 +243,14 @@ const cloneGrant = (grant: GrantRecord): GrantRecord => ({
 
 const toContractGrant = (grant: GrantRecord) => ({
   capability: grant.capability,
+  createdAt: grant.validFrom ?? '2026-08-13T00:00:00.000Z',
   id: grant.id,
-  principal: {
-    displayName: grant.principal.displayName,
-    employeeNo: grant.principal.employeeNo ?? grant.principal.id,
-    id: grant.principal.id,
-  },
-  scope: { ...grant.scope },
-  source: 'DIRECT' as const,
+  principalId: grant.principal.id,
+  scopeId: grant.scope.id,
+  scopeType: grant.scope.type,
+  source: 'MANUAL',
   status: grant.status,
+  updatedAt: grant.validFrom ?? '2026-08-13T00:00:00.000Z',
   validFrom: grant.validFrom,
   validTo: grant.validTo,
   version: grant.version,
@@ -339,20 +328,11 @@ export function createAdminGrantsMock(options: AdminGrantsMockOptions = {}) {
       if (!requireAuthorization(request, response)) {
         return;
       }
-      const capability = queryValue(request, 'capability')?.trim();
-      const principalId = queryValue(request, 'principalId')?.trim();
-      const filtered = grants.filter(
-        (grant) =>
-          grant.source === 'DIRECT' &&
-          (!capability || grant.capability === capability) &&
-          (!principalId || grant.principal.id === principalId),
-      );
-      const page = positiveInteger(queryValue(request, 'page'), 1);
-      const pageSize = positiveInteger(queryValue(request, 'pageSize'), 10);
-      const offset = (page - 1) * pageSize;
       response.json({
-        items: filtered.slice(offset, offset + pageSize).map(toContractGrant),
-        total: filtered.length,
+        items: grants
+          .filter(({ source }) => source === 'DIRECT')
+          .map(toContractGrant),
+        nextCursor: null,
       });
     },
     'POST /api/v1/admin/grants': (
@@ -378,10 +358,10 @@ export function createAdminGrantsMock(options: AdminGrantsMockOptions = {}) {
           : undefined;
       const capability =
         typeof body.capability === 'string' ? body.capability.trim() : '';
-      const scope = isRecord(body.scope) ? body.scope : undefined;
-      const scopeType = scope?.type;
-      const scopeId = typeof scope?.id === 'string' ? scope.id : undefined;
-      if (principal === undefined || capability.length === 0 || !scope) {
+      const scopeType = body.scopeType;
+      const scopeId =
+        typeof body.scopeId === 'string' ? body.scopeId : undefined;
+      if (principal === undefined || capability.length === 0) {
         sendProblem(
           response,
           422,
@@ -471,6 +451,10 @@ export function createAdminGrantsMock(options: AdminGrantsMockOptions = {}) {
       }
       if (grant.status === 'REVOKED') {
         sendProblem(response, 409, 'GRANT_CONFLICT', 'Grant 已撤销');
+        return;
+      }
+      if (headerValue(request, 'If-Match') !== `"v${grant.version}"`) {
+        sendProblem(response, 409, 'VERSION_CONFLICT', 'Grant 已被并发修改');
         return;
       }
       grant.status = 'REVOKED';

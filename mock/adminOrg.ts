@@ -18,15 +18,6 @@ interface OrganizationRecord {
   superiorId: string | null;
 }
 
-interface OrganizationNode {
-  children: OrganizationNode[];
-  displayName: string;
-  employeeNo: string;
-  id: string;
-  kind: OrganizationKind;
-  superiorId: string | null;
-}
-
 interface MockRequest {
   body?: unknown;
   headers: Record<string, string | string[] | undefined>;
@@ -288,15 +279,10 @@ export function createAdminOrganizationMock(
     return true;
   };
 
-  const toNode = (record: OrganizationRecord): OrganizationNode => ({
-    children: records
-      .filter(({ superiorId }) => superiorId === record.id)
-      .map(toNode),
+  const accountRef = (record: OrganizationRecord) => ({
     displayName: record.displayName,
     employeeNo: record.employeeNo,
     id: record.id,
-    kind: record.kind,
-    superiorId: record.superiorId,
   });
 
   return defineMock({
@@ -308,9 +294,25 @@ export function createAdminOrganizationMock(
         return;
       }
       response.json({
-        items: records
-          .filter(({ superiorId }) => superiorId === null)
-          .map(toNode),
+        managers: records
+          .filter(({ kind }) => kind === 'MANAGER')
+          .map((manager) => ({
+            account: accountRef(manager),
+            leaders: records
+              .filter(
+                ({ kind, superiorId }) =>
+                  kind === 'LEADER' && superiorId === manager.id,
+              )
+              .map((leader) => ({
+                account: accountRef(leader),
+                members: records
+                  .filter(
+                    ({ kind, superiorId }) =>
+                      kind === 'MEMBER' && superiorId === leader.id,
+                  )
+                  .map(accountRef),
+              })),
+          })),
       });
     },
     'PUT /api/v1/admin/accounts/:accountId/superior': (
@@ -326,9 +328,8 @@ export function createAdminOrganizationMock(
       const superiorId = isRecord(request.body)
         ? request.body.superiorId
         : undefined;
-      const superior = records.find(({ id }) => id === superiorId);
-      if (account === undefined || superior === undefined) {
-        sendProblem(response, 422, 'VALIDATION_ERROR', '目标账号或上级不存在');
+      if (account === undefined) {
+        sendProblem(response, 422, 'VALIDATION_ERROR', '目标账号不存在');
         return;
       }
       if (account.kind === 'MANAGER') {
@@ -338,6 +339,16 @@ export function createAdminOrganizationMock(
           'VALIDATION_ERROR',
           '经理不能设置平台内上级',
         );
+        return;
+      }
+      if (superiorId === null) {
+        account.superiorId = null;
+        response.status(204).end();
+        return;
+      }
+      const superior = records.find(({ id }) => id === superiorId);
+      if (superior === undefined) {
+        sendProblem(response, 422, 'VALIDATION_ERROR', '目标上级不存在');
         return;
       }
       const expectedKind = account.kind === 'LEADER' ? 'MANAGER' : 'LEADER';

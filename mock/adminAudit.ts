@@ -242,6 +242,7 @@ export function createAdminAuditMock(options: AdminAuditMockOptions = {}) {
       const actor = queryValue(request, 'actor')?.trim().toLocaleLowerCase();
       const targetId = queryValue(request, 'targetId')?.trim();
       const targetType = queryValue(request, 'targetType');
+      const requestId = queryValue(request, 'requestId')?.trim();
       const from = timestamp(queryValue(request, 'from'));
       const to = timestamp(queryValue(request, 'to'));
       const limitCandidate = Number(queryValue(request, 'limit'));
@@ -253,6 +254,7 @@ export function createAdminAuditMock(options: AdminAuditMockOptions = {}) {
         const occurredAt = Date.parse(event.occurredAt);
         return (
           (!actor || event.actor.toLocaleLowerCase().includes(actor)) &&
+          (!requestId || event.requestId === requestId) &&
           (!targetId || event.targetId === targetId) &&
           (!targetType || event.targetType === targetType) &&
           (from === undefined || occurredAt >= from) &&
@@ -276,7 +278,20 @@ export function createAdminAuditMock(options: AdminAuditMockOptions = {}) {
       const items = filtered.slice(start, start + limit);
       const hasMore = start + items.length < filtered.length;
       response.json({
-        items: items.map((event) => ({ ...event })),
+        items: items.map((event) => ({
+          action: event.action,
+          actor: event.actor,
+          actorType: 'ACCOUNT',
+          correlationId: event.correlationId,
+          id: event.id,
+          occurredAt: event.occurredAt,
+          reason: event.reason,
+          requestId: event.requestId,
+          result: event.result.toLocaleUpperCase(),
+          schemaVersion: 1,
+          targetId: event.targetId,
+          targetType: event.targetType,
+        })),
         nextCursor:
           hasMore && items.length > 0
             ? encodeCursor(items[items.length - 1])

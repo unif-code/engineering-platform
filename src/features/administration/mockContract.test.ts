@@ -71,9 +71,12 @@ async function invokeRoute(
   return response;
 }
 
-const writeRequest = (body: unknown) => ({
+const writeRequest = (body: unknown, ifMatch?: string) => ({
   body,
-  headers: mutationHeaders(),
+  headers: {
+    ...mutationHeaders(),
+    ...(ifMatch === undefined ? {} : { 'If-Match': ifMatch }),
+  },
 });
 
 function expectProblem(response: MockResponse, status: number, detail: string) {
@@ -93,18 +96,9 @@ describe('admin accounts mock-only contract', () => {
     routes = createAdminAccountsMock();
   });
 
-  it('按员工号、姓名、状态、专业分类过滤后再服务端分页和排序', async () => {
+  it('使用 V0.2 cursor/limit 分页并返回 AccountSummary etag', async () => {
     const response = await invokeRoute(routes, 'GET /api/v1/admin/accounts', {
-      query: {
-        displayName: '陈',
-        employeeNo: 'E100',
-        page: '1',
-        pageSize: '1',
-        profession: '研发',
-        sortBy: 'employeeNo',
-        sortOrder: 'desc',
-        status: 'ENABLED',
-      },
+      query: { cursor: '3', limit: '1' },
     });
 
     expect(response.statusCode).toBe(200);
@@ -112,11 +106,12 @@ describe('admin accounts mock-only contract', () => {
       items: [
         expect.objectContaining({
           employeeNo: 'E1004',
+          etag: '"v1"',
           profession: '研发',
           status: 'ENABLED',
         }),
       ],
-      total: 1,
+      nextCursor: '4',
     });
   });
 
@@ -137,6 +132,7 @@ describe('admin accounts mock-only contract', () => {
       account: {
         displayName: '临时用户',
         employeeNo: '10000009',
+        etag: '"v1"',
         id: expect.any(String),
         profession: '测试',
         status: 'PENDING_INIT',
@@ -145,19 +141,20 @@ describe('admin accounts mock-only contract', () => {
     });
 
     const listed = await invokeRoute(routes, 'GET /api/v1/admin/accounts', {
-      query: { employeeNo: '10000009', page: '1', pageSize: '10' },
+      query: { limit: '100' },
     });
     expect(listed.body).toEqual({
-      items: [
-        {
+      items: expect.arrayContaining([
+        expect.objectContaining({
           displayName: '临时用户',
           employeeNo: '10000009',
+          etag: '"v1"',
           id: expect.any(String),
           profession: '测试',
           status: 'PENDING_INIT',
-        },
-      ],
-      total: 1,
+        }),
+      ]),
+      nextCursor: null,
     });
     expect(JSON.stringify(listed.body)).not.toContain('temporaryPassword');
   });
@@ -210,7 +207,7 @@ describe('admin accounts mock-only contract', () => {
       routes,
       'POST /api/v1/admin/accounts/:id/disable',
       {
-        ...writeRequest({ reason: '离职停用' }),
+        ...writeRequest({ reason: '离职停用' }, '"v1"'),
         params: { id: 'account-1' },
       },
     );
@@ -218,19 +215,19 @@ describe('admin accounts mock-only contract', () => {
     expect(disabled.ended).toBe(true);
 
     const listed = await invokeRoute(routes, 'GET /api/v1/admin/accounts', {
-      query: { employeeNo: 'E1001', page: '1', pageSize: '10' },
+      query: { limit: '100' },
     });
-    expect(listed.body).toEqual({
-      items: [expect.objectContaining({ status: 'DISABLED' })],
-      total: 1,
-    });
+    const disabledAccount = (
+      listed.body as { items: Array<{ id: string; status: string }> }
+    ).items.find(({ id }) => id === 'account-1');
+    expect(disabledAccount).toMatchObject({ status: 'DISABLED' });
 
-    for (const route of [
-      'POST /api/v1/admin/accounts/:id/enable',
-      'POST /api/v1/admin/accounts/:id/totp-reset',
-    ]) {
+    for (const [route, etag] of [
+      ['POST /api/v1/admin/accounts/:id/enable', '"v2"'],
+      ['POST /api/v1/admin/accounts/:id/totp-reset', '"v3"'],
+    ] as const) {
       const response = await invokeRoute(routes, route, {
-        ...writeRequest({ reason: '治理动作确认' }),
+        ...writeRequest({ reason: '治理动作确认' }, etag),
         params: { id: 'account-1' },
       });
       expect(response.statusCode).toBe(204);
@@ -243,7 +240,7 @@ describe('admin accounts mock-only contract', () => {
       routes,
       'POST /api/v1/admin/accounts/:id/reset-password',
       {
-        ...writeRequest({ reason: '用户忘记密码' }),
+        ...writeRequest({ reason: '用户忘记密码' }, '"v1"'),
         params: { id: 'account-1' },
       },
     );
@@ -251,7 +248,7 @@ describe('admin accounts mock-only contract', () => {
       routes,
       'POST /api/v1/admin/accounts/:id/reset-password',
       {
-        ...writeRequest({ reason: '首次凭据未安全送达' }),
+        ...writeRequest({ reason: '首次凭据未安全送达' }, '"v2"'),
         params: { id: 'account-1' },
       },
     );
@@ -273,12 +270,11 @@ describe('admin accounts mock-only contract', () => {
     );
 
     const listed = await invokeRoute(routes, 'GET /api/v1/admin/accounts', {
-      query: { employeeNo: 'E1001', page: '1', pageSize: '10' },
+      query: { limit: '100' },
     });
-    expect(listed.body).toEqual({
-      items: [expect.objectContaining({ id: 'account-1' })],
-      total: 1,
-    });
+    expect((listed.body as { items: Array<{ id: string }> }).items).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 'account-1' })]),
+    );
     expect(JSON.stringify(listed.body)).not.toContain('temporaryPassword');
   });
 
@@ -301,17 +297,17 @@ describe('admin accounts mock-only contract', () => {
 
   it('不同 handler factory 实例的账号状态完全隔离', async () => {
     await invokeRoute(routes, 'POST /api/v1/admin/accounts/:id/disable', {
-      ...writeRequest({ reason: '只修改当前实例' }),
+      ...writeRequest({ reason: '只修改当前实例' }, '"v1"'),
       params: { id: 'account-1' },
     });
 
     const isolated = createAdminAccountsMock();
     const listed = await invokeRoute(isolated, 'GET /api/v1/admin/accounts', {
-      query: { employeeNo: 'E1001', page: '1', pageSize: '10' },
+      query: { limit: '100' },
     });
-    expect(listed.body).toEqual({
-      items: [expect.objectContaining({ status: 'ENABLED' })],
-      total: 1,
-    });
+    const account = (
+      listed.body as { items: Array<{ id: string; status: string }> }
+    ).items.find(({ id }) => id === 'account-1');
+    expect(account).toMatchObject({ status: 'ENABLED' });
   });
 });

@@ -7,7 +7,6 @@ import {
   Empty,
   Modal,
   Segmented,
-  Space,
   Spin,
   Typography,
 } from 'antd';
@@ -74,6 +73,7 @@ export default function AdminPoliciesPage() {
   const [publishOpen, setPublishOpen] = useState(false);
   const [publishError, setPublishError] = useState<string>();
   const [rollbackVersion, setRollbackVersion] = useState<PolicyVersionRow>();
+  const [rollbackError, setRollbackError] = useState<string>();
 
   const catalogQuery = useQuery({
     queryFn: listPolicyCatalog,
@@ -87,8 +87,7 @@ export default function AdminPoliciesPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: () =>
-      createPolicyDraft(POLICY_NAMESPACE, { scope: 'PLATFORM' }),
+    mutationFn: () => createPolicyDraft(POLICY_NAMESPACE, { values: {} }),
   });
   const updateMutation = useMutation({
     mutationFn: ({
@@ -102,25 +101,32 @@ export default function AdminPoliciesPage() {
     }) => updatePolicyDraft(POLICY_NAMESPACE, draftId, { content }, etag),
   });
   const validateMutation = useMutation({
-    mutationFn: (draftId: string) =>
-      validatePolicyDraft(POLICY_NAMESPACE, draftId),
+    mutationFn: ({ draftId, etag }: { draftId: string; etag: string }) =>
+      validatePolicyDraft(POLICY_NAMESPACE, draftId, etag),
   });
   const previewMutation = useMutation({
-    mutationFn: (draftId: string) =>
-      previewPolicyDraft(POLICY_NAMESPACE, draftId),
+    mutationFn: ({ draftId, etag }: { draftId: string; etag: string }) =>
+      previewPolicyDraft(POLICY_NAMESPACE, draftId, etag),
   });
   const publishMutation = useMutation({
     mutationFn: ({
       draftId,
+      etag,
       values,
     }: {
       draftId: string;
+      etag: string;
       values: PublishPolicyFormValues;
-    }) => publishPolicyDraft(POLICY_NAMESPACE, draftId, values),
+    }) => publishPolicyDraft(POLICY_NAMESPACE, draftId, values, etag),
   });
   const rollbackMutation = useMutation({
-    mutationFn: (version: number) =>
-      rollbackPolicyVersion(POLICY_NAMESPACE, { toVersion: version }),
+    mutationFn: ({
+      activeVersion,
+      input,
+    }: {
+      activeVersion: number;
+      input: PublishPolicyFormValues & { toVersion: number };
+    }) => rollbackPolicyVersion(POLICY_NAMESPACE, input, activeVersion),
   });
 
   const catalog = catalogQuery.data;
@@ -232,9 +238,17 @@ export default function AdminPoliciesPage() {
       return;
     }
     try {
-      const result = await validateMutation.mutateAsync(savedDraft.id);
+      const result = await validateMutation.mutateAsync({
+        draftId: savedDraft.id,
+        etag: savedDraft.etag,
+      });
       if (candidateGenerationRef.current === candidateGeneration) {
         setValidation(result);
+        setDraft((current) =>
+          current?.id === savedDraft.id
+            ? { ...current, etag: result.etag, revision: result.revision }
+            : current,
+        );
       }
     } catch (error) {
       message.error(formatGovernanceError(error, 'Policy 校验失败'));
@@ -251,9 +265,17 @@ export default function AdminPoliciesPage() {
       return;
     }
     try {
-      const result = await previewMutation.mutateAsync(savedDraft.id);
+      const result = await previewMutation.mutateAsync({
+        draftId: savedDraft.id,
+        etag: savedDraft.etag,
+      });
       if (candidateGenerationRef.current === candidateGeneration) {
         setPreview(result);
+        setDraft((current) =>
+          current?.id === savedDraft.id
+            ? { ...current, etag: result.etag, revision: result.revision }
+            : current,
+        );
       }
     } catch (error) {
       message.error(formatGovernanceError(error, 'Policy 预览失败'));
@@ -266,7 +288,11 @@ export default function AdminPoliciesPage() {
     }
     setPublishError(undefined);
     try {
-      await publishMutation.mutateAsync({ draftId: draft.id, values });
+      await publishMutation.mutateAsync({
+        draftId: draft.id,
+        etag: draft.etag,
+        values,
+      });
       setPublishOpen(false);
       setDraft(undefined);
       setDraftContent({});
@@ -278,21 +304,23 @@ export default function AdminPoliciesPage() {
     }
   };
 
-  const createRollbackDraft = async () => {
-    if (!rollbackVersion) {
+  const createRollbackDraft = async (values: PublishPolicyFormValues) => {
+    if (!rollbackVersion || !catalog) {
       return;
     }
+    setRollbackError(undefined);
     try {
-      const created = await rollbackMutation.mutateAsync(
-        rollbackVersion.version,
-      );
+      const created = await rollbackMutation.mutateAsync({
+        activeVersion: catalog.activeVersion,
+        input: { ...values, toVersion: rollbackVersion.version },
+      });
       setDraft(created);
       setDraftContent({ ...created.content });
       invalidateCandidate();
       setRollbackVersion(undefined);
       message.success('已创建回滚 Draft');
     } catch (error) {
-      message.error(formatGovernanceError(error, '回滚 Draft 创建失败'));
+      setRollbackError(formatGovernanceError(error, '回滚 Draft 创建失败'));
     }
   };
   const candidateSaving = createMutation.isPending || updateMutation.isPending;
@@ -504,40 +532,17 @@ export default function AdminPoliciesPage() {
         ) : null}
 
         {rollbackVersion ? (
-          <Modal
-            destroyOnHidden
-            footer={
-              <Space>
-                <Button
-                  disabled={rollbackMutation.isPending}
-                  onClick={() => setRollbackVersion(undefined)}
-                >
-                  取消
-                </Button>
-                <Button
-                  loading={rollbackMutation.isPending}
-                  onClick={createRollbackDraft}
-                  type="primary"
-                >
-                  确认创建
-                </Button>
-              </Space>
-            }
-            mask={{ closable: false }}
-            onCancel={() => setRollbackVersion(undefined)}
+          <PublishPolicyModal
+            error={rollbackError}
+            loading={rollbackMutation.isPending}
+            mode="rollback"
+            onClose={() => {
+              setRollbackError(undefined);
+              setRollbackVersion(undefined);
+            }}
+            onSubmit={createRollbackDraft}
             open
-            title="创建回滚 Draft"
-          >
-            <Typography.Paragraph>
-              将从版本 {rollbackVersion.version} 的不可变 Snapshot 创建新
-              Draft；当前生效版本不会立即改变。
-            </Typography.Paragraph>
-            {draft ? (
-              <Typography.Paragraph type="warning">
-                当前编辑区的已保存 Draft 将被新的回滚 Draft 替换，请确认后继续。
-              </Typography.Paragraph>
-            ) : null}
-          </Modal>
+          />
         ) : null}
       </div>
     </PageContainer>

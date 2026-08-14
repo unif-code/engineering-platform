@@ -38,9 +38,9 @@ beforeEach(() => {
   mocks.verifyTotp.mockReset();
   mocks.login.mockResolvedValue({
     challengeToken: 'challenge-00000000',
-    stage: 'TOTP',
+    state: 'TOTP_REQUIRED',
   });
-  mocks.verifyTotp.mockResolvedValue({ ok: true });
+  mocks.verifyTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
   mocks.onAuthenticated.mockResolvedValue(undefined);
 });
 
@@ -191,22 +191,17 @@ describe('LoginFlow', () => {
     expect(screen.getByRole('button', { name: /继\s*续/ })).toBeEnabled();
   });
 
-  it('BOOTSTRAP 阶段携 token 跳向初始化向导', async () => {
+  it('BOOTSTRAP 状态通过 HttpOnly cookie 跳向初始化向导', async () => {
     const user = userEvent.setup();
     mocks.login.mockResolvedValue({
-      bootstrapToken: 'bootstrap-00000009',
-      stage: 'BOOTSTRAP',
+      state: 'BOOTSTRAP_REQUIRED',
     });
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
     await fillCredentials(user, '00000009', 'Temporary-Password!2026');
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
 
-    await waitFor(() =>
-      expect(mocks.push).toHaveBeenCalledWith(
-        '/bootstrap?token=bootstrap-00000009',
-      ),
-    );
+    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/bootstrap'));
     expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
     expect(mocks.onAuthenticated).not.toHaveBeenCalled();
   });

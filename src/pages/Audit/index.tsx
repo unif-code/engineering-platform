@@ -44,6 +44,9 @@ const ACTION_META: Record<
   'Config Publish': { label: '配置发布 · Config Publish', tone: 'purple' },
 };
 
+const getActionMeta = (action: AuditRow['action']) =>
+  ACTION_META[action] ?? { label: action, tone: 'brand' as const };
+
 export default function AuditPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
@@ -164,7 +167,7 @@ export default function AuditPage() {
       { dataIndex: 'actor', title: '操作人', width: 100 },
       {
         dataIndex: 'action',
-        render: (_, row) => <SemanticTag {...ACTION_META[row.action]} />,
+        render: (_, row) => <SemanticTag {...getActionMeta(row.action)} />,
         title: '动作',
         width: 240,
       },

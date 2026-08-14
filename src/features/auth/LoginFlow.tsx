@@ -50,10 +50,8 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
     setProblemDetail(undefined);
     try {
       const result = await login(values);
-      if (result.stage === 'BOOTSTRAP') {
-        history.push(
-          `/bootstrap?token=${encodeURIComponent(result.bootstrapToken)}`,
-        );
+      if (result.state === 'BOOTSTRAP_REQUIRED') {
+        history.push('/bootstrap');
         return true;
       }
       setChallengeExpired(false);

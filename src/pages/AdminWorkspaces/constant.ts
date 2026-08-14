@@ -1,10 +1,26 @@
 import type { WorkspaceAction, WorkspaceMemberRow, WorkspaceRow } from './type';
 
 export const WORKSPACE_PRESENTATION_BY_ID = Object.freeze({
-  'workspace-agent-runtime': { repositoryCount: 8, team: '交易' },
-  'workspace-delivery-governance': { repositoryCount: 6, team: '中台' },
-  'workspace-marketing-archive': { repositoryCount: 2, team: '营销' },
-  'workspace-platform-core': { repositoryCount: 10, team: '营销' },
+  'workspace-agent-runtime': {
+    memberCount: 9,
+    repositoryCount: 8,
+    team: '交易',
+  },
+  'workspace-delivery-governance': {
+    memberCount: 7,
+    repositoryCount: 6,
+    team: '中台',
+  },
+  'workspace-marketing-archive': {
+    memberCount: 3,
+    repositoryCount: 2,
+    team: '营销',
+  },
+  'workspace-platform-core': {
+    memberCount: 12,
+    repositoryCount: 10,
+    team: '营销',
+  },
 } as const);
 
 export const toWorkspaceRow = <T extends { id: string }>(workspace: T) => ({

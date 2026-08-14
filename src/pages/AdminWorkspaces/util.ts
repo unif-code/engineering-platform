@@ -73,3 +73,16 @@ export function flattenLeaders(
     ...flattenLeaders(node.children),
   ]);
 }
+
+export function flattenOrganizationAccounts(
+  nodes: readonly OrganizationNode[],
+): WorkspaceAccountRef[] {
+  return nodes.flatMap((node) => [
+    {
+      displayName: node.displayName,
+      employeeNo: node.employeeNo,
+      id: node.id,
+    },
+    ...flattenOrganizationAccounts(node.children),
+  ]);
+}

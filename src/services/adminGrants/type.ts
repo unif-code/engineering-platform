@@ -1,11 +1,8 @@
-/**
- * V0.2 Task 8 的 mock-only 临时 DTO。
- * 后端只冻结了 Grant 领域 tuple 与资源路径；api-v0.2.0 锁定后由
- * Task 10 的 generated client 类型整体替换本文件，不能视为正式 OpenAPI 契约。
- */
-export type GrantScopeType = 'PLATFORM' | 'WORKSPACE';
-export type GrantStatus = 'ACTIVE' | 'REVOKED';
-export type GrantSource = 'DIRECT';
+import type { components } from '@/services/generated';
+
+export type GrantScopeType = components['schemas']['ScopeType'];
+export type GrantStatus = components['schemas']['GrantStatus'];
+export type GrantSource = string;
 
 export interface GrantPrincipalRef {
   displayName: string;
@@ -53,6 +50,4 @@ export interface CreateGrantInput {
   };
 }
 
-export interface RevokeGrantInput {
-  reason: string;
-}
+export type RevokeGrantInput = components['schemas']['GrantRevokeRequestDto'];

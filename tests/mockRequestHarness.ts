@@ -139,3 +139,125 @@ export function createMockRequester(getRoutes: () => MockRoutes) {
     return response.ended ? undefined : response.body;
   };
 }
+
+/** 将 Umi mock route 暴露为 fetch，供 generated OpenAPI client 的页面级测试复用。 */
+export function createMockFetch(getRoutes: () => MockRoutes) {
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request =
+      input instanceof Request ? input : new Request(String(input), init);
+    const url = new URL(request.url, 'http://mock.local');
+    const route = routeFor(getRoutes(), request.method, url.pathname);
+    const response: MockResponse = {
+      ended: false,
+      headers: new Headers(),
+      statusCode: 200,
+      end() {
+        this.ended = true;
+        return this;
+      },
+      json(body) {
+        this.body = body;
+        return this;
+      },
+      setHeader(name, value) {
+        this.headers.set(name, value);
+        return this;
+      },
+      status(statusCode) {
+        this.statusCode = statusCode;
+        return this;
+      },
+    };
+    const text = await request.clone().text();
+    const body = text.length > 0 ? JSON.parse(text) : undefined;
+    const routes = getRoutes();
+    await (routes[route.key] as MockRouteHandler)(
+      {
+        body,
+        headers: Object.fromEntries(request.headers.entries()),
+        params: route.params,
+        query: Object.fromEntries(url.searchParams.entries()),
+      },
+      response,
+    );
+
+    return new Response(
+      response.statusCode === 204 || response.ended
+        ? null
+        : JSON.stringify(response.body),
+      {
+        headers: response.headers,
+        status: response.statusCode,
+      },
+    );
+  };
+}
+
+interface RequesterOptions {
+  data?: unknown;
+  headers?: Record<string, string>;
+  method: string;
+  params?: Record<string, string>;
+}
+
+/**
+ * 把既有页面测试中的 request spy 适配为 fetch。
+ * 这样测试仍可延迟、覆盖或检查请求，同时生产代码只经过 generated client。
+ */
+export function createRequesterFetch(
+  requester: (path: string, options: RequesterOptions) => Promise<unknown>,
+) {
+  return async (input: RequestInfo | URL, init?: RequestInit) => {
+    const request =
+      input instanceof Request ? input : new Request(String(input), init);
+    const url = new URL(request.url, 'http://mock.local');
+    const text = await request.clone().text();
+    const headers = Object.fromEntries(
+      [...request.headers.entries()].flatMap(([name, value]) => {
+        if (name.toLowerCase() === 'idempotency-key') {
+          return [['Idempotency-Key', value]];
+        }
+        if (name.toLowerCase() === 'if-match') {
+          return [['If-Match', value]];
+        }
+        return [];
+      }),
+    );
+    const options: RequesterOptions = {
+      ...(text ? { data: JSON.parse(text) } : {}),
+      ...(Object.keys(headers).length > 0 ? { headers } : {}),
+      method: request.method,
+      ...(url.search ? { params: Object.fromEntries(url.searchParams) } : {}),
+    };
+
+    try {
+      const body = await requester(url.pathname, options);
+      if (body === undefined) {
+        return new Response(null, { status: 204 });
+      }
+      const revision =
+        typeof body === 'object' && body !== null
+          ? ((body as { revision?: unknown; version?: unknown }).revision ??
+            (body as { version?: unknown }).version)
+          : undefined;
+      return new Response(JSON.stringify(body), {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(typeof revision === 'number' ? { ETag: `"v${revision}"` } : {}),
+        },
+        status: 200,
+      });
+    } catch (error) {
+      const failure = error as {
+        response?: { data?: unknown; status?: number };
+      };
+      if (typeof failure.response?.status === 'number') {
+        return new Response(JSON.stringify(failure.response.data), {
+          headers: { 'Content-Type': 'application/problem+json' },
+          status: failure.response.status,
+        });
+      }
+      throw error;
+    }
+  };
+}

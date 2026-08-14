@@ -170,9 +170,21 @@ const headerValue = (request: MockRequest, name: string) => {
 
 const cloneContent = (content: Record<string, PolicyValue>) => ({ ...content });
 
-const cloneDraft = (draft: DraftRecord): DraftRecord => ({
-  ...draft,
+const toContractDraft = (draft: DraftRecord) => ({
+  archivedAt: draft.status === 'ARCHIVED' ? draft.updatedAt : null,
+  baseVersion: draft.baseVersion,
   content: cloneContent(draft.content),
+  contentHash: `mock-content-${draft.id}-r${draft.revision}`,
+  id: draft.id,
+  lastMeaningfulActivityAt: draft.updatedAt,
+  namespace: draft.namespace,
+  ownerId: 'account-14',
+  revision: draft.revision,
+  schemaRevision: 1,
+  scope: draft.scope,
+  stale: draft.stale,
+  status: draft.status,
+  validationEvidence: null,
 });
 
 export function createAdminPoliciesMock(
@@ -298,7 +310,7 @@ export function createAdminPoliciesMock(
     const draft: DraftRecord = {
       baseVersion: activeVersion,
       content: cloneContent(content),
-      etag: `"${id}-r1"`,
+      etag: '"v1"',
       id,
       namespace: 'identity',
       revision: 1,
@@ -320,15 +332,26 @@ export function createAdminPoliciesMock(
         return;
       }
       response.json({
-        activeVersion,
+        active: {
+          namespace: 'identity',
+          schemaRevision: 1,
+          scope: 'PLATFORM',
+          snapshotHash: `mock-snapshot-v${activeVersion}`,
+          values: cloneContent(activeContent),
+          version: activeVersion,
+        },
         items: POLICY_DEFINITIONS.map((definition) => ({
-          ...definition,
-          activeValue: activeContent[definition.key],
-          activeVersion,
-          enumOptions: definition.enumOptions?.map((option) => ({ ...option })),
+          defaultValue: definition.defaultValue,
+          effectSemantics: definition.effectSemantics,
+          enumValues: definition.enumOptions?.map(({ value }) => value) ?? null,
+          key: definition.key,
+          maxValue: definition.max ?? null,
+          minValue: definition.min ?? null,
+          namespace: definition.namespace,
+          schemaRevision: 1,
+          unit: definition.unit,
+          valueType: definition.valueType,
         })),
-        namespace: 'identity',
-        scope: 'PLATFORM',
       });
     },
     'POST /api/v1/admin/policies/:namespace/drafts': (
@@ -338,22 +361,21 @@ export function createAdminPoliciesMock(
       if (!requireMutation(request, response)) {
         return;
       }
-      if (
-        request.params?.namespace !== 'identity' ||
-        !isRecord(request.body) ||
-        request.body.scope !== 'PLATFORM'
-      ) {
+      if (request.params?.namespace !== 'identity' || !isRecord(request.body)) {
         sendProblem(
           response,
           422,
           'VALIDATION_ERROR',
-          'Policy namespace 或 scope 不合法',
+          'Policy namespace 或 values 不合法',
         );
         return;
       }
-      const draft = createDraftFrom(activeContent);
+      const values = isRecord(request.body.values)
+        ? (request.body.values as Record<string, PolicyValue>)
+        : {};
+      const draft = createDraftFrom({ ...activeContent, ...values });
       response.setHeader('ETag', draft.etag);
-      response.status(201).json(cloneDraft(draft));
+      response.status(201).json(toContractDraft(draft));
     },
     'PATCH /api/v1/admin/policies/:namespace/drafts/:draftId': (
       request: MockRequest,
@@ -379,18 +401,18 @@ export function createAdminPoliciesMock(
         );
         return;
       }
-      if (!isRecord(request.body) || !isRecord(request.body.content)) {
-        sendProblem(response, 422, 'VALIDATION_ERROR', 'content 为必填对象');
+      if (!isRecord(request.body) || !isRecord(request.body.values)) {
+        sendProblem(response, 422, 'VALIDATION_ERROR', 'values 为必填对象');
         return;
       }
       draft.content = cloneContent(
-        request.body.content as Record<string, PolicyValue>,
+        request.body.values as Record<string, PolicyValue>,
       );
       draft.revision += 1;
-      draft.etag = `"${draft.id}-r${draft.revision}"`;
+      draft.etag = `"v${draft.revision}"`;
       draft.updatedAt = new Date().toISOString();
       response.setHeader('ETag', draft.etag);
-      response.json(cloneDraft(draft));
+      response.json(toContractDraft(draft));
     },
     'POST /api/v1/admin/policies/:namespace/drafts/:draftId/validate': (
       request: MockRequest,
@@ -401,7 +423,22 @@ export function createAdminPoliciesMock(
       }
       const draft = findDraft(request, response);
       if (draft !== undefined) {
-        response.json(validationResult(draft));
+        if (headerValue(request, 'If-Match') !== draft.etag) {
+          sendProblem(response, 409, 'DRAFT_CONFLICT', '已被并发修改');
+          return;
+        }
+        const validation = validationResult(draft);
+        draft.revision += 1;
+        draft.etag = `"v${draft.revision}"`;
+        draft.updatedAt = new Date().toISOString();
+        response.setHeader('ETag', draft.etag);
+        response.json({
+          contentHash: `mock-content-${draft.id}-r${draft.revision}`,
+          draftId: draft.id,
+          issues: validation.issues,
+          revision: draft.revision,
+          valid: validation.valid,
+        });
       }
     },
     'GET /api/v1/admin/policies/:namespace/drafts/:draftId/preview': (
@@ -415,19 +452,23 @@ export function createAdminPoliciesMock(
       if (draft === undefined) {
         return;
       }
+      if (headerValue(request, 'If-Match') !== draft.etag) {
+        sendProblem(response, 409, 'DRAFT_CONFLICT', '已被并发修改');
+        return;
+      }
+      response.setHeader('ETag', draft.etag);
       response.json({
         baseVersion: draft.baseVersion,
-        changes: POLICY_DEFINITIONS.map((definition) => ({
-          afterValue: draft.content[definition.key],
-          beforeValue: activeContent[definition.key],
-          changed:
-            draft.content[definition.key] !== activeContent[definition.key],
-          effectSemantics: definition.effectSemantics,
-          key: definition.key,
-          label: definition.label,
-        })),
+        contentHash: `mock-content-${draft.id}-r${draft.revision}`,
         draftId: draft.id,
-        namespace: draft.namespace,
+        items: POLICY_DEFINITIONS.map((definition) => ({
+          after: draft.content[definition.key],
+          before: activeContent[definition.key],
+          effectSemantics: definition.effectSemantics,
+          impact: definition.description,
+          key: definition.key,
+        })),
+        revision: draft.revision,
       });
     },
     'POST /api/v1/admin/policies/:namespace/drafts/:draftId/publish': (
@@ -439,6 +480,10 @@ export function createAdminPoliciesMock(
       }
       const draft = findDraft(request, response);
       if (draft === undefined) {
+        return;
+      }
+      if (headerValue(request, 'If-Match') !== draft.etag) {
+        sendProblem(response, 409, 'DRAFT_CONFLICT', '已被并发修改');
         return;
       }
       if (!isRecord(request.body) || typeof request.body.reason !== 'string') {
@@ -493,11 +538,16 @@ export function createAdminPoliciesMock(
         version: activeVersion,
       };
       versions.unshift(version);
-      response.json({
+      response.status(201).json({
+        activatedAt: version.publishedAt,
         namespace: version.namespace,
         publishedAt: version.publishedAt,
+        publishedBy: version.publishedBy,
         reason: version.reason,
+        schemaRevision: 1,
         scope: version.scope,
+        snapshot: cloneContent(version.snapshot),
+        snapshotHash: `mock-snapshot-v${version.version}`,
         version: version.version,
       });
     },
@@ -506,6 +556,24 @@ export function createAdminPoliciesMock(
       response: MockResponse,
     ) => {
       if (!requireMutation(request, response)) {
+        return;
+      }
+      if (headerValue(request, 'If-Match') !== `"v${activeVersion}"`) {
+        sendProblem(response, 409, 'VERSION_CONFLICT', 'Policy 已被并发修改');
+        return;
+      }
+      if (
+        !isRecord(request.body) ||
+        typeof request.body.reason !== 'string' ||
+        request.body.reason.trim().length === 0 ||
+        request.body.totpCode !== '123456'
+      ) {
+        sendProblem(
+          response,
+          422,
+          'VALIDATION_ERROR',
+          'reason 与 TOTP 为必填项',
+        );
         return;
       }
       const toVersion = isRecord(request.body)
@@ -526,7 +594,8 @@ export function createAdminPoliciesMock(
         return;
       }
       const draft = createDraftFrom(source.snapshot);
-      response.status(201).json(cloneDraft(draft));
+      response.setHeader('ETag', draft.etag);
+      response.status(201).json(toContractDraft(draft));
     },
     'GET /api/v1/admin/policies/:namespace/versions': (
       request: MockRequest,
@@ -538,10 +607,19 @@ export function createAdminPoliciesMock(
       response.json({
         items: versions
           .filter(({ namespace }) => namespace === request.params?.namespace)
-          .map(({ snapshot: _snapshot, ...version }) => ({
-            ...version,
-            current: version.version === activeVersion,
+          .map((version) => ({
+            activatedAt: version.publishedAt,
+            namespace: version.namespace,
+            publishedAt: version.publishedAt,
+            publishedBy: version.publishedBy,
+            reason: version.reason,
+            schemaRevision: 1,
+            scope: version.scope,
+            snapshot: cloneContent(version.snapshot),
+            snapshotHash: `mock-snapshot-v${version.version}`,
+            version: version.version,
           })),
+        nextCursor: null,
       });
     },
   });

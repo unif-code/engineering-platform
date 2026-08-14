@@ -1,9 +1,8 @@
-import { request } from '@umijs/max';
-import { mutationHeaders, normalizeApiError } from '@/services/transport';
+import { api, type components } from '@/services/generated';
+import { mutationHeaders, requireApiData } from '@/services/transport';
 import type {
   BootstrapPasswordInput,
-  BootstrapResult,
-  BootstrapTokenInput,
+  BootstrapPasswordResult,
   BootstrapTotpConfirmInput,
   BootstrapTotpEnrollment,
   CurrentUser,
@@ -13,84 +12,77 @@ import type {
   TotpResult,
 } from './type';
 
-type AuthMutationPath =
-  | '/api/v1/auth/bootstrap/password'
-  | '/api/v1/auth/bootstrap/totp/confirm'
-  | '/api/v1/auth/bootstrap/totp/enroll'
-  | '/api/v1/auth/login'
-  | '/api/v1/auth/totp';
-
-type AuthMutationInput =
-  | BootstrapPasswordInput
-  | BootstrapTokenInput
-  | BootstrapTotpConfirmInput
-  | LoginInput
-  | TotpInput;
-
-async function requestAuth<T>(
-  path: AuthMutationPath,
-  data: AuthMutationInput,
-): Promise<T> {
-  try {
-    return await request<T>(path, {
-      method: 'POST',
-      data,
-      headers: mutationHeaders(),
-    });
-  } catch (error) {
-    throw normalizeApiError(error);
-  }
-}
-
 export async function getCurrentUser(): Promise<CurrentUser> {
-  try {
-    return await request<CurrentUser>('/api/v1/me', { method: 'GET' });
-  } catch (error) {
-    throw normalizeApiError(error);
-  }
+  const principal = requireApiData(await api.GET('/api/v1/me'));
+  return {
+    employeeId: principal.employeeId,
+    name: principal.name,
+    capabilities: (principal.capabilities ?? []).map(
+      ({ capability }) => capability,
+    ),
+  };
 }
 
 export async function logout(): Promise<void> {
-  try {
-    await request<void>('/api/v1/auth/logout', {
-      headers: mutationHeaders(),
-      method: 'POST',
-    });
-  } catch (error) {
-    throw normalizeApiError(error);
-  }
+  requireApiData(
+    await api.POST('/api/v1/auth/logout', {
+      params: { header: mutationHeaders() },
+    }),
+  );
 }
 
 export async function startLogin(input: LoginInput): Promise<LoginResult> {
-  return requestAuth('/api/v1/auth/login', input);
+  return requireApiData(
+    await api.POST('/api/v1/auth/login', {
+      body: input,
+      params: { header: mutationHeaders() },
+    }),
+  );
 }
 
 export async function verifyTotp(input: TotpInput): Promise<TotpResult> {
-  return requestAuth('/api/v1/auth/totp', input);
+  return requireApiData(
+    await api.POST('/api/v1/auth/totp', {
+      body: input,
+      params: { header: mutationHeaders() },
+    }),
+  );
 }
 
 export async function setBootstrapPassword(
   input: BootstrapPasswordInput,
-): Promise<BootstrapResult> {
-  return requestAuth('/api/v1/auth/bootstrap/password', input);
+): Promise<BootstrapPasswordResult> {
+  return requireApiData(
+    await api.POST('/api/v1/auth/bootstrap/password', {
+      body: input,
+      params: { header: mutationHeaders() },
+    }),
+  );
 }
 
-export async function enrollBootstrapTotp(
-  input: BootstrapTokenInput,
-): Promise<BootstrapTotpEnrollment> {
-  return requestAuth('/api/v1/auth/bootstrap/totp/enroll', input);
+export async function enrollBootstrapTotp(): Promise<BootstrapTotpEnrollment> {
+  return requireApiData(
+    await api.POST('/api/v1/auth/bootstrap/totp/enroll', {
+      params: { header: mutationHeaders() },
+    }),
+  );
 }
 
 export async function confirmBootstrapTotp(
   input: BootstrapTotpConfirmInput,
-): Promise<BootstrapResult> {
-  return requestAuth('/api/v1/auth/bootstrap/totp/confirm', input);
+): Promise<components['schemas']['AuthenticatedDto']> {
+  return requireApiData(
+    await api.POST('/api/v1/auth/bootstrap/totp/confirm', {
+      body: input,
+      params: { header: mutationHeaders() },
+    }),
+  );
 }
 
 export type {
   BootstrapPasswordInput,
+  BootstrapPasswordResult,
   BootstrapResult,
-  BootstrapTokenInput,
   BootstrapTotpConfirmInput,
   BootstrapTotpEnrollment,
   CurrentUser,

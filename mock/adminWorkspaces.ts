@@ -122,16 +122,6 @@ const headerValue = (request: MockRequest, name: string) => {
   return Array.isArray(entry?.[1]) ? entry[1][0] : entry?.[1];
 };
 
-const queryValue = (request: MockRequest, name: string) => {
-  const value = request.query?.[name];
-  return Array.isArray(value) ? value[0] : value;
-};
-
-const positiveInteger = (value: string | undefined, fallback: number) => {
-  const parsed = Number(value);
-  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
-};
-
 export function createAdminWorkspacesMock(
   options: AdminWorkspacesMockOptions = {},
 ) {
@@ -215,6 +205,18 @@ export function createAdminWorkspacesMock(
     return workspace;
   };
 
+  const requireIfMatch = (
+    request: MockRequest,
+    response: MockResponse,
+    workspace: WorkspaceRecord,
+  ) => {
+    if (headerValue(request, 'If-Match') === `"v${workspace.version}"`) {
+      return true;
+    }
+    sendProblem(response, 409, 'VERSION_CONFLICT', 'Workspace 已被并发修改');
+    return false;
+  };
+
   const formalLeaders = (workspace: WorkspaceRecord) => [
     workspace.owner,
     ...workspace.invitedLeaders.filter(({ id }) => id !== workspace.owner.id),
@@ -244,16 +246,19 @@ export function createAdminWorkspacesMock(
         }
       }
     }
-    return [...members.values()].map(({ id: _id, ...member }) => member);
+    return [...members.values()].map((member) => ({
+      accountId: member.accountId,
+      computedAt: '2026-08-13T00:00:00.000Z',
+      source: member.source,
+    }));
   };
 
   const summary = (workspace: WorkspaceRecord) => ({
+    archivedAt:
+      workspace.status === 'ARCHIVED' ? '2026-08-01T00:00:00.000Z' : null,
     id: workspace.id,
-    leaders: formalLeaders(workspace).map((leader) => ({ ...leader })),
-    memberCount: workspace.memberCount ?? memberProjection(workspace).length,
     name: workspace.name,
-    owner: { ...workspace.owner },
-    status: workspace.status,
+    ownerId: workspace.owner.id,
     version: workspace.version,
   });
 
@@ -265,28 +270,9 @@ export function createAdminWorkspacesMock(
       if (!requireAuthorization(request, response)) {
         return;
       }
-      const keyword = queryValue(request, 'keyword')
-        ?.trim()
-        .toLocaleLowerCase();
-      const status = queryValue(request, 'status');
-      const filtered = workspaces.filter((workspace) => {
-        const matchesKeyword =
-          !keyword ||
-          [workspace.id, workspace.name, workspace.owner.displayName].some(
-            (value) => value.toLocaleLowerCase().includes(keyword),
-          );
-        const matchesStatus =
-          status !== 'ACTIVE' && status !== 'ARCHIVED'
-            ? true
-            : workspace.status === status;
-        return matchesKeyword && matchesStatus;
-      });
-      const page = positiveInteger(queryValue(request, 'page'), 1);
-      const pageSize = positiveInteger(queryValue(request, 'pageSize'), 10);
-      const offset = (page - 1) * pageSize;
       response.json({
-        items: filtered.slice(offset, offset + pageSize).map(summary),
-        total: filtered.length,
+        items: workspaces.map(summary),
+        nextCursor: null,
       });
     },
     'POST /api/v1/admin/workspaces': (
@@ -334,6 +320,7 @@ export function createAdminWorkspacesMock(
       };
       workspaces.push(workspace);
       catalog.registerWorkspace({ id: workspace.id, name: workspace.name });
+      response.setHeader('ETag', '"v1"');
       response.status(201).json(summary(workspace));
     },
     'POST /api/v1/admin/workspaces/:workspaceId/leaders': (
@@ -345,6 +332,9 @@ export function createAdminWorkspacesMock(
       }
       const workspace = findWorkspace(request, response);
       if (workspace === undefined) {
+        return;
+      }
+      if (!requireIfMatch(request, response, workspace)) {
         return;
       }
       const accountId = isRecord(request.body)
@@ -374,6 +364,7 @@ export function createAdminWorkspacesMock(
       }
       workspace.invitedLeaders.push({ ...leader });
       workspace.version += 1;
+      response.setHeader('ETag', `"v${workspace.version}"`);
       response.json(summary(workspace));
     },
     'DELETE /api/v1/admin/workspaces/:workspaceId/leaders/:accountId': (
@@ -385,6 +376,9 @@ export function createAdminWorkspacesMock(
       }
       const workspace = findWorkspace(request, response);
       if (workspace === undefined) {
+        return;
+      }
+      if (!requireIfMatch(request, response, workspace)) {
         return;
       }
       const accountId = request.params?.accountId;
@@ -406,6 +400,7 @@ export function createAdminWorkspacesMock(
       }
       workspace.invitedLeaders.splice(index, 1);
       workspace.version += 1;
+      response.setHeader('ETag', `"v${workspace.version}"`);
       response.json(summary(workspace));
     },
     'POST /api/v1/admin/workspaces/:workspaceId/transfer-owner': (
@@ -419,8 +414,11 @@ export function createAdminWorkspacesMock(
       if (workspace === undefined) {
         return;
       }
+      if (!requireIfMatch(request, response, workspace)) {
+        return;
+      }
       const accountId = isRecord(request.body)
-        ? request.body.accountId
+        ? request.body.newOwnerId
         : undefined;
       const leader = workspace.invitedLeaders.find(
         ({ id }) => id === accountId,
@@ -445,6 +443,7 @@ export function createAdminWorkspacesMock(
       }
       workspace.owner = { ...leader };
       workspace.version += 1;
+      response.setHeader('ETag', `"v${workspace.version}"`);
       response.json(summary(workspace));
     },
     'GET /api/v1/admin/workspaces/:workspaceId/members': (

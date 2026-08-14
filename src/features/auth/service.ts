@@ -1,6 +1,3 @@
-// 数据缝：V0.2 Task 10 锁定 api-v0.2.0 OpenAPI Artifact 后，
-// 在 '@/services/auth' 的 domain client 底层切入 '@/services/generated'。
-// 本 Feature service、页面、hooks 与公开 Feature API 均无需改动。
 import {
   getCurrentUser,
   setBootstrapPassword as requestBootstrapPassword,
@@ -14,7 +11,6 @@ import { ApiError } from '@/services/transport';
 import type {
   BootstrapPasswordInput,
   BootstrapResult,
-  BootstrapTokenInput,
   BootstrapTotpConfirmInput,
   BootstrapTotpEnrollment,
   CurrentUser,
@@ -53,10 +49,8 @@ export async function setBootstrapPassword(
   return requestBootstrapPassword(input);
 }
 
-export async function enrollBootstrapTotp(
-  input: BootstrapTokenInput,
-): Promise<BootstrapTotpEnrollment> {
-  return requestBootstrapTotpEnrollment(input);
+export async function enrollBootstrapTotp(): Promise<BootstrapTotpEnrollment> {
+  return requestBootstrapTotpEnrollment();
 }
 
 export async function confirmBootstrapTotp(

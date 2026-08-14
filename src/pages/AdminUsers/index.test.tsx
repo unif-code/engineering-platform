@@ -3,14 +3,18 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requestMock = vi.hoisted(() => vi.fn());
+const { fetchMock, requestMock } = vi.hoisted(() => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  return { fetchMock, requestMock: vi.fn() };
+});
 
 vi.mock('@umijs/max', () => ({
   defineMock: <T,>(routes: T) => routes,
-  request: requestMock,
 }));
 
 import { createAdminAccountsMock } from '../../../mock/adminAccounts';
+import { createRequesterFetch } from '../../../tests/mockRequestHarness';
 import AdminUsersPage from '.';
 
 const PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS = { timeout: 5_000 };
@@ -59,6 +63,9 @@ type MockRouteHandler = (
 type MockRoutes = Record<string, unknown>;
 
 let routes: MockRoutes;
+const fetchThroughRequester = createRequesterFetch((path, options) =>
+  requestMock(path, options),
+);
 
 interface MockRouteMatch {
   key: string;
@@ -237,6 +244,8 @@ beforeEach(() => {
   routes = createAdminAccountsMock();
   requestMock.mockReset();
   requestMock.mockImplementation(requestThroughMock);
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(fetchThroughRequester);
 });
 
 describe('AdminUsersPage', () => {
@@ -250,6 +259,7 @@ describe('AdminUsersPage', () => {
       expect(Object.keys(account).sort()).toEqual([
         'displayName',
         'employeeNo',
+        'etag',
         'id',
         'profession',
         'status',

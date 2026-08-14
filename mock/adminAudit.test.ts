@@ -35,15 +35,14 @@ describe('admin audit mock-only contract', () => {
         expect(Object.keys(event).sort()).toEqual([
           'action',
           'actor',
+          'actorType',
           'correlationId',
           'id',
           'occurredAt',
           'reason',
           'requestId',
           'result',
-          'risk',
-          'summary',
-          'target',
+          'schemaVersion',
           'targetId',
           'targetType',
         ]);

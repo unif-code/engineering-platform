@@ -1,166 +1,98 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requestMock = vi.hoisted(() => vi.fn());
+const apiMock = vi.hoisted(() => ({ GET: vi.fn(), POST: vi.fn() }));
+vi.mock('@/services/generated', () => ({ api: apiMock }));
 
-vi.mock('@umijs/max', () => ({ request: requestMock }));
+import { enableAccount, listAccounts, resetAccountPassword } from './index';
 
-import {
-  createAccount,
-  disableAccount,
-  enableAccount,
-  listAccounts,
-  resetAccountPassword,
-  resetAccountTotp,
-} from './index';
-
-beforeEach(() => {
-  requestMock.mockReset();
+const result = <T>(data: T) => ({
+  data,
+  response: new Response(null, { status: 200 }),
 });
 
-describe('admin accounts service', () => {
-  it('按 mock-only 临时契约查询服务端分页账号', async () => {
-    const response = {
-      items: [
-        {
-          displayName: '示例用户甲',
-          employeeNo: '10000001',
-          id: 'account-1',
-          profession: '研发',
-          status: 'ENABLED' as const,
-        },
-      ],
-      total: 1,
-    };
-    requestMock.mockResolvedValue(response);
-    const query = {
-      displayName: '示例',
-      page: 2,
-      pageSize: 10,
+beforeEach(() => {
+  apiMock.GET.mockReset();
+  apiMock.POST.mockReset();
+});
+
+describe('admin accounts V0.2 generated client seam', () => {
+  it('只把 cursor/limit 发送给 generated list，并保留 account etag', async () => {
+    const account = {
+      displayName: '示例用户',
+      employeeNo: '10000001',
+      etag: '"v3"',
+      id: 'account-1',
       profession: '研发',
-      sortBy: 'employeeNo' as const,
-      sortOrder: 'desc' as const,
-      status: 'ENABLED' as const,
+      status: 'ENABLED',
     };
-
-    await expect(listAccounts(query)).resolves.toEqual(response);
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/accounts', {
-      method: 'GET',
-      params: query,
-    });
-  });
-
-  it('创建账号时发送原因与新的 Idempotency-Key', async () => {
-    const input = {
-      displayName: '新用户',
-      employeeNo: '10000009',
-      profession: '测试',
-      reason: '项目入职',
-    };
-    const response = {
-      account: {
-        displayName: '新用户',
-        employeeNo: '10000009',
-        id: 'account-9',
-        profession: '测试',
-        status: 'PENDING_INIT' as const,
-      },
-      temporaryPassword: 'Temp!10000009#2026',
-    };
-    requestMock.mockResolvedValue(response);
-
-    await expect(createAccount(input)).resolves.toEqual(response);
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/accounts', {
-      data: input,
-      headers: {
-        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-      },
-      method: 'POST',
-    });
-  });
-
-  it('重置密码时发送 reason，并保留一次性临时密码回执', async () => {
-    const response = {
-      account: {
-        displayName: '示例用户甲',
-        employeeNo: '10000001',
-        id: 'account/1',
-        profession: '研发',
-        status: 'ENABLED' as const,
-      },
-      temporaryPassword: 'Reset!10000001#2026',
-    };
-    requestMock.mockResolvedValue(response);
+    apiMock.GET.mockResolvedValue(
+      result({
+        items: [
+          {
+            ...account,
+            displayName: '停用用户',
+            id: 'account-disabled',
+            status: 'DISABLED',
+          },
+          account,
+        ],
+        nextCursor: 'cursor-2',
+      }),
+    );
 
     await expect(
-      resetAccountPassword('account/1', { reason: '用户忘记密码' }),
-    ).resolves.toEqual(response);
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/accounts/account%2F1/reset-password',
+      listAccounts({
+        displayName: '示例',
+        page: 1,
+        pageSize: 20,
+        sortBy: 'displayName',
+        sortOrder: 'asc',
+        status: 'ENABLED',
+      }),
+    ).resolves.toEqual({ items: [account], nextCursor: 'cursor-2', total: 2 });
+    expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/admin/accounts', {
+      params: { query: { cursor: undefined, limit: 20 } },
+    });
+  });
+
+  it('账号写操作同时携带 Idempotency-Key 与服务端 etag', async () => {
+    apiMock.POST.mockResolvedValue({
+      data: undefined,
+      response: new Response(null, { status: 204 }),
+    });
+
+    await enableAccount('account/1', { reason: '恢复访问' }, '"v3"');
+    expect(apiMock.POST).toHaveBeenCalledWith(
+      '/api/v1/admin/accounts/{id}/enable',
       {
-        data: { reason: '用户忘记密码' },
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        body: { reason: '恢复访问' },
+        params: {
+          header: {
+            'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+            'If-Match': '"v3"',
+          },
+          path: { id: 'account/1' },
         },
-        method: 'POST',
       },
     );
   });
 
-  it.each([
-    {
-      invoke: () => enableAccount('account-1', { reason: '恢复访问' }),
-      path: '/api/v1/admin/accounts/account-1/enable',
-      reason: '恢复访问',
-    },
-    {
-      invoke: () => disableAccount('account-1', { reason: '账号停用' }),
-      path: '/api/v1/admin/accounts/account-1/disable',
-      reason: '账号停用',
-    },
-    {
-      invoke: () => resetAccountTotp('account-1', { reason: '更换设备' }),
-      path: '/api/v1/admin/accounts/account-1/totp-reset',
-      reason: '更换设备',
-    },
-  ])(
-    '$path 成功保留 204 void，并携带 reason 与幂等键',
-    async ({ invoke, path, reason }) => {
-      requestMock.mockResolvedValue(undefined);
-
-      await expect(invoke()).resolves.toBeUndefined();
-      expect(requestMock).toHaveBeenCalledWith(path, {
-        data: { reason },
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-        },
-        method: 'POST',
-      });
-    },
-  );
-
-  it('将 403 Problem 原文与 requestId 归一为 ApiError', async () => {
-    requestMock.mockRejectedValue({
-      response: {
-        data: {
-          detail: '无账号治理权限',
-          requestId: 'req-account-403',
-          status: 403,
-          title: 'FORBIDDEN',
-        },
-        status: 403,
+  it('重置密码保留一次性凭据回执并使用 If-Match', async () => {
+    const receipt = {
+      account: {
+        displayName: '示例用户',
+        employeeNo: '10000001',
+        etag: '"v5"',
+        id: 'account-1',
+        profession: null,
+        status: 'ENABLED',
       },
-    });
+      temporaryPassword: 'Temporary!2026',
+    };
+    apiMock.POST.mockResolvedValue(result(receipt));
 
     await expect(
-      createAccount({
-        displayName: '无权创建',
-        employeeNo: '10000009',
-        reason: '测试拒绝分支',
-      }),
-    ).rejects.toMatchObject({
-      name: 'ApiError',
-      problem: { detail: '无账号治理权限', status: 403 },
-      requestId: 'req-account-403',
-    });
+      resetAccountPassword('account-1', { reason: '用户忘记密码' }, '"v4"'),
+    ).resolves.toEqual(receipt);
   });
 });

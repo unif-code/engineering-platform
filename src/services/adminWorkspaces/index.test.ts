@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requestMock = vi.hoisted(() => vi.fn());
-
-vi.mock('@umijs/max', () => ({ request: requestMock }));
+const apiMock = vi.hoisted(() => ({
+  DELETE: vi.fn(),
+  GET: vi.fn(),
+  POST: vi.fn(),
+}));
+vi.mock('@/services/generated', () => ({ api: apiMock }));
 
 import {
-  createWorkspace,
   inviteWorkspaceLeader,
   listWorkspaceMembers,
   listWorkspaces,
@@ -13,137 +15,137 @@ import {
   transferWorkspaceOwner,
 } from './index';
 
-beforeEach(() => {
-  requestMock.mockReset();
+const result = <T>(data: T) => ({
+  data,
+  response: new Response(null, { status: 200 }),
 });
 
-describe('admin workspaces service', () => {
-  it('查询服务端分页与筛选', async () => {
-    const query = {
-      keyword: 'platform',
-      page: 2,
-      pageSize: 10,
-      status: 'ACTIVE' as const,
-    };
-    requestMock.mockResolvedValue({ items: [], total: 0 });
-
-    await expect(listWorkspaces(query)).resolves.toEqual({
-      items: [],
-      total: 0,
-    });
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/workspaces', {
-      method: 'GET',
-      params: query,
-    });
+beforeEach(() => {
+  Object.values(apiMock).forEach((mock) => {
+    mock.mockReset();
   });
+});
 
-  it('创建 Workspace 携带 reason 与 Idempotency-Key', async () => {
-    const input = {
-      name: '新工作区',
-      ownerId: 'leader-1',
-      reason: '新项目立项',
-    };
-    requestMock.mockResolvedValue({ id: 'workspace-new' });
-
-    await createWorkspace(input);
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/workspaces', {
-      data: input,
-      headers: {
-        'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-      },
-      method: 'POST',
-    });
-  });
-
-  it.each([
-    {
-      invoke: () =>
-        inviteWorkspaceLeader('workspace/1', {
-          accountId: 'leader-2',
-          reason: '协作需要',
-        }),
-      method: 'POST',
-      path: '/api/v1/admin/workspaces/workspace%2F1/leaders',
-      payload: { accountId: 'leader-2', reason: '协作需要' },
-    },
-    {
-      invoke: () =>
-        removeWorkspaceLeader('workspace/1', 'leader/2', {
-          reason: '协作结束',
-        }),
-      method: 'DELETE',
-      path: '/api/v1/admin/workspaces/workspace%2F1/leaders/leader%2F2',
-      payload: { reason: '协作结束' },
-    },
-    {
-      invoke: () =>
-        transferWorkspaceOwner('workspace/1', {
-          accountId: 'leader-2',
-          reason: '职责交接',
-        }),
-      method: 'POST',
-      path: '/api/v1/admin/workspaces/workspace%2F1/transfer-owner',
-      payload: { accountId: 'leader-2', reason: '职责交接' },
-    },
-  ])(
-    '$path 治理命令带原因与幂等键',
-    async ({ invoke, method, path, payload }) => {
-      requestMock.mockResolvedValue({ id: 'workspace-1' });
-
-      await invoke();
-      expect(requestMock).toHaveBeenCalledWith(path, {
-        data: payload,
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-        },
-        method,
-      });
-    },
-  );
-
-  it('读取只读成员投影', async () => {
-    const response = {
-      items: [
-        {
-          accountId: 'leader-1',
-          displayName: '示例 Leader',
-          employeeNo: '10000001',
-          source: 'OWNER' as const,
-        },
-      ],
-    };
-    requestMock.mockResolvedValue(response);
-
-    await expect(listWorkspaceMembers('workspace/1')).resolves.toEqual(
-      response,
+describe('admin workspaces V0.2 generated client seam', () => {
+  it('把正式 Workspace DTO 适配为现有页面模型', async () => {
+    apiMock.GET.mockResolvedValue(
+      result({
+        items: [
+          {
+            archivedAt: null,
+            id: 'workspace-1',
+            name: '平台研发',
+            ownerId: 'account-1',
+            version: 3,
+          },
+        ],
+        nextCursor: null,
+      }),
     );
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/workspaces/workspace%2F1/members',
-      { method: 'GET' },
-    );
-  });
-
-  it('保留 403 Problem detail 与 requestId', async () => {
-    requestMock.mockRejectedValue({
-      response: {
-        data: {
-          detail: '仅 Workspace Owner 可执行该操作',
-          requestId: 'req-workspace-403',
-          status: 403,
-          title: 'FORBIDDEN',
-        },
-        status: 403,
-      },
-    });
 
     await expect(
-      removeWorkspaceLeader('workspace-1', 'leader-2', {
-        reason: '越权操作',
-      }),
-    ).rejects.toMatchObject({
-      name: 'ApiError',
-      problem: { detail: '仅 Workspace Owner 可执行该操作', status: 403 },
-      requestId: 'req-workspace-403',
+      listWorkspaces({ page: 1, pageSize: 20 }),
+    ).resolves.toMatchObject({
+      items: [
+        {
+          id: 'workspace-1',
+          name: '平台研发',
+          owner: { id: 'account-1' },
+          status: 'ACTIVE',
+          version: 3,
+        },
+      ],
+      total: 1,
     });
+    expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/admin/workspaces');
+  });
+
+  it('成员投影补齐现有展示 ref，但来源仍由 generated DTO 决定', async () => {
+    apiMock.GET.mockResolvedValue(
+      result({
+        items: [
+          {
+            accountId: 'account-1',
+            computedAt: '2026-08-13T00:00:00Z',
+            source: 'OWNER',
+          },
+        ],
+      }),
+    );
+
+    await expect(listWorkspaceMembers('workspace/1')).resolves.toEqual({
+      items: [
+        {
+          accountId: 'account-1',
+          displayName: 'account-1',
+          employeeNo: 'account-1',
+          source: 'OWNER',
+        },
+      ],
+    });
+    expect(apiMock.GET).toHaveBeenCalledWith(
+      '/api/v1/admin/workspaces/{id}/members',
+      { params: { path: { id: 'workspace/1' } } },
+    );
+  });
+
+  it('Workspace 并发写使用 version ETag，transfer 映射 newOwnerId', async () => {
+    const workspaceResult = result({
+      archivedAt: null,
+      id: 'workspace-1',
+      name: '平台研发',
+      ownerId: 'leader-2',
+      version: 4,
+    });
+    apiMock.POST.mockResolvedValue(workspaceResult);
+    apiMock.DELETE.mockResolvedValue(workspaceResult);
+
+    await inviteWorkspaceLeader(
+      'workspace/1',
+      { accountId: 'leader-2', reason: '协作需要' },
+      3,
+    );
+    expect(apiMock.POST).toHaveBeenNthCalledWith(
+      1,
+      '/api/v1/admin/workspaces/{id}/leaders',
+      {
+        body: { accountId: 'leader-2', reason: '协作需要' },
+        params: {
+          header: {
+            'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+            'If-Match': '"v3"',
+          },
+          path: { id: 'workspace/1' },
+        },
+      },
+    );
+
+    await transferWorkspaceOwner(
+      'workspace/1',
+      { accountId: 'leader-2', reason: '职责交接' },
+      3,
+    );
+    expect(apiMock.POST).toHaveBeenNthCalledWith(
+      2,
+      '/api/v1/admin/workspaces/{id}/transfer-owner',
+      expect.objectContaining({
+        body: { newOwnerId: 'leader-2', reason: '职责交接' },
+      }),
+    );
+
+    await removeWorkspaceLeader(
+      'workspace/1',
+      'leader/2',
+      { reason: '协作结束' },
+      3,
+    );
+    expect(apiMock.DELETE).toHaveBeenCalledWith(
+      '/api/v1/admin/workspaces/{id}/leaders/{accountId}',
+      expect.objectContaining({
+        params: expect.objectContaining({
+          path: { accountId: 'leader/2', id: 'workspace/1' },
+        }),
+      }),
+    );
   });
 });

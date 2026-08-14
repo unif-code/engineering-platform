@@ -392,12 +392,12 @@ function checkBaselineCompatibility() {
   const newMajor = majorOf(currentSpec.info?.version);
   if (baseMajor !== null && newMajor !== null && newMajor > baseMajor) {
     console.log(
-      `[openapi] 相对 ${baseRef} 存在 breaking change，已由主版本升级（${baseSpec.info?.version} → ${currentSpec.info?.version}）显式声明。`,
+      `[openapi] 相对 ${ref} 存在 breaking change，已由主版本升级（${baseSpec.info?.version} → ${currentSpec.info?.version}）显式声明。`,
     );
     return;
   }
   fail(
-    `相对 ${baseRef} 检测到 breaking change 但主版本未升级（${baseSpec.info?.version} → ${currentSpec.info?.version}）：${breaking.join('；')}。breaking 变更必须以 Artifact 主版本发布，审批随后端 Release 流程。`,
+    `相对 ${ref} 检测到 breaking change 但主版本未升级（${baseSpec.info?.version} → ${currentSpec.info?.version}）：${breaking.join('；')}。breaking 变更必须以 Artifact 主版本发布，审批随后端 Release 流程。`,
   );
 }
 

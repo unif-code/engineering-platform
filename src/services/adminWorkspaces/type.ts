@@ -1,7 +1,5 @@
-/**
- * V0.2 Task 7 的 mock-only 临时 DTO。
- * api-v0.2.0 锁定后由 Task 10 的 generated client 类型整体替换。
- */
+import type { components } from '@/services/generated';
+
 export type WorkspaceStatus = 'ACTIVE' | 'ARCHIVED';
 export type WorkspaceMemberSource = 'OWNER' | 'LEADER' | 'DIRECT_REPORT';
 
@@ -33,20 +31,16 @@ export interface WorkspaceListResponse {
   total: number;
 }
 
-export interface CreateWorkspaceInput {
-  name: string;
-  ownerId: string;
-  reason: string;
-}
+export type CreateWorkspaceInput =
+  components['schemas']['CreateWorkspaceRequestDto'];
 
 export interface WorkspaceLeaderInput {
   accountId: string;
   reason: string;
 }
 
-export interface WorkspaceReasonInput {
-  reason: string;
-}
+export type WorkspaceReasonInput =
+  components['schemas']['RemoveLeaderRequestDto'];
 
 export interface WorkspaceMember {
   accountId: string;

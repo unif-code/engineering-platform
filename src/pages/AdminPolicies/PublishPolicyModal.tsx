@@ -5,6 +5,7 @@ import type { PublishPolicyFormValues } from './type';
 interface PublishPolicyModalProps {
   error: string | undefined;
   loading: boolean;
+  mode?: 'publish' | 'rollback';
   onClose: () => void;
   onSubmit: (values: PublishPolicyFormValues) => Promise<void>;
   open: boolean;
@@ -13,12 +14,16 @@ interface PublishPolicyModalProps {
 export function PublishPolicyModal({
   error,
   loading,
+  mode = 'publish',
   onClose,
   onSubmit,
   open,
 }: PublishPolicyModalProps) {
   const [reason, setReason] = useState('');
   const [totpCode, setTotpCode] = useState('');
+  const confirmLabel = mode === 'publish' ? '确认发布' : '确认创建';
+  const reasonLabel = mode === 'publish' ? '发布原因' : '回滚原因';
+  const title = mode === 'publish' ? '发布 Policy' : '创建回滚 Draft';
   const submitDisabled = useMemo(
     () => reason.trim().length === 0 || !/^\d{6}$/.test(totpCode),
     [reason, totpCode],
@@ -38,20 +43,20 @@ export function PublishPolicyModal({
             onClick={() => onSubmit({ reason: reason.trim(), totpCode })}
             type="primary"
           >
-            确认发布
+            {confirmLabel}
           </Button>
         </Space>
       }
       mask={{ closable: false }}
       onCancel={onClose}
       open={open}
-      title="发布 Policy"
+      title={title}
     >
       <Form layout="vertical">
         {error ? <Alert showIcon title={error} type="error" /> : null}
-        <Form.Item label="发布原因" required>
+        <Form.Item label={reasonLabel} required>
           <Input.TextArea
-            aria-label="发布原因"
+            aria-label={reasonLabel}
             id="policy-publish-reason"
             onChange={(event) => setReason(event.target.value)}
             rows={3}

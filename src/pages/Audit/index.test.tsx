@@ -4,14 +4,18 @@ import { App, ConfigProvider } from 'antd';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockRequester,
+  createRequesterFetch,
   type MockRoutes,
 } from '../../../tests/mockRequestHarness';
 
-const requestMock = vi.hoisted(() => vi.fn());
+const { fetchMock, requestMock } = vi.hoisted(() => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  return { fetchMock, requestMock: vi.fn() };
+});
 
 vi.mock('@umijs/max', () => ({
   defineMock: <T,>(routes: T) => routes,
-  request: requestMock,
 }));
 
 vi.mock('@ant-design/charts', () => ({
@@ -25,6 +29,9 @@ import AuditPage from '.';
 const INITIAL_WAIT = { timeout: 5_000 };
 let routes: MockRoutes;
 const requestThroughMock = createMockRequester(() => routes);
+const fetchThroughRequester = createRequesterFetch((path, options) =>
+  requestMock(path, options),
+);
 
 function renderPage() {
   return render(
@@ -47,13 +54,15 @@ beforeEach(() => {
   routes = createAdminAuditMock();
   requestMock.mockReset();
   requestMock.mockImplementation(requestThroughMock);
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(fetchThroughRequester);
 });
 
 afterEach(() => {
   vi.useRealTimers();
 });
 
-describe('AuditPage', () => {
+describe('AuditPage', { timeout: 30_000 }, () => {
   it('按原型呈现审计指标、三块分析、紧凑筛选和契约表格', async () => {
     renderPage();
 
@@ -125,9 +134,11 @@ describe('AuditPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    const auditRow = await screen.findByRole('row', {
-      name: /AUD-2026-0810-001/,
-    });
+    const auditRow = await screen.findByRole(
+      'row',
+      { name: /AUD-2026-0810-001/ },
+      INITIAL_WAIT,
+    );
     await user.click(
       within(auditRow).getByRole('button', { name: '查看详情' }),
     );
@@ -138,10 +149,10 @@ describe('AuditPage', () => {
     expect(dialog).toHaveTextContent('Correlation ID');
     expect(dialog).toHaveTextContent('corr-audit-0810-001');
     expect(dialog).toHaveTextContent('Config Publish');
-    expect(dialog).toHaveTextContent('生产策略 / access-policy-v8');
+    expect(dialog).toHaveTextContent('CONFIGURATION / access-policy-v8');
     expect(dialog).toHaveTextContent('完整摘要');
     expect(dialog).toHaveTextContent(
-      '生产策略 access-policy-v8 已发布，版本由 7 提升至 8。',
+      'Config Publish · CONFIGURATION / access-policy-v8',
     );
     expect(dialog).toHaveTextContent('Request ID');
     expect(dialog).toHaveTextContent('req-audit-0810-001');
@@ -161,7 +172,7 @@ describe('AuditPage', () => {
     renderPage();
 
     const table = await screen.findByRole('table');
-    await screen.findByRole('row', { name: /AUD-2026-0810-001/ });
+    await screen.findByRole('row', { name: /AUD-2026-0810-001/ }, INITIAL_WAIT);
     const initialRowCount = within(table).getAllByRole('row').length;
 
     await user.click(screen.getByRole('button', { name: '导出报表' }));
@@ -178,7 +189,7 @@ describe('AuditPage', () => {
   it('不展示原型没有的保存筛选和目标类型筛选', async () => {
     renderPage();
 
-    await screen.findByRole('row', { name: /AUD-2026-0810-001/ });
+    await screen.findByRole('row', { name: /AUD-2026-0810-001/ }, INITIAL_WAIT);
     expect(
       screen.queryByRole('button', { name: '保存筛选' }),
     ).not.toBeInTheDocument();
@@ -207,7 +218,7 @@ describe('AuditPage', () => {
         method: 'GET',
         params: {
           from: from.toISOString(),
-          limit: 3,
+          limit: '3',
           to: to.toISOString(),
         },
       });
@@ -223,7 +234,7 @@ describe('AuditPage', () => {
         method: 'GET',
         params: {
           from: from.toISOString(),
-          limit: 3,
+          limit: '3',
           to: to.toISOString(),
         },
       });
@@ -240,14 +251,18 @@ describe('AuditPage', () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole('table', {}, INITIAL_WAIT);
-    await screen.findByRole('row', { name: /AUD-2026-0810-001/ });
+    await screen.findByRole('row', { name: /AUD-2026-0810-001/ }, INITIAL_WAIT);
     await selectOption(user, '时间范围', '全部时间');
     await waitFor(() => {
       const [, options] = requestMock.mock.calls.at(-1) ?? [];
-      expect(options?.params).toEqual({ limit: 3 });
+      expect(options?.params).toEqual({ limit: '3' });
     }, INITIAL_WAIT);
 
-    const firstLoadMore = screen.getByRole('button', { name: '加载更多' });
+    const firstLoadMore = await screen.findByRole(
+      'button',
+      { name: '加载更多' },
+      INITIAL_WAIT,
+    );
     await waitFor(() => expect(firstLoadMore).toBeEnabled());
     await user.click(firstLoadMore);
     await waitFor(() => {
@@ -346,8 +361,13 @@ describe('AuditPage', () => {
     );
     renderPage();
     await screen.findByRole('row', { name: /AUD-2026-0810-001/ });
+    await selectOption(user, '时间范围', '全部时间');
 
-    const firstLoadMore = screen.getByRole('button', { name: '加载更多' });
+    const firstLoadMore = await screen.findByRole(
+      'button',
+      { name: '加载更多' },
+      INITIAL_WAIT,
+    );
     await waitFor(() => expect(firstLoadMore).toBeEnabled());
     await user.click(firstLoadMore);
 

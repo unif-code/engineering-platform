@@ -66,9 +66,36 @@ export default function AdminGrantsPage() {
   });
   const createMutation = useMutation({ mutationFn: createGrant });
   const revokeMutation = useMutation({
-    mutationFn: ({ grantId, reason }: { grantId: string; reason: string }) =>
-      revokeGrant(grantId, { reason }),
+    mutationFn: ({
+      grantId,
+      reason,
+      version,
+    }: {
+      grantId: string;
+      reason: string;
+      version: number;
+    }) => revokeGrant(grantId, { reason }, version),
   });
+  const accountsById = useMemo(
+    () =>
+      new Map(
+        (accountsQuery.data?.items ?? []).map((account) => [
+          account.id,
+          account,
+        ]),
+      ),
+    [accountsQuery.data?.items],
+  );
+  const workspacesById = useMemo(
+    () =>
+      new Map(
+        (workspacesQuery.data?.items ?? []).map((workspace) => [
+          workspace.id,
+          workspace,
+        ]),
+      ),
+    [workspacesQuery.data?.items],
+  );
 
   const invalidatePendingRequests = useCallback(() => {
     requestSequenceRef.current += 1;
@@ -99,7 +126,29 @@ export default function AdminGrantsPage() {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        const rows = [...page.items.map(toGrantRow), ...INHERITED_GRANT_ROWS];
+        const rows = [
+          ...page.items.map((grant) => {
+            const account = accountsById.get(grant.principal.id);
+            const workspace =
+              grant.scope.id === null
+                ? undefined
+                : workspacesById.get(grant.scope.id);
+            return toGrantRow({
+              ...grant,
+              principal: account
+                ? {
+                    displayName: account.displayName,
+                    employeeNo: account.employeeNo,
+                    id: account.id,
+                  }
+                : grant.principal,
+              scope: workspace
+                ? { ...grant.scope, label: workspace.name }
+                : grant.scope,
+            });
+          }),
+          ...INHERITED_GRANT_ROWS,
+        ];
         setAllGrants(rows);
         const data = rows.filter((grant) => {
           if (requestParams.filter === 'high-risk') {
@@ -123,13 +172,19 @@ export default function AdminGrantsPage() {
         return { data: [], success: true, total: 0 };
       }
     },
-    [message],
+    [accountsById, message, workspacesById],
   );
 
   const reloadGrants = useCallback(async () => {
     invalidatePendingRequests();
     await actionRef.current?.reload();
   }, [invalidatePendingRequests]);
+
+  useEffect(() => {
+    if (accountsQuery.data && workspacesQuery.data) {
+      void reloadGrants();
+    }
+  }, [accountsQuery.data, reloadGrants, workspacesQuery.data]);
 
   const principalOptions = useMemo<GrantPrincipalOption[]>(
     () => [
@@ -345,6 +400,7 @@ export default function AdminGrantsPage() {
               await revokeMutation.mutateAsync({
                 grantId: revokingGrant.id,
                 reason,
+                version: revokingGrant.version,
               });
               await reloadGrants();
             }}

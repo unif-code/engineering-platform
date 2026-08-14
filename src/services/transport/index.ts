@@ -82,6 +82,21 @@ export function onUnauthorized(handler: () => void): void {
   unauthorizedHandler = handler;
 }
 
+/** 从 openapi-fetch 成功结果中读取业务 payload；带响应体的契约不允许静默返回 undefined。 */
+export function requireApiData<T>(result: { data?: T; response: Response }): T {
+  if (result.data !== undefined) {
+    return result.data;
+  }
+  throw new ApiError({
+    detail: 'OpenAPI 成功响应缺少契约声明的响应体',
+    status: result.response.status,
+    title: 'INVALID_API_RESPONSE',
+  });
+}
+
+/** 后端并发控制约定使用强 ETag："v<positive integer>"。 */
+export const entityTag = (version: number): string => `"v${version}"`;
+
 const toProblem = (text: string, response: Response): ProblemDetails => {
   let parsed: unknown;
   try {
@@ -124,7 +139,7 @@ const normalize: Middleware = {
  * Paths 来自 src/services/generated 的生成类型；HTTP 非 2xx、网络失败与请求中止
  * 一律归一为 ApiError（ProblemDetails），原始错误保留在 cause。
  */
-export function createApiClient<Paths extends object>(baseUrl = '/api') {
+export function createApiClient<Paths extends object>(baseUrl = '') {
   const client = createClient<Paths>({ baseUrl, credentials: 'same-origin' });
   client.use(normalize);
   return client;

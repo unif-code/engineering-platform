@@ -1,20 +1,12 @@
-/**
- * V0.2 Task 6 的 mock-only 临时 DTO。
- * api-v0.2.0 锁定后由 Task 10 的 generated client 类型整体替换。
- */
-export type AccountStatus =
-  | 'PENDING_INIT'
-  | 'ENABLED'
-  | 'DISABLED'
-  | 'RESTRICTED';
+import type { components } from '@/services/generated';
 
-export interface AccountSummary {
-  id: string;
-  employeeNo: string;
-  displayName: string;
-  profession: string | null;
-  status: AccountStatus;
-}
+type Schemas = components['schemas'];
+
+export type AccountStatus = Schemas['AccountStatus'];
+export type AccountSummary = Schemas['AccountSummaryResponseDto'];
+export type CreateAccountInput = Schemas['CreateAccountRequestDto'];
+export type AccountReasonInput = Schemas['AccountReasonRequestDto'];
+export type AccountCredentialReceipt = Schemas['AccountCredentialReceiptDto'];
 
 export type AccountSortField =
   | 'employeeNo'
@@ -22,7 +14,9 @@ export type AccountSortField =
   | 'profession'
   | 'status';
 
+/** ProTable 的应用层查询；V0.2 服务端目前只接收 cursor/limit。 */
 export interface AccountListQuery {
+  cursor?: string;
   page: number;
   pageSize: number;
   employeeNo?: string;
@@ -33,23 +27,6 @@ export interface AccountListQuery {
   sortOrder?: 'asc' | 'desc';
 }
 
-export interface AccountListResponse {
-  items: AccountSummary[];
+export type AccountListResponse = Schemas['AccountListResponseDto'] & {
   total: number;
-}
-
-export interface CreateAccountInput {
-  employeeNo: string;
-  displayName: string;
-  profession?: string;
-  reason: string;
-}
-
-export interface AccountReasonInput {
-  reason: string;
-}
-
-export interface AccountCredentialReceipt {
-  account: AccountSummary;
-  temporaryPassword: string;
-}
+};

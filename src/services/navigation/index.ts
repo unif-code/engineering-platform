@@ -1,15 +1,13 @@
-import { request } from '@umijs/max';
-import { normalizeApiError } from '@/services/transport';
+import { api } from '@/services/generated';
+import { requireApiData } from '@/services/transport';
 import type { NavigationItem } from './type';
 
 export async function getNavigation(): Promise<NavigationItem[]> {
-  try {
-    return await request<NavigationItem[]>('/api/v1/navigation', {
-      method: 'GET',
-    });
-  } catch (error) {
-    throw normalizeApiError(error);
-  }
+  return requireApiData(await api.GET('/api/v1/navigation')).map((item) => ({
+    ...item,
+    meta: item.meta ?? {},
+    sort: item.order,
+  }));
 }
 
 export type { NavigationItem } from './type';

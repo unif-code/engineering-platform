@@ -24,7 +24,11 @@ import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
 import { WORKSPACE_STATUS_META } from './constant';
 import { useStyles } from './index.style';
 import type { WorkspaceQueryParams, WorkspaceRow } from './type';
-import { flattenLeaders, queryWorkspaceRows } from './util';
+import {
+  flattenLeaders,
+  flattenOrganizationAccounts,
+  queryWorkspaceRows,
+} from './util';
 import { WorkspaceDetailDrawer } from './WorkspaceDetailDrawer';
 import { WorkspaceModal } from './WorkspaceModal';
 
@@ -56,34 +60,40 @@ export default function AdminWorkspacesPage() {
     mutationFn: ({
       accountId,
       reason,
+      version,
       workspaceId,
     }: {
       accountId: string;
       reason: string;
+      version: number;
       workspaceId: string;
-    }) => inviteWorkspaceLeader(workspaceId, { accountId, reason }),
+    }) => inviteWorkspaceLeader(workspaceId, { accountId, reason }, version),
   });
   const removeMutation = useMutation({
     mutationFn: ({
       accountId,
       reason,
+      version,
       workspaceId,
     }: {
       accountId: string;
       reason: string;
+      version: number;
       workspaceId: string;
-    }) => removeWorkspaceLeader(workspaceId, accountId, { reason }),
+    }) => removeWorkspaceLeader(workspaceId, accountId, { reason }, version),
   });
   const transferMutation = useMutation({
     mutationFn: ({
       accountId,
       reason,
+      version,
       workspaceId,
     }: {
       accountId: string;
       reason: string;
+      version: number;
       workspaceId: string;
-    }) => transferWorkspaceOwner(workspaceId, { accountId, reason }),
+    }) => transferWorkspaceOwner(workspaceId, { accountId, reason }, version),
   });
 
   const invalidatePendingRequests = useCallback(() => {
@@ -101,6 +111,47 @@ export default function AdminWorkspacesPage() {
     () => flattenLeaders(organizationQuery.data?.items ?? []),
     [organizationQuery.data?.items],
   );
+  const accountsById = useMemo(
+    () =>
+      new Map(
+        flattenOrganizationAccounts(organizationQuery.data?.items ?? []).map(
+          (account) => [account.id, account],
+        ),
+      ),
+    [organizationQuery.data?.items],
+  );
+  const resolvedMembers = useMemo(
+    () =>
+      membersQuery.data?.items.map((member) => {
+        const account = accountsById.get(member.accountId);
+        return account
+          ? {
+              ...member,
+              displayName: account.displayName,
+              employeeNo: account.employeeNo,
+            }
+          : member;
+      }),
+    [accountsById, membersQuery.data?.items],
+  );
+  const detailWorkspace = useMemo(() => {
+    if (selectedWorkspace === undefined) {
+      return undefined;
+    }
+    const leaders = (resolvedMembers ?? [])
+      .filter(({ source }) => source === 'OWNER' || source === 'LEADER')
+      .map((member) => ({
+        displayName: member.displayName,
+        employeeNo: member.employeeNo,
+        id: member.accountId,
+      }));
+    return {
+      ...selectedWorkspace,
+      leaders,
+      owner:
+        accountsById.get(selectedWorkspace.owner.id) ?? selectedWorkspace.owner,
+    };
+  }, [accountsById, resolvedMembers, selectedWorkspace]);
 
   const requestWorkspaces = useCallback<
     NonNullable<ProTableProps<WorkspaceRow, WorkspaceQueryParams>['request']>
@@ -116,6 +167,7 @@ export default function AdminWorkspacesPage() {
           ...result,
           data: result.data?.map((row) => ({
             ...row,
+            owner: accountsById.get(row.owner.id) ?? row.owner,
             ...presentationOverridesRef.current.get(row.id),
           })),
         };
@@ -127,8 +179,14 @@ export default function AdminWorkspacesPage() {
         return { data: [], success: true, total: 0 };
       }
     },
-    [message],
+    [accountsById, message],
   );
+
+  useEffect(() => {
+    if (accountsById.size > 0) {
+      void actionRef.current?.reload();
+    }
+  }, [accountsById]);
 
   const reloadWorkspaces = useCallback(async () => {
     invalidatePendingRequests();
@@ -271,19 +329,21 @@ export default function AdminWorkspacesPage() {
           </Button>
         </header>
 
-        <ProTable<WorkspaceRow, WorkspaceQueryParams>
-          actionRef={actionRef}
-          columns={columns}
-          onChange={invalidatePendingRequests}
-          options={false}
-          pagination={{ pageSize: 10, showSizeChanger: false }}
-          request={requestWorkspaces}
-          rowKey="id"
-          scroll={{ x: 1050 }}
-          search={false}
-          size="small"
-          toolBarRender={false}
-        />
+        {organizationQuery.isLoading ? null : (
+          <ProTable<WorkspaceRow, WorkspaceQueryParams>
+            actionRef={actionRef}
+            columns={columns}
+            onChange={invalidatePendingRequests}
+            options={false}
+            pagination={{ pageSize: 10, showSizeChanger: false }}
+            request={requestWorkspaces}
+            rowKey="id"
+            scroll={{ x: 1050 }}
+            search={false}
+            size="small"
+            toolBarRender={false}
+          />
+        )}
 
         <p className={styles.pageNote}>
           每个工作区恰有一个 Owner；正式成员为动态投影（Owner + 受邀 Leader
@@ -306,10 +366,10 @@ export default function AdminWorkspacesPage() {
           />
         ) : null}
 
-        {selectedWorkspace ? (
+        {detailWorkspace ? (
           <WorkspaceDetailDrawer
             allLeaders={allLeaders}
-            members={membersQuery.data?.items}
+            members={resolvedMembers}
             membersError={membersQuery.error}
             membersLoading={membersQuery.isLoading}
             onClose={() => setSelectedWorkspace(undefined)}
@@ -319,6 +379,7 @@ export default function AdminWorkspacesPage() {
                 inviteMutation.mutateAsync({
                   accountId,
                   reason,
+                  version: workspace.version,
                   workspaceId: workspace.id,
                 }),
               );
@@ -330,6 +391,7 @@ export default function AdminWorkspacesPage() {
                 removeMutation.mutateAsync({
                   accountId,
                   reason,
+                  version: workspace.version,
                   workspaceId: workspace.id,
                 }),
               );
@@ -340,12 +402,13 @@ export default function AdminWorkspacesPage() {
                 transferMutation.mutateAsync({
                   accountId,
                   reason,
+                  version: workspace.version,
                   workspaceId: workspace.id,
                 }),
               );
             }}
             open
-            workspace={selectedWorkspace}
+            workspace={detailWorkspace}
           />
         ) : null}
       </div>

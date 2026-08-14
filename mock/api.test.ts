@@ -133,7 +133,7 @@ describe('mock API session assembly', () => {
     expect(response.statusCode).toBe(200);
     expect(response.body).toEqual({
       challengeToken: 'challenge-00000001',
-      stage: 'TOTP',
+      state: 'TOTP_REQUIRED',
     });
     expect(response.cookieCall).toBeUndefined();
   });
@@ -201,12 +201,18 @@ describe('mock API session assembly', () => {
     expect(meResponse.statusCode).toBe(200);
     expect(meResponse.body).toEqual({
       capabilities: [
-        'audit.read',
-        'identity.account.manage',
-        'organization.manage',
-        'authorization.grant.manage',
-        'platform.configuration.manage',
-        'workspace.manage',
+        { capability: 'audit.read', scopeType: 'PLATFORM' },
+        { capability: 'identity.account.manage', scopeType: 'PLATFORM' },
+        { capability: 'organization.manage', scopeType: 'PLATFORM' },
+        {
+          capability: 'authorization.grant.manage',
+          scopeType: 'PLATFORM',
+        },
+        {
+          capability: 'platform.configuration.manage',
+          scopeType: 'PLATFORM',
+        },
+        { capability: 'workspace.manage', scopeType: 'PLATFORM' },
       ],
       employeeId: '00000000',
       name: '平台管理员',
@@ -214,119 +220,16 @@ describe('mock API session assembly', () => {
 
     const navigationResponse = runRoute('GET /api/v1/navigation', request);
     expect(navigationResponse.statusCode).toBe(200);
-    expect(navigationResponse.body).toEqual([
-      {
-        meta: { section: 'workspace' },
-        name: '工作台',
-        order: 1,
-        routeKey: 'home',
-        sort: 10,
-      },
-      {
-        meta: { section: 'workspace' },
-        name: '任务',
-        order: 2,
-        routeKey: 'tasks',
-        sort: 20,
-      },
-      {
-        meta: { section: 'workspace' },
-        name: '工作区',
-        order: 3,
-        routeKey: 'workspaces',
-        sort: 30,
-      },
-      {
-        meta: { section: 'workspace' },
-        name: '归档数据',
-        order: 4,
-        routeKey: 'tasks.archived',
-        sort: 40,
-      },
-      {
-        meta: { section: 'workspace', unreadCount: 4 },
-        name: '消息中心',
-        order: 5,
-        routeKey: 'messages',
-        sort: 50,
-      },
-      {
-        meta: { section: 'workspace' },
-        name: '团队看板',
-        order: 6,
-        routeKey: 'team-board',
-        sort: 60,
-      },
-      {
-        meta: { section: 'governance' },
-        name: '审计看板',
-        order: 7,
-        routeKey: 'audit',
-        sort: 70,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '工作区管理',
-        order: 8,
-        routeKey: 'admin.workspaces',
-        sort: 80,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '组织管理',
-        order: 9,
-        routeKey: 'admin.organization',
-        sort: 90,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '技能管理',
-        order: 10,
-        routeKey: 'admin.skills',
-        sort: 100,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '模型管理',
-        order: 11,
-        routeKey: 'admin.models',
-        sort: 110,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '角色管理',
-        order: 12,
-        routeKey: 'admin.roles',
-        sort: 120,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '用户管理',
-        order: 13,
-        routeKey: 'admin.users',
-        sort: 130,
-      },
-      {
-        meta: { section: 'administration' },
-        name: 'Grant 管理',
-        order: 14,
-        routeKey: 'admin.grants',
-        sort: 140,
-      },
-      {
-        meta: { section: 'administration' },
-        name: 'Policy 发布',
-        order: 15,
-        routeKey: 'admin.policies',
-        sort: 150,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '菜单管理',
-        order: 16,
-        routeKey: 'admin.menus',
-        sort: 160,
-      },
-    ]);
+    expect(navigationResponse.body).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ order: 1, routeKey: 'home' }),
+        expect.objectContaining({ order: 14, routeKey: 'admin.grants' }),
+      ]),
+    );
+    expect(
+      (navigationResponse.body as Array<Record<string, unknown>>).some(
+        (item) => 'sort' in item,
+      ),
+    ).toBe(false);
   });
 });

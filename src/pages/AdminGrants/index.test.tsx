@@ -4,16 +4,19 @@ import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  createMockRequester,
+  createMockFetch,
   type MockRoutes,
 } from '../../../tests/mockRequestHarness';
 
-const requestMock = vi.hoisted(() => vi.fn());
+const { fetchMock, requestMock } = vi.hoisted(() => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  return { fetchMock, requestMock: vi.fn() };
+});
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
   defineMock: <T,>(routes: T) => routes,
-  request: requestMock,
 }));
 
 import { createAdminAccountsMock } from '../../../mock/adminAccounts';
@@ -24,7 +27,7 @@ import AdminGrantsPage from '.';
 const INITIAL_WAIT = { timeout: 5_000 };
 const INTERACTION_TEST_TIMEOUT = 30_000;
 let routes: MockRoutes;
-const requestThroughMock = createMockRequester(() => routes);
+const fetchThroughMock = createMockFetch(() => routes);
 
 function renderPage() {
   const queryClient = new QueryClient({
@@ -53,7 +56,27 @@ beforeEach(() => {
     ...createAdminGrantsMock(),
   };
   requestMock.mockReset();
-  requestMock.mockImplementation(requestThroughMock);
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request =
+        input instanceof Request ? input : new Request(String(input), init);
+      const url = new URL(request.url);
+      const bodyText = await request.clone().text();
+      const headers = Object.fromEntries(
+        [...request.headers.entries()].filter(([name]) =>
+          ['idempotency-key', 'if-match'].includes(name.toLocaleLowerCase()),
+        ),
+      );
+      requestMock(url.pathname, {
+        ...(bodyText ? { data: JSON.parse(bodyText) } : {}),
+        ...(Object.keys(headers).length > 0 ? { headers } : {}),
+        method: request.method,
+        ...(url.search ? { params: Object.fromEntries(url.searchParams) } : {}),
+      });
+      return fetchThroughMock(input, init);
+    },
+  );
 });
 
 describe('AdminGrantsPage', () => {
@@ -90,7 +113,6 @@ describe('AdminGrantsPage', () => {
     ).toBeVisible();
     expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/grants', {
       method: 'GET',
-      params: { page: 1, pageSize: 100 },
     });
 
     await user.click(
@@ -152,10 +174,9 @@ describe('AdminGrantsPage', () => {
           capability: 'ws.config',
           principalId: 'account-2',
           reason: '承担营销工作区治理职责',
-          scope: {
-            id: 'workspace-platform-core',
-            type: 'WORKSPACE',
-          },
+          scopeId: 'workspace-platform-core',
+          scopeType: 'WORKSPACE',
+          source: 'MANUAL',
         },
         headers: {
           'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
@@ -198,6 +219,7 @@ describe('AdminGrantsPage', () => {
           data: { reason: '审计轮值结束' },
           headers: {
             'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+            'If-Match': '"v1"',
           },
           method: 'DELETE',
         },

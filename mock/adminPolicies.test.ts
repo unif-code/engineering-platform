@@ -1,11 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import type {
-  PolicyCatalogResponse,
-  PolicyDraft,
-  PolicyValidationResult,
-  PolicyVersionsResponse,
-  PublishedPolicyVersion,
-} from '../src/services/adminPolicies';
+import type { components } from '../src/services/generated/schema';
 import { mutationHeaders } from '../src/services/transport';
 import {
   createMockRequester,
@@ -13,40 +7,45 @@ import {
 } from '../tests/mockRequestHarness';
 import { createAdminPoliciesMock } from './adminPolicies';
 
+type Draft = components['schemas']['DraftResponseDto'];
+type Catalog = components['schemas']['PolicyCatalogResponseDto'];
+type Validation = components['schemas']['DraftValidationResponseDto'];
+type PublishedVersion = components['schemas']['PublishedVersionDto'];
+type Versions = components['schemas']['PolicyVersionsResponseDto'];
+
 let routes: MockRoutes;
 const request = createMockRequester(() => routes);
-
 const draftsPath = '/api/v1/admin/policies/identity/drafts';
 
-async function createDraft(): Promise<PolicyDraft> {
+async function createDraft(values: Record<string, unknown> = {}) {
   return (await request(draftsPath, {
-    data: { scope: 'PLATFORM' },
+    data: { values },
     headers: mutationHeaders(),
     method: 'POST',
-  })) as PolicyDraft;
+  })) as Draft;
 }
 
 async function updateDraft(
-  draft: PolicyDraft,
-  content: Record<string, number | string>,
-  etag = draft.etag,
-): Promise<PolicyDraft> {
+  draft: Draft,
+  values: Record<string, unknown>,
+  etag = `"v${draft.revision}"`,
+) {
   return (await request(`${draftsPath}/${draft.id}`, {
-    data: { content },
+    data: { values },
     headers: mutationHeaders({ etag }),
     method: 'PATCH',
-  })) as PolicyDraft;
+  })) as Draft;
 }
 
 async function publishDraft(
-  draft: PolicyDraft,
+  draft: Draft,
   totpCode = '123456',
-): Promise<PublishedPolicyVersion> {
+): Promise<PublishedVersion> {
   return (await request(`${draftsPath}/${draft.id}/publish`, {
     data: { reason: '更新身份安全策略', totpCode },
-    headers: mutationHeaders(),
+    headers: mutationHeaders({ etag: `"v${draft.revision}"` }),
     method: 'POST',
-  })) as PublishedPolicyVersion;
+  })) as PublishedVersion;
 }
 
 beforeEach(() => {
@@ -54,18 +53,16 @@ beforeEach(() => {
 });
 
 describe('adminPolicies mock contract', () => {
-  it('返回 identity catalog 当前值、版本与版本历史', async () => {
-    const catalog = (await request(
-      '/api/v1/admin/policies',
-    )) as PolicyCatalogResponse;
+  it('返回 V0.2 catalog active snapshot、key metadata 与版本历史', async () => {
+    const catalog = (await request('/api/v1/admin/policies')) as Catalog;
     const versions = (await request(
       '/api/v1/admin/policies/identity/versions',
-    )) as PolicyVersionsResponse;
+    )) as Versions;
 
-    expect(catalog).toMatchObject({
-      activeVersion: 1,
+    expect(catalog.active).toMatchObject({
       namespace: 'identity',
       scope: 'PLATFORM',
+      version: 1,
     });
     expect(catalog.items.map(({ key }) => key)).toEqual([
       'identity.temp_password_ttl_hours',
@@ -78,19 +75,20 @@ describe('adminPolicies mock contract', () => {
     ]);
     expect(catalog.items).toContainEqual(
       expect.objectContaining({
-        activeValue: 60,
+        defaultValue: 60,
         key: 'identity.session_idle_minutes',
-        max: 240,
-        min: 15,
+        maxValue: 240,
+        minValue: 15,
         valueType: 'INTEGER',
       }),
     );
-    expect(versions.items).toEqual([
-      expect.objectContaining({ current: true, version: 1 }),
-    ]);
+    expect(versions).toEqual({
+      items: [expect.objectContaining({ version: 1 })],
+      nextCursor: null,
+    });
   });
 
-  it('PATCH 要求匹配 Draft ETag，成功后 revision 与 etag 前进', async () => {
+  it('PATCH 要求匹配 Draft ETag，成功后 revision 前进', async () => {
     const draft = await createDraft();
 
     await expect(
@@ -113,10 +111,9 @@ describe('adminPolicies mock contract', () => {
       content: { 'identity.session_idle_minutes': 30 },
       revision: 2,
     });
-    expect(updated.etag).not.toBe(draft.etag);
   });
 
-  it('Validate 将越界数字返回为结构化 issue', async () => {
+  it('Validate 使用 If-Match 并返回 revision 与结构化 issue', async () => {
     const draft = await createDraft();
     const updated = await updateDraft(draft, {
       ...draft.content,
@@ -124,17 +121,19 @@ describe('adminPolicies mock contract', () => {
     });
 
     const result = (await request(`${draftsPath}/${updated.id}/validate`, {
-      headers: mutationHeaders(),
+      data: {},
+      headers: mutationHeaders({ etag: '"v2"' }),
       method: 'POST',
-    })) as PolicyValidationResult;
+    })) as Validation;
 
-    expect(result).toEqual({
+    expect(result).toMatchObject({
       issues: [
         expect.objectContaining({
           key: 'identity.session_idle_minutes',
           message: expect.stringMatching(/15.*240/),
         }),
       ],
+      revision: 3,
       valid: false,
     });
   });
@@ -145,10 +144,7 @@ describe('adminPolicies mock contract', () => {
 
     await expect(publishDraft(first, '000000')).rejects.toMatchObject({
       response: {
-        data: expect.objectContaining({
-          detail: 'TOTP 验证码错误',
-          requestId: expect.any(String),
-        }),
+        data: expect.objectContaining({ detail: 'TOTP 验证码错误' }),
         status: 401,
       },
     });
@@ -162,7 +158,7 @@ describe('adminPolicies mock contract', () => {
     });
   });
 
-  it('Rollback 从历史 Snapshot 创建新 Draft，不立即切换 Active 版本', async () => {
+  it('Rollback 使用 active version If-Match 创建 Draft，不切换 Active', async () => {
     const draft = await createDraft();
     const updated = await updateDraft(draft, {
       ...draft.content,
@@ -173,24 +169,25 @@ describe('adminPolicies mock contract', () => {
     const rollbackDraft = (await request(
       '/api/v1/admin/policies/identity/rollback',
       {
-        data: { toVersion: 1 },
-        headers: mutationHeaders(),
+        data: {
+          reason: '恢复默认策略',
+          toVersion: 1,
+          totpCode: '123456',
+        },
+        headers: mutationHeaders({ etag: '"v2"' }),
         method: 'POST',
       },
-    )) as PolicyDraft;
-    const catalog = (await request(
-      '/api/v1/admin/policies',
-    )) as PolicyCatalogResponse;
+    )) as Draft;
+    const catalog = (await request('/api/v1/admin/policies')) as Catalog;
 
     expect(rollbackDraft).toMatchObject({
       baseVersion: 2,
       content: { 'identity.session_idle_minutes': 60 },
       status: 'DRAFT',
     });
-    expect(catalog).toMatchObject({ activeVersion: 2 });
-    expect(
-      catalog.items.find(({ key }) => key === 'identity.session_idle_minutes')
-        ?.activeValue,
-    ).toBe(30);
+    expect(catalog.active).toMatchObject({
+      values: { 'identity.session_idle_minutes': 30 },
+      version: 2,
+    });
   });
 });

@@ -1,81 +1,95 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const requestMock = vi.hoisted(() => vi.fn());
-
-vi.mock('@umijs/max', () => ({ request: requestMock }));
+const apiMock = vi.hoisted(() => ({ GET: vi.fn(), PUT: vi.fn() }));
+vi.mock('@/services/generated', () => ({ api: apiMock }));
 
 import { getOrganizationTree, setOrganizationSuperior } from './index';
 
 beforeEach(() => {
-  requestMock.mockReset();
+  apiMock.GET.mockReset();
+  apiMock.PUT.mockReset();
 });
 
-describe('admin organization service', () => {
-  it('读取 mock-only 组织树 DTO', async () => {
-    const response = {
+describe('admin organization V0.2 generated client seam', () => {
+  it('把 managers/leaders/members 正式投影适配为现有递归树', async () => {
+    apiMock.GET.mockResolvedValue({
+      data: {
+        managers: [
+          {
+            account: {
+              displayName: '经理',
+              employeeNo: '10000001',
+              id: 'manager-1',
+            },
+            leaders: [
+              {
+                account: {
+                  displayName: 'Leader',
+                  employeeNo: '10000002',
+                  id: 'leader-1',
+                },
+                members: [
+                  {
+                    displayName: '成员',
+                    employeeNo: '10000003',
+                    id: 'member-1',
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      response: new Response(null, { status: 200 }),
+    });
+
+    await expect(getOrganizationTree()).resolves.toMatchObject({
       items: [
         {
-          children: [],
-          displayName: '示例经理',
-          employeeNo: '10000001',
           id: 'manager-1',
-          kind: 'MANAGER' as const,
+          kind: 'MANAGER',
           superiorId: null,
+          children: [
+            {
+              id: 'leader-1',
+              kind: 'LEADER',
+              superiorId: 'manager-1',
+              children: [
+                {
+                  id: 'member-1',
+                  kind: 'MEMBER',
+                  superiorId: 'leader-1',
+                },
+              ],
+            },
+          ],
         },
       ],
-    };
-    requestMock.mockResolvedValue(response);
-
-    await expect(getOrganizationTree()).resolves.toEqual(response);
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/organization/tree',
-      { method: 'GET' },
-    );
+    });
+    expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/admin/organization/tree');
   });
 
-  it('调整归属发送 reason、目标 superiorId 与新的 Idempotency-Key', async () => {
-    requestMock.mockResolvedValue(undefined);
+  it('调整上级调用 generated PUT 并支持 null 解除归属', async () => {
+    apiMock.PUT.mockResolvedValue({
+      data: { state: 'UPDATED' },
+      response: new Response(null, { status: 200 }),
+    });
 
-    await expect(
-      setOrganizationSuperior('account/1', {
-        reason: '团队调整',
-        superiorId: 'leader-2',
-      }),
-    ).resolves.toBeUndefined();
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/accounts/account%2F1/superior',
+    await setOrganizationSuperior('account/1', {
+      reason: '团队调整',
+      superiorId: null,
+    });
+    expect(apiMock.PUT).toHaveBeenCalledWith(
+      '/api/v1/admin/accounts/{accountId}/superior',
       {
-        data: { reason: '团队调整', superiorId: 'leader-2' },
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+        body: { reason: '团队调整', superiorId: null },
+        params: {
+          header: {
+            'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+          },
+          path: { accountId: 'account/1' },
         },
-        method: 'PUT',
       },
     );
-  });
-
-  it('保留 409 Problem 原文与 requestId', async () => {
-    requestMock.mockRejectedValue({
-      response: {
-        data: {
-          detail: '目标关系会形成组织环',
-          requestId: 'req-org-409',
-          status: 409,
-          title: 'ORGANIZATION_CONFLICT',
-        },
-        status: 409,
-      },
-    });
-
-    await expect(
-      setOrganizationSuperior('leader-1', {
-        reason: '错误归属',
-        superiorId: 'manager-1',
-      }),
-    ).rejects.toMatchObject({
-      name: 'ApiError',
-      problem: { detail: '目标关系会形成组织环', status: 409 },
-      requestId: 'req-org-409',
-    });
   });
 });

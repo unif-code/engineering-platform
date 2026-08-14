@@ -6,16 +6,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { mutationHeaders } from '@/services/transport';
 import { createAdminPoliciesMock } from '../../../mock/adminPolicies';
 import {
+  createMockFetch,
   createMockRequester,
   type MockRoutes,
 } from '../../../tests/mockRequestHarness';
 
-const requestMock = vi.hoisted(() => vi.fn());
+const { fetchMock, requestMock } = vi.hoisted(() => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  return { fetchMock, requestMock: vi.fn() };
+});
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
   defineMock: <T,>(routes: T) => routes,
-  request: requestMock,
 }));
 
 import AdminPoliciesPage from '.';
@@ -27,33 +31,33 @@ const PUBLISH_BUTTON_NAME = /发\s*布/;
 const VALIDATE_BUTTON_NAME = /校\s*验/;
 let routes: MockRoutes;
 const requestThroughMock = createMockRequester(() => routes);
+const fetchThroughMock = createMockFetch(() => routes);
 
 interface SeedDraft {
   content: Record<string, number | string>;
-  etag: string;
   id: string;
 }
 
 async function seedPublishedVersion(idleMinutes: number, reason: string) {
   const draftsPath = '/api/v1/admin/policies/identity/drafts';
   const created = (await requestThroughMock(draftsPath, {
-    data: { scope: 'PLATFORM' },
+    data: { values: {} },
     headers: mutationHeaders(),
     method: 'POST',
   })) as SeedDraft;
   await requestThroughMock(`${draftsPath}/${created.id}`, {
     data: {
-      content: {
+      values: {
         ...created.content,
         'identity.session_idle_minutes': idleMinutes,
       },
     },
-    headers: mutationHeaders({ etag: created.etag }),
+    headers: mutationHeaders({ etag: '"v1"' }),
     method: 'PATCH',
   });
   await requestThroughMock(`${draftsPath}/${created.id}/publish`, {
     data: { reason, totpCode: '123456' },
-    headers: mutationHeaders(),
+    headers: mutationHeaders({ etag: '"v2"' }),
     method: 'POST',
   });
 }
@@ -124,7 +128,34 @@ async function publishVersionTwo(user: UserEvent) {
 beforeEach(() => {
   routes = createAdminPoliciesMock();
   requestMock.mockReset();
-  requestMock.mockImplementation(requestThroughMock);
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      const request =
+        input instanceof Request ? input : new Request(String(input), init);
+      const url = new URL(request.url);
+      const bodyText = await request.clone().text();
+      const headers = Object.fromEntries(
+        [...request.headers.entries()].filter(([name]) =>
+          ['idempotency-key', 'if-match'].includes(name.toLocaleLowerCase()),
+        ),
+      );
+      const options = {
+        ...(bodyText ? { data: JSON.parse(bodyText) } : {}),
+        ...(Object.keys(headers).length > 0 ? { headers } : {}),
+        method: request.method,
+        ...(url.search ? { params: Object.fromEntries(url.searchParams) } : {}),
+      };
+      const override = await requestMock(url.pathname, options);
+      if (override !== undefined) {
+        return new Response(JSON.stringify(override), {
+          headers: { 'Content-Type': 'application/json', ETag: '"v3"' },
+          status: 200,
+        });
+      }
+      return fetchThroughMock(input, init);
+    },
+  );
 });
 
 describe('AdminPoliciesPage', {
@@ -216,13 +247,13 @@ describe('AdminPoliciesPage', {
       '/api/v1/admin/policies/identity/drafts/draft-1',
       {
         data: {
-          content: expect.objectContaining({
+          values: expect.objectContaining({
             'identity.session_idle_minutes': 30,
           }),
         },
         headers: {
           'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-          'If-Match': '"draft-1-r1"',
+          'If-Match': '"v1"',
         },
         method: 'PATCH',
       },
@@ -294,7 +325,7 @@ describe('AdminPoliciesPage', {
           },
         };
       }
-      return requestThroughMock(path, options);
+      return undefined;
     });
     renderPage();
     await findPolicySettings();
@@ -324,7 +355,7 @@ describe('AdminPoliciesPage', {
       '/api/v1/admin/policies/identity/drafts/draft-1',
       expect.objectContaining({
         data: {
-          content: expect.objectContaining({
+          values: expect.objectContaining({
             'identity.session_idle_minutes': 10,
           }),
         },
@@ -342,17 +373,27 @@ describe('AdminPoliciesPage', {
 
   it('编辑发生在 Validate 请求之后时丢弃旧候选结果', async () => {
     let resolveValidation:
-      | ((value: { issues: []; valid: true }) => void)
+      | ((value: {
+          contentHash: string;
+          draftId: string;
+          issues: [];
+          revision: number;
+          valid: true;
+        }) => void)
       | undefined;
-    const validationResponse = new Promise<{ issues: []; valid: true }>(
-      (resolve) => {
-        resolveValidation = resolve;
-      },
-    );
-    requestMock.mockImplementation((path, options) =>
+    const validationResponse = new Promise<{
+      contentHash: string;
+      draftId: string;
+      issues: [];
+      revision: number;
+      valid: true;
+    }>((resolve) => {
+      resolveValidation = resolve;
+    });
+    requestMock.mockImplementation((path) =>
       path === '/api/v1/admin/policies/identity/drafts/draft-1/validate'
         ? validationResponse
-        : requestThroughMock(path, options),
+        : undefined,
     );
     const user = userEvent.setup();
     renderPage();
@@ -370,7 +411,13 @@ describe('AdminPoliciesPage', {
     });
     await setIdleMinutes(user, '45');
     await act(async () => {
-      resolveValidation?.({ issues: [], valid: true });
+      resolveValidation?.({
+        contentHash: 'delayed-validation',
+        draftId: 'draft-1',
+        issues: [],
+        revision: 3,
+        valid: true,
+      });
       await validationResponse;
     });
 
@@ -488,6 +535,14 @@ describe('AdminPoliciesPage', {
     const dialog = await screen.findByRole('dialog', {
       name: '创建回滚 Draft',
     });
+    await user.type(
+      within(dialog).getByRole('textbox', { name: '回滚原因' }),
+      '回滚到稳定版本',
+    );
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'TOTP 验证码' }),
+      '123456',
+    );
     await user.click(within(dialog).getByRole('button', { name: '确认创建' }));
 
     expect(await screen.findByText('已创建回滚 Draft')).toBeInTheDocument();

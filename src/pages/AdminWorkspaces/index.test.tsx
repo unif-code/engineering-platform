@@ -5,17 +5,21 @@ import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockRequester,
+  createRequesterFetch,
   type MockRequest,
   type MockResponse,
   type MockRoutes,
 } from '../../../tests/mockRequestHarness';
 
-const requestMock = vi.hoisted(() => vi.fn());
+const { fetchMock, requestMock } = vi.hoisted(() => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  return { fetchMock, requestMock: vi.fn() };
+});
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
   defineMock: <T,>(routes: T) => routes,
-  request: requestMock,
 }));
 
 import { createAdminOrganizationMock } from '../../../mock/adminOrg';
@@ -24,6 +28,9 @@ import AdminWorkspacesPage from '.';
 
 let routes: MockRoutes;
 const requestThroughMock = createMockRequester(() => routes);
+const fetchThroughRequester = createRequesterFetch((path, options) =>
+  requestMock(path, options),
+);
 
 const INITIAL_WAIT = { timeout: 5_000 };
 
@@ -67,6 +74,8 @@ beforeEach(() => {
   };
   requestMock.mockReset();
   requestMock.mockImplementation(requestThroughMock);
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(fetchThroughRequester);
 });
 
 describe('AdminWorkspacesPage', () => {
@@ -320,9 +329,10 @@ describe('AdminWorkspacesPage', () => {
     expect(requestMock).toHaveBeenCalledWith(
       '/api/v1/admin/workspaces/workspace-platform-core/transfer-owner',
       {
-        data: { accountId: 'leader-wu', reason: '职责交接' },
+        data: { newOwnerId: 'leader-wu', reason: '职责交接' },
         headers: {
           'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+          'If-Match': '"v1"',
         },
         method: 'POST',
       },

@@ -1,22 +1,9 @@
-/**
- * V0.2 Task 8 的 mock-only 临时 DTO。
- * 后端仅冻结筛选、cursor 分页与 requestId；api-v0.2.0 锁定后由
- * Task 10 的 generated client 类型整体替换本文件。
- */
-export type AuditAction =
-  | 'Capability Activate'
-  | 'Artifact Accept'
-  | 'Promotion'
-  | 'Config Publish';
+export type AuditAction = string;
 export type AuditRisk = 'low' | 'medium' | 'high';
 export type AuditResult = 'success' | 'rejected';
-export type AuditTargetType =
-  | 'ARTIFACT'
-  | 'CAPABILITY'
-  | 'CONFIGURATION'
-  | 'GRANT'
-  | 'WORKSPACE';
+export type AuditTargetType = string;
 
+/** 页面展示模型；所有事实字段来自 generated AuditEventResponseDto。 */
 export interface AuditEvent {
   action: AuditAction;
   actor: string;
@@ -38,6 +25,7 @@ export interface AuditEventsQuery {
   cursor?: string;
   from?: string;
   limit: number;
+  requestId?: string;
   targetId?: string;
   targetType?: AuditTargetType;
   to?: string;

@@ -215,23 +215,10 @@ const parsePositiveInteger = (value: string | undefined, fallback: number) => {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const isAccountStatus = (value: string | undefined): value is AccountStatus =>
-  value === 'PENDING_INIT' ||
-  value === 'ENABLED' ||
-  value === 'DISABLED' ||
-  value === 'RESTRICTED';
-
-const isSortField = (
-  value: string | undefined,
-): value is 'displayName' | 'employeeNo' | 'profession' | 'status' =>
-  value === 'displayName' ||
-  value === 'employeeNo' ||
-  value === 'profession' ||
-  value === 'status';
-
 const toContractAccount = (account: AccountSummary) => ({
   displayName: account.displayName,
   employeeNo: account.employeeNo,
+  etag: `"v${'version' in account ? account.version : 1}"`,
   id: account.id,
   profession: account.profession,
   status: account.status,
@@ -242,9 +229,11 @@ export const createAdminAccountsMock = (
 ) => {
   const authorize = options.authorize ?? (() => true);
   const catalog = options.catalog ?? governanceCatalog;
-  const accounts: AccountSummary[] = INITIAL_ACCOUNTS.map((account) => ({
-    ...account,
-  }));
+  const accounts: Array<AccountSummary & { version: number }> =
+    INITIAL_ACCOUNTS.map((account) => ({
+      ...account,
+      version: 1,
+    }));
   for (const account of accounts) {
     catalog.registerAccount(toContractAccount(account));
   }
@@ -324,6 +313,18 @@ export const createAdminAccountsMock = (
     requireIdempotencyKey(request, response) &&
     requireReason(request, response);
 
+  const requireIfMatch = (
+    request: MockRequest,
+    response: MockResponse,
+    account: AccountSummary & { version: number },
+  ) => {
+    if (headerValue(request, 'If-Match') === `"v${account.version}"`) {
+      return true;
+    }
+    sendProblem(response, 409, 'VERSION_CONFLICT', '账号已被并发修改');
+    return false;
+  };
+
   const findAccount = (request: MockRequest, response: MockResponse) => {
     const account = accounts.find(({ id }) => id === request.params?.id);
     if (account !== undefined) {
@@ -350,61 +351,14 @@ export const createAdminAccountsMock = (
         return;
       }
 
-      const employeeNo = queryValue(request, 'employeeNo')
-        ?.trim()
-        .toLocaleLowerCase();
-      const displayName = queryValue(request, 'displayName')
-        ?.trim()
-        .toLocaleLowerCase();
-      const profession = queryValue(request, 'profession')
-        ?.trim()
-        .toLocaleLowerCase();
-      const status = queryValue(request, 'status');
-      const sortBy = queryValue(request, 'sortBy');
-      const sortOrder = queryValue(request, 'sortOrder');
-      const page = parsePositiveInteger(queryValue(request, 'page'), 1);
-      const pageSize = parsePositiveInteger(
-        queryValue(request, 'pageSize'),
-        10,
-      );
-
-      const filtered = accounts.filter((account) => {
-        const matchesEmployeeNo =
-          !employeeNo ||
-          account.employeeNo.toLocaleLowerCase().includes(employeeNo);
-        const matchesDisplayName =
-          !displayName ||
-          account.displayName.toLocaleLowerCase().includes(displayName);
-        const matchesProfession =
-          !profession ||
-          account.profession?.toLocaleLowerCase().includes(profession) === true;
-        const matchesStatus =
-          !isAccountStatus(status) || account.status === status;
-        return (
-          matchesEmployeeNo &&
-          matchesDisplayName &&
-          matchesProfession &&
-          matchesStatus
-        );
-      });
-
-      const sorted = [...filtered];
-      if (isSortField(sortBy)) {
-        const direction = sortOrder === 'desc' ? -1 : 1;
-        sorted.sort(
-          (left, right) =>
-            String(left[sortBy] ?? '').localeCompare(
-              String(right[sortBy] ?? ''),
-              'zh-CN',
-              { numeric: true },
-            ) * direction,
-        );
-      }
-
-      const offset = (page - 1) * pageSize;
+      const pageSize = parsePositiveInteger(queryValue(request, 'limit'), 20);
+      const offset = Number(queryValue(request, 'cursor') ?? 0);
+      const safeOffset =
+        Number.isSafeInteger(offset) && offset >= 0 ? offset : 0;
+      const nextOffset = safeOffset + pageSize;
       sendJson(response, 200, {
-        items: sorted.slice(offset, offset + pageSize).map(toContractAccount),
-        total: sorted.length,
+        items: accounts.slice(safeOffset, nextOffset).map(toContractAccount),
+        nextCursor: nextOffset < accounts.length ? String(nextOffset) : null,
       });
     },
 
@@ -461,9 +415,11 @@ export const createAdminAccountsMock = (
         profession,
         status: 'PENDING_INIT',
       };
-      accounts.push(account);
-      catalog.registerAccount(toContractAccount(account));
-      sendJson(response, 201, credentialReceipt(account, 'create'));
+      const accountRecord = { ...account, version: 1 };
+      accounts.push(accountRecord);
+      catalog.registerAccount(toContractAccount(accountRecord));
+      response.setHeader('ETag', '"v1"');
+      sendJson(response, 201, credentialReceipt(accountRecord, 'create'));
     },
 
     'POST /api/v1/admin/accounts/:id/reset-password': (
@@ -474,7 +430,9 @@ export const createAdminAccountsMock = (
         return;
       }
       const account = findAccount(request, response);
-      if (account !== undefined) {
+      if (account !== undefined && requireIfMatch(request, response, account)) {
+        account.version += 1;
+        response.setHeader('ETag', `"v${account.version}"`);
         sendJson(response, 200, credentialReceipt(account, 'reset'));
       }
     },
@@ -487,8 +445,10 @@ export const createAdminAccountsMock = (
         return;
       }
       const account = findAccount(request, response);
-      if (account !== undefined) {
+      if (account !== undefined && requireIfMatch(request, response, account)) {
         account.status = 'ENABLED';
+        account.version += 1;
+        response.setHeader('ETag', `"v${account.version}"`);
         response.status(204).end();
       }
     },
@@ -501,8 +461,10 @@ export const createAdminAccountsMock = (
         return;
       }
       const account = findAccount(request, response);
-      if (account !== undefined) {
+      if (account !== undefined && requireIfMatch(request, response, account)) {
         account.status = 'DISABLED';
+        account.version += 1;
+        response.setHeader('ETag', `"v${account.version}"`);
         response.status(204).end();
       }
     },
@@ -514,7 +476,10 @@ export const createAdminAccountsMock = (
       if (!requireWrite(request, response)) {
         return;
       }
-      if (findAccount(request, response) !== undefined) {
+      const account = findAccount(request, response);
+      if (account !== undefined && requireIfMatch(request, response, account)) {
+        account.version += 1;
+        response.setHeader('ETag', `"v${account.version}"`);
         response.status(204).end();
       }
     },

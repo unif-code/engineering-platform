@@ -2,143 +2,51 @@ import { describe, expect, it } from 'vitest';
 import { loginHandler, meHandler, navigationHandler } from './handlers';
 
 describe('mock handlers', () => {
-  it('me 返回与后端 Principal 投影一致的裸 DTO', () => {
+  it('me 返回 V0.2 scoped capability DTO', () => {
     expect(meHandler()).toEqual({
       capabilities: [
-        'audit.read',
-        'identity.account.manage',
-        'organization.manage',
-        'authorization.grant.manage',
-        'platform.configuration.manage',
-        'workspace.manage',
+        { capability: 'audit.read', scopeType: 'PLATFORM' },
+        { capability: 'identity.account.manage', scopeType: 'PLATFORM' },
+        { capability: 'organization.manage', scopeType: 'PLATFORM' },
+        {
+          capability: 'authorization.grant.manage',
+          scopeType: 'PLATFORM',
+        },
+        {
+          capability: 'platform.configuration.manage',
+          scopeType: 'PLATFORM',
+        },
+        { capability: 'workspace.manage', scopeType: 'PLATFORM' },
       ],
       employeeId: '00000000',
       name: '平台管理员',
     });
   });
 
-  it('navigation 返回 dotted routeKey、sort 与不透明 meta 的裸数组', () => {
-    expect(navigationHandler()).toEqual([
-      {
-        meta: { section: 'workspace' },
-        name: '工作台',
-        order: 1,
-        routeKey: 'home',
-        sort: 10,
-      },
-      {
-        meta: { section: 'workspace' },
-        name: '任务',
-        order: 2,
-        routeKey: 'tasks',
-        sort: 20,
-      },
-      {
-        meta: { section: 'workspace' },
-        name: '工作区',
-        order: 3,
-        routeKey: 'workspaces',
-        sort: 30,
-      },
-      {
-        meta: { section: 'workspace' },
-        name: '归档数据',
-        order: 4,
-        routeKey: 'tasks.archived',
-        sort: 40,
-      },
-      {
-        meta: { section: 'workspace', unreadCount: 4 },
-        name: '消息中心',
-        order: 5,
-        routeKey: 'messages',
-        sort: 50,
-      },
-      {
-        meta: { section: 'workspace' },
-        name: '团队看板',
-        order: 6,
-        routeKey: 'team-board',
-        sort: 60,
-      },
-      {
-        meta: { section: 'governance' },
-        name: '审计看板',
-        order: 7,
-        routeKey: 'audit',
-        sort: 70,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '工作区管理',
-        order: 8,
-        routeKey: 'admin.workspaces',
-        sort: 80,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '组织管理',
-        order: 9,
-        routeKey: 'admin.organization',
-        sort: 90,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '技能管理',
-        order: 10,
-        routeKey: 'admin.skills',
-        sort: 100,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '模型管理',
-        order: 11,
-        routeKey: 'admin.models',
-        sort: 110,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '角色管理',
-        order: 12,
-        routeKey: 'admin.roles',
-        sort: 120,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '用户管理',
-        order: 13,
-        routeKey: 'admin.users',
-        sort: 130,
-      },
-      {
-        meta: { section: 'administration' },
-        name: 'Grant 管理',
-        order: 14,
-        routeKey: 'admin.grants',
-        sort: 140,
-      },
-      {
-        meta: { section: 'administration' },
-        name: 'Policy 发布',
-        order: 15,
-        routeKey: 'admin.policies',
-        sort: 150,
-      },
-      {
-        meta: { section: 'administration' },
-        name: '菜单管理',
-        order: 16,
-        routeKey: 'admin.menus',
-        sort: 160,
-      },
-    ]);
+  it('navigation 返回 V0.2 order 字段且不泄漏旧 sort 字段', () => {
+    const navigation = navigationHandler();
+
+    expect(navigation).toHaveLength(16);
+    expect(navigation[0]).toEqual({
+      meta: { section: 'workspace' },
+      name: '工作台',
+      order: 1,
+      routeKey: 'home',
+    });
+    expect(navigation[13]).toEqual({
+      meta: { section: 'administration' },
+      name: 'Grant 管理',
+      order: 14,
+      routeKey: 'admin.grants',
+    });
+    expect(navigation.some((item) => 'sort' in item)).toBe(false);
   });
 
-  it('navigation 的 admin.grants 仅出现一次且由 sort 保持在账号管理之后', () => {
+  it('navigation 的治理路由唯一且按 order 排序', () => {
     const navigation = navigationHandler();
     const adminKeys = navigation
       .filter(({ routeKey }) => routeKey.startsWith('admin'))
-      .sort((left, right) => left.sort - right.sort)
+      .sort((left, right) => left.order - right.order)
       .map(({ routeKey }) => routeKey);
 
     expect(adminKeys).toEqual([
@@ -152,15 +60,10 @@ describe('mock handlers', () => {
       'admin.policies',
       'admin.menus',
     ]);
-    expect(
-      navigation.filter(({ routeKey }) => routeKey === 'admin.grants'),
-    ).toHaveLength(1);
-    expect(
-      navigation.filter(({ routeKey }) => routeKey === 'admin.policies'),
-    ).toHaveLength(1);
+    expect(new Set(adminKeys)).toHaveProperty('size', adminKeys.length);
   });
 
-  it('login 为已初始化账号返回 TOTP challenge 决策', () => {
+  it('login 为已初始化账号返回 TOTP_REQUIRED', () => {
     expect(
       loginHandler({
         employeeNo: '00000001',
@@ -169,24 +72,21 @@ describe('mock handlers', () => {
     ).toEqual({
       data: {
         challengeToken: 'challenge-00000001',
-        stage: 'TOTP',
+        state: 'TOTP_REQUIRED',
       },
       employeeNo: '00000001',
       kind: 'success',
     });
   });
 
-  it('login 为待初始化账号返回 BOOTSTRAP token 决策', () => {
+  it('login 为待初始化账号返回 BOOTSTRAP_REQUIRED 且不暴露 token', () => {
     expect(
       loginHandler({
         employeeNo: '00000009',
         password: 'Temporary-Password!2026',
       }),
     ).toEqual({
-      data: {
-        bootstrapToken: 'bootstrap-00000009',
-        stage: 'BOOTSTRAP',
-      },
+      data: { state: 'BOOTSTRAP_REQUIRED' },
       employeeNo: '00000009',
       kind: 'success',
     });

@@ -5,6 +5,8 @@ const PROVISIONING_URI =
   'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP';
 const SESSION_COOKIE =
   'ep_session=mock-session; Path=/; HttpOnly; Secure; SameSite=Lax';
+const BOOTSTRAP_SESSION_COOKIE =
+  'ep_session=bootstrap-00000009; Path=/; HttpOnly; Secure; SameSite=Lax';
 const CLEARED_SESSION_COOKIE =
   'ep_session=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0';
 const VALID_TOTP = '123456';
@@ -35,9 +37,6 @@ interface ProblemDetails extends Record<string, unknown> {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
-const isBootstrapToken = (value: unknown): value is string =>
-  value === 'bootstrap-00000009';
-
 const isStrongPassword = (password: string) =>
   password.length >= 15 &&
   password.length <= 64 &&
@@ -52,6 +51,12 @@ const getHeader = (request: MockRequest, name: string) => {
   const value = entry?.[1];
   return Array.isArray(value) ? value[0] : value;
 };
+
+const hasBootstrapSession = (request: MockRequest) =>
+  getHeader(request, 'cookie')
+    ?.split(';')
+    .some((cookie) => cookie.trim() === 'ep_session=bootstrap-00000009') ??
+  false;
 
 const sendJson = (response: MockResponse, status: number, body: unknown) => {
   response.status(status);
@@ -167,6 +172,9 @@ export const createAuthMock = () => {
       }
 
       loginFailures.delete(result.employeeNo);
+      if (result.data.state === 'BOOTSTRAP_REQUIRED') {
+        response.setHeader('Set-Cookie', BOOTSTRAP_SESSION_COOKIE);
+      }
       sendJson(response, 200, result.data);
     },
 
@@ -210,7 +218,7 @@ export const createAuthMock = () => {
       if (body.code === VALID_TOTP) {
         totpFailures.delete(body.challengeToken);
         response.setHeader('Set-Cookie', SESSION_COOKIE);
-        sendJson(response, 200, { ok: true });
+        sendJson(response, 200, { state: 'AUTHENTICATED' });
         return;
       }
 
@@ -245,7 +253,7 @@ export const createAuthMock = () => {
       }
 
       response.setHeader('Set-Cookie', CLEARED_SESSION_COOKIE);
-      response.status(204).end();
+      sendJson(response, 200, { state: 'LOGGED_OUT' });
     },
 
     'POST /api/v1/auth/bootstrap/password': (
@@ -257,17 +265,18 @@ export const createAuthMock = () => {
       }
 
       const { body } = request;
-      if (!isRecord(body) || !isBootstrapToken(body.bootstrapToken)) {
+      if (!hasBootstrapSession(request)) {
         sendProblem(
           response,
           401,
-          'BOOTSTRAP_TOKEN_EXPIRED',
-          'Bootstrap token 已失效，请联系管理员重新签发临时密码',
+          'BOOTSTRAP_SESSION_EXPIRED',
+          'Bootstrap Session 已失效，请联系管理员重新签发临时密码',
         );
         return;
       }
 
       if (
+        !isRecord(body) ||
         typeof body.password !== 'string' ||
         !isStrongPassword(body.password)
       ) {
@@ -289,7 +298,7 @@ export const createAuthMock = () => {
         return;
       }
 
-      sendJson(response, 200, { ok: true });
+      sendJson(response, 200, { state: 'PASSWORD_SET' });
     },
 
     'POST /api/v1/auth/bootstrap/totp/enroll': (
@@ -300,13 +309,12 @@ export const createAuthMock = () => {
         return;
       }
 
-      const { body } = request;
-      if (!isRecord(body) || !isBootstrapToken(body.bootstrapToken)) {
+      if (!hasBootstrapSession(request)) {
         sendProblem(
           response,
           401,
-          'BOOTSTRAP_TOKEN_EXPIRED',
-          'Bootstrap token 已失效，请联系管理员重新签发临时密码',
+          'BOOTSTRAP_SESSION_EXPIRED',
+          'Bootstrap Session 已失效，请联系管理员重新签发临时密码',
         );
         return;
       }
@@ -323,22 +331,23 @@ export const createAuthMock = () => {
       }
 
       const { body } = request;
-      if (!isRecord(body) || !isBootstrapToken(body.bootstrapToken)) {
+      if (!hasBootstrapSession(request)) {
         sendProblem(
           response,
           401,
-          'BOOTSTRAP_TOKEN_EXPIRED',
-          'Bootstrap token 已失效，请联系管理员重新签发临时密码',
+          'BOOTSTRAP_SESSION_EXPIRED',
+          'Bootstrap Session 已失效，请联系管理员重新签发临时密码',
         );
         return;
       }
 
-      if (body.code !== VALID_TOTP) {
+      if (!isRecord(body) || body.code !== VALID_TOTP) {
         sendProblem(response, 401, 'INVALID_TOTP', 'TOTP 验证码错误');
         return;
       }
 
-      sendJson(response, 200, { ok: true });
+      response.setHeader('Set-Cookie', SESSION_COOKIE);
+      sendJson(response, 200, { state: 'AUTHENTICATED' });
     },
   });
 };

@@ -2,8 +2,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
   createApiClient,
+  entityTag,
   normalizeApiError,
   onUnauthorized,
+  requireApiData,
 } from './index';
 
 const stubFetch = (impl: () => Promise<Response>) => {
@@ -16,6 +18,34 @@ afterEach(() => {
 });
 
 describe('transport', () => {
+  it('从 generated client 响应中提取 data，并拒绝缺少 payload 的成功响应', () => {
+    const response = new Response(null, { status: 200 });
+
+    expect(requireApiData({ data: { id: 'account-1' }, response })).toEqual({
+      id: 'account-1',
+    });
+    expect(() => requireApiData({ data: undefined, response })).toThrowError(
+      expect.objectContaining({ name: 'ApiError' }),
+    );
+  });
+
+  it('将服务端 revision/version 转成强 ETag', () => {
+    expect(entityTag(7)).toBe('"v7"');
+  });
+
+  it('generated path 已包含 /api 前缀，默认客户端不会拼成 /api/api/v1', async () => {
+    const fetchMock = vi.fn(async (_request: Request) =>
+      Response.json({ employeeId: 'employee-1', name: '测试用户' }),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+
+    const client = createApiClient();
+    await client.GET('/api/v1/me' as never);
+
+    const request = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(new URL(request.url).pathname).toBe('/api/v1/me');
+  });
+
   it('normalizeApiError 原样返回既有 ApiError', () => {
     const existing = new ApiError({
       detail: 'keep me',

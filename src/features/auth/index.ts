@@ -14,7 +14,6 @@ export {
 export type {
   BootstrapPasswordInput,
   BootstrapResult,
-  BootstrapTokenInput,
   BootstrapTotpConfirmInput,
   BootstrapTotpEnrollment,
   CurrentUser,

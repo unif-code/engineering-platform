@@ -1,11 +1,8 @@
-/**
- * V0.2 Task 9 的 mock-only 临时 DTO。
- * 后端已冻结 Policy 资源路径与生命周期语义，但精确 DTO 尚待 api-v0.2.0；
- * Task 10 将用 generated client 类型整体替换本文件。
- */
+import type { components } from '@/services/generated';
+
 export type PolicyScope = 'PLATFORM';
 export type PolicyValue = number | string;
-export type PolicyValueType = 'ENUM' | 'INTEGER';
+export type PolicyValueType = string;
 
 export interface PolicyEnumOption {
   label: string;
@@ -35,9 +32,8 @@ export interface PolicyCatalogResponse {
   scope: PolicyScope;
 }
 
-export interface CreatePolicyDraftInput {
-  scope: PolicyScope;
-}
+export type CreatePolicyDraftInput =
+  components['schemas']['DraftValuesRequestDto'];
 
 export interface UpdatePolicyDraftInput {
   content: Record<string, PolicyValue>;
@@ -56,14 +52,12 @@ export interface PolicyDraft {
   updatedAt: string;
 }
 
-export interface PolicyValidationIssue {
-  code: string;
-  key: string;
-  message: string;
-}
+export type PolicyValidationIssue = components['schemas']['ValidationIssueDto'];
 
 export interface PolicyValidationResult {
+  etag: string;
   issues: PolicyValidationIssue[];
+  revision: number;
   valid: boolean;
 }
 
@@ -80,13 +74,13 @@ export interface PolicyPreview {
   baseVersion: number;
   changes: PolicyPreviewChange[];
   draftId: string;
+  etag: string;
   namespace: string;
+  revision: number;
 }
 
-export interface PublishPolicyInput {
-  reason: string;
-  totpCode: string;
-}
+export type PublishPolicyInput =
+  components['schemas']['PublishDraftRequestDto'];
 
 export interface PublishedPolicyVersion {
   namespace: string;
@@ -106,5 +100,7 @@ export interface PolicyVersionsResponse {
 }
 
 export interface RollbackPolicyInput {
+  reason: string;
   toVersion: number;
+  totpCode: string;
 }

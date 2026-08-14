@@ -5,17 +5,21 @@ import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   createMockRequester,
+  createRequesterFetch,
   type MockRequest,
   type MockResponse,
   type MockRoutes,
 } from '../../../tests/mockRequestHarness';
 
-const requestMock = vi.hoisted(() => vi.fn());
+const { fetchMock, requestMock } = vi.hoisted(() => {
+  const fetchMock = vi.fn();
+  vi.stubGlobal('fetch', fetchMock);
+  return { fetchMock, requestMock: vi.fn() };
+});
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
   defineMock: <T,>(routes: T) => routes,
-  request: requestMock,
 }));
 
 import { createAdminOrganizationMock } from '../../../mock/adminOrg';
@@ -23,6 +27,9 @@ import AdminOrganizationPage from '.';
 
 let routes: MockRoutes;
 const requestThroughMock = createMockRequester(() => routes);
+const fetchThroughRequester = createRequesterFetch((path, options) =>
+  requestMock(path, options),
+);
 
 function renderPage() {
   const queryClient = new QueryClient({
@@ -70,6 +77,8 @@ beforeEach(() => {
   routes = createAdminOrganizationMock();
   requestMock.mockReset();
   requestMock.mockImplementation(requestThroughMock);
+  fetchMock.mockReset();
+  fetchMock.mockImplementation(fetchThroughRequester);
 });
 
 describe('AdminOrganizationPage', () => {

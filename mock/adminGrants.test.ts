@@ -13,9 +13,14 @@ import { createAdminGrantsMock } from './adminGrants';
 import { createAdminWorkspacesMock } from './adminWorkspaces';
 import { createGovernanceCatalog } from './governanceCatalog';
 
-const mutationOptions = (data: unknown, method: 'DELETE' | 'POST') => ({
+const mutationOptions = (
+  data: unknown,
+  method: 'DELETE' | 'POST',
+  ifMatch?: string,
+) => ({
   data,
   headers: {
+    ...(ifMatch === undefined ? {} : { 'If-Match': ifMatch }),
     'Idempotency-Key': '00000000-0000-4000-8000-000000000008',
   },
   method,
@@ -29,29 +34,27 @@ beforeEach(() => {
 });
 
 describe('admin grants mock-only contract', () => {
-  it('列表只返回已冻结的 DIRECT Grant DTO，继承投影不污染契约', async () => {
+  it('列表返回 V0.2 扁平 Grant DTO，继承投影不污染契约', async () => {
     const listed = (await requestThroughMock('/api/v1/admin/grants', {
       params: { page: 1, pageSize: 100 },
     })) as { items: Array<Record<string, unknown>> };
 
     expect(listed.items.length).toBeGreaterThan(0);
     for (const grant of listed.items) {
-      expect(grant.source).toBe('DIRECT');
+      expect(grant.source).toBe('MANUAL');
       expect(Object.keys(grant).sort()).toEqual([
         'capability',
+        'createdAt',
         'id',
-        'principal',
-        'scope',
+        'principalId',
+        'scopeId',
+        'scopeType',
         'source',
         'status',
+        'updatedAt',
         'validFrom',
         'validTo',
         'version',
-      ]);
-      expect(Object.keys(grant.principal as object).sort()).toEqual([
-        'displayName',
-        'employeeNo',
-        'id',
       ]);
     }
   });
@@ -81,7 +84,9 @@ describe('admin grants mock-only contract', () => {
           capability: 'workspace.manage',
           principalId: 'account-2',
           reason: '承担营销工作区治理职责',
-          scope: { id: 'workspace-platform-core', type: 'WORKSPACE' },
+          scopeId: 'workspace-platform-core',
+          scopeType: 'WORKSPACE',
+          source: 'MANUAL',
         },
         'POST',
       ),
@@ -90,17 +95,10 @@ describe('admin grants mock-only contract', () => {
     expect(created).toMatchObject({
       capability: 'workspace.manage',
       id: expect.any(String),
-      principal: {
-        displayName: '吴桐',
-        employeeNo: 'E1002',
-        id: 'account-2',
-      },
-      scope: {
-        id: 'workspace-platform-core',
-        label: '营销工作区',
-        type: 'WORKSPACE',
-      },
-      source: 'DIRECT',
+      principalId: 'account-2',
+      scopeId: 'workspace-platform-core',
+      scopeType: 'WORKSPACE',
+      source: 'MANUAL',
       status: 'ACTIVE',
       validFrom: expect.any(String),
       validTo: null,
@@ -114,11 +112,11 @@ describe('admin grants mock-only contract', () => {
         pageSize: 10,
         principalId: 'account-2',
       },
-    })) as { items: Array<{ id: string }>; total: number };
-    expect(listed).toEqual({
-      items: [expect.objectContaining({ id: (created as { id: string }).id })],
-      total: 1,
-    });
+    })) as { items: Array<{ id: string }>; nextCursor: string | null };
+    expect(listed.items).toContainEqual(
+      expect.objectContaining({ id: (created as { id: string }).id }),
+    );
+    expect(listed.nextCursor).toBeNull();
   });
 
   it('新建账号与工作区会进入同一治理目录并可立即创建 Grant', async () => {
@@ -160,15 +158,18 @@ describe('admin grants mock-only contract', () => {
           capability: 'task.develop',
           principalId: accountReceipt.account.id,
           reason: '加入国际化交付',
-          scope: { id: workspace.id, type: 'WORKSPACE' },
+          scopeId: workspace.id,
+          scopeType: 'WORKSPACE',
+          source: 'MANUAL',
         },
         'POST',
       ),
     );
 
     expect(created).toMatchObject({
-      principal: { displayName: '林一', employeeNo: 'E9001' },
-      scope: { label: '国际化工作区', type: 'WORKSPACE' },
+      principalId: accountReceipt.account.id,
+      scopeId: workspace.id,
+      scopeType: 'WORKSPACE',
       status: 'ACTIVE',
     });
   });
@@ -190,7 +191,7 @@ describe('admin grants mock-only contract', () => {
 
     const revoked = await requestThroughMock(
       '/api/v1/admin/grants/grant-audit-reader',
-      mutationOptions({ reason: '审计轮值结束' }, 'DELETE'),
+      mutationOptions({ reason: '审计轮值结束' }, 'DELETE', '"v1"'),
     );
     expect(revoked).toMatchObject({ status: 'REVOKED', version: 2 });
 

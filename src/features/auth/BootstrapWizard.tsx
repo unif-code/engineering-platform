@@ -1,4 +1,4 @@
-import { history, useLocation } from '@umijs/max';
+import { history } from '@umijs/max';
 import { Button, Form, Input, QRCode, Steps } from 'antd';
 import { useState } from 'react';
 import { ApiError } from '@/services/transport';
@@ -28,14 +28,12 @@ interface TotpFormValues {
   code: string;
 }
 
-const getInitialToken = (search: string): string | undefined => {
-  const token = new URLSearchParams(search).get('token')?.trim();
-  return token || undefined;
-};
-
 const getErrorDetail = (error: unknown, fallback: string): string => {
   if (error instanceof ApiError) {
-    if (error.problem.title === 'BOOTSTRAP_TOKEN_EXPIRED') {
+    if (
+      error.problem.title === 'BOOTSTRAP_TOKEN_EXPIRED' ||
+      error.problem.title === 'BOOTSTRAP_SESSION_EXPIRED'
+    ) {
       return CONTACT_ADMIN_MESSAGE;
     }
     return error.problem.detail ?? error.message;
@@ -75,11 +73,8 @@ const getProvisioningSecret = (provisioningUri: string): string => {
 };
 
 export function BootstrapWizard() {
-  const { search } = useLocation();
   const { styles } = useBootstrapStyles();
-  const initialToken = getInitialToken(search);
-  const [bootstrapToken, setBootstrapToken] = useState(initialToken);
-  const [currentStep, setCurrentStep] = useState(initialToken ? 1 : 0);
+  const [currentStep, setCurrentStep] = useState(0);
   const [passwordFieldErrors, setPasswordFieldErrors] = useState<string[]>([]);
   const [problemDetail, setProblemDetail] = useState<string>();
   const [provisioningUri, setProvisioningUri] = useState<string>();
@@ -90,15 +85,12 @@ export function BootstrapWizard() {
     setSubmitting(true);
     try {
       const result = await login(values);
-      if (result.stage !== 'BOOTSTRAP') {
+      if (result.state !== 'BOOTSTRAP_REQUIRED') {
         setProblemDetail('当前账号未进入初始化阶段，请返回登录');
         return;
       }
-      setBootstrapToken(result.bootstrapToken);
       setCurrentStep(1);
-      history.replace(
-        `/bootstrap?token=${encodeURIComponent(result.bootstrapToken)}`,
-      );
+      history.replace('/bootstrap');
     } catch (error) {
       setProblemDetail(getErrorDetail(error, '临时密码验证失败'));
     } finally {
@@ -107,16 +99,12 @@ export function BootstrapWizard() {
   };
 
   const submitPassword = async ({ password }: PasswordFormValues) => {
-    if (bootstrapToken === undefined) {
-      setProblemDetail(CONTACT_ADMIN_MESSAGE);
-      return;
-    }
     setProblemDetail(undefined);
     setPasswordFieldErrors([]);
     setSubmitting(true);
     try {
       try {
-        await setBootstrapPassword({ bootstrapToken, password });
+        await setBootstrapPassword({ password });
       } catch (error) {
         const fieldErrors = getPasswordFieldErrors(error);
         if (fieldErrors.length > 0) {
@@ -127,7 +115,7 @@ export function BootstrapWizard() {
       }
       setCurrentStep(2);
       try {
-        const enrollment = await enrollBootstrapTotp({ bootstrapToken });
+        const enrollment = await enrollBootstrapTotp();
         setProvisioningUri(enrollment.provisioningUri);
       } catch (error) {
         setProblemDetail(getErrorDetail(error, '绑定信息获取失败'));
@@ -138,14 +126,10 @@ export function BootstrapWizard() {
   };
 
   const retryTotpEnrollment = async () => {
-    if (bootstrapToken === undefined) {
-      setProblemDetail(CONTACT_ADMIN_MESSAGE);
-      return;
-    }
     setProblemDetail(undefined);
     setSubmitting(true);
     try {
-      const enrollment = await enrollBootstrapTotp({ bootstrapToken });
+      const enrollment = await enrollBootstrapTotp();
       setProvisioningUri(enrollment.provisioningUri);
     } catch (error) {
       setProblemDetail(getErrorDetail(error, '绑定信息获取失败'));
@@ -155,14 +139,10 @@ export function BootstrapWizard() {
   };
 
   const submitTotp = async ({ code }: TotpFormValues) => {
-    if (bootstrapToken === undefined) {
-      setProblemDetail(CONTACT_ADMIN_MESSAGE);
-      return;
-    }
     setProblemDetail(undefined);
     setSubmitting(true);
     try {
-      await confirmBootstrapTotp({ bootstrapToken, code });
+      await confirmBootstrapTotp({ code });
       setCurrentStep(3);
     } catch (error) {
       setProblemDetail(getErrorDetail(error, 'TOTP 验证失败'));

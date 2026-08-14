@@ -195,11 +195,11 @@ export default function AdminUsersPage() {
 
   const confirmAction = async (state: ActionState, reason: string) => {
     if (state.action === 'enable') {
-      await enableAccount(state.account.id, { reason });
+      await enableAccount(state.account.id, { reason }, state.account.etag);
     } else if (state.action === 'disable') {
-      await disableAccount(state.account.id, { reason });
+      await disableAccount(state.account.id, { reason }, state.account.etag);
     } else {
-      await resetAccountTotp(state.account.id, { reason });
+      await resetAccountTotp(state.account.id, { reason }, state.account.etag);
     }
 
     setActionState(undefined);
