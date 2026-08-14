@@ -1,8 +1,8 @@
 # 当前开发进度
 
 - Repository: engineering-platform
-- Updated At: 2026-08-14T07:27:38Z
-- Based On Commit: 9674371c1cf019e007beecb607c298755ad384e8
+- Updated At: 2026-08-14T07:39:54Z
+- Based On Commit: 7aed47491f68cd51d37a0c990d76a2a5441c13a4
 - Branch: main
 - State: active
 - Active Plan: docs/superpowers/plans/2026-08-14-openapi-v02-release.md
@@ -13,6 +13,7 @@
 - V0.2 mock 驱动计划 Task 0–9 已有完成 ledger；Task 9 提交为 `12fdec0`，其报告记录当时 `pnpm lint`、`pnpm test`、`pnpm build` 与 scoped antd 检查通过。
 - Bootstrap、Grant、Policy、Workspace 与 admin account/workspace service 的 V0.2 集成回归已提交为 `58e3860`。
 - 开发期 `0.x` breaking change 的 minor 版本判定、tooling tests 与 OpenAPI release plan 已提交为 `9674371`。
+- 两份旧 mock-only administration seam 测试已由 generated-client service tests 替代并删除，提交为 `7aed474`。
 - Codex 原生记忆映射已接入 docs 仓共享 SQLite，同步触发规则已提交。
 
 ## 进行中
@@ -33,10 +34,11 @@
 ## 最近验证
 
 - `pnpm test:tooling` PASS，23/23；`pnpm tsc` PASS；`pnpm biome:check` PASS，310 files。
+- admin Grant/Audit/Policy generated-client service tests PASS，3 files / 8 tests。
 - 六个受影响文件的 focused Vitest：5 files passed、1 file failed，39/43 tests passed；失败均在 `AdminWorkspaces/index.test.tsx`，为创建、Owner 转让、Leader 邀请/移除、Leader 422 四个 15 秒 timeout，并观察到异步 `act(...)` warning。
 - 当前提交未运行完整 `pnpm verify` 或 release gate，不能宣称整仓全绿。
 
 ## 工作树
 
 - clean。
-- 业务代码基线 `9674371` 已在远端；代码、计划和已知失败证据均可恢复，因此 `Remote Recoverable: yes`。
+- 业务代码基线 `7aed474` 将与本次 progress commit 一起推送；代码、计划和已知失败证据均可恢复，因此 `Remote Recoverable: yes`。
