@@ -1,0 +1,4 @@
+# OpenAPI artifacts are cryptographically pinned from Git LF blobs.
+openapi/artifact.lock.json text eol=lf
+openapi/spec.json text eol=lf
+src/services/generated/** text eol=lf

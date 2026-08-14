@@ -1,5 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const runtimeDependencies = [
@@ -88,17 +88,20 @@ async function collectSourceFiles(root, path) {
     const nested = await Promise.all(
       entries.map(async (entry) => {
         const child = join(path, entry.name);
+        const normalizedChild = child.split(sep).join('/');
         if (entry.isDirectory()) {
           if (
-            child === 'src/.umi' ||
-            child.startsWith('src/.umi-') ||
-            child === 'src/services/generated'
+            normalizedChild === 'src/.umi' ||
+            normalizedChild.startsWith('src/.umi-') ||
+            normalizedChild === 'src/services/generated'
           ) {
             return [];
           }
           return collectSourceFiles(root, child);
         }
-        return /\.(?:[cm]?[jt]sx?)$|\.less$/u.test(entry.name) ? [child] : [];
+        return /\.(?:[cm]?[jt]sx?)$|\.less$/u.test(entry.name)
+          ? [normalizedChild]
+          : [];
       }),
     );
     return nested.flat();

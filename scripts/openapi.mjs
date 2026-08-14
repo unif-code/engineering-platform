@@ -10,18 +10,13 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { classifyBreakingRelease } from './openapi-baseline.mjs';
+import { generatorInvocation } from './openapi-generator-command.mjs';
+import { canonicalizeLf } from './openapi-line-endings.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const LOCK_PATH = path.join(ROOT, 'openapi', 'artifact.lock.json');
 const SPEC_PATH = path.join(ROOT, 'openapi', 'spec.json');
 const OUT_DIR = path.join(ROOT, 'src', 'services', 'generated');
-const GENERATOR_BIN = path.join(
-  ROOT,
-  'node_modules',
-  '.bin',
-  'openapi-typescript',
-);
-
 const fail = (msg) => {
   console.error(`[openapi] ${msg}`);
   process.exit(1);
@@ -232,14 +227,14 @@ async function cmdFetch() {
 const verifySpec = (lock) => {
   if (!fs.existsSync(SPEC_PATH))
     fail('openapi/spec.json 不存在：先运行 pnpm openapi:fetch。');
-  const digest = sha256(fs.readFileSync(SPEC_PATH));
+  const spec = canonicalizeLf(fs.readFileSync(SPEC_PATH));
+  const digest = sha256(spec);
   if (digest !== lock.sha256) {
     fail(
       `openapi/spec.json 与锁定摘要不一致（${digest} ≠ ${lock.sha256}）：重新运行 pnpm openapi:fetch。`,
     );
   }
-  const specVersion = JSON.parse(fs.readFileSync(SPEC_PATH, 'utf8')).info
-    ?.version;
+  const specVersion = JSON.parse(spec.toString('utf8')).info?.version;
   if (specVersion !== lock.version) {
     fail(
       `lock.version（${lock.version}）与 spec info.version（${specVersion}）不一致：锁定版本必须与构件自述版本绑定。`,
@@ -260,7 +255,14 @@ const BANNER =
 
 function generateInto(dir, lock) {
   fs.mkdirSync(dir, { recursive: true });
-  const schema = execFileSync(GENERATOR_BIN, [SPEC_PATH], { encoding: 'utf8' });
+  const generator = generatorInvocation(ROOT);
+  const schema = execFileSync(
+    generator.command,
+    [...generator.args, SPEC_PATH],
+    {
+      encoding: 'utf8',
+    },
+  );
   fs.writeFileSync(path.join(dir, 'schema.d.ts'), schema);
   fs.writeFileSync(
     path.join(dir, 'client.ts'),
@@ -379,7 +381,7 @@ function resolveBaseline(currentBuf) {
 }
 
 function checkBaselineCompatibility() {
-  const currentBuf = fs.readFileSync(SPEC_PATH);
+  const currentBuf = canonicalizeLf(fs.readFileSync(SPEC_PATH));
   const { ref, buf: baseBuf } = resolveBaseline(currentBuf);
   if (baseBuf === null) {
     console.log(
@@ -442,9 +444,9 @@ function cmdCheck() {
       );
     }
     for (const f of expected) {
-      const a = fs.readFileSync(path.join(tmp, f), 'utf8');
-      const b = fs.readFileSync(path.join(OUT_DIR, f), 'utf8');
-      if (a !== b)
+      const a = canonicalizeLf(fs.readFileSync(path.join(tmp, f)));
+      const b = canonicalizeLf(fs.readFileSync(path.join(OUT_DIR, f)));
+      if (!a.equals(b))
         fail(
           `src/services/generated/${f} 与锁定 Artifact 的生成结果不一致（手改或未重新生成）。`,
         );
