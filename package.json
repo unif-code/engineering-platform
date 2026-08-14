@@ -25,7 +25,7 @@
     "antd:lint": "NO_UPDATE_CHECK=1 antd lint src",
     "antd:usage": "NO_UPDATE_CHECK=1 antd usage src",
     "antd:check": "pnpm antd:doctor && pnpm antd:lint && pnpm antd:usage",
-    "test:tooling": "node --test scripts/verify-structure.test.mjs scripts/verify-markdown.test.mjs",
+    "test:tooling": "node --test scripts/openapi-baseline.test.mjs scripts/verify-structure.test.mjs scripts/verify-markdown.test.mjs",
     "verify:structure": "node scripts/verify-structure.mjs",
     "verify:markdown": "node scripts/verify-markdown.mjs README.md AGENTS.md CLAUDE.md docs",
     "verify": "pnpm lint && pnpm test:tooling && pnpm verify:structure && pnpm verify:markdown && pnpm test:coverage && pnpm run doctor && pnpm antd:check && pnpm build",

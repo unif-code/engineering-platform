@@ -65,6 +65,8 @@
 3. 后端发 `api-v0.2.0` → `openapi/artifact.lock.json` 重新锁定 → `openapi:generate` → Initial State 与各页切 generated client，mock 仅留本地开发兜底。
 4. 前置依赖：V0.1 的 Task 10（首次锁定链）须先完成。
 
+OpenAPI Artifact 在 `0.x` 阶段按开发期 SemVer 演进：breaking change 必须提升 minor（例如 `0.1.0 → 0.2.0`），不得只提升 patch；进入 `1.x` 后 breaking change 必须提升 major。后端 Release tag 与 `info.version` 始终严格一致。
+
 ## 测试策略
 
 Testing Library 行为测试：登录两步流（含错误/退避文案）、Bootstrap 向导逐步推进与中断、401 拦截跳转、菜单按 navigation 数据渲染、RouteGuard 拒绝未登记/未授权 routeKey 且放行 `prototype` 路由、六管理页关键交互（创建账号弹临时密码、Publish 的 TOTP 弹窗、ETag 冲突提示）、audit 分页。mock 层校验请求带 Idempotency-Key/If-Match。改造页面的既有测试全部保留并随契约接入改写，不允许整体删除重写。

@@ -9,6 +9,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
+import { classifyBreakingRelease } from './openapi-baseline.mjs';
 
 const ROOT = path.resolve(import.meta.dirname, '..');
 const LOCK_PATH = path.join(ROOT, 'openapi', 'artifact.lock.json');
@@ -177,11 +178,6 @@ function breakingChanges(oldSpec, newSpec) {
   return breaking;
 }
 
-const majorOf = (version) => {
-  const major = Number.parseInt(String(version ?? ''), 10);
-  return Number.isNaN(major) ? null : major;
-};
-
 function assertCompatible(oldBuf, newBuf) {
   const oldSpec = JSON.parse(oldBuf.toString('utf8'));
   const newSpec = JSON.parse(newBuf.toString('utf8'));
@@ -191,9 +187,17 @@ function assertCompatible(oldBuf, newBuf) {
     );
   }
   const breaking = breakingChanges(oldSpec, newSpec);
-  if (breaking.length > 0 && !process.argv.includes('--allow-breaking')) {
+  const releaseKind = classifyBreakingRelease(
+    oldSpec.info?.version,
+    newSpec.info?.version,
+  );
+  if (
+    breaking.length > 0 &&
+    releaseKind === null &&
+    !process.argv.includes('--allow-breaking')
+  ) {
     fail(
-      `检测到 breaking change：${breaking.join('；')}。确认已按 Contract 兼容演进后可加 --allow-breaking 覆盖（CI 的 openapi:check 仍要求主版本升级）。`,
+      `检测到 breaking change：${breaking.join('；')}。0.x 开发阶段必须提升 minor，1.x 及以后必须提升 major；确认已按 Contract 兼容演进后可加 --allow-breaking 暂存（CI 的 openapi:check 仍会验证版本升级）。`,
     );
   }
 }
@@ -305,7 +309,7 @@ function cmdGenerate() {
 // 在 CI/干净检出中以 git 基线重建兼容比较：--base <ref> 显式指定；默认工作区与 HEAD
 // 不同时以 HEAD 为基线，相同（已提交）时以 spec.json 最近一次变更之前的版本为基线，
 // 避免与自身比较。git 读取异常一律 Fail Closed，只有"基线中确实无 spec"才按首个构件跳过。
-// 相对基线的 breaking change 必须由 Artifact 主版本升级显式声明，无旗标可绕过。
+// 相对基线的 breaking change 在 0.x 开发阶段必须提升 minor，1.x 及以后必须提升 major，无旗标可绕过。
 function gitSpecAt(ref) {
   execFileSync('git', ['rev-parse', '--verify', `${ref}^{commit}`], {
     cwd: ROOT,
@@ -388,16 +392,22 @@ function checkBaselineCompatibility() {
   const currentSpec = JSON.parse(currentBuf.toString('utf8'));
   const breaking = breakingChanges(baseSpec, currentSpec);
   if (breaking.length === 0) return;
-  const baseMajor = majorOf(baseSpec.info?.version);
-  const newMajor = majorOf(currentSpec.info?.version);
-  if (baseMajor !== null && newMajor !== null && newMajor > baseMajor) {
+  const releaseKind = classifyBreakingRelease(
+    baseSpec.info?.version,
+    currentSpec.info?.version,
+  );
+  if (releaseKind !== null) {
+    const declaration =
+      releaseKind === 'development-minor'
+        ? '开发期 minor 版本升级'
+        : '主版本升级';
     console.log(
-      `[openapi] 相对 ${ref} 存在 breaking change，已由主版本升级（${baseSpec.info?.version} → ${currentSpec.info?.version}）显式声明。`,
+      `[openapi] 相对 ${ref} 存在 breaking change，已由${declaration}（${baseSpec.info?.version} → ${currentSpec.info?.version}）显式声明。`,
     );
     return;
   }
   fail(
-    `相对 ${ref} 检测到 breaking change 但主版本未升级（${baseSpec.info?.version} → ${currentSpec.info?.version}）：${breaking.join('；')}。breaking 变更必须以 Artifact 主版本发布，审批随后端 Release 流程。`,
+    `相对 ${ref} 检测到 breaking change 但版本升级不满足策略（${baseSpec.info?.version} → ${currentSpec.info?.version}）：${breaking.join('；')}。0.x 开发阶段必须提升 minor，1.x 及以后必须提升 major，审批随后端 Release 流程。`,
   );
 }
 

@@ -14,7 +14,7 @@
 - `pnpm test`：单次运行 Vitest 测试套件。
 - `pnpm test:watch` / `pnpm test:coverage`：监听测试或生成覆盖率报告。
 - `pnpm doctor`：检查 React 代码中的常见问题。
-- `pnpm openapi:fetch` / `pnpm openapi:generate` / `pnpm openapi:check`：按 `openapi/artifact.lock.json` 锁定的后端 OpenAPI Artifact 取回并校验 Digest、生成 `src/services/generated`、做兼容性（git 基线，breaking 需主版本升级）与 dirty-diff 检查；Release 门使用 `pnpm openapi:check:release`（要求已锁定构件，随 CI 的 tag 触发执行）。
+- `pnpm openapi:fetch` / `pnpm openapi:generate` / `pnpm openapi:check`：按 `openapi/artifact.lock.json` 锁定的后端 OpenAPI Artifact 取回并校验 Digest、生成 `src/services/generated`、做兼容性（git 基线；breaking 在 `0.x` 开发阶段需提升 minor，`1.x` 及以后需提升 major）与 dirty-diff 检查；Release 门使用 `pnpm openapi:check:release`（要求已锁定构件，随 CI 的 tag 触发执行）。
 - 架构基线及文档 SHA-256 的唯一事实源是独立文档仓的 [baseline-manifest.json](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/baseline-manifest.json)，更新与校验由该文档仓自身 CI 承担。
 
 ## 共享 Skill 与组件知识查询
