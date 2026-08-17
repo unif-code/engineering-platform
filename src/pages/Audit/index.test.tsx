@@ -27,6 +27,7 @@ import { createAdminAuditMock } from '../../../mock/adminAudit';
 import AuditPage from '.';
 
 const INITIAL_WAIT = { timeout: 5_000 };
+const AUDIT_FIXTURE_NOW = new Date(2026, 7, 10, 12, 0, 0);
 let routes: MockRoutes;
 const requestThroughMock = createMockRequester(() => routes);
 const fetchThroughRequester = createRequesterFetch((path, options) =>
@@ -51,6 +52,10 @@ async function selectOption(user: UserEvent, label: string, option: string) {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({
+    now: AUDIT_FIXTURE_NOW,
+    toFake: ['Date'],
+  });
   routes = createAdminAuditMock();
   requestMock.mockReset();
   requestMock.mockImplementation(requestThroughMock);
@@ -199,10 +204,6 @@ describe('AuditPage', { timeout: 30_000 }, () => {
   });
 
   it('按时间查询契约端点，通用关键字只在页面本地过滤', async () => {
-    vi.useFakeTimers({
-      now: new Date(2026, 7, 10, 12, 0, 0),
-      toFake: ['Date'],
-    });
     const user = userEvent.setup();
     const now = new Date();
     const from = new Date(now);
