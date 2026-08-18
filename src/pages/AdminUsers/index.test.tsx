@@ -343,6 +343,52 @@ describe('AdminUsersPage', () => {
     INTERACTION_TEST_TIMEOUT,
   );
 
+  it(
+    '行动作成功后列表权限被撤销会清除旧账号并展示 403 Problem',
+    async () => {
+      const user = userEvent.setup();
+      administrationMocks.listAccounts
+        .mockResolvedValueOnce(accountPage())
+        .mockRejectedValueOnce(
+          new ApiError({
+            detail: '账号列表权限已撤销',
+            requestId: 'req-account-reload-403',
+            status: 403,
+          }),
+        );
+      renderPage();
+
+      const dialog = await openAccountAction(
+        user,
+        /00002002.*何山/,
+        '停用',
+        '确认停用账号',
+      );
+      await user.type(
+        within(dialog).getByRole('textbox', { name: '操作原因' }),
+        '权限撤销验证',
+      );
+      await user.click(
+        within(dialog).getByRole('button', { name: '确认停用' }),
+      );
+
+      expect(await screen.findByText(/账号列表权限已撤销/)).toHaveTextContent(
+        'requestId: req-account-reload-403',
+      );
+      await waitFor(() => {
+        expect(
+          screen.queryByRole('row', { name: /00002002.*何山/ }),
+        ).not.toBeInTheDocument();
+        expect(
+          screen.queryByRole('row', { name: /00001006.*徐蕾/ }),
+        ).not.toBeInTheDocument();
+      });
+      expect(screen.getByText('暂无数据', { selector: 'div' })).toBeVisible();
+      expect(administrationMocks.listAccounts).toHaveBeenCalledTimes(2);
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
+
   it('重置 TOTP 使用公开 feature 并刷新列表', async () => {
     const user = userEvent.setup();
     renderPage();
