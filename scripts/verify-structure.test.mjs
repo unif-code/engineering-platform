@@ -95,6 +95,11 @@ async function createValidFixture() {
   );
   await write(
     root,
+    'doctor.config.json',
+    JSON.stringify({ ignore: { files: ['config/**', 'scripts/**'] } }),
+  );
+  await write(
+    root,
     'skills-lock.json',
     JSON.stringify({
       version: 1,
@@ -289,6 +294,60 @@ test('requires Umi runtime mock to stay disabled', async () => {
   );
 });
 
+test('reads mock from the exported defineConfig object instead of decoys', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/config.ts',
+    [
+      "import { defineConfig } from '@umijs/max';",
+      'const decoy = { mock: false };',
+      'export default defineConfig({ mock: {}, utoopack: {} });',
+      '',
+    ].join('\n'),
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /mock 必须显式为 false/u,
+  );
+});
+
+test('uses the effective mock property after duplicate and spread overrides', async () => {
+  const invalidConfigs = [
+    'export default defineConfig({ mock: false, mock: {}, utoopack: {} });',
+    'export default defineConfig({ mock: false, ...{ mock: {} }, utoopack: {} });',
+    'const override = { mock: {} }; export default defineConfig({ mock: false, ...override, utoopack: {} });',
+  ];
+  for (const config of invalidConfigs) {
+    const root = await createValidFixture();
+    await write(
+      root,
+      'config/config.ts',
+      `import { defineConfig } from '@umijs/max';\n${config}\n`,
+    );
+    assert.match(
+      (await verifyStructure(root)).join('\n'),
+      /mock 必须显式为 false/u,
+    );
+  }
+
+  const validConfigs = [
+    'export default defineConfig({ mock: {}, mock: false, utoopack: {} });',
+    'export default defineConfig({ ...{ mock: {} }, /* final */ mock: false, utoopack: {} });',
+    'const base = { mock: {} }; export default defineConfig({ ...base, mock: false, utoopack: {} });',
+  ];
+  for (const config of validConfigs) {
+    const root = await createValidFixture();
+    await write(
+      root,
+      'config/config.ts',
+      `import { defineConfig } from '@umijs/max';\n${config}\n`,
+    );
+    assert.deepEqual(await verifyStructure(root), []);
+  }
+});
+
 test('rejects hand-written runtime API mock sources', async () => {
   const root = await createValidFixture();
   await write(
@@ -300,6 +359,20 @@ test('rejects hand-written runtime API mock sources', async () => {
   assert.match(
     (await verifyStructure(root)).join('\n'),
     /禁止保留运行时 mock\/ source/u,
+  );
+});
+
+test('rejects stale doctor ignores for the retired mock directory', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'doctor.config.json',
+    JSON.stringify({ ignore: { files: ['config/**', 'mock/**'] } }),
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /doctor\.config\.json 不得忽略已退役的 mock\/ source/u,
   );
 });
 

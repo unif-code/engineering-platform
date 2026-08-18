@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('@umijs/max', () => ({
   useModel: () => ({
     initialState: {
-      principal: { employeeId: '00000000', name: '平台管理员' },
+      principal: { employeeId: crypto.randomUUID(), name: '平台管理员' },
     },
   }),
 }));

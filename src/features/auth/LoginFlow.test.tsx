@@ -1,3 +1,9 @@
+import {
+  createChallengeToken,
+  createEmployeeNo,
+  createPassword,
+  createTotpCode,
+} from '@root/tests/auth-fixtures';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfigProvider } from 'antd';
@@ -22,13 +28,29 @@ vi.mock('./service', () => ({
 
 import { LoginFlow } from './LoginFlow';
 
+function createLoginFixture() {
+  const fixture = {
+    challengeToken: createChallengeToken(),
+    code: createTotpCode(),
+    input: {
+      employeeNo: createEmployeeNo(),
+      password: createPassword(),
+    },
+  };
+  mocks.login.mockResolvedValue({
+    challengeToken: fixture.challengeToken,
+    state: 'TOTP_REQUIRED',
+  });
+  mocks.verifyTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
+  return fixture;
+}
+
 async function fillCredentials(
   user: ReturnType<typeof userEvent.setup>,
-  employeeNo = '00000000',
-  password = 'Valid-Password!2026',
+  input: { employeeNo: string; password: string },
 ) {
-  await user.type(screen.getByLabelText('员工编号'), employeeNo);
-  await user.type(screen.getByLabelText('密码'), password);
+  await user.type(screen.getByLabelText('员工编号'), input.employeeNo);
+  await user.type(screen.getByLabelText('密码'), input.password);
 }
 
 beforeEach(() => {
@@ -36,16 +58,12 @@ beforeEach(() => {
   mocks.onAuthenticated.mockReset();
   mocks.push.mockReset();
   mocks.verifyTotp.mockReset();
-  mocks.login.mockResolvedValue({
-    challengeToken: 'challenge-00000000',
-    state: 'TOTP_REQUIRED',
-  });
-  mocks.verifyTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
   mocks.onAuthenticated.mockResolvedValue(undefined);
 });
 
 describe('LoginFlow', () => {
   it('凭据步骤使用账号登录标题并保持两字段', () => {
+    createLoginFixture();
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
     expect(
@@ -58,6 +76,7 @@ describe('LoginFlow', () => {
   });
 
   it('提交按钮继承根级 ConfigProvider 主题', async () => {
+    const fixture = createLoginFixture();
     const user = userEvent.setup();
     render(
       <ConfigProvider theme={{ token: { colorPrimary: '#123456' } }}>
@@ -70,7 +89,7 @@ describe('LoginFlow', () => {
     });
     expect(getComputedStyle(credentialsButton).backgroundColor).toBe('#123456');
 
-    await fillCredentials(user);
+    await fillCredentials(user, fixture.input);
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
 
     const totpButton = await screen.findByRole('button', {
@@ -80,6 +99,7 @@ describe('LoginFlow', () => {
   });
 
   it('局部品牌色不会覆盖 LoginForm 的全宽提交按钮', async () => {
+    const fixture = createLoginFixture();
     const user = userEvent.setup();
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
@@ -87,7 +107,7 @@ describe('LoginFlow', () => {
       width: '100%',
     });
 
-    await fillCredentials(user);
+    await fillCredentials(user, fixture.input);
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
 
     expect(
@@ -98,16 +118,14 @@ describe('LoginFlow', () => {
   });
 
   it('完成凭据与 TOTP 两步后才通知页面刷新 Session', async () => {
+    const fixture = createLoginFixture();
     const user = userEvent.setup();
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
-    await fillCredentials(user);
+    await fillCredentials(user, fixture.input);
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
 
-    expect(mocks.login).toHaveBeenCalledWith({
-      employeeNo: '00000000',
-      password: 'Valid-Password!2026',
-    });
+    expect(mocks.login).toHaveBeenCalledWith(fixture.input);
     expect(mocks.onAuthenticated).not.toHaveBeenCalled();
 
     const totpInput = await screen.findByLabelText('TOTP 动态码');
@@ -116,8 +134,8 @@ describe('LoginFlow', () => {
     ).toBeInTheDocument();
     await waitFor(() => expect(totpInput).toHaveFocus());
     await user.click(totpInput);
-    await user.paste('123456');
-    expect(totpInput).toHaveValue('123456');
+    await user.paste(fixture.code);
+    expect(totpInput).toHaveValue(fixture.code);
 
     await user.click(
       screen.getByRole('button', { name: /验\s*证\s*并\s*登\s*录/ }),
@@ -125,8 +143,8 @@ describe('LoginFlow', () => {
 
     await waitFor(() =>
       expect(mocks.verifyTotp).toHaveBeenCalledWith({
-        challengeToken: 'challenge-00000000',
-        code: '123456',
+        challengeToken: fixture.challengeToken,
+        code: fixture.code,
       }),
     );
     expect(mocks.onAuthenticated).toHaveBeenCalledOnce();
@@ -134,6 +152,7 @@ describe('LoginFlow', () => {
   });
 
   it('密码错误时展示服务端 Problem detail 原文并留在凭据步骤', async () => {
+    const fixture = createLoginFixture();
     const user = userEvent.setup();
     mocks.login.mockRejectedValue(
       new ApiError({
@@ -144,7 +163,7 @@ describe('LoginFlow', () => {
     );
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
-    await fillCredentials(user);
+    await fillCredentials(user, fixture.input);
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
 
     expect(await screen.findByText('员工号或密码错误')).toBeInTheDocument();
@@ -154,6 +173,7 @@ describe('LoginFlow', () => {
   });
 
   it('429 时禁用凭据提交且只展示服务端等待文案', async () => {
+    const fixture = createLoginFixture();
     const user = userEvent.setup();
     mocks.login.mockRejectedValue(
       new ApiError({
@@ -164,7 +184,7 @@ describe('LoginFlow', () => {
     );
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
-    await fillCredentials(user);
+    await fillCredentials(user, fixture.input);
     const submit = screen.getByRole('button', { name: /继\s*续/ });
     await user.click(submit);
 
@@ -192,13 +212,14 @@ describe('LoginFlow', () => {
   });
 
   it('BOOTSTRAP 状态通过 HttpOnly cookie 跳向初始化向导', async () => {
+    const fixture = createLoginFixture();
     const user = userEvent.setup();
     mocks.login.mockResolvedValue({
       state: 'BOOTSTRAP_REQUIRED',
     });
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
-    await fillCredentials(user, '00000009', 'Temporary-Password!2026');
+    await fillCredentials(user, fixture.input);
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/bootstrap'));
@@ -207,6 +228,7 @@ describe('LoginFlow', () => {
   });
 
   it('TOTP 错误时展示 Problem detail 原文并保留 challenge 步骤', async () => {
+    const fixture = createLoginFixture();
     const user = userEvent.setup();
     mocks.verifyTotp.mockRejectedValue(
       new ApiError({
@@ -217,10 +239,10 @@ describe('LoginFlow', () => {
     );
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
-    await fillCredentials(user);
+    await fillCredentials(user, fixture.input);
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
     const totpInput = await screen.findByLabelText('TOTP 动态码');
-    await user.type(totpInput, '000000');
+    await user.type(totpInput, fixture.code);
     await user.click(
       screen.getByRole('button', { name: /验\s*证\s*并\s*登\s*录/ }),
     );
@@ -228,7 +250,7 @@ describe('LoginFlow', () => {
     expect(
       await screen.findByText('TOTP 验证码错误，剩余 4 次'),
     ).toBeInTheDocument();
-    expect(totpInput).toHaveValue('000000');
+    expect(totpInput).toHaveValue(fixture.code);
     expect(
       screen.getByRole('button', { name: /验\s*证\s*并\s*登\s*录/ }),
     ).toBeEnabled();
@@ -239,6 +261,7 @@ describe('LoginFlow', () => {
   });
 
   it('TOTP challenge 失效时禁用提交并可重新登录清空状态', async () => {
+    const fixture = createLoginFixture();
     const user = userEvent.setup();
     mocks.verifyTotp.mockRejectedValue(
       new ApiError({
@@ -250,10 +273,10 @@ describe('LoginFlow', () => {
     );
     render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
 
-    await fillCredentials(user);
+    await fillCredentials(user, fixture.input);
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
     const totpInput = await screen.findByLabelText('TOTP 动态码');
-    await user.type(totpInput, '000000');
+    await user.type(totpInput, fixture.code);
     const submit = screen.getByRole('button', {
       name: /验\s*证\s*并\s*登\s*录/,
     });

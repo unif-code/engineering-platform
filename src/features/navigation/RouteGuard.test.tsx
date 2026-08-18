@@ -1,3 +1,4 @@
+import { createEmployeeNo } from '@root/tests/auth-fixtures';
 import { render, screen } from '@testing-library/react';
 import { App } from 'antd';
 import { act, type ComponentType, type ReactNode } from 'react';
@@ -14,7 +15,7 @@ const mocks = vi.hoisted(() => ({
       routeKey: string;
       sort: number;
     }>,
-    principal: { employeeId: '00000000', name: '平台管理员' } as null | {
+    principal: null as null | {
       employeeId: string;
       name: string;
     },
@@ -84,7 +85,7 @@ beforeEach(() => {
   mocks.initialState = {
     capabilities: ['identity.account.manage'],
     navigation: [],
-    principal: { employeeId: '00000000', name: '平台管理员' },
+    principal: { employeeId: createEmployeeNo(), name: '平台用户' },
   };
   mocks.location = { hash: '', pathname: '/home', search: '' };
   mocks.outlet = null;

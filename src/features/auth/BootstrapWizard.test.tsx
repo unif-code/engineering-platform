@@ -1,3 +1,11 @@
+import {
+  createChallengeToken,
+  createEmployeeNo,
+  createPassword,
+  createProvisioningUri,
+  createTotpCode,
+  createTotpSecret,
+} from '@root/tests/auth-fixtures';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -25,26 +33,46 @@ vi.mock('./service', () => ({
 
 import { BootstrapWizard } from './BootstrapWizard';
 
-const provisioningUri =
-  'otpauth://totp/EP:00000009?secret=JBSWY3DPEHPK3PXP&issuer=EP';
-const validPassword = 'New-Valid-Password!2026';
+function createBootstrapFixture() {
+  const employeeNo = createEmployeeNo();
+  const secret = createTotpSecret();
+  const fixture = {
+    code: createTotpCode(),
+    employeeNo,
+    password: createPassword(),
+    provisioningUri: createProvisioningUri(employeeNo, secret),
+    secret,
+    temporaryPassword: createPassword(),
+  };
+  mocks.enrollBootstrapTotp.mockResolvedValue({
+    provisioningUri: fixture.provisioningUri,
+  });
+  return fixture;
+}
 
 async function submitTemporaryCredentials(
   user: ReturnType<typeof userEvent.setup>,
+  credentials: { employeeNo: string; temporaryPassword: string },
 ) {
-  await user.type(screen.getByLabelText('员工编号'), '00000009');
-  await user.type(screen.getByLabelText('临时密码'), 'Temporary-Password!2026');
+  await user.type(screen.getByLabelText('员工编号'), credentials.employeeNo);
+  await user.type(
+    screen.getByLabelText('临时密码'),
+    credentials.temporaryPassword,
+  );
   await user.click(screen.getByRole('button', { name: '验证临时密码' }));
 }
 
-async function advanceToPassword(user: ReturnType<typeof userEvent.setup>) {
-  await submitTemporaryCredentials(user);
+async function advanceToPassword(
+  user: ReturnType<typeof userEvent.setup>,
+  credentials: { employeeNo: string; temporaryPassword: string },
+) {
+  await submitTemporaryCredentials(user, credentials);
   return screen.findByLabelText('正式密码');
 }
 
 async function submitPermanentPassword(
   user: ReturnType<typeof userEvent.setup>,
-  password = validPassword,
+  password: string,
 ) {
   await user.type(screen.getByLabelText('正式密码'), password);
   await user.click(screen.getByRole('button', { name: '设置正式密码' }));
@@ -56,41 +84,41 @@ beforeEach(() => {
   }
   mocks.login.mockResolvedValue({ state: 'BOOTSTRAP_REQUIRED' });
   mocks.setBootstrapPassword.mockResolvedValue({ state: 'PASSWORD_SET' });
-  mocks.enrollBootstrapTotp.mockResolvedValue({ provisioningUri });
   mocks.confirmBootstrapTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
 });
 
 describe('BootstrapWizard', () => {
   it('使用 HttpOnly bootstrap Session 完成密码、TOTP 与重新登录', async () => {
+    const fixture = createBootstrapFixture();
     const user = userEvent.setup();
     render(<BootstrapWizard />);
 
-    await advanceToPassword(user);
+    await advanceToPassword(user, fixture);
     expect(mocks.login).toHaveBeenCalledWith({
-      employeeNo: '00000009',
-      password: 'Temporary-Password!2026',
+      employeeNo: fixture.employeeNo,
+      password: fixture.temporaryPassword,
     });
     expect(mocks.replace).toHaveBeenCalledWith('/bootstrap');
 
-    await submitPermanentPassword(user);
+    await submitPermanentPassword(user, fixture.password);
 
     await waitFor(() =>
       expect(mocks.setBootstrapPassword).toHaveBeenCalledWith({
-        password: validPassword,
+        password: fixture.password,
       }),
     );
     expect(mocks.enrollBootstrapTotp).toHaveBeenCalledWith();
     const qrRegion = await screen.findByRole('region', {
       name: 'TOTP 绑定二维码',
     });
-    expect(within(qrRegion).getByText('JBSWY3DPEHPK3PXP')).toBeInTheDocument();
+    expect(within(qrRegion).getByText(fixture.secret)).toBeInTheDocument();
 
-    await user.type(screen.getByLabelText('TOTP 动态码'), '123456');
+    await user.type(screen.getByLabelText('TOTP 动态码'), fixture.code);
     await user.click(screen.getByRole('button', { name: '确认并完成' }));
 
     await waitFor(() =>
       expect(mocks.confirmBootstrapTotp).toHaveBeenCalledWith({
-        code: '123456',
+        code: fixture.code,
       }),
     );
     await user.click(await screen.findByRole('button', { name: '重新登录' }));
@@ -98,20 +126,22 @@ describe('BootstrapWizard', () => {
   });
 
   it('密码更新要求重新登录时不再使用已失效的 bootstrap Session 绑定 TOTP', async () => {
+    const fixture = createBootstrapFixture();
     const user = userEvent.setup();
     mocks.setBootstrapPassword.mockResolvedValue({
       state: 'PASSWORD_UPDATED_LOGIN_REQUIRED',
     });
     render(<BootstrapWizard />);
 
-    await advanceToPassword(user);
-    await submitPermanentPassword(user);
+    await advanceToPassword(user, fixture);
+    await submitPermanentPassword(user, fixture.password);
 
     await waitFor(() => expect(mocks.replace).toHaveBeenCalledWith('/login'));
     expect(mocks.enrollBootstrapTotp).not.toHaveBeenCalled();
   });
 
   it('刷新后不从 URL 恢复 bootstrap 状态，避免泄露会话凭据', () => {
+    createBootstrapFixture();
     render(<BootstrapWizard />);
 
     expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
@@ -119,14 +149,15 @@ describe('BootstrapWizard', () => {
   });
 
   it('临时凭据返回非 BOOTSTRAP 状态时留在步骤一并显示错误', async () => {
+    const fixture = createBootstrapFixture();
     const user = userEvent.setup();
     mocks.login.mockResolvedValue({
-      challengeToken: 'challenge-00000009',
+      challengeToken: createChallengeToken(),
       state: 'TOTP_REQUIRED',
     });
     render(<BootstrapWizard />);
 
-    await submitTemporaryCredentials(user);
+    await submitTemporaryCredentials(user, fixture);
 
     expect(
       await screen.findByText('当前账号未进入初始化阶段，请返回登录'),
@@ -135,11 +166,15 @@ describe('BootstrapWizard', () => {
   });
 
   it('正式密码实时校验 Security Floor', async () => {
+    const fixture = createBootstrapFixture();
     const user = userEvent.setup();
     render(<BootstrapWizard />);
-    await advanceToPassword(user);
+    await advanceToPassword(user, fixture);
 
-    await user.type(screen.getByLabelText('正式密码'), 'weak');
+    await user.type(
+      screen.getByLabelText('正式密码'),
+      crypto.randomUUID().slice(0, 4).toLowerCase(),
+    );
 
     expect(await screen.findByText('密码至少 15 位')).toBeInTheDocument();
     expect(screen.getByText('密码必须包含大写字母')).toBeInTheDocument();
@@ -148,6 +183,7 @@ describe('BootstrapWizard', () => {
   });
 
   it('服务端 422 字段错误显示在正式密码字段并停留在步骤二', async () => {
+    const fixture = createBootstrapFixture();
     const user = userEvent.setup();
     mocks.setBootstrapPassword.mockRejectedValue(
       new ApiError({
@@ -163,9 +199,9 @@ describe('BootstrapWizard', () => {
       }),
     );
     render(<BootstrapWizard />);
-    await advanceToPassword(user);
+    await advanceToPassword(user, fixture);
 
-    await submitPermanentPassword(user);
+    await submitPermanentPassword(user, fixture.password);
 
     expect(
       await screen.findByText(
@@ -177,6 +213,7 @@ describe('BootstrapWizard', () => {
   });
 
   it('TOTP confirm 错误保留二维码并允许原地重试', async () => {
+    const fixture = createBootstrapFixture();
     const user = userEvent.setup();
     mocks.confirmBootstrapTotp.mockRejectedValue(
       new ApiError({
@@ -186,29 +223,30 @@ describe('BootstrapWizard', () => {
       }),
     );
     render(<BootstrapWizard />);
-    await advanceToPassword(user);
-    await submitPermanentPassword(user);
+    await advanceToPassword(user, fixture);
+    await submitPermanentPassword(user, fixture.password);
     await screen.findByRole('region', { name: 'TOTP 绑定二维码' });
 
-    await user.type(screen.getByLabelText('TOTP 动态码'), '000000');
+    await user.type(screen.getByLabelText('TOTP 动态码'), fixture.code);
     await user.click(screen.getByRole('button', { name: '确认并完成' }));
 
     expect(await screen.findByText('TOTP 验证码错误')).toBeInTheDocument();
     expect(
       screen.getByRole('region', { name: 'TOTP 绑定二维码' }),
     ).toBeInTheDocument();
-    expect(screen.getByLabelText('TOTP 动态码')).toHaveValue('000000');
+    expect(screen.getByLabelText('TOTP 动态码')).toHaveValue(fixture.code);
   });
 
   it('TOTP enroll 失败后独立重试，不重复提交正式密码', async () => {
+    const fixture = createBootstrapFixture();
     const user = userEvent.setup();
     mocks.enrollBootstrapTotp
       .mockRejectedValueOnce(new Error('绑定信息暂时不可用'))
-      .mockResolvedValueOnce({ provisioningUri });
+      .mockResolvedValueOnce({ provisioningUri: fixture.provisioningUri });
     render(<BootstrapWizard />);
-    await advanceToPassword(user);
+    await advanceToPassword(user, fixture);
 
-    await submitPermanentPassword(user);
+    await submitPermanentPassword(user, fixture.password);
 
     expect(await screen.findByText('绑定信息暂时不可用')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '重新获取绑定信息' }));
@@ -220,6 +258,7 @@ describe('BootstrapWizard', () => {
   });
 
   it('bootstrap Session 失效时提示联系管理员重新签发临时密码', async () => {
+    const fixture = createBootstrapFixture();
     const user = userEvent.setup();
     mocks.setBootstrapPassword.mockRejectedValue(
       new ApiError({
@@ -229,9 +268,9 @@ describe('BootstrapWizard', () => {
       }),
     );
     render(<BootstrapWizard />);
-    await advanceToPassword(user);
+    await advanceToPassword(user, fixture);
 
-    await submitPermanentPassword(user);
+    await submitPermanentPassword(user, fixture.password);
 
     expect(
       await screen.findByText('联系管理员重新签发临时密码'),

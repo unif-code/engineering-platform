@@ -1,3 +1,4 @@
+import { createTotpCode } from '@root/tests/auth-fixtures';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
@@ -266,7 +267,7 @@ async function validateDraft(user: UserEvent) {
   await screen.findByText('校验通过', {}, INITIAL_WAIT);
 }
 
-async function publishVersionTwo(user: UserEvent) {
+async function publishVersionTwo(user: UserEvent, totpCode: string) {
   await findPolicySettings();
   await setIdleMinutes(user, '30');
   await validateDraft(user);
@@ -278,7 +279,7 @@ async function publishVersionTwo(user: UserEvent) {
   );
   await user.type(
     within(dialog).getByRole('textbox', { name: 'TOTP 验证码' }),
-    '123456',
+    totpCode,
   );
   await user.click(within(dialog).getByRole('button', { name: '确认发布' }));
   return dialog;
@@ -604,6 +605,7 @@ describe('AdminPoliciesPage', {
   ])(
     'Publish $status 保留 Modal 并展示 detail 与 requestId',
     async ({ detail, requestId, status }) => {
+      const totpCode = createTotpCode();
       arrangeValidDraft();
       administrationMocks.publishPolicyDraft.mockRejectedValueOnce(
         new ApiError({
@@ -616,12 +618,12 @@ describe('AdminPoliciesPage', {
       const user = userEvent.setup();
       renderPage();
 
-      const dialog = await publishVersionTwo(user);
+      const dialog = await publishVersionTwo(user, totpCode);
 
       expect(administrationMocks.publishPolicyDraft).toHaveBeenCalledWith(
         'identity',
         'draft-1',
-        { reason: '收紧 Session 空闲期限', totpCode: '123456' },
+        { reason: '收紧 Session 空闲期限', totpCode },
         '"v3"',
       );
       expect(await screen.findByText(new RegExp(detail))).toHaveTextContent(
@@ -632,6 +634,7 @@ describe('AdminPoliciesPage', {
   );
 
   it('Publish 成功刷新 catalog，当前值更新且版本增加一', async () => {
+    const totpCode = createTotpCode();
     administrationMocks.listPolicyCatalog
       .mockReset()
       .mockResolvedValueOnce(POLICY_CATALOG_FIXTURE)
@@ -647,13 +650,13 @@ describe('AdminPoliciesPage', {
     const user = userEvent.setup();
     renderPage();
 
-    const dialog = await publishVersionTwo(user);
+    const dialog = await publishVersionTwo(user, totpCode);
 
     expect(await screen.findByText('Policy 已发布')).toBeInTheDocument();
     expect(administrationMocks.publishPolicyDraft).toHaveBeenCalledWith(
       'identity',
       'draft-1',
-      { reason: '收紧 Session 空闲期限', totpCode: '123456' },
+      { reason: '收紧 Session 空闲期限', totpCode },
       '"v3"',
     );
     expect(await screen.findByText('版本 2', {}, INITIAL_WAIT)).toBeVisible();
@@ -694,6 +697,7 @@ describe('AdminPoliciesPage', {
   });
 
   it('从历史版本 Rollback 后通过公开入口进入新 Draft 编辑态', async () => {
+    const totpCode = createTotpCode();
     administrationMocks.listPolicyCatalog.mockResolvedValueOnce(
       CATALOG_VERSION_2,
     );
@@ -720,7 +724,7 @@ describe('AdminPoliciesPage', {
     );
     await user.type(
       within(dialog).getByRole('textbox', { name: 'TOTP 验证码' }),
-      '123456',
+      totpCode,
     );
     await user.click(within(dialog).getByRole('button', { name: '确认创建' }));
 
@@ -730,7 +734,7 @@ describe('AdminPoliciesPage', {
       {
         reason: '回滚到稳定版本',
         toVersion: 1,
-        totpCode: '123456',
+        totpCode,
       },
       2,
     );

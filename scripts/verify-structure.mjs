@@ -1,6 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import ts from 'typescript';
 
 const runtimeDependencies = [
   '@ant-design/x',
@@ -160,13 +161,97 @@ function checkManifest(manifest, issues) {
   }
 }
 
+function unwrapExpression(expression) {
+  let current = expression;
+  while (
+    ts.isParenthesizedExpression(current) ||
+    ts.isAsExpression(current) ||
+    ts.isSatisfiesExpression(current) ||
+    ts.isNonNullExpression(current)
+  ) {
+    current = current.expression;
+  }
+  return current;
+}
+
+function propertyNameText(name) {
+  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) {
+    return name.text;
+  }
+  if (
+    ts.isComputedPropertyName(name) &&
+    ts.isStringLiteralLike(unwrapExpression(name.expression))
+  ) {
+    return unwrapExpression(name.expression).text;
+  }
+  return undefined;
+}
+
+function effectiveMockSetting(objectLiteral) {
+  let setting = 'absent';
+
+  for (const property of objectLiteral.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      const spread = unwrapExpression(property.expression);
+      if (ts.isObjectLiteralExpression(spread)) {
+        const spreadSetting = effectiveMockSetting(spread);
+        if (spreadSetting !== 'absent') setting = spreadSetting;
+      } else {
+        setting = 'unknown';
+      }
+      continue;
+    }
+
+    if (!property.name || propertyNameText(property.name) !== 'mock') continue;
+    if (ts.isPropertyAssignment(property)) {
+      setting =
+        unwrapExpression(property.initializer).kind ===
+        ts.SyntaxKind.FalseKeyword
+          ? 'false'
+          : 'other';
+    } else {
+      setting = 'other';
+    }
+  }
+
+  return setting;
+}
+
+function exportedDefineConfigObject(contents) {
+  const sourceFile = ts.createSourceFile(
+    'config/config.ts',
+    contents,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const exportAssignment = sourceFile.statements.find(
+    (statement) =>
+      ts.isExportAssignment(statement) && !statement.isExportEquals,
+  );
+  if (!exportAssignment) return undefined;
+
+  const exportedExpression = unwrapExpression(exportAssignment.expression);
+  if (!ts.isCallExpression(exportedExpression)) return undefined;
+  const callee = unwrapExpression(exportedExpression.expression);
+  if (!ts.isIdentifier(callee) || callee.text !== 'defineConfig') {
+    return undefined;
+  }
+
+  const config = exportedExpression.arguments[0];
+  return config && ts.isObjectLiteralExpression(unwrapExpression(config))
+    ? unwrapExpression(config)
+    : undefined;
+}
+
 function checkConfig(contents, issues) {
   if (contents === undefined) return;
   const executableContents = contents.replace(commentsAndStrings, '');
   if (!/\butoopack\s*:/u.test(executableContents)) {
     issues.push('config/config.ts 必须声明 utoopack');
   }
-  if (!/\bmock\s*:\s*false\b/u.test(executableContents)) {
+  const config = exportedDefineConfigObject(contents);
+  if (!config || effectiveMockSetting(config) !== 'false') {
     issues.push('config/config.ts 的 mock 必须显式为 false');
   }
   if (/\bmfsu\s*:/u.test(executableContents)) {
@@ -210,6 +295,21 @@ function checkBiome(biome, issues) {
     if (!hasBiomeScope(includes, directory)) {
       issues.push(`Biome scope 必须覆盖 ${directory}`);
     }
+  }
+}
+
+function checkDoctorConfig(doctorConfig, issues) {
+  if (!doctorConfig) return;
+  const ignoredFiles = doctorConfig.ignore?.files;
+  if (
+    Array.isArray(ignoredFiles) &&
+    ignoredFiles.some((pattern) => {
+      if (typeof pattern !== 'string') return false;
+      const normalized = pattern.replaceAll('\\', '/').replace(/^\.\//u, '');
+      return normalized === 'mock' || normalized.startsWith('mock/');
+    })
+  ) {
+    issues.push('doctor.config.json 不得忽略已退役的 mock/ source');
   }
 }
 
@@ -310,6 +410,7 @@ export async function verifyStructure(root = process.cwd()) {
   checkConfig(await readText(root, 'config/config.ts', issues), issues);
   checkTsconfig(await readJson(root, 'tsconfig.json', issues), issues);
   checkBiome(await readJson(root, 'biome.json', issues), issues);
+  checkDoctorConfig(await readJson(root, 'doctor.config.json', issues), issues);
   checkPnpmWorkspace(
     await readText(root, 'pnpm-workspace.yaml', issues),
     issues,

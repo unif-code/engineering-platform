@@ -1,10 +1,6 @@
+import { createEmployeeNo } from '@root/tests/auth-fixtures';
 import { describe, expect, it } from 'vitest';
 import access from './access';
-
-const loggedInPrincipal = {
-  employeeId: '00000000',
-  name: '平台管理员',
-};
 
 function createInitialState(routeKeys: string[], loggedIn = true) {
   return {
@@ -16,7 +12,9 @@ function createInitialState(routeKeys: string[], loggedIn = true) {
       routeKey,
       sort: order,
     })),
-    principal: loggedIn ? loggedInPrincipal : null,
+    principal: loggedIn
+      ? { employeeId: createEmployeeNo(), name: '平台用户' }
+      : null,
   };
 }
 

@@ -1,4 +1,10 @@
 import {
+  createChallengeToken,
+  createEmployeeNo,
+  createPassword,
+  createTotpCode,
+} from '@root/tests/auth-fixtures';
+import {
   fireEvent,
   render,
   screen,
@@ -86,11 +92,6 @@ vi.mock('antd', async (importOriginal) => {
 
 import LoginPage from './index';
 
-const me = {
-  capabilities: ['identity.account.manage', 'audit.read'],
-  employeeId: '00000000',
-  name: '平台管理员',
-};
 const navigation = [
   {
     meta: {},
@@ -107,15 +108,33 @@ const navigation = [
     sort: 20,
   },
 ];
-const initialState = {
-  capabilities: me.capabilities,
-  navigation,
-  principal: { employeeId: me.employeeId, name: me.name },
-};
-const loginInput = {
-  employeeNo: '00000000',
-  password: 'Valid-Password!2026',
-};
+function createLoginFixture() {
+  const employeeNo = createEmployeeNo();
+  const me = {
+    capabilities: ['identity.account.manage', 'audit.read'],
+    employeeId: employeeNo,
+    name: '平台管理员',
+  };
+  const fixture = {
+    challengeToken: createChallengeToken(),
+    code: createTotpCode(),
+    initialState: {
+      capabilities: me.capabilities,
+      navigation,
+      principal: { employeeId: me.employeeId, name: me.name },
+    },
+    loginInput: { employeeNo, password: createPassword() },
+    me,
+  };
+  mocks.startLogin.mockResolvedValue({
+    challengeToken: fixture.challengeToken,
+    state: 'TOTP_REQUIRED',
+  });
+  mocks.verifyTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
+  mocks.getCurrentUser.mockResolvedValue(fixture.me);
+  mocks.fetchNavigation.mockResolvedValue(navigation);
+  return fixture;
+}
 
 function createDeferred() {
   let resolve!: () => void;
@@ -133,7 +152,7 @@ function renderLoginPage() {
   );
 }
 
-function submitCredentials(input = loginInput) {
+function submitCredentials(input: { employeeNo: string; password: string }) {
   fireEvent.change(screen.getByLabelText('员工编号'), {
     target: { value: input.employeeNo },
   });
@@ -143,7 +162,10 @@ function submitCredentials(input = loginInput) {
   fireEvent.click(screen.getByRole('button', { name: /继\s*续/ }));
 }
 
-async function submitForm(input = loginInput, totp = '123456') {
+async function submitForm(
+  input: { employeeNo: string; password: string },
+  totp: string,
+) {
   submitCredentials(input);
   const totpInput = await screen.findByLabelText('TOTP 动态码');
   fireEvent.change(totpInput, { target: { value: totp } });
@@ -167,18 +189,12 @@ beforeEach(() => {
   }
   mocks.committedMe = null;
   mocks.locationSearch = '';
-  mocks.startLogin.mockResolvedValue({
-    challengeToken: 'challenge-00000000',
-    state: 'TOTP_REQUIRED',
-  });
-  mocks.verifyTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
-  mocks.getCurrentUser.mockResolvedValue(me);
-  mocks.fetchNavigation.mockResolvedValue(navigation);
   mocks.setInitialState.mockResolvedValue(undefined);
 });
 
 describe('LoginPage', () => {
   it('按原型呈现品牌、Hero、交付链路和版本', () => {
+    createLoginFixture();
     renderLoginPage();
 
     expect(
@@ -214,6 +230,7 @@ describe('LoginPage', () => {
   });
 
   it('分步呈现既有认证字段且不同时暴露凭据与动态码', async () => {
+    const fixture = createLoginFixture();
     renderLoginPage();
 
     expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
@@ -225,7 +242,7 @@ describe('LoginPage', () => {
       ),
     ).toEqual(['员工编号', '密码']);
 
-    submitCredentials();
+    submitCredentials(fixture.loginInput);
 
     expect(await screen.findByLabelText('TOTP 动态码')).toBeInTheDocument();
     expect(screen.queryByLabelText('员工编号')).not.toBeInTheDocument();
@@ -234,6 +251,7 @@ describe('LoginPage', () => {
   });
 
   it('渲染凭据步骤与继续按钮', () => {
+    createLoginFixture();
     renderLoginPage();
 
     expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
@@ -242,23 +260,24 @@ describe('LoginPage', () => {
   });
 
   it('合法提交刷新完整初始状态后才进入首页', async () => {
+    const fixture = createLoginFixture();
     const stateRefresh = createDeferred();
     mocks.setInitialState.mockReturnValueOnce(stateRefresh.promise);
     renderLoginPage();
 
-    await submitForm();
+    await submitForm(fixture.loginInput, fixture.code);
 
     await waitFor(() =>
-      expect(mocks.startLogin).toHaveBeenCalledWith(loginInput),
+      expect(mocks.startLogin).toHaveBeenCalledWith(fixture.loginInput),
     );
     expect(mocks.verifyTotp).toHaveBeenCalledWith({
-      challengeToken: 'challenge-00000000',
-      code: '123456',
+      challengeToken: fixture.challengeToken,
+      code: fixture.code,
     });
     await waitFor(() => {
       expect(mocks.getCurrentUser).toHaveBeenCalledOnce();
       expect(mocks.fetchNavigation).toHaveBeenCalledOnce();
-      expect(mocks.setInitialState).toHaveBeenCalledWith(initialState);
+      expect(mocks.setInitialState).toHaveBeenCalledWith(fixture.initialState);
     });
     expect(mocks.verifyTotp.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.getCurrentUser.mock.invocationCallOrder[0],
@@ -274,20 +293,24 @@ describe('LoginPage', () => {
   });
 
   it('只在 initialState 已完成 React commit 后进入首页', async () => {
+    const fixture = createLoginFixture();
     renderLoginPage();
 
-    await submitForm();
+    await submitForm(fixture.loginInput, fixture.code);
 
     await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/home'));
-    expect(mocks.pushObservedMe).toHaveBeenCalledWith(initialState.principal);
+    expect(mocks.pushObservedMe).toHaveBeenCalledWith(
+      fixture.initialState.principal,
+    );
   });
 
   it('登录后只接受经过校验的站内 redirect', async () => {
+    const fixture = createLoginFixture();
     mocks.locationSearch =
       '?redirect=%2Fadmin%2Fusers%3Fstatus%3Denabled%23member';
     renderLoginPage();
 
-    await submitForm();
+    await submitForm(fixture.loginInput, fixture.code);
 
     await waitFor(() =>
       expect(mocks.push).toHaveBeenCalledWith(
@@ -297,20 +320,22 @@ describe('LoginPage', () => {
   });
 
   it('initialState 提交失败时展示原始错误并 fail closed', async () => {
+    const fixture = createLoginFixture();
     mocks.setInitialState.mockRejectedValueOnce(new Error('初始状态提交失败'));
     renderLoginPage();
 
-    await submitForm();
+    await submitForm(fixture.loginInput, fixture.code);
 
     expect(await screen.findByText('初始状态提交失败')).toBeInTheDocument();
     expect(mocks.push).not.toHaveBeenCalledWith('/home');
   });
 
   it('登录失败展示原始错误且不刷新状态、不导航', async () => {
+    const fixture = createLoginFixture();
     mocks.startLogin.mockRejectedValueOnce(new Error('账号或凭据错误'));
     renderLoginPage();
 
-    submitCredentials();
+    submitCredentials(fixture.loginInput);
 
     expect(await screen.findByText('账号或凭据错误')).toBeInTheDocument();
     expect(mocks.messageError).not.toHaveBeenCalled();
@@ -321,10 +346,11 @@ describe('LoginPage', () => {
   });
 
   it('登录后无法取得当前用户时 fail closed', async () => {
+    const fixture = createLoginFixture();
     mocks.getCurrentUser.mockResolvedValueOnce(null);
     renderLoginPage();
 
-    await submitForm();
+    await submitForm(fixture.loginInput, fixture.code);
 
     await waitFor(() =>
       expect(mocks.messageError).toHaveBeenCalledWith('登录状态刷新失败'),
@@ -337,28 +363,31 @@ describe('LoginPage', () => {
   it.each([
     {
       caseName: '8 位非数字员工编号',
-      input: { ...loginInput, employeeNo: 'abcdefgh' },
+      invalidEmployeeNo: true,
       message: '员工编号为 8 位数字',
     },
     {
       caseName: '6 位非数字动态码',
-      input: loginInput,
       message: '动态码为 6 位数字',
-      totp: 'abcdef',
+      invalidEmployeeNo: false,
     },
   ])(
     '$caseName由真实表单拦截且不调用对应 service',
-    async ({ input, message, totp }) => {
+    async ({ invalidEmployeeNo, message }) => {
+      const fixture = createLoginFixture();
+      const input = invalidEmployeeNo
+        ? { ...fixture.loginInput, employeeNo: 'abcdefgh' }
+        : fixture.loginInput;
       renderLoginPage();
 
-      if (totp === undefined) {
+      if (invalidEmployeeNo) {
         submitCredentials(input);
       } else {
-        await submitForm(input, totp);
+        await submitForm(input, 'abcdef');
       }
 
       expect(await screen.findByText(message)).toBeInTheDocument();
-      if (totp === undefined) {
+      if (invalidEmployeeNo) {
         expect(mocks.startLogin).not.toHaveBeenCalled();
       } else {
         expect(mocks.startLogin).toHaveBeenCalledWith(input);
