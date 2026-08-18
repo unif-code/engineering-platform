@@ -11,12 +11,6 @@ export interface UserRow extends AccountSummary {
   team?: string;
 }
 
-export interface UserEditFormValues {
-  displayName: string;
-  role: string;
-  status: 'DISABLED' | 'ENABLED';
-  team: string;
-}
 export type UserStatus = AccountStatus;
 export interface UserFormValues {
   displayName: string;

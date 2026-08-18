@@ -11,9 +11,9 @@ import { SemanticTag } from '@/components/SemanticTag';
 import {
   disableAccount,
   enableAccount,
+  resetAccountPassword,
   resetAccountTotp,
 } from '@/features/administration';
-import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
 import { AccountActionModal } from './AccountActionModal';
 import { CredentialModal } from './CredentialModal';
 import { USER_ACTION_META, USER_STATUS_META } from './constant';
@@ -24,7 +24,6 @@ import type {
   UserQueryParams,
   UserRow,
 } from './type';
-import { UserEditModal } from './UserEditModal';
 import { UserModal } from './UserModal';
 import { formatAccountError, queryUserRows } from './util';
 
@@ -34,19 +33,17 @@ interface ActionState {
 }
 
 interface CredentialState {
-  kind: 'create';
+  kind: 'create' | 'reset';
   receipt: CredentialReceipt;
 }
 
 export default function AdminUsersPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
-  const showStaticAction = useStaticPrototypeAction();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
   const presentationOverridesRef = useRef(new Map<string, Partial<UserRow>>());
   const [createOpen, setCreateOpen] = useState(false);
-  const [editAccount, setEditAccount] = useState<UserRow>();
   const [actionState, setActionState] = useState<ActionState>();
   const [credentialState, setCredentialState] = useState<CredentialState>();
 
@@ -149,11 +146,13 @@ export default function AdminUsersPage() {
           return (
             <Space size={0} wrap>
               <Button
-                onClick={() => setEditAccount(row)}
+                onClick={() =>
+                  setActionState({ action: 'resetPassword', account: row })
+                }
                 size="small"
                 type="link"
               >
-                编辑
+                重置密码
               </Button>
               <Button
                 onClick={() =>
@@ -174,14 +173,6 @@ export default function AdminUsersPage() {
               >
                 {statusAction === 'disable' ? '停用' : '启用'}
               </Button>
-              <Button
-                danger
-                onClick={() => showStaticAction(`删除用户 ${row.displayName}`)}
-                size="small"
-                type="link"
-              >
-                删除
-              </Button>
             </Space>
           );
         },
@@ -190,10 +181,22 @@ export default function AdminUsersPage() {
         width: 260,
       },
     ],
-    [showStaticAction, styles.employeeNo, styles.lastLogin, styles.userCell],
+    [styles.employeeNo, styles.lastLogin, styles.userCell],
   );
 
   const confirmAction = async (state: ActionState, reason: string) => {
+    if (state.action === 'resetPassword') {
+      const receipt = await resetAccountPassword(
+        state.account.id,
+        { reason },
+        state.account.etag,
+      );
+      setActionState(undefined);
+      setCredentialState({ kind: 'reset', receipt });
+      message.success(USER_ACTION_META.resetPassword.successText);
+      await reloadAccounts();
+      return;
+    }
     if (state.action === 'enable') {
       await enableAccount(state.account.id, { reason }, state.account.etag);
     } else if (state.action === 'disable') {
@@ -241,7 +244,7 @@ export default function AdminUsersPage() {
         />
 
         <p className={styles.pageNote}>
-          禁用 / 删除即时失效 Session 与访问权；历史业务 actor 与 Audit 保留 ·
+          禁用即时失效 Session 与访问权；历史业务 actor 与 Audit 保留 ·
           超级管理员账号受平台保护
         </p>
 
@@ -258,17 +261,6 @@ export default function AdminUsersPage() {
               setCredentialState({ kind: 'create', receipt });
               void reloadAccounts();
             }}
-            open
-          />
-        ) : null}
-
-        {editAccount ? (
-          <UserEditModal
-            account={editAccount}
-            onClose={() => setEditAccount(undefined)}
-            onSubmit={() =>
-              showStaticAction(`编辑用户 ${editAccount.displayName}`)
-            }
             open
           />
         ) : null}
