@@ -3,23 +3,39 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { mutationHeaders } from '@/services/transport';
-import { createAdminPoliciesMock } from '../../../mock/adminPolicies';
+import type {
+  PolicyCatalogResponse,
+  PolicyDraft,
+  PolicyPreview,
+  PolicyValidationResult,
+  PolicyVersionsResponse,
+  PublishedPolicyVersion,
+} from '@/features/administration';
+import { ApiError } from '@/services/transport';
 import {
-  createMockFetch,
-  createMockRequester,
-  type MockRoutes,
-} from '../../../tests/mockRequestHarness';
+  deepFreezeDto,
+  POLICY_CATALOG_FIXTURE,
+  POLICY_VERSION_FIXTURES,
+} from '../../../tests/fixtures/accessGovernance';
 
-const { fetchMock, requestMock } = vi.hoisted(() => {
-  const fetchMock = vi.fn();
-  vi.stubGlobal('fetch', fetchMock);
-  return { fetchMock, requestMock: vi.fn() };
-});
+const administrationMocks = vi.hoisted(() => ({
+  createPolicyDraft: vi.fn(),
+  listPolicyCatalog: vi.fn(),
+  listPolicyVersions: vi.fn(),
+  previewPolicyDraft: vi.fn(),
+  publishPolicyDraft: vi.fn(),
+  rollbackPolicyVersion: vi.fn(),
+  updatePolicyDraft: vi.fn(),
+  validatePolicyDraft: vi.fn(),
+}));
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
-  defineMock: <T,>(routes: T) => routes,
+}));
+
+vi.mock('@/features/administration', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/administration')>()),
+  ...administrationMocks,
 }));
 
 import AdminPoliciesPage from '.';
@@ -29,38 +45,181 @@ const PAGE_INTERACTION_TEST_TIMEOUT = 30_000;
 const PREVIEW_BUTTON_NAME = /预\s*览/;
 const PUBLISH_BUTTON_NAME = /发\s*布/;
 const VALIDATE_BUTTON_NAME = /校\s*验/;
-let routes: MockRoutes;
-const requestThroughMock = createMockRequester(() => routes);
-const fetchThroughMock = createMockFetch(() => routes);
 
-interface SeedDraft {
-  content: Record<string, number | string>;
-  id: string;
-}
+const CONTENT_60 = deepFreezeDto({
+  'identity.draft_auto_archive_days': 30,
+  'identity.login_backoff_profile': 'STANDARD',
+  'identity.password_expiry': 'NEVER',
+  'identity.session_idle_minutes': 60,
+  'identity.session_limit': 3,
+  'identity.temp_password_ttl_hours': 24,
+  'identity.totp_attempt_limit': 5,
+});
+const CONTENT_10 = deepFreezeDto({
+  ...CONTENT_60,
+  'identity.session_idle_minutes': 10,
+});
+const CONTENT_30 = deepFreezeDto({
+  ...CONTENT_60,
+  'identity.session_idle_minutes': 30,
+});
+const CONTENT_45 = deepFreezeDto({
+  ...CONTENT_60,
+  'identity.session_idle_minutes': 45,
+});
 
-async function seedPublishedVersion(idleMinutes: number, reason: string) {
-  const draftsPath = '/api/v1/admin/policies/identity/drafts';
-  const created = (await requestThroughMock(draftsPath, {
-    data: { values: {} },
-    headers: mutationHeaders(),
-    method: 'POST',
-  })) as SeedDraft;
-  await requestThroughMock(`${draftsPath}/${created.id}`, {
-    data: {
-      values: {
-        ...created.content,
-        'identity.session_idle_minutes': idleMinutes,
-      },
+const policyDraft = (
+  content: Record<string, number | string>,
+  revision: number,
+  overrides: Partial<PolicyDraft> = {},
+) =>
+  deepFreezeDto<PolicyDraft>({
+    baseVersion: 1,
+    content,
+    etag: `"v${revision}"`,
+    id: 'draft-1',
+    namespace: 'identity',
+    revision,
+    scope: 'PLATFORM',
+    stale: false,
+    status: 'DRAFT',
+    updatedAt: `2026-08-18T08:0${revision}:00.000Z`,
+    ...overrides,
+  });
+
+const DRAFT_V1 = policyDraft(CONTENT_60, 1);
+const DRAFT_10_V2 = policyDraft(CONTENT_10, 2);
+const DRAFT_30_V2 = policyDraft(CONTENT_30, 2);
+const DRAFT_30_V4 = policyDraft(CONTENT_30, 4);
+const DRAFT_45_V4 = policyDraft(CONTENT_45, 4);
+const ROLLBACK_DRAFT = policyDraft(CONTENT_60, 1, { baseVersion: 2 });
+
+const VALID_30_V3 = deepFreezeDto<PolicyValidationResult>({
+  etag: '"v3"',
+  issues: [],
+  revision: 3,
+  valid: true,
+});
+const VALID_30_V4 = deepFreezeDto<PolicyValidationResult>({
+  etag: '"v4"',
+  issues: [],
+  revision: 4,
+  valid: true,
+});
+const VALID_30_V5 = deepFreezeDto<PolicyValidationResult>({
+  etag: '"v5"',
+  issues: [],
+  revision: 5,
+  valid: true,
+});
+const INVALID_10_V3 = deepFreezeDto<PolicyValidationResult>({
+  etag: '"v3"',
+  issues: [
+    {
+      code: 'OUT_OF_RANGE',
+      key: 'identity.session_idle_minutes',
+      message: 'Session 空闲期限必须在 15～240 之间',
     },
-    headers: mutationHeaders({ etag: '"v1"' }),
-    method: 'PATCH',
+  ],
+  revision: 3,
+  valid: false,
+});
+const PREVIEW_30 = deepFreezeDto<PolicyPreview>({
+  baseVersion: 1,
+  changes: [
+    {
+      afterValue: 30,
+      beforeValue: 60,
+      changed: true,
+      effectSemantics: '发布后用于认证 API 的空闲 Session 判定。',
+      key: 'identity.session_idle_minutes',
+      label: 'Session 空闲期限',
+    },
+  ],
+  draftId: 'draft-1',
+  etag: '"v2"',
+  namespace: 'identity',
+  revision: 2,
+});
+const PUBLISHED_VERSION_2 = deepFreezeDto<PublishedPolicyVersion>({
+  namespace: 'identity',
+  publishedAt: '2026-08-18T09:00:00.000Z',
+  reason: '收紧 Session 空闲期限',
+  scope: 'PLATFORM',
+  version: 2,
+});
+
+const catalogAt = (
+  activeVersion: number,
+  idleMinutes: number,
+): PolicyCatalogResponse =>
+  deepFreezeDto({
+    activeVersion,
+    items: POLICY_CATALOG_FIXTURE.items.map((item) => ({
+      ...item,
+      activeValue:
+        item.key === 'identity.session_idle_minutes'
+          ? idleMinutes
+          : item.activeValue,
+      activeVersion,
+    })),
+    namespace: 'identity',
+    scope: 'PLATFORM',
   });
-  await requestThroughMock(`${draftsPath}/${created.id}/publish`, {
-    data: { reason, totpCode: '123456' },
-    headers: mutationHeaders({ etag: '"v2"' }),
-    method: 'POST',
-  });
-}
+
+const CATALOG_VERSION_2 = catalogAt(2, 30);
+const VERSIONS_2 = deepFreezeDto<PolicyVersionsResponse>({
+  items: [
+    {
+      current: true,
+      namespace: 'identity',
+      publishedAt: '2026-08-18T09:00:00.000Z',
+      publishedBy: '示例管理员',
+      reason: '收紧 Session 空闲期限',
+      scope: 'PLATFORM',
+      version: 2,
+    },
+    {
+      ...POLICY_VERSION_FIXTURES.items[0],
+      current: false,
+    },
+  ],
+});
+const VERSIONS_4 = deepFreezeDto<PolicyVersionsResponse>({
+  items: [
+    {
+      current: true,
+      namespace: 'identity',
+      publishedAt: '2026-08-18T12:00:00.000Z',
+      publishedBy: '示例管理员',
+      reason: '第四版策略',
+      scope: 'PLATFORM',
+      version: 4,
+    },
+    {
+      current: false,
+      namespace: 'identity',
+      publishedAt: '2026-08-18T11:00:00.000Z',
+      publishedBy: '示例管理员',
+      reason: '第三版策略',
+      scope: 'PLATFORM',
+      version: 3,
+    },
+    {
+      current: false,
+      namespace: 'identity',
+      publishedAt: '2026-08-18T10:00:00.000Z',
+      publishedBy: '示例管理员',
+      reason: '第二版策略',
+      scope: 'PLATFORM',
+      version: 2,
+    },
+    {
+      ...POLICY_VERSION_FIXTURES.items[0],
+      current: false,
+    },
+  ],
+});
 
 function renderPage() {
   const queryClient = new QueryClient({
@@ -122,39 +281,24 @@ async function publishVersionTwo(user: UserEvent) {
     '123456',
   );
   await user.click(within(dialog).getByRole('button', { name: '确认发布' }));
-  await screen.findByText('Policy 已发布', {}, INITIAL_WAIT);
+  return dialog;
+}
+
+function arrangeValidDraft() {
+  administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+  administrationMocks.updatePolicyDraft.mockResolvedValueOnce(DRAFT_30_V2);
+  administrationMocks.validatePolicyDraft.mockResolvedValueOnce(VALID_30_V3);
 }
 
 beforeEach(() => {
-  routes = createAdminPoliciesMock();
-  requestMock.mockReset();
-  fetchMock.mockReset();
-  fetchMock.mockImplementation(
-    async (input: RequestInfo | URL, init?: RequestInit) => {
-      const request =
-        input instanceof Request ? input : new Request(String(input), init);
-      const url = new URL(request.url);
-      const bodyText = await request.clone().text();
-      const headers = Object.fromEntries(
-        [...request.headers.entries()].filter(([name]) =>
-          ['idempotency-key', 'if-match'].includes(name.toLocaleLowerCase()),
-        ),
-      );
-      const options = {
-        ...(bodyText ? { data: JSON.parse(bodyText) } : {}),
-        ...(Object.keys(headers).length > 0 ? { headers } : {}),
-        method: request.method,
-        ...(url.search ? { params: Object.fromEntries(url.searchParams) } : {}),
-      };
-      const override = await requestMock(url.pathname, options);
-      if (override !== undefined) {
-        return new Response(JSON.stringify(override), {
-          headers: { 'Content-Type': 'application/json', ETag: '"v3"' },
-          status: 200,
-        });
-      }
-      return fetchThroughMock(input, init);
-    },
+  Object.values(administrationMocks).forEach((mock) => {
+    mock.mockReset();
+  });
+  administrationMocks.listPolicyCatalog.mockResolvedValue(
+    POLICY_CATALOG_FIXTURE,
+  );
+  administrationMocks.listPolicyVersions.mockResolvedValue(
+    POLICY_VERSION_FIXTURES,
   );
 });
 
@@ -210,7 +354,10 @@ describe('AdminPoliciesPage', {
     ).toHaveTextContent('60 分钟 → 30 分钟');
   });
 
-  it('校验前自动创建并保存 Draft，PATCH 带当前 If-Match 与新的 Idempotency-Key', async () => {
+  it('校验前通过公开入口创建并保存 Draft，且每一步使用最新 ETag', async () => {
+    administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+    administrationMocks.updatePolicyDraft.mockResolvedValueOnce(DRAFT_30_V2);
+    administrationMocks.validatePolicyDraft.mockResolvedValueOnce(VALID_30_V3);
     const user = userEvent.setup();
     renderPage();
     await findPolicySettings();
@@ -223,15 +370,6 @@ describe('AdminPoliciesPage', {
 
     await user.clear(input);
     expect(validate).toBeDisabled();
-    await user.click(validate);
-    expect(
-      requestMock.mock.calls.filter(
-        ([path, options]) =>
-          path === '/api/v1/admin/policies/identity/drafts/draft-1' &&
-          options?.method === 'PATCH',
-      ),
-    ).toHaveLength(0);
-
     await user.type(input, '30');
     expect(validate).toBeEnabled();
     expect(
@@ -242,36 +380,44 @@ describe('AdminPoliciesPage', {
     expect(
       screen.getByRole('button', { name: PUBLISH_BUTTON_NAME }),
     ).toBeEnabled();
-
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/policies/identity/drafts/draft-1',
+    expect(administrationMocks.createPolicyDraft).toHaveBeenCalledWith(
+      'identity',
+      { values: {} },
+    );
+    expect(administrationMocks.updatePolicyDraft).toHaveBeenCalledWith(
+      'identity',
+      'draft-1',
       {
-        data: {
-          values: expect.objectContaining({
-            'identity.session_idle_minutes': 30,
-          }),
+        content: {
+          'identity.draft_auto_archive_days': 30,
+          'identity.login_backoff_profile': 'STANDARD',
+          'identity.password_expiry': 'NEVER',
+          'identity.session_idle_minutes': 30,
+          'identity.session_limit': 3,
+          'identity.temp_password_ttl_hours': 24,
+          'identity.totp_attempt_limit': 5,
         },
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-          'If-Match': '"v1"',
-        },
-        method: 'PATCH',
       },
+      '"v1"',
+    );
+    expect(administrationMocks.validatePolicyDraft).toHaveBeenCalledWith(
+      'identity',
+      'draft-1',
+      '"v2"',
     );
   });
 
   it('保存后再次编辑时可撤销本地编辑并恢复服务端候选', async () => {
+    administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+    administrationMocks.updatePolicyDraft.mockResolvedValueOnce(DRAFT_30_V2);
+    administrationMocks.validatePolicyDraft
+      .mockResolvedValueOnce(VALID_30_V3)
+      .mockResolvedValueOnce(VALID_30_V4);
     const user = userEvent.setup();
     renderPage();
     await findPolicySettings();
     await setIdleMinutes(user, '30');
     await validateDraft(user);
-
-    const patchCountAfterSave = requestMock.mock.calls.filter(
-      ([path, options]) =>
-        path === '/api/v1/admin/policies/identity/drafts/draft-1' &&
-        options?.method === 'PATCH',
-    ).length;
     await setIdleMinutes(user, '45');
 
     const undo = screen.getByRole('button', { name: '撤销本地编辑' });
@@ -285,48 +431,27 @@ describe('AdminPoliciesPage', {
       screen.getByRole('region', { name: '待发布草稿' }),
     ).toHaveTextContent('60 分钟 → 30 分钟');
     expect(undo).toBeDisabled();
-    expect(
-      screen.getByRole('button', { name: VALIDATE_BUTTON_NAME }),
-    ).toBeEnabled();
-    expect(
-      screen.getByRole('button', { name: PUBLISH_BUTTON_NAME }),
-    ).toBeDisabled();
-
     await validateDraft(user);
-    expect(
-      requestMock.mock.calls.filter(
-        ([path, options]) =>
-          path === '/api/v1/admin/policies/identity/drafts/draft-1' &&
-          options?.method === 'PATCH',
-      ),
-    ).toHaveLength(patchCountAfterSave);
-    expect(
-      screen.getByRole('button', { name: PUBLISH_BUTTON_NAME }),
-    ).toBeEnabled();
+    expect(administrationMocks.updatePolicyDraft).toHaveBeenCalledTimes(1);
+    expect(administrationMocks.validatePolicyDraft).toHaveBeenNthCalledWith(
+      2,
+      'identity',
+      'draft-1',
+      '"v3"',
+    );
   });
 
-  it('Draft ETag 409 展示固定并发冲突提示并保留编辑态', async () => {
+  it('Draft ETag 409 保留编辑态并显示固定并发冲突提示', async () => {
+    administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+    administrationMocks.updatePolicyDraft.mockRejectedValueOnce(
+      new ApiError({
+        detail: '已被并发修改，刷新后重试',
+        requestId: 'req-policy-conflict',
+        status: 409,
+        title: 'DRAFT_CONFLICT',
+      }),
+    );
     const user = userEvent.setup();
-    requestMock.mockImplementation(async (path, options) => {
-      if (
-        path === '/api/v1/admin/policies/identity/drafts/draft-1' &&
-        options?.method === 'PATCH'
-      ) {
-        throw {
-          response: {
-            data: {
-              detail: '已被并发修改，刷新后重试',
-              requestId: 'req-policy-conflict',
-              status: 409,
-              title: 'DRAFT_CONFLICT',
-            },
-            status: 409,
-            statusText: 'Conflict',
-          },
-        };
-      }
-      return undefined;
-    });
     renderPage();
     await findPolicySettings();
     await setIdleMinutes(user, '30');
@@ -344,23 +469,19 @@ describe('AdminPoliciesPage', {
   });
 
   it('Validate 展示越界 issue，修正后通过校验', async () => {
+    administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+    administrationMocks.updatePolicyDraft
+      .mockResolvedValueOnce(DRAFT_10_V2)
+      .mockResolvedValueOnce(DRAFT_30_V4);
+    administrationMocks.validatePolicyDraft
+      .mockResolvedValueOnce(INVALID_10_V3)
+      .mockResolvedValueOnce(VALID_30_V5);
     const user = userEvent.setup();
     renderPage();
     await findPolicySettings();
     await setIdleMinutes(user, '10');
     await user.click(
       screen.getByRole('button', { name: VALIDATE_BUTTON_NAME }),
-    );
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/policies/identity/drafts/draft-1',
-      expect.objectContaining({
-        data: {
-          values: expect.objectContaining({
-            'identity.session_idle_minutes': 10,
-          }),
-        },
-        method: 'PATCH',
-      }),
     );
 
     expect(
@@ -369,50 +490,35 @@ describe('AdminPoliciesPage', {
 
     await setIdleMinutes(user, '30');
     await validateDraft(user);
+    expect(administrationMocks.updatePolicyDraft).toHaveBeenNthCalledWith(
+      2,
+      'identity',
+      'draft-1',
+      expect.objectContaining({
+        content: expect.objectContaining({
+          'identity.session_idle_minutes': 30,
+        }),
+      }),
+      '"v3"',
+    );
   });
 
   it('编辑发生在 Validate 请求之后时丢弃旧候选结果', async () => {
     let resolveValidation:
-      | ((value: {
-          contentHash: string;
-          draftId: string;
-          issues: [];
-          revision: number;
-          valid: true;
-        }) => void)
+      | ((value: PolicyValidationResult) => void)
       | undefined;
-    const validationResponse = new Promise<{
-      contentHash: string;
-      draftId: string;
-      issues: [];
-      revision: number;
-      valid: true;
-    }>((resolve) => {
-      resolveValidation = resolve;
-    });
-    requestMock.mockImplementation((path, options) => {
-      if (path === '/api/v1/admin/policies/identity/drafts/draft-1/validate') {
-        return validationResponse;
-      }
-      if (
-        path === '/api/v1/admin/policies/identity/drafts/draft-1' &&
-        options?.method === 'PATCH' &&
-        options.headers?.['If-Match'] === '"v3"'
-      ) {
-        return {
-          baseVersion: 1,
-          content: options.data?.values,
-          id: 'draft-1',
-          lastMeaningfulActivityAt: '2026-08-14T00:00:00Z',
-          namespace: 'identity',
-          revision: 4,
-          scope: 'PLATFORM',
-          stale: false,
-          status: 'DRAFT',
-        };
-      }
-      return undefined;
-    });
+    const validationResponse = new Promise<PolicyValidationResult>(
+      (resolve) => {
+        resolveValidation = resolve;
+      },
+    );
+    administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+    administrationMocks.updatePolicyDraft
+      .mockResolvedValueOnce(DRAFT_30_V2)
+      .mockResolvedValueOnce(DRAFT_45_V4);
+    administrationMocks.validatePolicyDraft
+      .mockReturnValueOnce(validationResponse)
+      .mockResolvedValueOnce(VALID_30_V5);
     const user = userEvent.setup();
     renderPage();
     await findPolicySettings();
@@ -422,20 +528,15 @@ describe('AdminPoliciesPage', {
       screen.getByRole('button', { name: VALIDATE_BUTTON_NAME }),
     );
     await waitFor(() => {
-      expect(requestMock).toHaveBeenCalledWith(
-        '/api/v1/admin/policies/identity/drafts/draft-1/validate',
-        expect.any(Object),
+      expect(administrationMocks.validatePolicyDraft).toHaveBeenCalledWith(
+        'identity',
+        'draft-1',
+        '"v2"',
       );
     });
     await setIdleMinutes(user, '45');
     await act(async () => {
-      resolveValidation?.({
-        contentHash: 'delayed-validation',
-        draftId: 'draft-1',
-        issues: [],
-        revision: 3,
-        valid: true,
-      });
+      resolveValidation?.(VALID_30_V3);
       await validationResponse;
     });
 
@@ -445,17 +546,24 @@ describe('AdminPoliciesPage', {
       screen.getByRole('button', { name: VALIDATE_BUTTON_NAME }),
     );
     await waitFor(() => {
-      expect(requestMock).toHaveBeenCalledWith(
-        '/api/v1/admin/policies/identity/drafts/draft-1',
+      expect(administrationMocks.updatePolicyDraft).toHaveBeenNthCalledWith(
+        2,
+        'identity',
+        'draft-1',
         expect.objectContaining({
-          headers: expect.objectContaining({ 'If-Match': '"v3"' }),
-          method: 'PATCH',
+          content: expect.objectContaining({
+            'identity.session_idle_minutes': 45,
+          }),
         }),
+        '"v3"',
       );
     });
   });
 
-  it('Preview 呈现 Draft 前后值与生效语义', async () => {
+  it('Preview 通过公开入口呈现 Draft 前后值与生效语义', async () => {
+    administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+    administrationMocks.updatePolicyDraft.mockResolvedValueOnce(DRAFT_30_V2);
+    administrationMocks.previewPolicyDraft.mockResolvedValueOnce(PREVIEW_30);
     const user = userEvent.setup();
     renderPage();
     await findPolicySettings();
@@ -468,7 +576,6 @@ describe('AdminPoliciesPage', {
     );
 
     expect(preview).toHaveAttribute('data-density', 'compact');
-
     expect(
       await within(preview).findByRole(
         'row',
@@ -476,56 +583,90 @@ describe('AdminPoliciesPage', {
         INITIAL_WAIT,
       ),
     ).toBeInTheDocument();
+    expect(administrationMocks.previewPolicyDraft).toHaveBeenCalledWith(
+      'identity',
+      'draft-1',
+      '"v2"',
+    );
   });
 
-  it('Publish 原因或 TOTP 不完整时不可提交，错误 TOTP 展示服务端 detail', async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await findPolicySettings();
-    await setIdleMinutes(user, '30');
-    await validateDraft(user);
-    await user.click(screen.getByRole('button', { name: PUBLISH_BUTTON_NAME }));
-    const dialog = await screen.findByRole('dialog', { name: '发布 Policy' });
-    const submit = within(dialog).getByRole('button', { name: '确认发布' });
+  it.each([
+    {
+      detail: 'Draft Base 已落后，请刷新后重试',
+      requestId: 'req-policy-publish-409',
+      status: 409,
+    },
+    {
+      detail: 'Policy 校验未通过',
+      requestId: 'req-policy-publish-422',
+      status: 422,
+    },
+  ])(
+    'Publish $status 保留 Modal 并展示 detail 与 requestId',
+    async ({ detail, requestId, status }) => {
+      arrangeValidDraft();
+      administrationMocks.publishPolicyDraft.mockRejectedValueOnce(
+        new ApiError({
+          detail,
+          requestId,
+          status,
+          title: 'POLICY_PUBLISH_ERROR',
+        }),
+      );
+      const user = userEvent.setup();
+      renderPage();
 
-    expect(submit).toBeDisabled();
-    await user.type(
-      within(dialog).getByRole('textbox', { name: '发布原因' }),
-      '验证 TOTP 错误分支',
-    );
-    expect(submit).toBeDisabled();
-    await user.type(
-      within(dialog).getByRole('textbox', { name: 'TOTP 验证码' }),
-      '000000',
-    );
-    expect(submit).toBeEnabled();
-    await user.click(submit);
+      const dialog = await publishVersionTwo(user);
 
-    expect(await screen.findByText(/TOTP 验证码错误/)).toBeVisible();
-    expect(dialog).toBeInTheDocument();
-  });
+      expect(administrationMocks.publishPolicyDraft).toHaveBeenCalledWith(
+        'identity',
+        'draft-1',
+        { reason: '收紧 Session 空闲期限', totpCode: '123456' },
+        '"v3"',
+      );
+      expect(await screen.findByText(new RegExp(detail))).toHaveTextContent(
+        `requestId: ${requestId}`,
+      );
+      expect(dialog).toBeInTheDocument();
+    },
+  );
 
   it('Publish 成功刷新 catalog，当前值更新且版本增加一', async () => {
+    administrationMocks.listPolicyCatalog
+      .mockReset()
+      .mockResolvedValueOnce(POLICY_CATALOG_FIXTURE)
+      .mockResolvedValueOnce(CATALOG_VERSION_2);
+    administrationMocks.listPolicyVersions
+      .mockReset()
+      .mockResolvedValueOnce(POLICY_VERSION_FIXTURES)
+      .mockResolvedValueOnce(VERSIONS_2);
+    arrangeValidDraft();
+    administrationMocks.publishPolicyDraft.mockResolvedValueOnce(
+      PUBLISHED_VERSION_2,
+    );
     const user = userEvent.setup();
     renderPage();
 
-    await publishVersionTwo(user);
+    const dialog = await publishVersionTwo(user);
 
+    expect(await screen.findByText('Policy 已发布')).toBeInTheDocument();
+    expect(administrationMocks.publishPolicyDraft).toHaveBeenCalledWith(
+      'identity',
+      'draft-1',
+      { reason: '收紧 Session 空闲期限', totpCode: '123456' },
+      '"v3"',
+    );
     expect(await screen.findByText('版本 2', {}, INITIAL_WAIT)).toBeVisible();
     expect(
       screen.getByRole('spinbutton', { name: 'Session 空闲期限' }),
     ).toHaveValue('30');
     await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: '发布 Policy' }),
-      ).not.toBeInTheDocument();
+      expect(dialog).not.toBeInTheDocument();
     });
   });
 
   it('最近三次之外提供全部版本入口并展示完整历史', async () => {
-    await seedPublishedVersion(30, '预置第二版');
-    await seedPublishedVersion(45, '预置第三版');
-    await seedPublishedVersion(50, '预置第四版');
+    administrationMocks.listPolicyVersions.mockResolvedValueOnce(VERSIONS_4);
     const user = userEvent.setup();
     renderPage();
     await findPolicySettings();
@@ -552,10 +693,17 @@ describe('AdminPoliciesPage', {
     }
   });
 
-  it('从历史版本 Rollback 后提示并跳到新 Draft 编辑态', async () => {
+  it('从历史版本 Rollback 后通过公开入口进入新 Draft 编辑态', async () => {
+    administrationMocks.listPolicyCatalog.mockResolvedValueOnce(
+      CATALOG_VERSION_2,
+    );
+    administrationMocks.listPolicyVersions.mockResolvedValueOnce(VERSIONS_2);
+    administrationMocks.rollbackPolicyVersion.mockResolvedValueOnce(
+      ROLLBACK_DRAFT,
+    );
     const user = userEvent.setup();
     renderPage();
-    await publishVersionTwo(user);
+    await findPolicySettings();
     const rollback = await screen.findByRole(
       'button',
       { name: '回滚版本 1' },
@@ -577,6 +725,15 @@ describe('AdminPoliciesPage', {
     await user.click(within(dialog).getByRole('button', { name: '确认创建' }));
 
     expect(await screen.findByText('已创建回滚 Draft')).toBeInTheDocument();
+    expect(administrationMocks.rollbackPolicyVersion).toHaveBeenCalledWith(
+      'identity',
+      {
+        reason: '回滚到稳定版本',
+        toVersion: 1,
+        totpCode: '123456',
+      },
+      2,
+    );
     const editor = await screen.findByRole('region', { name: 'Draft 编辑' });
     expect(
       within(editor).getByRole('spinbutton', { name: 'Session 空闲期限' }),
@@ -584,7 +741,10 @@ describe('AdminPoliciesPage', {
   });
 
   it('存在未保存编辑时禁止 Rollback 覆盖当前 Draft', async () => {
-    await seedPublishedVersion(30, '预置第二版');
+    administrationMocks.listPolicyCatalog.mockResolvedValueOnce(
+      CATALOG_VERSION_2,
+    );
+    administrationMocks.listPolicyVersions.mockResolvedValueOnce(VERSIONS_2);
     const user = userEvent.setup();
     renderPage();
     await findPolicySettings();

@@ -3,31 +3,65 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { GrantSummary } from '@/features/administration';
 import {
-  createMockFetch,
-  type MockRoutes,
-} from '../../../tests/mockRequestHarness';
+  ACCOUNT_FIXTURES,
+  GRANT_FIXTURES,
+  WORKSPACE_FIXTURES,
+} from '../../../tests/fixtures/accessGovernance';
 
-const { fetchMock, requestMock } = vi.hoisted(() => {
-  const fetchMock = vi.fn();
-  vi.stubGlobal('fetch', fetchMock);
-  return { fetchMock, requestMock: vi.fn() };
-});
+const administrationMocks = vi.hoisted(() => ({
+  createGrant: vi.fn(),
+  listAccounts: vi.fn(),
+  listGrants: vi.fn(),
+  listWorkspaces: vi.fn(),
+  revokeGrant: vi.fn(),
+}));
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
-  defineMock: <T,>(routes: T) => routes,
 }));
 
-import { createAdminAccountsMock } from '../../../mock/adminAccounts';
-import { createAdminGrantsMock } from '../../../mock/adminGrants';
-import { createAdminWorkspacesMock } from '../../../mock/adminWorkspaces';
+vi.mock('@/features/administration', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/administration')>()),
+  ...administrationMocks,
+}));
+
 import AdminGrantsPage from '.';
 
 const INITIAL_WAIT = { timeout: 15_000 };
 const INTERACTION_TEST_TIMEOUT = 30_000;
-let routes: MockRoutes;
-const fetchThroughMock = createMockFetch(() => routes);
+const ACTIVE_WORKSPACES = Object.freeze(
+  WORKSPACE_FIXTURES.filter(({ status }) => status === 'ACTIVE'),
+);
+const INITIAL_GRANTS_RESPONSE = Object.freeze({
+  items: GRANT_FIXTURES,
+  total: GRANT_FIXTURES.length,
+});
+const CREATED_GRANT = Object.freeze<GrantSummary>({
+  capability: 'ws.config',
+  id: 'grant-workspace-config',
+  principal: Object.freeze({
+    displayName: '吴桐',
+    employeeNo: 'E1002',
+    id: 'account-2',
+  }),
+  scope: Object.freeze({
+    id: 'workspace-platform-core',
+    label: '营销工作区',
+    type: 'WORKSPACE',
+  }),
+  source: 'MANUAL',
+  status: 'ACTIVE',
+  validFrom: '2026-08-18T08:00:00.000Z',
+  validTo: null,
+  version: 1,
+});
+const REVOKED_GRANT = Object.freeze<GrantSummary>({
+  ...GRANT_FIXTURES[0],
+  status: 'REVOKED',
+  version: 2,
+});
 
 function renderPage() {
   const queryClient = new QueryClient({
@@ -50,33 +84,24 @@ async function selectOption(user: UserEvent, label: string, option: string) {
 }
 
 beforeEach(() => {
-  routes = {
-    ...createAdminAccountsMock(),
-    ...createAdminWorkspacesMock(),
-    ...createAdminGrantsMock(),
-  };
-  requestMock.mockReset();
-  fetchMock.mockReset();
-  fetchMock.mockImplementation(
-    async (input: RequestInfo | URL, init?: RequestInit) => {
-      const request =
-        input instanceof Request ? input : new Request(String(input), init);
-      const url = new URL(request.url);
-      const bodyText = await request.clone().text();
-      const headers = Object.fromEntries(
-        [...request.headers.entries()].filter(([name]) =>
-          ['idempotency-key', 'if-match'].includes(name.toLocaleLowerCase()),
-        ),
-      );
-      requestMock(url.pathname, {
-        ...(bodyText ? { data: JSON.parse(bodyText) } : {}),
-        ...(Object.keys(headers).length > 0 ? { headers } : {}),
-        method: request.method,
-        ...(url.search ? { params: Object.fromEntries(url.searchParams) } : {}),
-      });
-      return fetchThroughMock(input, init);
-    },
+  Object.values(administrationMocks).forEach((mock) => {
+    mock.mockReset();
+  });
+  administrationMocks.listAccounts.mockResolvedValue(
+    Object.freeze({
+      items: ACCOUNT_FIXTURES,
+      total: ACCOUNT_FIXTURES.length,
+    }),
   );
+  administrationMocks.listWorkspaces.mockResolvedValue(
+    Object.freeze({
+      items: ACTIVE_WORKSPACES,
+      total: ACTIVE_WORKSPACES.length,
+    }),
+  );
+  administrationMocks.listGrants.mockResolvedValue(INITIAL_GRANTS_RESPONSE);
+  administrationMocks.createGrant.mockResolvedValue(CREATED_GRANT);
+  administrationMocks.revokeGrant.mockResolvedValue(REVOKED_GRANT);
 });
 
 describe('AdminGrantsPage', () => {
@@ -106,8 +131,21 @@ describe('AdminGrantsPage', () => {
     expect(
       screen.getByRole('radiogroup', { name: 'Grant 分类' }),
     ).toBeVisible();
-    expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/grants', {
-      method: 'GET',
+    expect(administrationMocks.listGrants).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 100,
+    });
+    expect(administrationMocks.listAccounts).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 100,
+      sortBy: 'employeeNo',
+      sortOrder: 'asc',
+      status: 'ENABLED',
+    });
+    expect(administrationMocks.listWorkspaces).toHaveBeenCalledWith({
+      page: 1,
+      pageSize: 100,
+      status: 'ACTIVE',
     });
 
     expect(
@@ -121,7 +159,7 @@ describe('AdminGrantsPage', () => {
   });
 
   it(
-    '授予请求体保留 principal、capability、Workspace scope 与 reason',
+    '授予通过 Feature 公开入口传递 principal、capability、Workspace scope 与 reason',
     async () => {
       const user = userEvent.setup();
       renderPage();
@@ -152,37 +190,39 @@ describe('AdminGrantsPage', () => {
         within(dialog).getByRole('button', { name: '确认授予' }),
       );
       expect(await within(dialog).findByText('请选择主体')).toBeVisible();
-      expect(requestMock).not.toHaveBeenCalledWith(
-        '/api/v1/admin/grants',
-        expect.objectContaining({ method: 'POST' }),
-      );
+      expect(administrationMocks.createGrant).not.toHaveBeenCalled();
       await selectOption(user, '主体类型', '用户');
       await selectOption(user, '主体', 'E1002 · 吴桐');
+      administrationMocks.listGrants.mockResolvedValue(
+        Object.freeze({
+          items: Object.freeze([...GRANT_FIXTURES, CREATED_GRANT]),
+          total: GRANT_FIXTURES.length + 1,
+        }),
+      );
       await user.click(
         within(dialog).getByRole('button', { name: '确认授予' }),
       );
 
       expect(await screen.findByText('能力已授予')).toBeInTheDocument();
-      expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/grants', {
-        data: {
-          capability: 'ws.config',
-          principalId: 'account-2',
-          reason: '承担营销工作区治理职责',
-          scopeId: 'workspace-platform-core',
-          scopeType: 'WORKSPACE',
-          source: 'MANUAL',
-        },
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-        },
-        method: 'POST',
+      expect(administrationMocks.createGrant.mock.calls[0]?.[0]).toEqual({
+        capability: 'ws.config',
+        principalId: 'account-2',
+        reason: '承担营销工作区治理职责',
+        scope: { id: 'workspace-platform-core', type: 'WORKSPACE' },
       });
+      expect(
+        await screen.findByRole(
+          'row',
+          { name: /吴桐.*工作区配置.*营销工作区/ },
+          INITIAL_WAIT,
+        ),
+      ).toBeInTheDocument();
     },
     INTERACTION_TEST_TIMEOUT,
   );
 
   it(
-    '撤销要求 reason，并向具体 Grant 发送带幂等键的 DELETE',
+    '撤销要求 reason，并把 Grant ID 与 version 交给 service 生成 ETag',
     async () => {
       const user = userEvent.setup();
       renderPage();
@@ -202,27 +242,33 @@ describe('AdminGrantsPage', () => {
         within(dialog).getByRole('textbox', { name: '撤销原因' }),
         '审计轮值结束',
       );
+      administrationMocks.listGrants.mockResolvedValue(
+        Object.freeze({
+          items: Object.freeze([REVOKED_GRANT, ...GRANT_FIXTURES.slice(1)]),
+          total: GRANT_FIXTURES.length,
+        }),
+      );
       await user.click(
         within(dialog).getByRole('button', { name: '确认撤销' }),
       );
 
       expect(await screen.findByText('Grant 已撤销')).toBeInTheDocument();
-      expect(requestMock).toHaveBeenCalledWith(
-        '/api/v1/admin/grants/grant-audit-reader',
-        {
-          data: { reason: '审计轮值结束' },
-          headers: {
-            'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-            'If-Match': '"v1"',
-          },
-          method: 'DELETE',
-        },
+      expect(administrationMocks.revokeGrant).toHaveBeenCalledWith(
+        'grant-audit-reader',
+        { reason: '审计轮值结束' },
+        1,
+      );
+      const revokedRow = await screen.findByRole(
+        'row',
+        { name: /陈晓.*开发任务.*营销工作区.*已撤销/ },
+        INITIAL_WAIT,
       );
       await waitFor(() => {
         expect(
-          within(row).queryByRole('button', { name: '撤销' }),
+          within(revokedRow).queryByRole('button', { name: '撤销' }),
         ).not.toBeInTheDocument();
       });
+      expect(within(revokedRow).getByText('已撤销')).toBeVisible();
     },
     INTERACTION_TEST_TIMEOUT,
   );
