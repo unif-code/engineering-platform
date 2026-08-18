@@ -6,7 +6,7 @@ import {
   type ProTableProps,
 } from '@ant-design/pro-components';
 import { useMutation, useQuery } from '@umijs/max';
-import { App, Button, Space } from 'antd';
+import { App, Button } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
 import {
@@ -20,7 +20,6 @@ import {
   transferWorkspaceOwner,
   type WorkspaceSummary,
 } from '@/features/administration';
-import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
 import { WORKSPACE_STATUS_META } from './constant';
 import { useStyles } from './index.style';
 import type { WorkspaceQueryParams, WorkspaceRow } from './type';
@@ -35,7 +34,6 @@ import { WorkspaceModal } from './WorkspaceModal';
 export default function AdminWorkspacesPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
-  const showStaticAction = useStaticPrototypeAction();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
   const presentationOverridesRef = useRef(
@@ -264,41 +262,21 @@ export default function AdminWorkspacesPage() {
       {
         fixed: 'right',
         render: (_, row) => (
-          <Space size={0}>
-            <Button
-              aria-label={`查看配置 ${row.name}`}
-              onClick={() => setSelectedWorkspace(row)}
-              size="small"
-              type="link"
-            >
-              查看配置
-            </Button>
-            <Button
-              aria-label={`${row.status === 'ACTIVE' ? '归档' : '恢复'} ${row.name}`}
-              onClick={() =>
-                showStaticAction(
-                  `${row.status === 'ACTIVE' ? '归档' : '恢复'}工作区 ${row.name}`,
-                )
-              }
-              size="small"
-              type="link"
-            >
-              {row.status === 'ACTIVE' ? '归档' : '恢复'}
-            </Button>
-          </Space>
+          <Button
+            aria-label={`查看配置 ${row.name}`}
+            onClick={() => setSelectedWorkspace(row)}
+            size="small"
+            type="link"
+          >
+            查看配置
+          </Button>
         ),
         title: '操作',
         valueType: 'option',
         width: 150,
       },
     ],
-    [
-      showStaticAction,
-      styles.owner,
-      styles.ownerRole,
-      styles.team,
-      styles.workspaceName,
-    ],
+    [styles.owner, styles.ownerRole, styles.team, styles.workspaceName],
   );
 
   const createNewWorkspace = (values: CreateWorkspaceInput) =>
@@ -348,7 +326,7 @@ export default function AdminWorkspacesPage() {
 
         <p className={styles.pageNote}>
           每个工作区恰有一个 Owner；正式成员为动态投影（Owner + 受邀 Leader
-          直属有效员工）；归档前须安全停止活动执行
+          直属有效员工）
         </p>
 
         {modalOpen ? (
