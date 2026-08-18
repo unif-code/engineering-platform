@@ -3,36 +3,229 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  createMockRequester,
-  createRequesterFetch,
-  type MockRequest,
-  type MockResponse,
-  type MockRoutes,
-} from '../../../tests/mockRequestHarness';
+import type {
+  OrganizationTreeResponse,
+  WorkspaceListResponse,
+  WorkspaceMembersResponse,
+  WorkspaceSummary,
+} from '@/features/administration';
+import { ApiError } from '@/services/transport';
 
-const { fetchMock, requestMock } = vi.hoisted(() => {
-  const fetchMock = vi.fn();
-  vi.stubGlobal('fetch', fetchMock);
-  return { fetchMock, requestMock: vi.fn() };
-});
+const administrationMocks = vi.hoisted(() => ({
+  createWorkspace: vi.fn(),
+  getOrganizationTree: vi.fn(),
+  inviteWorkspaceLeader: vi.fn(),
+  listWorkspaceMembers: vi.fn(),
+  listWorkspaces: vi.fn(),
+  removeWorkspaceLeader: vi.fn(),
+  transferWorkspaceOwner: vi.fn(),
+}));
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
-  defineMock: <T,>(routes: T) => routes,
 }));
 
-import { createAdminOrganizationMock } from '../../../mock/adminOrg';
-import { createAdminWorkspacesMock } from '../../../mock/adminWorkspaces';
+vi.mock('@/features/administration', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/administration')>()),
+  ...administrationMocks,
+}));
+
 import AdminWorkspacesPage from '.';
 
-let routes: MockRoutes;
-const requestThroughMock = createMockRequester(() => routes);
-const fetchThroughRequester = createRequesterFetch((path, options) =>
-  requestMock(path, options),
-);
-
 const INITIAL_WAIT = { timeout: 5_000 };
+
+const leaderLi = {
+  displayName: '李强',
+  employeeNo: 'E1003',
+  id: 'leader-li',
+} as const;
+const leaderWu = {
+  displayName: '吴桐',
+  employeeNo: 'E1002',
+  id: 'leader-wu',
+} as const;
+const leaderLiu = {
+  displayName: '刘洋',
+  employeeNo: 'E2001',
+  id: 'leader-liu',
+} as const;
+const leaderGao = {
+  displayName: '高翔',
+  employeeNo: 'E3003',
+  id: 'leader-gao',
+} as const;
+
+const organizationTree = {
+  items: [
+    {
+      children: [
+        {
+          children: [
+            {
+              children: [],
+              displayName: '陈晓',
+              employeeNo: 'E1004',
+              id: 'member-chen',
+              kind: 'MEMBER',
+              superiorId: leaderLi.id,
+            },
+            {
+              children: [],
+              displayName: '郑楠',
+              employeeNo: 'E1005',
+              id: 'member-zheng',
+              kind: 'MEMBER',
+              superiorId: leaderLi.id,
+            },
+          ],
+          ...leaderLi,
+          kind: 'LEADER',
+          superiorId: 'manager-zhao',
+        },
+        {
+          children: [
+            {
+              children: [],
+              displayName: '王悦',
+              employeeNo: 'E1001',
+              id: 'member-wang',
+              kind: 'MEMBER',
+              superiorId: leaderWu.id,
+            },
+          ],
+          ...leaderWu,
+          kind: 'LEADER',
+          superiorId: 'manager-zhao',
+        },
+      ],
+      displayName: '赵敏',
+      employeeNo: 'E1007',
+      id: 'manager-zhao',
+      kind: 'MANAGER',
+      superiorId: null,
+    },
+    {
+      children: [
+        {
+          children: [
+            {
+              children: [],
+              displayName: '何山',
+              employeeNo: 'E2002',
+              id: 'member-he',
+              kind: 'MEMBER',
+              superiorId: leaderLiu.id,
+            },
+          ],
+          ...leaderLiu,
+          kind: 'LEADER',
+          superiorId: 'manager-qin',
+        },
+      ],
+      displayName: '秦岚',
+      employeeNo: 'E2003',
+      id: 'manager-qin',
+      kind: 'MANAGER',
+      superiorId: null,
+    },
+    {
+      children: [
+        {
+          children: [],
+          ...leaderGao,
+          kind: 'LEADER',
+          superiorId: 'manager-luo',
+        },
+      ],
+      displayName: '罗成',
+      employeeNo: 'E3001',
+      id: 'manager-luo',
+      kind: 'MANAGER',
+      superiorId: null,
+    },
+  ],
+} satisfies OrganizationTreeResponse;
+
+const activeWorkspace = {
+  id: 'workspace-platform-core',
+  leaders: [],
+  memberCount: undefined,
+  name: '营销工作区',
+  owner: leaderLi,
+  status: 'ACTIVE',
+  version: 1,
+} satisfies WorkspaceSummary;
+
+const archivedWorkspace = {
+  id: 'workspace-marketing-archive',
+  leaders: [],
+  memberCount: undefined,
+  name: '历史活动专区',
+  owner: leaderLi,
+  status: 'ARCHIVED',
+  version: 3,
+} satisfies WorkspaceSummary;
+
+const createdWorkspace = {
+  id: 'workspace-prototype',
+  leaders: [],
+  memberCount: undefined,
+  name: 'Prototype Workspace',
+  owner: leaderLi,
+  status: 'ACTIVE',
+  version: 1,
+} satisfies WorkspaceSummary;
+
+const initialWorkspacePage = {
+  items: [
+    activeWorkspace,
+    {
+      id: 'workspace-agent-runtime',
+      leaders: [],
+      memberCount: undefined,
+      name: '交易工作区',
+      owner: leaderLiu,
+      status: 'ACTIVE',
+      version: 1,
+    },
+    {
+      id: 'workspace-delivery-governance',
+      leaders: [],
+      memberCount: undefined,
+      name: '中台工作区',
+      owner: leaderGao,
+      status: 'ACTIVE',
+      version: 1,
+    },
+    archivedWorkspace,
+  ],
+  total: 4,
+} satisfies WorkspaceListResponse;
+
+const initialMarketingMembers = {
+  items: [
+    { accountId: leaderLi.id, ...leaderLi, source: 'OWNER' },
+    { accountId: leaderWu.id, ...leaderWu, source: 'LEADER' },
+    {
+      accountId: 'member-chen',
+      displayName: '陈晓',
+      employeeNo: 'E1004',
+      source: 'DIRECT_REPORT',
+    },
+    {
+      accountId: 'member-zheng',
+      displayName: '郑楠',
+      employeeNo: 'E1005',
+      source: 'DIRECT_REPORT',
+    },
+    {
+      accountId: 'member-wang',
+      displayName: '王悦',
+      employeeNo: 'E1001',
+      source: 'DIRECT_REPORT',
+    },
+  ],
+} satisfies WorkspaceMembersResponse;
 
 function renderPage() {
   const queryClient = new QueryClient({
@@ -68,14 +261,28 @@ async function findTopmostDialog() {
 }
 
 beforeEach(() => {
-  routes = {
-    ...createAdminOrganizationMock(),
-    ...createAdminWorkspacesMock(),
-  };
-  requestMock.mockReset();
-  requestMock.mockImplementation(requestThroughMock);
-  fetchMock.mockReset();
-  fetchMock.mockImplementation(fetchThroughRequester);
+  for (const mock of Object.values(administrationMocks)) {
+    mock.mockReset();
+  }
+  administrationMocks.getOrganizationTree.mockResolvedValue(organizationTree);
+  administrationMocks.listWorkspaces.mockResolvedValue(initialWorkspacePage);
+  administrationMocks.listWorkspaceMembers.mockResolvedValue(
+    initialMarketingMembers,
+  );
+  administrationMocks.createWorkspace.mockResolvedValue(createdWorkspace);
+  administrationMocks.inviteWorkspaceLeader.mockResolvedValue({
+    ...activeWorkspace,
+    version: 2,
+  });
+  administrationMocks.removeWorkspaceLeader.mockResolvedValue({
+    ...activeWorkspace,
+    version: 2,
+  });
+  administrationMocks.transferWorkspaceOwner.mockResolvedValue({
+    ...activeWorkspace,
+    owner: leaderWu,
+    version: 2,
+  });
 });
 
 describe('AdminWorkspacesPage', () => {
@@ -122,7 +329,7 @@ describe('AdminWorkspacesPage', () => {
     expect(firstWorkspaceRow).toHaveTextContent('10 个');
     expect(
       screen.getByText(
-        '每个工作区恰有一个 Owner；正式成员为动态投影（Owner + 受邀 Leader 直属有效员工）；归档前须安全停止活动执行',
+        '每个工作区恰有一个 Owner；正式成员为动态投影（Owner + 受邀 Leader 直属有效员工）',
       ),
     ).toBeInTheDocument();
     expect(
@@ -130,28 +337,40 @@ describe('AdminWorkspacesPage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('不显示原型没有的搜索、状态筛选与汇总，归档入口只反馈不篡改契约数据', async () => {
-    const user = userEvent.setup();
+  it('ACTIVE 与 ARCHIVED 工作区都只展示查看配置', async () => {
     renderPage();
-    const row = await screen.findByRole('row', { name: /营销工作区/ });
+    const active = await screen.findByRole('row', { name: /营销工作区/ });
+    const archived = screen.getByRole('row', { name: /历史活动专区/ });
 
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.queryByText(/共 \d+ 个工作区/)).not.toBeInTheDocument();
-
-    await user.click(
-      within(row).getByRole('button', { name: '归档 营销工作区' }),
-    );
     expect(
-      await screen.findByText(
-        '静态原型操作：归档工作区 营销工作区，未保存任何业务数据。',
-      ),
+      within(active).getByRole('button', {
+        name: '查看配置 营销工作区',
+      }),
     ).toBeInTheDocument();
-    expect(screen.getByRole('row', { name: /营销工作区/ })).toBeInTheDocument();
+    expect(
+      within(archived).getByRole('button', {
+        name: '查看配置 历史活动专区',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(active).queryByRole('button', { name: /归档|恢复/ }),
+    ).toBeNull();
+    expect(
+      within(archived).queryByRole('button', { name: /归档|恢复/ }),
+    ).toBeNull();
   });
 
   it('创建 Modal 通过契约保存并刷新工作区列表', async () => {
     const user = userEvent.setup();
+    administrationMocks.listWorkspaces
+      .mockResolvedValueOnce(initialWorkspacePage)
+      .mockResolvedValue({
+        items: [...initialWorkspacePage.items, createdWorkspace],
+        total: 5,
+      } satisfies WorkspaceListResponse);
     renderPage();
 
     const table = await screen.findByRole('table');
@@ -169,6 +388,14 @@ describe('AdminWorkspacesPage', () => {
     await selectOption(user, 'Owner（开发Leader）', '李强 · 营销');
     await user.click(within(dialog).getByRole('button', { name: /创\s*建/ }));
 
+    expect(administrationMocks.createWorkspace).toHaveBeenCalledWith(
+      {
+        name: 'Prototype Workspace',
+        ownerId: leaderLi.id,
+        reason: '通过工作区管理创建工作区',
+      },
+      expect.any(Object),
+    );
     expect(await screen.findByText('工作区已创建')).toBeInTheDocument();
     await waitFor(() => {
       expect(
@@ -212,22 +439,13 @@ describe('AdminWorkspacesPage', () => {
   });
 
   it('列表请求延迟返回时仍只渲染服务端结果', async () => {
-    const initialPage = await requestThroughMock('/api/v1/admin/workspaces', {
-      params: { page: 1, pageSize: 10 },
-    });
-    let resolveInitial: (value: unknown) => void = () => {
+    let resolveInitial: (value: WorkspaceListResponse) => void = () => {
       throw new Error('initial workspace request was not started');
     };
-    requestMock.mockImplementation(
-      (path: string, options?: Parameters<typeof requestThroughMock>[1]) => {
-        if (path === '/api/v1/admin/workspaces') {
-          return new Promise((resolve) => {
-            resolveInitial = resolve;
-          });
-        }
-        return requestThroughMock(path, options);
-      },
-    );
+    const pendingPage = new Promise<WorkspaceListResponse>((resolve) => {
+      resolveInitial = resolve;
+    });
+    administrationMocks.listWorkspaces.mockReturnValue(pendingPage);
     renderPage();
 
     expect(
@@ -235,13 +453,9 @@ describe('AdminWorkspacesPage', () => {
     ).not.toBeInTheDocument();
 
     await waitFor(() => {
-      expect(
-        requestMock.mock.calls.some(
-          ([path]) => path === '/api/v1/admin/workspaces',
-        ),
-      ).toBe(true);
+      expect(administrationMocks.listWorkspaces).toHaveBeenCalled();
     });
-    resolveInitial(initialPage);
+    resolveInitial(initialWorkspacePage);
     expect(
       await screen.findByRole('row', { name: /营销工作区/ }, INITIAL_WAIT),
     ).toBeInTheDocument();
@@ -284,6 +498,19 @@ describe('AdminWorkspacesPage', () => {
 
   it('Owner 转让后，非受邀的旧 Owner 与其直属员工移出成员投影', async () => {
     const user = userEvent.setup();
+    administrationMocks.listWorkspaceMembers
+      .mockResolvedValueOnce(initialMarketingMembers)
+      .mockResolvedValue({
+        items: [
+          { accountId: leaderWu.id, ...leaderWu, source: 'OWNER' },
+          {
+            accountId: 'member-wang',
+            displayName: '王悦',
+            employeeNo: 'E1001',
+            source: 'DIRECT_REPORT',
+          },
+        ],
+      } satisfies WorkspaceMembersResponse);
     renderPage();
     const row = await screen.findByRole(
       'row',
@@ -328,21 +555,35 @@ describe('AdminWorkspacesPage', () => {
         within(drawer).queryByRole('row', { name: /陈晓/ }),
       ).not.toBeInTheDocument();
     });
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/workspaces/workspace-platform-core/transfer-owner',
-      {
-        data: { newOwnerId: 'leader-wu', reason: '职责交接' },
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-          'If-Match': '"v1"',
-        },
-        method: 'POST',
-      },
+    expect(administrationMocks.transferWorkspaceOwner).toHaveBeenCalledWith(
+      activeWorkspace.id,
+      { accountId: leaderWu.id, reason: '职责交接' },
+      activeWorkspace.version,
     );
   });
 
   it('邀请与移除 Leader 均要求 reason 并刷新成员投影', async () => {
     const user = userEvent.setup();
+    const membersWithLiu = {
+      items: [
+        ...initialMarketingMembers.items,
+        { accountId: leaderLiu.id, ...leaderLiu, source: 'LEADER' },
+        {
+          accountId: 'member-he',
+          displayName: '何山',
+          employeeNo: 'E2002',
+          source: 'DIRECT_REPORT',
+        },
+      ],
+    } satisfies WorkspaceMembersResponse;
+    administrationMocks.listWorkspaceMembers
+      .mockResolvedValueOnce(initialMarketingMembers)
+      .mockResolvedValueOnce(membersWithLiu)
+      .mockResolvedValue(initialMarketingMembers);
+    administrationMocks.removeWorkspaceLeader.mockResolvedValue({
+      ...activeWorkspace,
+      version: 3,
+    });
     renderPage();
     const row = await screen.findByRole(
       'row',
@@ -376,6 +617,14 @@ describe('AdminWorkspacesPage', () => {
       within(inviteDialog).getByRole('button', { name: '确认邀请' }),
     );
     expect(await screen.findByText('Leader 已邀请')).toBeInTheDocument();
+    expect(administrationMocks.inviteWorkspaceLeader).toHaveBeenCalledWith(
+      activeWorkspace.id,
+      {
+        accountId: leaderLiu.id,
+        reason: '跨团队协作',
+      },
+      activeWorkspace.version,
+    );
     drawer = await screen.findByRole('dialog', {
       name: '工作区详情：营销工作区',
     });
@@ -396,6 +645,12 @@ describe('AdminWorkspacesPage', () => {
       within(removeDialog).getByRole('button', { name: '确认移除' }),
     );
     expect(await screen.findByText('Leader 已移除')).toBeInTheDocument();
+    expect(administrationMocks.removeWorkspaceLeader).toHaveBeenCalledWith(
+      activeWorkspace.id,
+      leaderLiu.id,
+      { reason: '协作结束' },
+      2,
+    );
     await waitFor(() => {
       expect(
         within(drawer).queryByRole('listitem', { name: /刘洋/ }),
@@ -405,6 +660,13 @@ describe('AdminWorkspacesPage', () => {
 
   it('重复名称保留创建 Modal 并展示 409 Problem 原文与 requestId', async () => {
     const user = userEvent.setup();
+    administrationMocks.createWorkspace.mockRejectedValueOnce(
+      new ApiError({
+        detail: '工作区名称 营销工作区 已存在',
+        requestId: 'req-workspace-create-409',
+        status: 409,
+      }),
+    );
     renderPage();
     await screen.findByRole('table');
     await user.click(screen.getByRole('button', { name: '创建工作区' }));
@@ -419,27 +681,18 @@ describe('AdminWorkspacesPage', () => {
 
     expect(
       await screen.findByText(/工作区名称 营销工作区 已存在/),
-    ).toHaveTextContent(/requestId: mock-admin-workspace-/);
+    ).toHaveTextContent('requestId: req-workspace-create-409');
     expect(dialog).toBeInTheDocument();
   });
 
   it('Leader 写入的 422 Problem 保留原文与 requestId', async () => {
-    routes = {
-      ...routes,
-      'POST /api/v1/admin/workspaces/:workspaceId/leaders': (
-        _request: MockRequest,
-        response: MockResponse,
-      ) => {
-        response.status(422);
-        response.setHeader('Content-Type', 'application/problem+json');
-        response.json({
-          detail: '该 Leader 当前不可邀请',
-          requestId: 'mock-workspace-page-422',
-          status: 422,
-          title: 'WORKSPACE_VALIDATION_ERROR',
-        });
-      },
-    };
+    administrationMocks.inviteWorkspaceLeader.mockRejectedValueOnce(
+      new ApiError({
+        detail: '该 Leader 当前不可邀请',
+        requestId: 'req-workspace-invite-422',
+        status: 422,
+      }),
+    );
     const user = userEvent.setup();
     renderPage();
     const row = await screen.findByRole(
@@ -466,20 +719,23 @@ describe('AdminWorkspacesPage', () => {
     await user.click(within(dialog).getByRole('button', { name: '确认邀请' }));
 
     expect(await screen.findByText(/该 Leader 当前不可邀请/)).toHaveTextContent(
-      'requestId: mock-workspace-page-422',
+      'requestId: req-workspace-invite-422',
     );
     expect(dialog).toBeInTheDocument();
   });
 
   it('403 列表拒绝清空旧数据并展示 Problem 原文与 requestId', async () => {
-    routes = {
-      ...createAdminOrganizationMock(),
-      ...createAdminWorkspacesMock({ authorize: () => false }),
-    };
+    administrationMocks.listWorkspaces.mockRejectedValueOnce(
+      new ApiError({
+        detail: '无 Workspace 治理权限',
+        requestId: 'req-workspace-list-403',
+        status: 403,
+      }),
+    );
     renderPage();
 
     expect(await screen.findByText(/无 Workspace 治理权限/)).toHaveTextContent(
-      /requestId: mock-admin-workspace-/,
+      'requestId: req-workspace-list-403',
     );
     expect(
       screen.queryByRole('row', { name: /营销工作区/ }),
