@@ -1,11 +1,14 @@
 import type {
   AccountSummary,
   AuditEvent,
+  GrantSummary,
   OrganizationTreeResponse,
+  PolicyCatalogResponse,
+  PolicyVersionsResponse,
   WorkspaceSummary,
 } from '@/features/administration';
 
-const deepFreezeDto = <T>(value: T): T => {
+export const deepFreezeDto = <T>(value: T): T => {
   if (Array.isArray(value)) {
     return Object.freeze(value.map((entry) => deepFreezeDto(entry))) as T;
   }
@@ -390,3 +393,172 @@ export const AUDIT_EVENT_FIXTURES = deepFreezeDto<AuditEvent[]>([
     targetType: 'ARTIFACT',
   }),
 ]);
+
+export const GRANT_FIXTURES = deepFreezeDto<GrantSummary[]>([
+  {
+    capability: 'task.develop',
+    id: 'grant-audit-reader',
+    principal: {
+      displayName: '陈晓',
+      employeeNo: 'E1004',
+      id: 'account-4',
+    },
+    scope: {
+      id: 'workspace-platform-core',
+      label: '营销工作区',
+      type: 'WORKSPACE',
+    },
+    source: 'MANUAL',
+    status: 'ACTIVE',
+    validFrom: '2026-07-01T08:00:00.000Z',
+    validTo: null,
+    version: 1,
+  },
+  {
+    capability: 'mr.merge',
+    id: 'grant-merge-trading',
+    principal: {
+      displayName: '何山',
+      employeeNo: 'E2002',
+      id: 'account-9',
+    },
+    scope: {
+      id: 'workspace-agent-runtime',
+      label: '交易工作区',
+      type: 'WORKSPACE',
+    },
+    source: 'MANUAL',
+    status: 'ACTIVE',
+    validFrom: '2026-07-01T08:00:00.000Z',
+    validTo: '2026-10-01T08:00:00.000Z',
+    version: 1,
+  },
+]);
+
+export const POLICY_CATALOG_FIXTURE = deepFreezeDto<PolicyCatalogResponse>({
+  activeVersion: 1,
+  items: [
+    {
+      activeValue: 24,
+      activeVersion: 1,
+      defaultValue: 24,
+      description: '一次性临时密码签发后的有效小时数',
+      effectSemantics: '仅影响后续签发的一次性临时密码。',
+      key: 'identity.temp_password_ttl_hours',
+      label: '临时密码有效期',
+      max: 72,
+      min: 1,
+      namespace: 'identity',
+      unit: '小时',
+      valueType: 'INTEGER',
+    },
+    {
+      activeValue: 'NEVER',
+      activeVersion: 1,
+      defaultValue: 'NEVER',
+      description: '正式密码的过期周期',
+      effectSemantics: '发布后用于后续认证时的密码有效性判断。',
+      enumOptions: [
+        { label: '永不过期', value: 'NEVER' },
+        { label: '90 天', value: '90_DAYS' },
+        { label: '180 天', value: '180_DAYS' },
+      ],
+      key: 'identity.password_expiry',
+      label: '密码过期周期',
+      namespace: 'identity',
+      unit: null,
+      valueType: 'ENUM',
+    },
+    {
+      activeValue: 3,
+      activeVersion: 1,
+      defaultValue: 3,
+      description: '同一账号同时有效的 Session 数量上限',
+      effectSemantics: '发布后登录会逐出超出上限的最旧 Session。',
+      key: 'identity.session_limit',
+      label: 'Session 上限',
+      max: 10,
+      min: 1,
+      namespace: 'identity',
+      unit: '个',
+      valueType: 'INTEGER',
+    },
+    {
+      activeValue: 60,
+      activeVersion: 1,
+      defaultValue: 60,
+      description: '人员 Session 连续无活动后的失效分钟数',
+      effectSemantics: '发布后用于认证 API 的空闲 Session 判定。',
+      key: 'identity.session_idle_minutes',
+      label: 'Session 空闲期限',
+      max: 240,
+      min: 15,
+      namespace: 'identity',
+      unit: '分钟',
+      valueType: 'INTEGER',
+    },
+    {
+      activeValue: 'STANDARD',
+      activeVersion: 1,
+      defaultValue: 'STANDARD',
+      description:
+        '连续 5 次失败后从 30 秒起指数退避，上限 15 分钟，24 小时清零',
+      effectSemantics: '发布后仅影响后续登录失败的服务端退避判定。',
+      enumOptions: [
+        {
+          label: '标准（5 次 / 30 秒起 / 15 分钟上限 / 24 小时清零）',
+          value: 'STANDARD',
+        },
+      ],
+      key: 'identity.login_backoff_profile',
+      label: '登录失败退避',
+      namespace: 'identity',
+      unit: null,
+      valueType: 'ENUM',
+    },
+    {
+      activeValue: 5,
+      activeVersion: 1,
+      defaultValue: 5,
+      description: '同一 TOTP Challenge 可失败的最大次数',
+      effectSemantics: '发布后仅影响新创建的 TOTP Challenge。',
+      key: 'identity.totp_attempt_limit',
+      label: 'TOTP 尝试上限',
+      max: 10,
+      min: 3,
+      namespace: 'identity',
+      unit: '次',
+      valueType: 'INTEGER',
+    },
+    {
+      activeValue: 30,
+      activeVersion: 1,
+      defaultValue: 30,
+      description: 'Draft 连续无 Meaningful Activity 后自动归档的等待天数',
+      effectSemantics: '按 NEXT_SCHEDULE 仅影响后续自动归档调度。',
+      key: 'identity.draft_auto_archive_days',
+      label: 'Draft 自动归档等待期',
+      max: 365,
+      min: 1,
+      namespace: 'identity',
+      unit: '天',
+      valueType: 'INTEGER',
+    },
+  ],
+  namespace: 'identity',
+  scope: 'PLATFORM',
+});
+
+export const POLICY_VERSION_FIXTURES = deepFreezeDto<PolicyVersionsResponse>({
+  items: [
+    {
+      current: true,
+      namespace: 'identity',
+      publishedAt: '2026-08-01T08:00:00.000Z',
+      publishedBy: 'SYSTEM_SEED',
+      reason: '平台初始化默认策略',
+      scope: 'PLATFORM',
+      version: 1,
+    },
+  ],
+});

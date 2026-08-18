@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   ACCOUNT_FIXTURES,
   AUDIT_EVENT_FIXTURES,
+  GRANT_FIXTURES,
   ORGANIZATION_TREE_FIXTURE,
+  POLICY_CATALOG_FIXTURE,
+  POLICY_VERSION_FIXTURES,
   WORKSPACE_FIXTURES,
 } from '../../../tests/fixtures/accessGovernance';
 
@@ -40,5 +43,8 @@ describe('access governance shared DTO fixtures', () => {
     expectDeeplyFrozen(ORGANIZATION_TREE_FIXTURE);
     expectDeeplyFrozen(WORKSPACE_FIXTURES);
     expectDeeplyFrozen(AUDIT_EVENT_FIXTURES);
+    expectDeeplyFrozen(GRANT_FIXTURES);
+    expectDeeplyFrozen(POLICY_CATALOG_FIXTURE);
+    expectDeeplyFrozen(POLICY_VERSION_FIXTURES);
   });
 });
