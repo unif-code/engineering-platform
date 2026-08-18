@@ -1,4 +1,4 @@
-/** 开发代理：连真实后端时按环境配置；当前用 mock，默认留空。 */
+/** 开发代理按环境配置；浏览器业务请求经同源 platform-gateway。 */
 const proxy = {
   dev: {
     // '/api/': { target: 'http://localhost:8080', changeOrigin: true },

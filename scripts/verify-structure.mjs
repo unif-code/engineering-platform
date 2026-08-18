@@ -22,8 +22,8 @@ const developmentDependencies = [
   'typescript',
   'vitest',
 ];
-const sourceRoots = ['config', 'mock', 'src'];
-const requiredBiomeScopes = ['config', 'mock', 'scripts', 'src', 'tests'];
+const sourceRoots = ['config', 'src'];
+const requiredBiomeScopes = ['config', 'scripts', 'src', 'tests'];
 const dependencySections = [
   'dependencies',
   'devDependencies',
@@ -165,6 +165,9 @@ function checkConfig(contents, issues) {
   const executableContents = contents.replace(commentsAndStrings, '');
   if (!/\butoopack\s*:/u.test(executableContents)) {
     issues.push('config/config.ts 必须声明 utoopack');
+  }
+  if (!/\bmock\s*:\s*false\b/u.test(executableContents)) {
+    issues.push('config/config.ts 的 mock 必须显式为 false');
   }
   if (/\bmfsu\s*:/u.test(executableContents)) {
     issues.push('config/config.ts 不得保留 mfsu');
@@ -313,6 +316,9 @@ export async function verifyStructure(root = process.cwd()) {
   );
   checkSkillLock(await readJson(root, 'skills-lock.json', issues), issues);
   await checkHooks(root, issues);
+  if ((await collectSourceFiles(root, 'mock')).length > 0) {
+    issues.push('禁止保留运行时 mock/ source');
+  }
   await checkSourceFiles(root, issues);
 
   return issues;

@@ -65,7 +65,7 @@ async function createValidFixture() {
   await write(
     root,
     'config/config.ts',
-    "import { defineConfig } from '@umijs/max';\nexport default defineConfig({ utoopack: {} });\n",
+    "import { defineConfig } from '@umijs/max';\nexport default defineConfig({ mock: false, utoopack: {} });\n",
   );
   await write(
     root,
@@ -86,7 +86,6 @@ async function createValidFixture() {
       files: {
         includes: [
           'config/**/*.ts',
-          'mock/**/*.ts',
           'scripts/**/*.mjs',
           'src/**/*.{ts,tsx}',
           'tests/**/*.ts',
@@ -189,7 +188,7 @@ test('ignores legacy builder names mentioned only in comments or strings', async
       "const migrationNote = 'mfsu: false; esbuildMinifyIIFE: true';",
       '// mfsu: false',
       '/* esbuildMinifyIIFE: true */',
-      'export default defineConfig({ utoopack: {} });',
+      'export default defineConfig({ mock: false, utoopack: {} });',
       '',
     ].join('\n'),
   );
@@ -276,26 +275,31 @@ test('requires the component Skills and rejects the generic Umi Skill', async ()
   assert.match(output, /computedHash/u);
 });
 
-test('requires Biome to cover hand-written mock sources', async () => {
+test('requires Umi runtime mock to stay disabled', async () => {
   const root = await createValidFixture();
   await write(
     root,
-    'biome.json',
-    JSON.stringify({
-      files: {
-        includes: [
-          'config/**/*.ts',
-          'scripts/**/*.mjs',
-          'src/**/*.{ts,tsx}',
-          'tests/**/*.ts',
-        ],
-      },
-    }),
+    'config/config.ts',
+    "import { defineConfig } from '@umijs/max';\nexport default defineConfig({ utoopack: {} });\n",
   );
 
   assert.match(
     (await verifyStructure(root)).join('\n'),
-    /Biome scope 必须覆盖 mock/,
+    /mock 必须显式为 false/u,
+  );
+});
+
+test('rejects hand-written runtime API mock sources', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'mock/api.ts',
+    "export default { 'GET /api/v1/me': () => ({}) };\n",
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /禁止保留运行时 mock\/ source/u,
   );
 });
 

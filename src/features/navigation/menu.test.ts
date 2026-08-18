@@ -25,6 +25,57 @@ function permutations<T>(items: readonly T[]): T[][] {
 }
 
 describe('buildMenuData', () => {
+  it('V0.2 超级管理员的八个后端路由只投影七个正式菜单', () => {
+    const navigation = [
+      navigationItem('home', '首页', 1),
+      navigationItem('admin', '管理后台', 2),
+      navigationItem('audit', '审计看板', 7),
+      navigationItem('admin.workspaces', '工作区管理', 8),
+      navigationItem('admin.organization', '组织管理', 9),
+      navigationItem('admin.users', '用户管理', 13),
+      navigationItem('admin.grants', 'Grant 管理', 14),
+      navigationItem('admin.policies', 'Policy 发布', 15),
+    ];
+
+    expect(navigation.map(({ routeKey }) => routeKey)).toEqual([
+      'home',
+      'admin',
+      'audit',
+      'admin.workspaces',
+      'admin.organization',
+      'admin.users',
+      'admin.grants',
+      'admin.policies',
+    ]);
+
+    const menuKeys = buildMenuData(navigation).flatMap(
+      ({ children }) => children?.map(({ key }) => key) ?? [],
+    );
+    expect(menuKeys).toEqual([
+      'home',
+      'audit',
+      'admin.workspaces',
+      'admin.organization',
+      'admin.users',
+      'admin.grants',
+      'admin.policies',
+    ]);
+    expect(menuKeys).not.toContain('admin');
+    for (const prototypeRouteKey of [
+      'tasks',
+      'tasks.archived',
+      'workspaces',
+      'messages',
+      'team-board',
+      'admin.skills',
+      'admin.models',
+      'admin.roles',
+      'admin.menus',
+    ]) {
+      expect(menuKeys).not.toContain(prototypeRouteKey);
+    }
+  });
+
   it('超级管理员投影覆盖 Route Registry 中全部可见菜单', () => {
     const visibleRouteKeys = Object.entries(ROUTE_REGISTRY)
       .filter(([, registration]) => registration.menu)
