@@ -1,3 +1,4 @@
+import { createEmployeeNo } from '@root/tests/auth-fixtures';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
@@ -48,7 +49,7 @@ describe('RouteGuard', () => {
   });
 
   it('已登录时渲染子路由', () => {
-    mocks.principal = { employeeId: '00000000', name: '平台管理员' };
+    mocks.principal = { employeeId: createEmployeeNo(), name: '平台用户' };
 
     render(<RouteGuard />);
 

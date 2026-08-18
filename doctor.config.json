@@ -2,7 +2,6 @@
   "ignore": {
     "files": [
       "config/**",
-      "mock/**",
       "scripts/**",
       "src/.umi*/**",
       "src/services/**",

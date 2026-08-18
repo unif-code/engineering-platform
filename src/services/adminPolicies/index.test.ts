@@ -1,3 +1,4 @@
+import { createTotpCode } from '@root/tests/auth-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => ({
@@ -165,6 +166,7 @@ describe('admin policies V0.2 generated client seam', () => {
   });
 
   it('validate/preview/rollback 全部携带 If-Match，rollback 发送 reason 与 TOTP', async () => {
+    const totpCode = createTotpCode();
     apiMock.POST.mockResolvedValueOnce(
       result({
         contentHash: 'hash-1',
@@ -188,7 +190,7 @@ describe('admin policies V0.2 generated client seam', () => {
     await previewPolicyDraft('identity', 'draft-1', '"v2"');
     await rollbackPolicyVersion(
       'identity',
-      { reason: '回滚故障配置', toVersion: 2, totpCode: '123456' },
+      { reason: '回滚故障配置', toVersion: 2, totpCode },
       3,
     );
 
@@ -216,7 +218,7 @@ describe('admin policies V0.2 generated client seam', () => {
           reason: '回滚故障配置',
           scope: 'PLATFORM',
           toVersion: 2,
-          totpCode: '123456',
+          totpCode,
         },
         params: expect.objectContaining({
           header: expect.objectContaining({ 'If-Match': '"v3"' }),

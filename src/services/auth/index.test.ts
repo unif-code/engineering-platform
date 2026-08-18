@@ -1,3 +1,11 @@
+import {
+  createChallengeToken,
+  createEmployeeNo,
+  createPassword,
+  createProvisioningUri,
+  createTotpCode,
+  createTotpSecret,
+} from '@root/tests/auth-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => ({ GET: vi.fn(), POST: vi.fn() }));
@@ -26,6 +34,7 @@ beforeEach(() => {
 
 describe('auth service V0.2 generated client seam', () => {
   it('读取 generated Principal，并把 scoped capabilities 投影为现有权限字符串', async () => {
+    const employeeId = createEmployeeNo();
     apiMock.GET.mockResolvedValue(
       result({
         capabilities: [
@@ -34,30 +43,31 @@ describe('auth service V0.2 generated client seam', () => {
             scopeType: 'PLATFORM',
           },
         ],
-        employeeId: '00000000',
+        employeeId,
         name: '平台管理员',
       }),
     );
 
     await expect(getCurrentUser()).resolves.toEqual({
       capabilities: ['identity.account.manage'],
-      employeeId: '00000000',
+      employeeId,
       name: '平台管理员',
     });
     expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/me');
   });
 
   it('登录使用 generated POST 并保留 V0.2 state 判别字段', async () => {
+    const challengeToken = createChallengeToken();
     const input = {
-      employeeNo: '00000000',
-      password: 'Valid-Password!2026',
+      employeeNo: createEmployeeNo(),
+      password: createPassword(),
     };
     apiMock.POST.mockResolvedValue(
-      result({ challengeToken: 'challenge-1', state: 'TOTP_REQUIRED' }),
+      result({ challengeToken, state: 'TOTP_REQUIRED' }),
     );
 
     await expect(startLogin(input)).resolves.toEqual({
-      challengeToken: 'challenge-1',
+      challengeToken,
       state: 'TOTP_REQUIRED',
     });
     expect(apiMock.POST).toHaveBeenCalledWith('/api/v1/auth/login', {
@@ -71,7 +81,10 @@ describe('auth service V0.2 generated client seam', () => {
   });
 
   it('TOTP 验证返回 AUTHENTICATED', async () => {
-    const input = { challengeToken: 'challenge-1', code: '123456' };
+    const input = {
+      challengeToken: createChallengeToken(),
+      code: createTotpCode(),
+    };
     apiMock.POST.mockResolvedValue(result({ state: 'AUTHENTICATED' }));
 
     await expect(verifyTotp(input)).resolves.toEqual({
@@ -88,17 +101,23 @@ describe('auth service V0.2 generated client seam', () => {
   });
 
   it('bootstrap 依赖 secure cookie，不再发送 bootstrap token', async () => {
+    const password = createPassword();
+    const code = createTotpCode();
+    const provisioningUri = createProvisioningUri(
+      createEmployeeNo(),
+      createTotpSecret(),
+    );
     apiMock.POST.mockResolvedValueOnce(result({ state: 'PASSWORD_SET' }))
-      .mockResolvedValueOnce(result({ provisioningUri: 'otpauth://example' }))
+      .mockResolvedValueOnce(result({ provisioningUri }))
       .mockResolvedValueOnce(result({ state: 'AUTHENTICATED' }));
 
-    await expect(
-      setBootstrapPassword({ password: 'New-Valid-Password!2026' }),
-    ).resolves.toEqual({ state: 'PASSWORD_SET' });
-    await expect(enrollBootstrapTotp()).resolves.toEqual({
-      provisioningUri: 'otpauth://example',
+    await expect(setBootstrapPassword({ password })).resolves.toEqual({
+      state: 'PASSWORD_SET',
     });
-    await expect(confirmBootstrapTotp({ code: '123456' })).resolves.toEqual({
+    await expect(enrollBootstrapTotp()).resolves.toEqual({
+      provisioningUri,
+    });
+    await expect(confirmBootstrapTotp({ code })).resolves.toEqual({
       state: 'AUTHENTICATED',
     });
 
@@ -106,7 +125,7 @@ describe('auth service V0.2 generated client seam', () => {
       [
         '/api/v1/auth/bootstrap/password',
         {
-          body: { password: 'New-Valid-Password!2026' },
+          body: { password },
           params: {
             header: {
               'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
@@ -127,7 +146,7 @@ describe('auth service V0.2 generated client seam', () => {
       [
         '/api/v1/auth/bootstrap/totp/confirm',
         {
-          body: { code: '123456' },
+          body: { code },
           params: {
             header: {
               'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
@@ -152,14 +171,16 @@ describe('auth service V0.2 generated client seam', () => {
   });
 
   it('generated transport 的 ApiError 原样向上传递', async () => {
+    const input = {
+      employeeNo: createEmployeeNo(),
+      password: createPassword(),
+    };
     const error = Object.assign(new Error('登录失败'), {
       name: 'ApiError',
       problem: { detail: '登录失败', status: 401 },
     });
     apiMock.POST.mockRejectedValue(error);
 
-    await expect(
-      startLogin({ employeeNo: '00000000', password: 'wrong' }),
-    ).rejects.toBe(error);
+    await expect(startLogin(input)).rejects.toBe(error);
   });
 });

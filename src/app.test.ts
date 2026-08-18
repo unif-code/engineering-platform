@@ -1,3 +1,4 @@
+import { createEmployeeNo } from '@root/tests/auth-fixtures';
 import { render, screen } from '@testing-library/react';
 import { theme } from 'antd';
 import type { ReactNode } from 'react';
@@ -61,9 +62,10 @@ afterEach(() => {
 
 describe('getInitialState', () => {
   it('聚合 auth 与 navigation Feature 的精确结果', async () => {
+    const employeeId = createEmployeeNo();
     const me = {
       capabilities: ['identity.account.manage', 'audit.read'],
-      employeeId: '00000000',
+      employeeId,
       name: '平台管理员',
     };
     const navigation = [
@@ -81,7 +83,7 @@ describe('getInitialState', () => {
     await expect(getInitialState()).resolves.toEqual({
       capabilities: me.capabilities,
       navigation,
-      principal: { employeeId: '00000000', name: '平台管理员' },
+      principal: { employeeId, name: '平台管理员' },
     });
     expect(featureMocks.fetchMe).toHaveBeenCalledTimes(1);
     expect(featureMocks.fetchNavigation).toHaveBeenCalledTimes(1);
@@ -90,7 +92,7 @@ describe('getInitialState', () => {
   it('首屏 navigation 401 在 layout 注册前也归为空 Session', async () => {
     featureMocks.fetchMe.mockResolvedValue({
       capabilities: ['identity.account.manage'],
-      employeeId: '00000000',
+      employeeId: createEmployeeNo(),
       name: '平台管理员',
     });
     featureMocks.fetchNavigation.mockRejectedValue(
@@ -139,6 +141,7 @@ describe('layout', () => {
   });
 
   it('提供品牌化 mix 布局、固定尺寸和 header 接缝', () => {
+    const employeeId = createEmployeeNo();
     const config = layout({
       initialState: {
         capabilities: ['identity.account.manage'],
@@ -165,7 +168,7 @@ describe('layout', () => {
             sort: 20,
           },
         ],
-        principal: { employeeId: '00000000', name: '平台用户' },
+        principal: { employeeId, name: '平台用户' },
       },
     });
 
@@ -483,12 +486,13 @@ describe('layout', () => {
   });
 
   it('退出成功后清 Session 并 replace 登录页，失败时保留当前状态', async () => {
+    const employeeId = createEmployeeNo();
     const setInitialState = vi.fn().mockResolvedValue(undefined);
     const config = layout({
       initialState: {
         capabilities: ['identity.account.manage'],
         navigation: [],
-        principal: { employeeId: '00000000', name: '平台管理员' },
+        principal: { employeeId, name: '平台管理员' },
       },
       setInitialState,
     });

@@ -1,3 +1,4 @@
+import { createTotpCode } from '@root/tests/auth-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const apiMock = vi.hoisted(() => ({
@@ -210,7 +211,10 @@ describe('administration Policy V0.2 generated client seam', () => {
   });
 
   it('Publish 透传原因、TOTP、If-Match 与幂等键', async () => {
-    const input = { reason: '收紧 Session 空闲期限', totpCode: '123456' };
+    const input = {
+      reason: '收紧 Session 空闲期限',
+      totpCode: createTotpCode(),
+    };
     apiMock.POST.mockResolvedValue(
       result({
         namespace: 'identity',
@@ -249,7 +253,7 @@ describe('administration Policy V0.2 generated client seam', () => {
     const input = {
       reason: '回滚故障配置',
       toVersion: 2,
-      totpCode: '123456',
+      totpCode: createTotpCode(),
     };
     apiMock.POST.mockResolvedValue(result(draftDto, '"v2"'));
 
