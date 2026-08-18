@@ -2,20 +2,19 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  createMockRequester,
-  createRequesterFetch,
-  type MockRoutes,
-} from '../../../tests/mockRequestHarness';
+import type {
+  AuditEventsQuery,
+  AuditEventsResponse,
+} from '@/features/administration';
+import { AUDIT_EVENT_FIXTURES } from '../../../tests/fixtures/accessGovernance';
 
-const { fetchMock, requestMock } = vi.hoisted(() => {
-  const fetchMock = vi.fn();
-  vi.stubGlobal('fetch', fetchMock);
-  return { fetchMock, requestMock: vi.fn() };
-});
+const administrationMocks = vi.hoisted(() => ({
+  listAuditEvents: vi.fn(),
+}));
 
-vi.mock('@umijs/max', () => ({
-  defineMock: <T,>(routes: T) => routes,
+vi.mock('@/features/administration', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/administration')>()),
+  ...administrationMocks,
 }));
 
 vi.mock('@ant-design/charts', () => ({
@@ -23,16 +22,43 @@ vi.mock('@ant-design/charts', () => ({
   Column: () => <div data-ant-design-chart="column" />,
 }));
 
-import { createAdminAuditMock } from '../../../mock/adminAudit';
 import AuditPage from '.';
 
 const INITIAL_WAIT = { timeout: 5_000 };
 const AUDIT_FIXTURE_NOW = new Date(2026, 7, 10, 12, 0, 0);
-let routes: MockRoutes;
-const requestThroughMock = createMockRequester(() => routes);
-const fetchThroughRequester = createRequesterFetch((path, options) =>
-  requestMock(path, options),
-);
+const AUDIT_CURSOR_PREFIX = 'fixture-audit-offset:';
+
+const listAuditFixtureEvents = async (
+  query: AuditEventsQuery,
+): Promise<AuditEventsResponse> => {
+  const from = query.from === undefined ? undefined : Date.parse(query.from);
+  const to = query.to === undefined ? undefined : Date.parse(query.to);
+  const actor = query.actor?.toLocaleLowerCase();
+  const filtered = AUDIT_EVENT_FIXTURES.filter((event) => {
+    const occurredAt = Date.parse(event.occurredAt);
+    return (
+      (actor === undefined ||
+        event.actor.toLocaleLowerCase().includes(actor)) &&
+      (query.targetType === undefined ||
+        event.targetType === query.targetType) &&
+      (from === undefined || occurredAt >= from) &&
+      (to === undefined || occurredAt <= to)
+    );
+  });
+  const offset = query.cursor?.startsWith(AUDIT_CURSOR_PREFIX)
+    ? Number(query.cursor.slice(AUDIT_CURSOR_PREFIX.length))
+    : 0;
+  const items = filtered.slice(offset, offset + query.limit);
+  const nextOffset = offset + items.length;
+
+  return {
+    items,
+    nextCursor:
+      nextOffset < filtered.length
+        ? `${AUDIT_CURSOR_PREFIX}${nextOffset}`
+        : null,
+  };
+};
 
 function renderPage() {
   return render(
@@ -56,11 +82,10 @@ beforeEach(() => {
     now: AUDIT_FIXTURE_NOW,
     toFake: ['Date'],
   });
-  routes = createAdminAuditMock();
-  requestMock.mockReset();
-  requestMock.mockImplementation(requestThroughMock);
-  fetchMock.mockReset();
-  fetchMock.mockImplementation(fetchThroughRequester);
+  administrationMocks.listAuditEvents.mockReset();
+  administrationMocks.listAuditEvents.mockImplementation(
+    listAuditFixtureEvents,
+  );
 });
 
 afterEach(() => {
@@ -117,9 +142,8 @@ describe('AuditPage', { timeout: 30_000 }, () => {
     expect(
       screen.getByRole('columnheader', { name: '来源 IP' }),
     ).toBeInTheDocument();
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/audit-events',
-      expect.objectContaining({ method: 'GET' }),
+    expect(administrationMocks.listAuditEvents).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 3 }),
     );
     expect(
       screen.queryByRole('columnheader', { name: '事件 ID' }),
@@ -215,13 +239,10 @@ describe('AuditPage', { timeout: 30_000 }, () => {
 
     await selectOption(user, '时间范围', '今天');
     await waitFor(() => {
-      expect(requestMock).toHaveBeenCalledWith('/api/v1/admin/audit-events', {
-        method: 'GET',
-        params: {
-          from: from.toISOString(),
-          limit: '3',
-          to: to.toISOString(),
-        },
+      expect(administrationMocks.listAuditEvents).toHaveBeenCalledWith({
+        from: from.toISOString(),
+        limit: 3,
+        to: to.toISOString(),
       });
     }, INITIAL_WAIT);
     await user.type(
@@ -230,14 +251,12 @@ describe('AuditPage', { timeout: 30_000 }, () => {
     );
 
     await waitFor(() => {
-      const [, options] = requestMock.mock.calls.at(-1) ?? [];
-      expect(options).toEqual({
-        method: 'GET',
-        params: {
-          from: from.toISOString(),
-          limit: '3',
-          to: to.toISOString(),
-        },
+      expect(
+        administrationMocks.listAuditEvents.mock.calls.at(-1)?.[0],
+      ).toEqual({
+        from: from.toISOString(),
+        limit: 3,
+        to: to.toISOString(),
       });
     }, INITIAL_WAIT);
     expect(
@@ -255,8 +274,11 @@ describe('AuditPage', { timeout: 30_000 }, () => {
     await screen.findByRole('row', { name: /AUD-2026-0810-001/ }, INITIAL_WAIT);
     await selectOption(user, '时间范围', '全部时间');
     await waitFor(() => {
-      const [, options] = requestMock.mock.calls.at(-1) ?? [];
-      expect(options?.params).toEqual({ limit: '3' });
+      expect(
+        administrationMocks.listAuditEvents.mock.calls.at(-1)?.[0],
+      ).toEqual({
+        limit: 3,
+      });
     }, INITIAL_WAIT);
 
     const firstLoadMore = await screen.findByRole(
@@ -268,10 +290,8 @@ describe('AuditPage', { timeout: 30_000 }, () => {
     await user.click(firstLoadMore);
     await waitFor(() => {
       expect(
-        requestMock.mock.calls.filter(
-          ([url, options]) =>
-            url === '/api/v1/admin/audit-events' &&
-            options?.params?.cursor !== undefined,
+        administrationMocks.listAuditEvents.mock.calls.filter(
+          ([query]) => query.cursor !== undefined,
         ),
       ).toHaveLength(1);
     });
@@ -281,10 +301,8 @@ describe('AuditPage', { timeout: 30_000 }, () => {
     await user.click(secondLoadMore);
     await waitFor(() => {
       expect(
-        requestMock.mock.calls.filter(
-          ([url, options]) =>
-            url === '/api/v1/admin/audit-events' &&
-            options?.params?.cursor !== undefined,
+        administrationMocks.listAuditEvents.mock.calls.filter(
+          ([query]) => query.cursor !== undefined,
         ),
       ).toHaveLength(2);
     });
@@ -302,10 +320,8 @@ describe('AuditPage', { timeout: 30_000 }, () => {
       ).not.toBeInTheDocument();
     }, INITIAL_WAIT);
     expect(
-      requestMock.mock.calls.filter(
-        ([url, options]) =>
-          url === '/api/v1/admin/audit-events' &&
-          options?.params?.cursor !== undefined,
+      administrationMocks.listAuditEvents.mock.calls.filter(
+        ([query]) => query.cursor !== undefined,
       ),
     ).toHaveLength(2);
   });
@@ -321,22 +337,24 @@ describe('AuditPage', { timeout: 30_000 }, () => {
     await user.click(loadMore);
     await waitFor(() => {
       expect(
-        requestMock.mock.calls.filter(
-          ([url, options]) =>
-            url === '/api/v1/admin/audit-events' &&
-            options?.params?.cursor !== undefined,
+        administrationMocks.listAuditEvents.mock.calls.filter(
+          ([query]) => query.cursor !== undefined,
         ),
       ).toHaveLength(1);
     }, INITIAL_WAIT);
     await screen.findByRole('row', { name: /AUD-2026-0808-006/ }, INITIAL_WAIT);
-    const callsBeforeSort = requestMock.mock.calls.length;
+    const callsBeforeSort =
+      administrationMocks.listAuditEvents.mock.calls.length;
 
     await user.click(within(table).getByRole('columnheader', { name: /时间/ }));
 
     await waitFor(() => {
-      expect(requestMock.mock.calls.length).toBeGreaterThan(callsBeforeSort);
-      const [, options] = requestMock.mock.calls.at(-1) ?? [];
-      expect(options?.params?.cursor).toBeUndefined();
+      expect(
+        administrationMocks.listAuditEvents.mock.calls.length,
+      ).toBeGreaterThan(callsBeforeSort);
+      const [query] =
+        administrationMocks.listAuditEvents.mock.calls.at(-1) ?? [];
+      expect(query?.cursor).toBeUndefined();
     }, INITIAL_WAIT);
     await waitFor(() => {
       expect(
@@ -351,13 +369,13 @@ describe('AuditPage', { timeout: 30_000 }, () => {
   it('加载更多首次失败后保留按钮，并可用同一 cursor 显式重试', async () => {
     const user = userEvent.setup();
     let rejectedOnce = false;
-    requestMock.mockImplementation(
-      async (url: string, options?: { params?: Record<string, unknown> }) => {
-        if (options?.params?.cursor !== undefined && !rejectedOnce) {
+    administrationMocks.listAuditEvents.mockImplementation(
+      async (query: AuditEventsQuery) => {
+        if (query.cursor !== undefined && !rejectedOnce) {
           rejectedOnce = true;
           throw new Error('temporary audit failure');
         }
-        return requestThroughMock(url, options);
+        return listAuditFixtureEvents(query);
       },
     );
     renderPage();
@@ -383,23 +401,17 @@ describe('AuditPage', { timeout: 30_000 }, () => {
 
     await waitFor(() => {
       expect(
-        requestMock.mock.calls.filter(
-          ([url, options]) =>
-            url === '/api/v1/admin/audit-events' &&
-            options?.params?.cursor !== undefined,
+        administrationMocks.listAuditEvents.mock.calls.filter(
+          ([query]) => query.cursor !== undefined,
         ),
       ).toHaveLength(2);
     });
     await screen.findByRole('row', { name: /AUD-2026-0808-006/ });
-    const cursorCalls = requestMock.mock.calls.filter(
-      ([url, options]) =>
-        url === '/api/v1/admin/audit-events' &&
-        options?.params?.cursor !== undefined,
+    const cursorCalls = administrationMocks.listAuditEvents.mock.calls.filter(
+      ([query]) => query.cursor !== undefined,
     );
     expect(cursorCalls).toHaveLength(2);
-    expect(cursorCalls[1]?.[1]?.params?.cursor).toBe(
-      cursorCalls[0]?.[1]?.params?.cursor,
-    );
+    expect(cursorCalls[1]?.[0].cursor).toBe(cursorCalls[0]?.[0].cursor);
     expect(
       screen.getByRole('button', { name: '加载更多' }),
     ).toBeInTheDocument();
