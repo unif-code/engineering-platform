@@ -139,6 +139,7 @@ describe('admin accounts V0.2 generated client seam', () => {
   });
 
   it('重置密码保留一次性凭据回执并使用 If-Match', async () => {
+    const temporaryPassword = `Temp!${crypto.randomUUID()}`;
     const receipt = {
       account: {
         displayName: '示例用户',
@@ -148,12 +149,25 @@ describe('admin accounts V0.2 generated client seam', () => {
         profession: null,
         status: 'ENABLED',
       },
-      temporaryPassword: 'Temporary!2026',
+      temporaryPassword,
     };
     apiMock.POST.mockResolvedValue(result(receipt));
 
     await expect(
       resetAccountPassword('account-1', { reason: '用户忘记密码' }, '"v4"'),
     ).resolves.toEqual(receipt);
+    expect(apiMock.POST).toHaveBeenCalledWith(
+      '/api/v1/admin/accounts/{id}/reset-password',
+      {
+        body: { reason: '用户忘记密码' },
+        params: {
+          header: {
+            'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
+            'If-Match': '"v4"',
+          },
+          path: { id: 'account-1' },
+        },
+      },
+    );
   });
 });

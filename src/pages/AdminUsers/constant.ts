@@ -126,11 +126,6 @@ export const USER_CREATE_ROLE_OPTIONS = [
   '管理员',
 ].map((value) => ({ label: value, value }));
 
-export const USER_ROLE_OPTIONS = [
-  ...USER_CREATE_ROLE_OPTIONS,
-  { label: '超级管理员', value: '超级管理员' },
-];
-
 export const USER_SUPERIOR_OPTIONS = [
   '无',
   '李强 · 开发Leader · 营销',
