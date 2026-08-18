@@ -424,6 +424,50 @@ describe('AdminUsersPage', () => {
     INTERACTION_TEST_TIMEOUT,
   );
 
+  it.each([
+    {
+      detail: '员工号 00002002 已存在',
+      requestId: 'req-account-create-409',
+      status: 409,
+    },
+    {
+      detail: '该专业分类当前不可用于新账号',
+      requestId: 'req-account-create-422',
+      status: 422,
+    },
+  ])(
+    '$status 创建失败保留抽屉且不展示凭据或刷新列表',
+    async ({ detail, requestId, status }) => {
+      const user = userEvent.setup();
+      administrationMocks.createAccount.mockRejectedValueOnce(
+        new ApiError({ detail, requestId, status }),
+      );
+      renderPage();
+
+      const drawer = await fillCreateForm(user, {
+        displayName: '创建失败用户',
+        employeeNo: '00002002',
+        role: '前端开发',
+        superior: '无',
+        team: '营销',
+      });
+      await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
+
+      expect(await screen.findByText(new RegExp(detail))).toHaveTextContent(
+        `requestId: ${requestId}`,
+      );
+      expect(screen.getByRole('dialog', { name: '新增用户' })).toBeVisible();
+      expect(
+        screen.queryByRole('dialog', { name: '账号创建成功' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('仅此一次，请立即传达'),
+      ).not.toBeInTheDocument();
+      expect(administrationMocks.listAccounts).toHaveBeenCalledTimes(1);
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
+
   it('列表 403 展示服务端 detail 与 requestId', async () => {
     administrationMocks.listAccounts.mockRejectedValueOnce(
       new ApiError({
