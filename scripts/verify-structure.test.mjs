@@ -348,6 +348,61 @@ test('uses the effective mock property after duplicate and spread overrides', as
   }
 });
 
+test('fails closed when a trailing computed property may override mock', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/config.ts',
+    [
+      "import { defineConfig } from '@umijs/max';",
+      "const key = 'mock';",
+      'export default defineConfig({ mock: false, [key]: {}, utoopack: {} });',
+      '',
+    ].join('\n'),
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /mock 必须显式为 false/u,
+  );
+});
+
+test('fails closed when an inline spread contains a trailing computed override', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/config.ts',
+    [
+      "import { defineConfig } from '@umijs/max';",
+      "const key = 'mock';",
+      'export default defineConfig({ mock: false, ...{ [key]: {} }, utoopack: {} });',
+      '',
+    ].join('\n'),
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /mock 必须显式为 false/u,
+  );
+});
+
+test('allows a final explicit false to override unknown computed properties', async () => {
+  const validConfigs = [
+    "const key = 'mock'; export default defineConfig({ [key]: {}, mock: false, utoopack: {} });",
+    "const key = 'mock'; export default defineConfig({ ...{ [key]: {} }, mock: false, utoopack: {} });",
+    "export default defineConfig({ mock: false, ['not-mock']: {}, utoopack: {} });",
+  ];
+  for (const config of validConfigs) {
+    const root = await createValidFixture();
+    await write(
+      root,
+      'config/config.ts',
+      `import { defineConfig } from '@umijs/max';\n${config}\n`,
+    );
+    assert.deepEqual(await verifyStructure(root), []);
+  }
+});
+
 test('rejects hand-written runtime API mock sources', async () => {
   const root = await createValidFixture();
   await write(
@@ -375,6 +430,29 @@ test('rejects stale doctor ignores for the retired mock directory', async () => 
     /doctor\.config\.json 不得忽略已退役的 mock\/ source/u,
   );
 });
+
+for (const pattern of [
+  '**/mock/**',
+  './mock/**',
+  '.\\mock\\**',
+  '/mock/**',
+  '**/moc[k]/**',
+  '{mock,fixtures}/**',
+]) {
+  test(`rejects equivalent doctor ignore ${pattern}`, async () => {
+    const root = await createValidFixture();
+    await write(
+      root,
+      'doctor.config.json',
+      JSON.stringify({ ignore: { files: ['config/**', pattern] } }),
+    );
+
+    assert.match(
+      (await verifyStructure(root)).join('\n'),
+      /doctor\.config\.json 不得忽略已退役的 mock\/ source/u,
+    );
+  });
+}
 
 test('reports every required platform dependency when individually missing', async () => {
   const dependencies = ['@ant-design/x', 'openapi-fetch'];

@@ -1,5 +1,5 @@
 import { readdir, readFile } from 'node:fs/promises';
-import { join, sep } from 'node:path';
+import { join, matchesGlob, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
 
@@ -174,17 +174,22 @@ function unwrapExpression(expression) {
   return current;
 }
 
-function propertyNameText(name) {
-  if (ts.isIdentifier(name) || ts.isStringLiteralLike(name)) {
-    return name.text;
-  }
+function staticPropertyName(name) {
   if (
-    ts.isComputedPropertyName(name) &&
-    ts.isStringLiteralLike(unwrapExpression(name.expression))
+    ts.isIdentifier(name) ||
+    ts.isStringLiteralLike(name) ||
+    ts.isNumericLiteral(name)
   ) {
-    return unwrapExpression(name.expression).text;
+    return { known: true, text: name.text };
   }
-  return undefined;
+  if (ts.isComputedPropertyName(name)) {
+    const expression = unwrapExpression(name.expression);
+    if (ts.isStringLiteralLike(expression) || ts.isNumericLiteral(expression)) {
+      return { known: true, text: expression.text };
+    }
+    return { known: false };
+  }
+  return { known: false };
 }
 
 function effectiveMockSetting(objectLiteral) {
@@ -202,7 +207,13 @@ function effectiveMockSetting(objectLiteral) {
       continue;
     }
 
-    if (!property.name || propertyNameText(property.name) !== 'mock') continue;
+    if (!property.name) continue;
+    const propertyName = staticPropertyName(property.name);
+    if (!propertyName.known) {
+      setting = 'unknown';
+      continue;
+    }
+    if (propertyName.text !== 'mock') continue;
     if (ts.isPropertyAssignment(property)) {
       setting =
         unwrapExpression(property.initializer).kind ===
@@ -305,8 +316,14 @@ function checkDoctorConfig(doctorConfig, issues) {
     Array.isArray(ignoredFiles) &&
     ignoredFiles.some((pattern) => {
       if (typeof pattern !== 'string') return false;
-      const normalized = pattern.replaceAll('\\', '/').replace(/^\.\//u, '');
-      return normalized === 'mock' || normalized.startsWith('mock/');
+      const segments = pattern
+        .trim()
+        .replaceAll('\\', '/')
+        .replace(/^\/+|\/+$/gu, '')
+        .split('/')
+        .filter((segment) => segment !== '' && segment !== '.');
+      while (segments[0] === '**') segments.shift();
+      return matchesGlob('mock', segments[0] ?? '');
     })
   ) {
     issues.push('doctor.config.json 不得忽略已退役的 mock/ source');
