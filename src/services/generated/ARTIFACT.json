@@ -1,5 +1,5 @@
 {
-  "version": "0.2.0",
-  "sha256": "8a73b423ea23738d301927f183bf8f11747b85b91a9630556ee7b4303038fad2",
+  "version": "0.2.1",
+  "sha256": "624712f97f8f8f3fe9d8e57422df7a62ae88cfa9c1059a316f0b188fb19a6b1a",
   "generator": "openapi-typescript@7.13.0"
 }
