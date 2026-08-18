@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- 实施前置是后端 `api-v0.2.1` Release 可下载且 SHA-256 为 `8a388c120e7f6417405888caa4302c3a4d00ac9f6c3881254dd46db981571f36`。
+- 实施前置是后端 `api-v0.2.1` Release 可下载且 SHA-256 为 `624712f97f8f8f3fe9d8e57422df7a62ae88cfa9c1059a316f0b188fb19a6b1a`。
 - OpenAPI lock 使用版本化 GitHub Release URL，不再依赖同级后端工作树；generated 文件只能由脚本生成。
 - 删除全部 `mock/` 运行时 API Mock；V0.3+ 页面内静态原型数据不在本计划删除，也不得注册 `/api/v1` 路由。
 - `AdminUsers` 只保留创建、密码重置、TOTP 重置、启用、停用；没有编辑、删除。
@@ -56,7 +56,7 @@
 
 **Interfaces:**
 
-- Consumes: 后端 Release `api-v0.2.1` 与 digest `8a388c120e7f6417405888caa4302c3a4d00ac9f6c3881254dd46db981571f36`。
+- Consumes: 后端 Release `api-v0.2.1` 与 digest `624712f97f8f8f3fe9d8e57422df7a62ae88cfa9c1059a316f0b188fb19a6b1a`。
 - Produces: lock `version=0.2.1`，generated Artifact 标记同一版本和 digest。
 
 - [ ] **Step 1: 先验证远端 Release 字节**
@@ -67,7 +67,7 @@ Invoke-WebRequest https://github.com/unif-code/engineering-platform-backend/rele
 node -e 'const s=JSON.parse(require("fs").readFileSync(process.env.TEMP+"/api-v0.2.1-openapi.json","utf8")); console.log(s.info.version)'
 ```
 
-Expected: digest 精确为 `8a388c120e7f6417405888caa4302c3a4d00ac9f6c3881254dd46db981571f36`，version 为 `0.2.1`。不满足即停止，不修改 lock。
+Expected: digest 精确为 `624712f97f8f8f3fe9d8e57422df7a62ae88cfa9c1059a316f0b188fb19a6b1a`，version 为 `0.2.1`。不满足即停止，不修改 lock。
 
 - [ ] **Step 2: 修改 lock 后观察旧 spec RED**
 
@@ -78,7 +78,7 @@ Expected: digest 精确为 `8a388c120e7f6417405888caa4302c3a4d00ac9f6c3881254dd4
   "$comment": "后端仓 engineering-platform-backend 发布的 OpenAPI Artifact 锁定。source 支持 https:// 或 file:，sha256 为构件内容的十六进制摘要；三项齐备后运行 pnpm openapi:fetch && pnpm openapi:generate，提交 openapi/spec.json 与 src/services/generated。",
   "source": "https://github.com/unif-code/engineering-platform-backend/releases/download/api-v0.2.1/openapi.json",
   "version": "0.2.1",
-  "sha256": "8a388c120e7f6417405888caa4302c3a4d00ac9f6c3881254dd46db981571f36"
+  "sha256": "624712f97f8f8f3fe9d8e57422df7a62ae88cfa9c1059a316f0b188fb19a6b1a"
 }
 ```
 
