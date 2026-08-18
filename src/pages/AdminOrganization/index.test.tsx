@@ -3,33 +3,24 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  createMockRequester,
-  createRequesterFetch,
-  type MockRequest,
-  type MockResponse,
-  type MockRoutes,
-} from '../../../tests/mockRequestHarness';
+import { ApiError } from '@/services/transport';
+import { ORGANIZATION_TREE_FIXTURE } from '../../../tests/fixtures/accessGovernance';
 
-const { fetchMock, requestMock } = vi.hoisted(() => {
-  const fetchMock = vi.fn();
-  vi.stubGlobal('fetch', fetchMock);
-  return { fetchMock, requestMock: vi.fn() };
-});
+const administrationMocks = vi.hoisted(() => ({
+  getOrganizationTree: vi.fn(),
+  setOrganizationSuperior: vi.fn(),
+}));
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
-  defineMock: <T,>(routes: T) => routes,
 }));
 
-import { createAdminOrganizationMock } from '../../../mock/adminOrg';
-import AdminOrganizationPage from '.';
+vi.mock('@/features/administration', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/administration')>()),
+  ...administrationMocks,
+}));
 
-let routes: MockRoutes;
-const requestThroughMock = createMockRequester(() => routes);
-const fetchThroughRequester = createRequesterFetch((path, options) =>
-  requestMock(path, options),
-);
+import AdminOrganizationPage from '.';
 
 function renderPage() {
   const queryClient = new QueryClient({
@@ -74,11 +65,12 @@ async function submitSuperiorChange(
 }
 
 beforeEach(() => {
-  routes = createAdminOrganizationMock();
-  requestMock.mockReset();
-  requestMock.mockImplementation(requestThroughMock);
-  fetchMock.mockReset();
-  fetchMock.mockImplementation(fetchThroughRequester);
+  administrationMocks.getOrganizationTree.mockReset();
+  administrationMocks.getOrganizationTree.mockResolvedValue(
+    ORGANIZATION_TREE_FIXTURE,
+  );
+  administrationMocks.setOrganizationSuperior.mockReset();
+  administrationMocks.setOrganizationSuperior.mockResolvedValue(undefined);
 });
 
 describe('AdminOrganizationPage', () => {
@@ -86,7 +78,8 @@ describe('AdminOrganizationPage', () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole('region', { name: '部门概览' });
-    const initialRequestCount = requestMock.mock.calls.length;
+    const initialTreeLoads =
+      administrationMocks.getOrganizationTree.mock.calls.length;
 
     await user.click(screen.getByRole('button', { name: '新建部门' }));
     const dialog = await screen.findByRole('dialog', { name: '新建部门' });
@@ -117,7 +110,10 @@ describe('AdminOrganizationPage', () => {
     expect(
       await screen.findByText('静态原型：部门写契约尚未冻结'),
     ).toBeInTheDocument();
-    expect(requestMock.mock.calls).toHaveLength(initialRequestCount);
+    expect(administrationMocks.setOrganizationSuperior).not.toHaveBeenCalled();
+    expect(administrationMocks.getOrganizationTree).toHaveBeenCalledTimes(
+      initialTreeLoads,
+    );
     expect(screen.queryByText('国际化技术部')).not.toBeInTheDocument();
   });
 
@@ -199,58 +195,39 @@ describe('AdminOrganizationPage', () => {
     await waitFor(() => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
-    expect(requestMock).toHaveBeenCalledWith(
-      '/api/v1/admin/accounts/member-chen/superior',
-      expect.objectContaining({
-        data: { reason: '团队重组', superiorId: 'leader-liu' },
-        headers: {
-          'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/),
-        },
-        method: 'PUT',
-      }),
+    expect(administrationMocks.setOrganizationSuperior).toHaveBeenCalledWith(
+      'member-chen',
+      { reason: '团队重组', superiorId: 'leader-liu' },
     );
-    expect(
-      requestMock.mock.calls.filter(
-        ([path]) => path === '/api/v1/admin/organization/tree',
-      ),
-    ).toHaveLength(2);
+    expect(administrationMocks.getOrganizationTree).toHaveBeenCalledTimes(2);
   });
 
   it.each([
     {
-      detail: '目标关系会形成组织环',
-      requestId: 'mock-org-page-409',
-      status: 409,
+      detail: '无组织治理权限',
+      requestId: 'request-org-page-403',
+      status: 403,
     },
     {
       detail: '目标账号层级不合法',
-      requestId: 'mock-org-page-422',
+      requestId: 'request-org-page-422',
       status: 422,
     },
   ])(
     '保留 $status Problem 原文与 requestId',
     async ({ detail, requestId, status }) => {
-      const original = routes['PUT /api/v1/admin/accounts/:accountId/superior'];
-      routes = {
-        ...routes,
-        'PUT /api/v1/admin/accounts/:accountId/superior': (
-          request: MockRequest,
-          response: MockResponse,
-        ) => {
-          if (request.body === undefined) {
-            throw new Error('测试请求缺少 body');
-          }
-          response.status(status);
-          response.setHeader('Content-Type', 'application/problem+json');
-          response.json({ detail, requestId, status, title: 'ORG_ERROR' });
-        },
-      };
-      expect(original).toBeTypeOf('function');
+      administrationMocks.setOrganizationSuperior.mockRejectedValueOnce(
+        new ApiError({ detail, requestId, status, title: 'ORG_ERROR' }),
+      );
       const user = userEvent.setup();
       renderPage();
 
       const dialog = await submitSuperiorChange(user, '陈晓', '刘洋');
 
+      expect(administrationMocks.setOrganizationSuperior).toHaveBeenCalledWith(
+        'member-chen',
+        { reason: '组织职责调整', superiorId: 'leader-liu' },
+      );
       expect(await screen.findByText(new RegExp(detail))).toHaveTextContent(
         `requestId: ${requestId}`,
       );
