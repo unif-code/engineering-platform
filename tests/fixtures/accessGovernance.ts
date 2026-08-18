@@ -5,7 +5,24 @@ import type {
   WorkspaceSummary,
 } from '@/features/administration';
 
-export const ACCOUNT_FIXTURES = Object.freeze<AccountSummary[]>([
+const deepFreezeDto = <T>(value: T): T => {
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map((entry) => deepFreezeDto(entry))) as T;
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(value).map(([key, entry]) => [
+          key,
+          deepFreezeDto(entry),
+        ]),
+      ),
+    ) as T;
+  }
+  return value;
+};
+
+export const ACCOUNT_FIXTURES = deepFreezeDto<AccountSummary[]>([
   Object.freeze({
     displayName: '吴桐',
     employeeNo: 'E1002',
@@ -41,7 +58,7 @@ export const ACCOUNT_FIXTURES = Object.freeze<AccountSummary[]>([
 ]);
 
 export const ORGANIZATION_TREE_FIXTURE =
-  Object.freeze<OrganizationTreeResponse>({
+  deepFreezeDto<OrganizationTreeResponse>({
     items: [
       {
         children: [
@@ -197,7 +214,7 @@ const WORKSPACE_ACCOUNTS = Object.freeze({
   }),
 });
 
-export const WORKSPACE_FIXTURES = Object.freeze<WorkspaceSummary[]>([
+export const WORKSPACE_FIXTURES = deepFreezeDto<WorkspaceSummary[]>([
   Object.freeze({
     id: 'workspace-platform-core',
     leaders: [WORKSPACE_ACCOUNTS.wu],
@@ -236,7 +253,7 @@ export const WORKSPACE_FIXTURES = Object.freeze<WorkspaceSummary[]>([
   }),
 ]);
 
-export const AUDIT_EVENT_FIXTURES = Object.freeze<AuditEvent[]>([
+export const AUDIT_EVENT_FIXTURES = deepFreezeDto<AuditEvent[]>([
   Object.freeze({
     action: 'Config Publish',
     actor: '孙杰',
