@@ -2,7 +2,7 @@
 
 ## 项目结构与模块组织
 
-本项目是基于 Umi Max 的 React/TypeScript 应用，是内部研发平台的 Web 仓库（`engineering-platform`）。前端结构与依赖方向以独立文档仓的[平台应用与集成](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/06-platform-application-integration.md)为准：`src/pages/` 只做路由装配，业务实现按领域放在 `src/features/<feature>/`，跨 Feature 复用 UI 放在 `src/components/`，接口层为 `src/services/{generated,transport}/`，公共 hook、类型、工具、常量与全局状态归入 `src/hooks/`、`src/types/`、`src/utils/`、`src/constants/`、`src/models/`。依赖方向固定为 `pages → features → services/generated`，共享组件不得依赖具体业务 service，Feature 之间只能使用公开入口。路由、代理和应用配置位于 `config/`，本地接口模拟数据位于 `mock/`。测试应与被测代码就近放置，`tests/setupTests.ts` 负责全局测试初始化。不要修改 `src/.umi/`、`dist/`、`coverage/` 等生成目录。
+本项目是基于 Umi Max 的 React/TypeScript 应用，是内部研发平台的 Web 仓库（`engineering-platform`）。前端结构与依赖方向以独立文档仓的[平台应用与集成](https://github.com/unif-code/engineering-platform-docs/blob/main/architecture/06-platform-application-integration.md)为准：`src/pages/` 只做路由装配，业务实现按领域放在 `src/features/<feature>/`，跨 Feature 复用 UI 放在 `src/components/`，接口层为 `src/services/{generated,transport}/`，公共 hook、类型、工具、常量与全局状态归入 `src/hooks/`、`src/types/`、`src/utils/`、`src/constants/`、`src/models/`。依赖方向固定为 `pages → features → services/generated`，共享组件不得依赖具体业务 service，Feature 之间只能使用公开入口。路由、代理和应用配置位于 `config/`。生产与本地运行均不保留 `/api/v1` Umi Mock；页面测试 mock feature 公开入口，service 测试 mock generated client。测试应与被测代码就近放置，`tests/setupTests.ts` 负责全局测试初始化。不要修改 `src/.umi/`、`dist/`、`coverage/` 等生成目录。
 
 ## 构建、测试与开发命令
 

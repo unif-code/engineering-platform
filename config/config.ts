@@ -27,7 +27,7 @@ export default defineConfig({
   model: {},
   initialState: {},
   request: { dataField: '' },
-  mock: { exclude: ['**/*.test.ts', '**/handlers.ts'] },
+  mock: false,
   reactQuery: {},
   tailwindcss: {},
   layout: {

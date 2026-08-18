@@ -17,10 +17,7 @@ export default defineConfig({
     globals: true,
     restoreMocks: true,
     setupFiles: ['./tests/setupTests.ts'],
-    include: [
-      'src/**/*.{test,spec}.{ts,tsx}',
-      'mock/**/*.{test,spec}.{ts,tsx}',
-    ],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     exclude: [
       '**/node_modules/**',
       '**/dist/**',
@@ -36,7 +33,7 @@ export default defineConfig({
         functions: 80,
         lines: 80,
       },
-      include: ['src/**/*.{ts,tsx}', 'mock/**/*.ts'],
+      include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/.umi*/**',
         'src/services/generated/**',

@@ -1,6 +1,3 @@
-// Mock-only 数据缝：V0.2 Task 10 锁定 api-v0.2.0 后，
-// 仅替换本 Feature 导出的 domain service 底层为 generated client。
-
 export type {
   AccountCredentialReceipt,
   AccountListQuery,
