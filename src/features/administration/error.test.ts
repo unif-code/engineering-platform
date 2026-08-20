@@ -25,4 +25,31 @@ describe('formatGovernanceError', () => {
     );
     expect(formatGovernanceError(null, '加载失败')).toBe('加载失败');
   });
+
+  it.each([
+    {
+      error: { problem: null },
+      expected: '加载失败',
+      label: 'null problem',
+    },
+    {
+      error: { problem: { detail: 422 }, requestId: 17 },
+      expected: '加载失败',
+      label: 'invalid detail/requestId',
+    },
+    {
+      error: { problem: { detail: '服务端详情' } },
+      expected: '服务端详情',
+      label: 'detail without requestId',
+    },
+  ])('对 $label 使用稳定 fallback', ({ error, expected }) => {
+    expect(formatGovernanceError(error, '加载失败')).toBe(expected);
+  });
+
+  it('名为 ApiError 但没有 Problem 的 Error 保留自身 message', () => {
+    const error = new Error('兼容错误消息');
+    error.name = 'ApiError';
+
+    expect(formatGovernanceError(error, '加载失败')).toBe('兼容错误消息');
+  });
 });

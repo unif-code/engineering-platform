@@ -238,6 +238,27 @@ describe('createAntdThemeConfig', () => {
 });
 
 describe('ThemeProvider', () => {
+  it('matchMedia 短暂抛错时切回 system 使用 light fallback 并继续订阅', () => {
+    window.__ENGINEERING_PLATFORM_THEME__ = {
+      mode: 'light',
+      resolvedTheme: 'light',
+    };
+    const media = installMatchMedia(false);
+    const mediaQueryList = window.matchMedia(THEME_MEDIA_QUERY);
+    vi.mocked(window.matchMedia)
+      .mockReset()
+      .mockImplementationOnce(() => {
+        throw new Error('matchMedia unavailable');
+      })
+      .mockReturnValue(mediaQueryList);
+    render(<ThemeProbe />, { wrapper: TestThemeProvider });
+
+    fireEvent.click(screen.getByRole('button', { name: '设为系统' }));
+
+    expect(screen.getByLabelText('当前主题')).toHaveTextContent('system/light');
+    expect(media.addEventListener).toHaveBeenCalled();
+  });
+
   it('bootstrap 为 system/light 但订阅时系统已是暗色时立即收敛', async () => {
     window.__ENGINEERING_PLATFORM_THEME__ = {
       mode: 'system',
@@ -380,5 +401,16 @@ describe('ThemeProvider', () => {
     expect(screen.getByLabelText('ProComponents 暗色状态')).toHaveTextContent(
       'true',
     );
+  });
+
+  it('Theme hook 在 Provider 外 fail-fast', () => {
+    const consoleError = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+
+    expect(() => render(<ThemeProbe />)).toThrow(
+      'usePlatformTheme 必须在 ThemeProvider 内使用',
+    );
+    consoleError.mockRestore();
   });
 });

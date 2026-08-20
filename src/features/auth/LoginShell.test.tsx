@@ -1,16 +1,24 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const themeMock = vi.hoisted(() => ({
+  resolvedTheme: 'light' as 'dark' | 'light',
+}));
 
 vi.mock('@/features/theme', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/features/theme')>()),
   usePlatformTheme: () => ({
-    mode: 'light' as const,
-    resolvedTheme: 'light' as const,
+    mode: themeMock.resolvedTheme,
+    resolvedTheme: themeMock.resolvedTheme,
     setMode: vi.fn(),
   }),
 }));
 
 import { LoginShell } from './LoginShell';
+
+beforeEach(() => {
+  themeMock.resolvedTheme = 'light';
+});
 
 describe('LoginShell', () => {
   it('按原型呈现统一品牌、Hero、交付链路和认证容器', () => {
@@ -59,5 +67,25 @@ describe('LoginShell', () => {
     expect(screen.getByRole('form', { name: '凭据步骤' })).toBeInTheDocument();
     expect(screen.queryByText(/重置演示数据/)).not.toBeInTheDocument();
     expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
+  });
+
+  it('暗色主题使用不同的登录背景样式', () => {
+    const light = render(
+      <LoginShell>
+        <span>浅色内容</span>
+      </LoginShell>,
+    );
+    const lightClassName = screen.getByRole('main').className;
+    light.unmount();
+
+    themeMock.resolvedTheme = 'dark';
+    render(
+      <LoginShell>
+        <span>暗色内容</span>
+      </LoginShell>,
+    );
+
+    expect(screen.getByRole('main').className).not.toBe(lightClassName);
+    expect(screen.getByText('暗色内容')).toBeInTheDocument();
   });
 });

@@ -71,7 +71,7 @@ export function HeaderActions({ onLogout, user }: HeaderActionsProps) {
   };
 
   const userMenuItems: MenuProps['items'] = [
-    ...(createThemeMenuItems(mode) ?? []),
+    ...createThemeMenuItems(mode),
     { type: 'divider' },
     {
       disabled: loggingOut,

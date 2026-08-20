@@ -373,4 +373,25 @@ describe('buildMenuData', () => {
       ]);
     }
   });
+
+  it('sort 相同时按 routeKey 稳定排序，重复 key 保持等价', () => {
+    const sameRank = [
+      navigationItem('tasks', '任务 A', 10),
+      navigationItem('home', '首页', 10),
+      navigationItem('tasks', '任务 B', 10),
+      navigationItem('messages', '消息中心', 10),
+    ];
+
+    expect(
+      buildMenuData(sameRank)[0]?.children?.map(({ key, name }) => ({
+        key,
+        name,
+      })),
+    ).toEqual([
+      { key: 'home', name: '首页' },
+      { key: 'messages', name: '消息中心' },
+      { key: 'tasks', name: '任务 A' },
+      { key: 'tasks', name: '任务 B' },
+    ]);
+  });
 });

@@ -18,4 +18,17 @@ describe('SemanticTag', () => {
     expect(attentionTag).toBeInTheDocument();
     expect(runningTag.className).not.toBe(attentionTag.className);
   });
+
+  it('monospace 只在显式开启时增加等宽语义样式', () => {
+    render(
+      <>
+        <SemanticTag label="普通编号" tone="neutral" />
+        <SemanticTag label="等宽编号" monospace tone="neutral" />
+      </>,
+    );
+
+    expect(screen.getByText('等宽编号').className).not.toBe(
+      screen.getByText('普通编号').className,
+    );
+  });
 });

@@ -210,6 +210,18 @@ describe('BootstrapWizard', () => {
     expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
   });
 
+  it('临时凭据网络失败时展示可恢复详情并停留在验证步骤', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    mocks.login.mockRejectedValue(new Error('认证服务暂时不可用'));
+    render(<BootstrapWizard />);
+
+    await submitTemporaryCredentials(user, fixture);
+
+    expect(await screen.findByText('认证服务暂时不可用')).toBeInTheDocument();
+    expect(screen.getByLabelText('临时密码')).toBeInTheDocument();
+  });
+
   it('正式密码实时校验 Security Floor', async () => {
     const fixture = createBootstrapFixture();
     const user = userEvent.setup();
@@ -257,6 +269,50 @@ describe('BootstrapWizard', () => {
     expect(mocks.enrollBootstrapTotp).not.toHaveBeenCalled();
   });
 
+  it('422 errors 不是数组时只展示 Problem detail，不伪造字段错误', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    mocks.setBootstrapPassword.mockRejectedValue(
+      new ApiError({
+        detail: '密码策略响应格式无效',
+        errors: { password: 'invalid' },
+        status: 422,
+      }),
+    );
+    render(<BootstrapWizard />);
+    await advanceToPassword(user, fixture);
+
+    await submitPermanentPassword(user, fixture.password);
+
+    expect(await screen.findByText('密码策略响应格式无效')).toBeInTheDocument();
+    expect(screen.queryByText('invalid')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('正式密码')).toBeInTheDocument();
+  });
+
+  it('422 errors 中非 password/string 条目被忽略', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    mocks.setBootstrapPassword.mockRejectedValue(
+      new ApiError({
+        detail: '正式密码未通过校验',
+        errors: [
+          null,
+          { field: 'employeeNo', reason: '员工号不可修改' },
+          { field: 'password', reason: 422 },
+        ],
+        status: 422,
+      }),
+    );
+    render(<BootstrapWizard />);
+    await advanceToPassword(user, fixture);
+
+    await submitPermanentPassword(user, fixture.password);
+
+    expect(await screen.findByText('正式密码未通过校验')).toBeInTheDocument();
+    expect(screen.queryByText('员工号不可修改')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('正式密码')).toBeInTheDocument();
+  });
+
   it('TOTP confirm 错误保留二维码并允许原地重试', async () => {
     const fixture = createBootstrapFixture();
     const user = userEvent.setup();
@@ -300,6 +356,61 @@ describe('BootstrapWizard', () => {
     ).toBeInTheDocument();
     expect(mocks.setBootstrapPassword).toHaveBeenCalledOnce();
     expect(mocks.enrollBootstrapTotp).toHaveBeenCalledTimes(2);
+  });
+
+  it('TOTP enroll 重试再次失败时更新可见错误且不重复提交密码', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    mocks.enrollBootstrapTotp
+      .mockRejectedValueOnce(new Error('首次绑定失败'))
+      .mockRejectedValueOnce(new Error('重试绑定仍失败'));
+    render(<BootstrapWizard />);
+    await advanceToPassword(user, fixture);
+
+    await submitPermanentPassword(user, fixture.password);
+    expect(await screen.findByText('首次绑定失败')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '重新获取绑定信息' }));
+
+    expect(await screen.findByText('重试绑定仍失败')).toBeInTheDocument();
+    expect(mocks.setBootstrapPassword).toHaveBeenCalledOnce();
+    expect(mocks.enrollBootstrapTotp).toHaveBeenCalledTimes(2);
+  });
+
+  it('provisioning URI 无 secret 或无法解析时显示完整 URI 作为手工输入值', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    const malformedProvisioningUri = `invalid-${crypto.randomUUID()}`;
+    mocks.enrollBootstrapTotp.mockResolvedValue({
+      provisioningUri: malformedProvisioningUri,
+    });
+    render(<BootstrapWizard />);
+    await advanceToPassword(user, fixture);
+
+    await submitPermanentPassword(user, fixture.password);
+
+    const qrRegion = await screen.findByRole('region', {
+      name: 'TOTP 绑定二维码',
+    });
+    expect(
+      within(qrRegion).getByText(malformedProvisioningUri),
+    ).toBeInTheDocument();
+  });
+
+  it('合法 provisioning URI 缺少 secret 时也显示完整 URI', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    const provisioningUri = `otpauth://totp/platform-${crypto.randomUUID()}?issuer=EngineeringPlatform`;
+    mocks.enrollBootstrapTotp.mockResolvedValue({ provisioningUri });
+    render(<BootstrapWizard />);
+    await advanceToPassword(user, fixture);
+
+    await submitPermanentPassword(user, fixture.password);
+
+    const qrRegion = await screen.findByRole('region', {
+      name: 'TOTP 绑定二维码',
+    });
+    expect(within(qrRegion).getByText(provisioningUri)).toBeInTheDocument();
   });
 
   it('bootstrap Session 失效时提示联系管理员重新签发临时密码', async () => {

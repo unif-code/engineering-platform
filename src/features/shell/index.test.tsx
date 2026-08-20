@@ -138,6 +138,37 @@ describe('HeaderActions', () => {
     expect(await screen.findByText('退出失败，请重试')).toBeInTheDocument();
     expect(onLogout).toHaveBeenCalledTimes(2);
   });
+
+  it('缺少用户名使用无障碍 fallback，非 Problem 退出失败仍给出可见详情', async () => {
+    const user = userEvent.setup();
+    const onLogout = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('网络暂时中断'))
+      .mockRejectedValueOnce('offline');
+    render(
+      <AntdApp>
+        <ThemeProvider>
+          <HeaderActions onLogout={onLogout} />
+        </ThemeProvider>
+      </AntdApp>,
+    );
+    const accountMenu = screen.getByRole('button', {
+      name: '当前用户账号菜单',
+    });
+
+    expect(
+      screen.getByRole('img', { name: '用户：当前用户' }),
+    ).toContainElement(document.querySelector('.anticon-user'));
+
+    await user.click(accountMenu);
+    await user.click(await screen.findByRole('menuitem', { name: '退出登录' }));
+    expect(await screen.findByText('网络暂时中断')).toBeInTheDocument();
+
+    await user.click(accountMenu);
+    await user.click(await screen.findByRole('menuitem', { name: '退出登录' }));
+    expect(await screen.findByText('退出登录失败，请重试')).toBeInTheDocument();
+    expect(onLogout).toHaveBeenCalledTimes(2);
+  });
 });
 
 describe('shell branding', () => {

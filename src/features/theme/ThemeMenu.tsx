@@ -30,7 +30,9 @@ export function getThemeModeFromMenuKey(key: string): ThemeMode | null {
   return mode === 'system' || mode === 'light' || mode === 'dark' ? mode : null;
 }
 
-export const createThemeMenuItems = (mode: ThemeMode): MenuProps['items'] => [
+export const createThemeMenuItems = (
+  mode: ThemeMode,
+): NonNullable<MenuProps['items']> => [
   {
     children: THEME_OPTIONS.map((option) => ({
       extra:

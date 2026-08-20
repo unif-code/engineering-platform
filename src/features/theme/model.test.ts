@@ -4,6 +4,7 @@ import {
   createThemeSnapshot,
   getInitialThemeSnapshot,
   persistThemeMode,
+  syncDocumentTheme,
 } from './model';
 
 const setSystemPreference = (prefersDark: boolean) => {
@@ -89,6 +90,28 @@ describe('theme model', () => {
       mode: 'system',
       resolvedTheme: 'light',
     });
+  });
+
+  it('浏览器缺少 matchMedia 时使用安全的 system/light 快照', () => {
+    vi.stubGlobal('matchMedia', undefined);
+
+    expect(getInitialThemeSnapshot()).toEqual({
+      mode: 'system',
+      resolvedTheme: 'light',
+    });
+  });
+
+  it('SSR 缺少 window/document 时读取、持久化与同步均安全返回', () => {
+    vi.stubGlobal('window', undefined);
+    expect(getInitialThemeSnapshot()).toEqual({
+      mode: 'system',
+      resolvedTheme: 'light',
+    });
+    expect(() => persistThemeMode('dark')).not.toThrow();
+
+    vi.unstubAllGlobals();
+    vi.stubGlobal('document', undefined);
+    expect(() => syncDocumentTheme('dark')).not.toThrow();
   });
 
   it.each(['light', 'dark'] as const)('持久化手动 %s 模式', (mode) => {

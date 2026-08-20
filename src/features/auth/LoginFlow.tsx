@@ -62,13 +62,13 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
     }
   };
 
-  const submitTotp = async ({ code }: TotpFormValues) => {
-    if (challengeToken === undefined) {
-      return false;
-    }
+  const submitTotp = async (
+    activeChallengeToken: string,
+    { code }: TotpFormValues,
+  ) => {
     setProblemDetail(undefined);
     try {
-      await verifyTotp({ challengeToken, code });
+      await verifyTotp({ challengeToken: activeChallengeToken, code });
       await onAuthenticated();
       return true;
     } catch (error) {
@@ -113,7 +113,7 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
         contentStyle={loginFormContentStyle}
         key={`totp-${formVersion}`}
         message={false}
-        onFinish={submitTotp}
+        onFinish={(values) => submitTotp(challengeToken, values)}
         subTitle={false}
         submitter={{
           resetButtonProps: false,

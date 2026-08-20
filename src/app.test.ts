@@ -60,6 +60,31 @@ afterEach(() => {
   onUnauthorized(() => undefined);
 });
 
+describe('request runtime before layout registration', () => {
+  it('401 缺少 URL 时调用安全的初始通知，并归一异常输入形状', () => {
+    const errorHandler = request.errorConfig?.errorHandler;
+
+    expect(() =>
+      errorHandler?.(
+        { response: { data: null, status: 401 } } as never,
+        {} as never,
+      ),
+    ).toThrowError(expect.objectContaining({ name: 'ApiError' }));
+    expect(featureMocks.replace).not.toHaveBeenCalled();
+
+    for (const failure of [
+      null,
+      {},
+      { config: null, response: null },
+      { config: { url: 42 }, response: { status: '401' } },
+    ]) {
+      expect(() => errorHandler?.(failure as never, {} as never)).toThrowError(
+        expect.objectContaining({ name: 'ApiError' }),
+      );
+    }
+  });
+});
+
 describe('getInitialState', () => {
   it('聚合 auth 与 navigation Feature 的精确结果', async () => {
     const employeeId = createEmployeeNo();
@@ -130,6 +155,19 @@ describe('getInitialState', () => {
       principal: null,
     });
   });
+
+  it('非 401 首屏错误保持原样向上传递', async () => {
+    const error = normalizeApiError({
+      response: {
+        data: { detail: '上游暂时不可用', status: 503 },
+        status: 503,
+      },
+    });
+    featureMocks.fetchMe.mockRejectedValue(error);
+    featureMocks.fetchNavigation.mockResolvedValue([]);
+
+    await expect(getInitialState()).rejects.toBe(error);
+  });
 });
 
 describe('layout', () => {
@@ -138,6 +176,49 @@ describe('layout', () => {
 
     expect(config.defaultCollapsed).toBe(false);
     expect(config).not.toHaveProperty('breakpoint');
+  });
+
+  it('缺少 initialState 时各 render seam 使用安全空值与默认 Session setter', async () => {
+    const config = layout({});
+    const brand = config.menuHeaderRender?.(undefined, undefined, {
+      collapsed: true,
+    } as never);
+    const title = config.headerContentRender?.();
+
+    expect(isValidElement(brand)).toBe(true);
+    expect(isValidElement(title)).toBe(true);
+    expect(config.menuDataRender?.()).toEqual([]);
+
+    const defaultDom = createElement('span', null, '普通菜单');
+    expect(
+      config.menuItemRender?.(
+        { isUrl: false, key: 'home', name: '首页', onClick: vi.fn() },
+        defaultDom,
+        { collapsed: false },
+      ),
+    ).toBe(defaultDom);
+    expect(
+      config.menuTextRender?.({ key: 'home', name: '首页' }, defaultDom, {
+        collapsed: false,
+      }),
+    ).toBe(defaultDom);
+
+    const collapsedText = config.menuTextRender?.(
+      { key: 'messages', name: '消息中心', unreadCount: 4 },
+      defaultDom,
+      { collapsed: true },
+    );
+    render(createElement('div', null, collapsedText));
+    expect(screen.queryByLabelText('4 条未读消息')).not.toBeInTheDocument();
+
+    const headerActions = config.actionsRender?.()?.[0];
+    if (!headerActions || typeof headerActions !== 'object') {
+      throw new Error('Missing HeaderActions element');
+    }
+    await headerActions.props.onLogout();
+
+    expect(featureMocks.logout).toHaveBeenCalledOnce();
+    expect(featureMocks.replace).toHaveBeenCalledWith('/login');
   });
 
   it('提供品牌化 mix 布局、固定尺寸和 header 接缝', () => {
