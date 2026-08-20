@@ -65,4 +65,69 @@ describe('admin audit V0.2 generated client seam', () => {
       },
     });
   });
+
+  it.each([
+    ['SUCCESS', 'configuration.grant.create', 'success', 'high'],
+    ['success', 'configuration.policy.rollback', 'success', 'high'],
+    ['FAILED', 'account.disable', 'rejected', 'low'],
+  ] as const)(
+    '把 %s / %s 映射为 %s / %s，并补齐缺失 requestId',
+    async (result, action, expectedResult, expectedRisk) => {
+      apiMock.GET.mockResolvedValue({
+        data: {
+          items: [
+            {
+              action,
+              actor: 'account-1',
+              actorType: 'ACCOUNT',
+              correlationId: 'correlation-1',
+              id: 'audit-1',
+              occurredAt: '2026-08-13T00:00:00Z',
+              reason: null,
+              requestId: null,
+              result,
+              schemaVersion: 1,
+              targetId: 'target-1',
+              targetType: 'ACCOUNT',
+            },
+          ],
+          nextCursor: null,
+        },
+        response: new Response(null, { status: 200 }),
+      });
+
+      await expect(
+        listAuditEvents({
+          actor: 'account-1',
+          from: '2026-08-01T00:00:00Z',
+          limit: 50,
+          targetId: 'target-1',
+          targetType: 'ACCOUNT',
+          to: '2026-08-31T23:59:59Z',
+        }),
+      ).resolves.toMatchObject({
+        items: [
+          {
+            requestId: '—',
+            result: expectedResult,
+            risk: expectedRisk,
+          },
+        ],
+      });
+      expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/admin/audit-events', {
+        params: {
+          query: {
+            actor: 'account-1',
+            cursor: undefined,
+            from: '2026-08-01T00:00:00Z',
+            limit: 50,
+            requestId: undefined,
+            targetId: 'target-1',
+            targetType: 'ACCOUNT',
+            to: '2026-08-31T23:59:59Z',
+          },
+        },
+      });
+    },
+  );
 });

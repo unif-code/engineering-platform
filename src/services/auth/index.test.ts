@@ -56,6 +56,17 @@ describe('auth service V0.2 generated client seam', () => {
     expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/me');
   });
 
+  it('Principal 缺少 capabilities 时返回空权限数组', async () => {
+    const employeeId = createEmployeeNo();
+    apiMock.GET.mockResolvedValue(result({ employeeId, name: '普通用户' }));
+
+    await expect(getCurrentUser()).resolves.toEqual({
+      capabilities: [],
+      employeeId,
+      name: '普通用户',
+    });
+  });
+
   it('登录使用 generated POST 并保留 V0.2 state 判别字段', async () => {
     const challengeToken = createChallengeToken();
     const input = {

@@ -57,6 +57,47 @@ describe('admin grants V0.2 generated client seam', () => {
     expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/admin/grants');
   });
 
+  it('全平台 scope 使用中文 fallback，并同时应用 capability/principal 筛选', async () => {
+    const platformGrant = {
+      ...formalGrant,
+      capability: 'identity.account.manage',
+      id: 'grant-platform',
+      scopeId: null,
+      scopeType: 'PLATFORM',
+    };
+    apiMock.GET.mockResolvedValue(
+      result({ items: [formalGrant, platformGrant], nextCursor: null }),
+    );
+
+    await expect(
+      listGrants({
+        capability: 'identity.account.manage',
+        page: 1,
+        pageSize: 20,
+        principalId: 'account-1',
+      }),
+    ).resolves.toEqual({
+      items: [
+        expect.objectContaining({
+          id: 'grant-platform',
+          scope: { id: null, label: '全平台', type: 'PLATFORM' },
+        }),
+      ],
+      total: 1,
+    });
+  });
+
+  it('缺省筛选返回全部授权', async () => {
+    apiMock.GET.mockResolvedValue(
+      result({ items: [formalGrant], nextCursor: null }),
+    );
+
+    await expect(listGrants({ page: 1, pageSize: 20 })).resolves.toMatchObject({
+      items: [{ id: 'grant-1' }],
+      total: 1,
+    });
+  });
+
   it('创建时把应用层 scope 映射为正式 scopeType/scopeId', async () => {
     apiMock.POST.mockResolvedValue(result(formalGrant));
 

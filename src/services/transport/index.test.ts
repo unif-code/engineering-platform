@@ -80,6 +80,18 @@ describe('transport', () => {
     });
   });
 
+  it('normalizeApiError 保留服务端已声明的 Problem status', () => {
+    const normalized = normalizeApiError({
+      response: {
+        data: { status: 409, title: 'CONFLICT' },
+        status: 500,
+        statusText: 'Internal Server Error',
+      },
+    });
+
+    expect(normalized.problem).toEqual({ status: 409, title: 'CONFLICT' });
+  });
+
   it.each([
     {
       data: 'upstream unavailable',
@@ -91,6 +103,14 @@ describe('transport', () => {
     },
     {
       data: '',
+      expected: { status: 502, title: 'Bad Gateway' },
+    },
+    {
+      data: ['upstream unavailable'],
+      expected: { status: 502, title: 'Bad Gateway' },
+    },
+    {
+      data: null,
       expected: { status: 502, title: 'Bad Gateway' },
     },
   ])(
@@ -119,10 +139,42 @@ describe('transport', () => {
         title: 'REQUEST_ABORTED',
       },
     },
+    {
+      error: 'socket closed',
+      expected: { detail: 'socket closed', title: 'NETWORK_ERROR' },
+    },
   ])('normalizeApiError 归一 network 与 abort 错误', ({ error, expected }) => {
     expect(normalizeApiError(error)).toMatchObject({
       name: 'ApiError',
       problem: expected,
+    });
+  });
+
+  it('normalizeApiError 在 statusText 缺失时生成 HTTP status 标题', () => {
+    expect(
+      normalizeApiError({ response: { data: undefined, status: 503 } }),
+    ).toMatchObject({
+      problem: { status: 503, title: 'HTTP 503' },
+    });
+  });
+
+  it('response status 不是数字时按 network rejection 收敛', () => {
+    const rejection = { response: { data: null, status: '503' } };
+
+    expect(normalizeApiError(rejection)).toMatchObject({
+      cause: rejection,
+      problem: { detail: '[object Object]', title: 'NETWORK_ERROR' },
+    });
+  });
+
+  it('ApiError 在 Problem 没有 title 时生成稳定错误标题', () => {
+    expect(new ApiError({ status: 418 })).toMatchObject({
+      message: 'HTTP 418',
+      requestId: undefined,
+    });
+    expect(new ApiError({})).toMatchObject({
+      message: 'HTTP error',
+      requestId: undefined,
     });
   });
 
@@ -164,6 +216,30 @@ describe('transport', () => {
     await expect(client.GET('/ping' as never)).rejects.toMatchObject({
       name: 'ApiError',
       problem: { status: 500 },
+    });
+  });
+
+  it('uses a stable title when an invalid JSON response has no statusText', async () => {
+    stubFetch(async () => new Response('upstream exploded', { status: 500 }));
+    const client = createApiClient('/api');
+
+    await expect(client.GET('/ping' as never)).rejects.toMatchObject({
+      problem: {
+        detail: 'upstream exploded',
+        status: 500,
+        title: 'HTTP error',
+      },
+    });
+  });
+
+  it('preserves a Problem status already returned by the server', async () => {
+    stubFetch(async () =>
+      Response.json({ status: 409, title: 'CONFLICT' }, { status: 500 }),
+    );
+    const client = createApiClient('/api');
+
+    await expect(client.GET('/ping' as never)).rejects.toMatchObject({
+      problem: { status: 409, title: 'CONFLICT' },
     });
   });
 
