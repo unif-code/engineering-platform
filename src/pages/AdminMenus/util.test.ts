@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ROUTE_REGISTRY } from '@/features/navigation';
 import { MENU_ROWS } from './constant';
 import type { MenuQueryParams } from './type';
-import { queryMenuRows } from './util';
+import {
+  compareMenuRows,
+  getMenuVisibilityAction,
+  queryMenuRows,
+} from './util';
 
 const EXPECTED_MENUS = [
   {
@@ -153,6 +157,13 @@ describe('MENU_ROWS', () => {
 });
 
 describe('queryMenuRows', () => {
+  it('使用默认分页参数返回第一页全部菜单', async () => {
+    const result = await runQuery();
+
+    expect(result.data).toHaveLength(16);
+    expect(result.total).toBe(16);
+  });
+
   it('按 user 与 admin 分组筛选并默认保持 group + order 顺序', async () => {
     const userResult = await runQuery({
       current: 1,
@@ -273,5 +284,21 @@ describe('queryMenuRows', () => {
     });
 
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('菜单投影动作', () => {
+  it('同组同序时以稳定 key 次序兜底', () => {
+    const left = { ...MENU_ROWS[1], order: 1 };
+    const right = { ...MENU_ROWS[0], order: 1 };
+
+    expect(compareMenuRows(left, right)).toBeGreaterThan(0);
+  });
+
+  it('根据当前可见性生成相反动作', () => {
+    expect(getMenuVisibilityAction(MENU_ROWS[0])).toBe('隐藏菜单 home');
+    expect(getMenuVisibilityAction({ ...MENU_ROWS[0], visible: false })).toBe(
+      '显示菜单 home',
+    );
   });
 });

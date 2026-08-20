@@ -14,6 +14,10 @@ export const POLICY_GROUPS = [
 
 export type PolicyGroupKey = (typeof POLICY_GROUPS)[number]['value'];
 
+export const POLICY_GROUP_LABELS = Object.fromEntries(
+  POLICY_GROUPS.map(({ label, value }) => [value, label]),
+) as Record<PolicyGroupKey, string>;
+
 export function policyGroupForKey(key: string): PolicyGroupKey {
   return key === 'identity.draft_auto_archive_days' ? 'audit' : 'session';
 }

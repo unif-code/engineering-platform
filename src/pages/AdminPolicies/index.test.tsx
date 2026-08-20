@@ -408,6 +408,24 @@ describe('AdminPoliciesPage', {
     );
   });
 
+  it('创建接口已返回完整候选时跳过冗余 Update', async () => {
+    administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_30_V2);
+    administrationMocks.validatePolicyDraft.mockResolvedValueOnce(VALID_30_V3);
+    const user = userEvent.setup();
+    renderPage();
+    await findPolicySettings();
+    await setIdleMinutes(user, '30');
+
+    await validateDraft(user);
+
+    expect(administrationMocks.updatePolicyDraft).not.toHaveBeenCalled();
+    expect(administrationMocks.validatePolicyDraft).toHaveBeenCalledWith(
+      'identity',
+      'draft-1',
+      '"v2"',
+    );
+  });
+
   it('保存后再次编辑时可撤销本地编辑并恢复服务端候选', async () => {
     administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
     administrationMocks.updatePolicyDraft.mockResolvedValueOnce(DRAFT_30_V2);
@@ -442,6 +460,20 @@ describe('AdminPoliciesPage', {
     );
   });
 
+  it('未保存编辑可直接恢复当前生效值且不创建 Draft', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await findPolicySettings();
+    await setIdleMinutes(user, '30');
+
+    await user.click(screen.getByRole('button', { name: '撤销本地编辑' }));
+
+    expect(
+      screen.getByRole('spinbutton', { name: 'Session 空闲期限' }),
+    ).toHaveValue('60');
+    expect(administrationMocks.createPolicyDraft).not.toHaveBeenCalled();
+  });
+
   it('Draft ETag 409 保留编辑态并显示固定并发冲突提示', async () => {
     administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
     administrationMocks.updatePolicyDraft.mockRejectedValueOnce(
@@ -468,6 +500,61 @@ describe('AdminPoliciesPage', {
       screen.getByRole('region', { name: 'Draft 编辑' }),
     ).toBeInTheDocument();
   });
+
+  it.each([
+    { action: '校验', button: VALIDATE_BUTTON_NAME },
+    { action: '预览', button: PREVIEW_BUTTON_NAME },
+  ])('Draft 自动保存失败时阻止$action并保留编辑态', async ({ button }) => {
+    administrationMocks.createPolicyDraft.mockRejectedValueOnce(
+      new Error('Draft 存储暂不可用'),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await findPolicySettings();
+    await setIdleMinutes(user, '30');
+
+    await user.click(screen.getByRole('button', { name: button }));
+
+    expect(
+      await screen.findByText(/Draft 存储暂不可用/, {}, INITIAL_WAIT),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Draft 编辑' })).toBeVisible();
+    expect(administrationMocks.validatePolicyDraft).not.toHaveBeenCalled();
+    expect(administrationMocks.previewPolicyDraft).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    {
+      action: '校验',
+      button: VALIDATE_BUTTON_NAME,
+      expected: 'Policy 校验服务不可用',
+      mock: administrationMocks.validatePolicyDraft,
+    },
+    {
+      action: '预览',
+      button: PREVIEW_BUTTON_NAME,
+      expected: 'Policy 预览服务不可用',
+      mock: administrationMocks.previewPolicyDraft,
+    },
+  ])(
+    '$action失败展示服务端错误且保留 Draft',
+    async ({ button, expected, mock }) => {
+      administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+      administrationMocks.updatePolicyDraft.mockResolvedValueOnce(DRAFT_30_V2);
+      mock.mockRejectedValueOnce(new Error(expected));
+      const user = userEvent.setup();
+      renderPage();
+      await findPolicySettings();
+      await setIdleMinutes(user, '30');
+
+      await user.click(screen.getByRole('button', { name: button }));
+
+      expect(
+        await screen.findByText(new RegExp(expected), {}, INITIAL_WAIT),
+      ).toBeInTheDocument();
+      expect(screen.getByRole('region', { name: 'Draft 编辑' })).toBeVisible();
+    },
+  );
 
   it('Validate 展示越界 issue，修正后通过校验', async () => {
     administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
@@ -589,6 +676,39 @@ describe('AdminPoliciesPage', {
       'draft-1',
       '"v2"',
     );
+    await user.click(
+      within(screen.getByRole('dialog', { name: 'Policy Preview' })).getByRole(
+        'button',
+        { name: 'Close' },
+      ),
+    );
+    expect(screen.queryByRole('dialog', { name: 'Policy Preview' })).toBeNull();
+  });
+
+  it('编辑发生在 Preview 请求之后时丢弃旧预览', async () => {
+    let resolvePreview: ((value: PolicyPreview) => void) | undefined;
+    const previewResponse = new Promise<PolicyPreview>((resolve) => {
+      resolvePreview = resolve;
+    });
+    administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
+    administrationMocks.updatePolicyDraft.mockResolvedValueOnce(DRAFT_30_V2);
+    administrationMocks.previewPolicyDraft.mockReturnValueOnce(previewResponse);
+    const user = userEvent.setup();
+    renderPage();
+    await findPolicySettings();
+    await setIdleMinutes(user, '30');
+    await user.click(screen.getByRole('button', { name: PREVIEW_BUTTON_NAME }));
+    await waitFor(() => {
+      expect(administrationMocks.previewPolicyDraft).toHaveBeenCalled();
+    });
+
+    await setIdleMinutes(user, '45');
+    await act(async () => {
+      resolvePreview?.(PREVIEW_30);
+      await previewResponse;
+    });
+
+    expect(screen.queryByRole('dialog', { name: 'Policy Preview' })).toBeNull();
   });
 
   it.each([
@@ -630,6 +750,8 @@ describe('AdminPoliciesPage', {
         `requestId: ${requestId}`,
       );
       expect(dialog).toBeInTheDocument();
+      await user.click(within(dialog).getByRole('button', { name: /取\s*消/ }));
+      expect(screen.queryByRole('dialog', { name: '发布 Policy' })).toBeNull();
     },
   );
 
@@ -742,6 +864,72 @@ describe('AdminPoliciesPage', {
     expect(
       within(editor).getByRole('spinbutton', { name: 'Session 空闲期限' }),
     ).toHaveValue('60');
+  });
+
+  it('Rollback 失败保留 Modal 与错误，取消后清理失败态', async () => {
+    const totpCode = createTotpCode();
+    administrationMocks.listPolicyCatalog.mockResolvedValueOnce(
+      CATALOG_VERSION_2,
+    );
+    administrationMocks.listPolicyVersions.mockResolvedValueOnce(VERSIONS_2);
+    administrationMocks.rollbackPolicyVersion.mockRejectedValueOnce(
+      new ApiError({
+        detail: '目标版本已不可回滚',
+        requestId: 'req-policy-rollback-409',
+        status: 409,
+      }),
+    );
+    const user = userEvent.setup();
+    renderPage();
+    await findPolicySettings();
+    await user.click(
+      await screen.findByRole('button', { name: '回滚版本 1' }, INITIAL_WAIT),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: '创建回滚 Draft',
+    });
+    await user.type(
+      within(dialog).getByRole('textbox', { name: '回滚原因' }),
+      '验证失败态',
+    );
+    await user.type(
+      within(dialog).getByRole('textbox', { name: 'TOTP 验证码' }),
+      totpCode,
+    );
+    await user.click(within(dialog).getByRole('button', { name: '确认创建' }));
+
+    expect(await screen.findByText(/目标版本已不可回滚/)).toHaveTextContent(
+      'requestId: req-policy-rollback-409',
+    );
+    expect(dialog).toBeVisible();
+    await user.click(within(dialog).getByRole('button', { name: /取\s*消/ }));
+    expect(screen.queryByRole('dialog', { name: '创建回滚 Draft' })).toBeNull();
+  });
+
+  it('Catalog 与版本查询失败分别展示服务端问题', async () => {
+    administrationMocks.listPolicyCatalog.mockRejectedValueOnce(
+      new ApiError({
+        detail: 'Policy Catalog 无权访问',
+        requestId: 'req-policy-catalog-403',
+        status: 403,
+      }),
+    );
+    administrationMocks.listPolicyVersions.mockRejectedValueOnce(
+      new ApiError({
+        detail: 'Policy 历史无权访问',
+        requestId: 'req-policy-versions-403',
+        status: 403,
+      }),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByText(/Policy Catalog 无权访问/, {}, INITIAL_WAIT),
+    ).toHaveTextContent('requestId: req-policy-catalog-403');
+    expect(
+      await screen.findByText(/Policy 历史无权访问/, {}, INITIAL_WAIT),
+    ).toHaveTextContent('requestId: req-policy-versions-403');
+    expect(screen.getByText('该分类暂无已冻结策略')).toBeVisible();
   });
 
   it('存在未保存编辑时禁止 Rollback 覆盖当前 Draft', async () => {

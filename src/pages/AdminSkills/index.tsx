@@ -37,7 +37,7 @@ ${skill.content}
 CI 执行 lint / test / build 三段流水线，未通过禁止合并；违规项由 Agent 在 MR 描述中逐条说明。`;
 }
 
-function getPreviousVersion(version: string) {
+export function getPreviousVersion(version: string) {
   const parsedVersion = Number.parseFloat(version.replace('v', ''));
   if (!Number.isFinite(parsedVersion) || parsedVersion <= 1) {
     return undefined;
@@ -45,13 +45,16 @@ function getPreviousVersion(version: string) {
   return `v${(parsedVersion - 0.1).toFixed(1)}`;
 }
 
+export function getPreviousVersions(version: string): string[] {
+  const previousVersion = getPreviousVersion(version);
+  return previousVersion ? [previousVersion] : [];
+}
+
 export default function AdminSkillsPage() {
   const { styles } = useStyles();
   const showStaticAction = useStaticPrototypeAction();
-  const [selectedKey, setSelectedKey] = useState(SKILL_ITEMS[0].key);
+  const [selectedSkill, setSelectedSkill] = useState<SkillItem>(SKILL_ITEMS[0]);
   const [modalState, setModalState] = useState<SkillModalState>(null);
-  const selectedSkill =
-    SKILL_ITEMS.find((skill) => skill.key === selectedKey) ?? SKILL_ITEMS[0];
   const skillGroups = useMemo(
     () =>
       SKILL_TYPE_ORDER.map((type) => ({
@@ -60,7 +63,7 @@ export default function AdminSkillsPage() {
       })),
     [],
   );
-  const previousVersion = getPreviousVersion(selectedSkill.version);
+  const previousVersions = getPreviousVersions(selectedSkill.version);
   const statusMeta = SKILL_STATUS_META[selectedSkill.status];
   const typeMeta = SKILL_TYPE_META[selectedSkill.type];
 
@@ -99,7 +102,7 @@ export default function AdminSkillsPage() {
                           skill.key === selectedSkill.key &&
                             styles.catalogButtonActive,
                         )}
-                        onClick={() => setSelectedKey(skill.key)}
+                        onClick={() => setSelectedSkill(skill)}
                         type="text"
                       >
                         <span
@@ -217,8 +220,8 @@ export default function AdminSkillsPage() {
                       </span>
                     </span>
                   </li>
-                  {previousVersion ? (
-                    <li className={styles.historyItem}>
+                  {previousVersions.map((previousVersion) => (
+                    <li className={styles.historyItem} key={previousVersion}>
                       <span aria-hidden className={styles.historyDot} />
                       <span>
                         <strong className={styles.code}>
@@ -230,7 +233,7 @@ export default function AdminSkillsPage() {
                         </span>
                       </span>
                     </li>
-                  ) : null}
+                  ))}
                 </ol>
               </aside>
             </div>

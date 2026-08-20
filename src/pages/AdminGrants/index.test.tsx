@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { GrantSummary } from '@/features/administration';
+import { ApiError } from '@/services/transport';
 import {
   ACCOUNT_FIXTURES,
   GRANT_FIXTURES,
@@ -217,6 +218,183 @@ describe('AdminGrantsPage', () => {
           INITIAL_WAIT,
         ),
       ).toBeInTheDocument();
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
+
+  it('按高危和临时分类重新查询并只展示匹配授权', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('row', { name: /陈晓.*开发任务/ }, INITIAL_WAIT);
+
+    const filters = screen.getByRole('radiogroup', { name: 'Grant 分类' });
+    await user.click(within(filters).getByText('高危能力'));
+    expect(
+      await screen.findByRole('row', { name: /何山.*合并代码/ }, INITIAL_WAIT),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /陈晓.*开发任务/ })).toBeNull();
+
+    await user.click(within(filters).getByText('临时授权'));
+    expect(
+      await screen.findByRole('row', { name: /何山.*合并代码/ }, INITIAL_WAIT),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /陈晓.*开发任务/ })).toBeNull();
+  });
+
+  it('呈现平台范围、未知能力、继承来源与立即生效兜底', async () => {
+    administrationMocks.listGrants.mockResolvedValueOnce({
+      items: [
+        {
+          ...GRANT_FIXTURES[0],
+          capability: 'task.unknown',
+          id: 'grant-inherited-platform',
+          scope: { id: null, label: '全平台', type: 'PLATFORM' },
+          source: 'INHERITED',
+          validFrom: null,
+        },
+      ],
+      total: 1,
+    });
+    renderPage();
+
+    const row = await screen.findByRole(
+      'row',
+      { name: /task\.unknown.*全平台.*继承.*立即 起.*长期/ },
+      INITIAL_WAIT,
+    );
+    expect(within(row).getAllByText('继承')).toHaveLength(2);
+    expect(within(row).queryByRole('button', { name: '撤销' })).toBeNull();
+  });
+
+  it('列表失败展示服务端 detail 与 requestId 并清空旧数据', async () => {
+    administrationMocks.listGrants.mockRejectedValueOnce(
+      new ApiError({
+        detail: 'Grant 列表无权访问',
+        requestId: 'req-grant-list-403',
+        status: 403,
+      }),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByText(/Grant 列表无权访问/, {}, INITIAL_WAIT),
+    ).toHaveTextContent('requestId: req-grant-list-403');
+    expect(screen.queryByRole('row', { name: /陈晓.*开发任务/ })).toBeNull();
+  });
+
+  it.each(['resolve', 'reject'] as const)(
+    '页面卸载后忽略仍在途 Grant 请求：%s',
+    async (outcome) => {
+      let resolvePending: (value: typeof INITIAL_GRANTS_RESPONSE) => void =
+        () => {
+          throw new Error('pending Grant request was not started');
+        };
+      let rejectPending: (reason: unknown) => void = () => {
+        throw new Error('pending Grant request was not started');
+      };
+      administrationMocks.listGrants.mockImplementationOnce(
+        () =>
+          new Promise((resolve, reject) => {
+            resolvePending = resolve;
+            rejectPending = reject;
+          }),
+      );
+      const view = renderPage();
+      await waitFor(() => {
+        expect(administrationMocks.listGrants).toHaveBeenCalledTimes(1);
+      });
+
+      view.unmount();
+      await act(async () => {
+        if (outcome === 'resolve') {
+          resolvePending(INITIAL_GRANTS_RESPONSE);
+        } else {
+          rejectPending(
+            new ApiError({
+              detail: '页面卸载后的旧请求',
+              requestId: 'unmounted-grant-request',
+              status: 403,
+            }),
+          );
+        }
+      });
+
+      expect(screen.queryByText(/页面卸载后的旧请求/)).toBeNull();
+    },
+  );
+
+  it(
+    '授予失败保留 Modal 并展示服务端 detail 与 requestId',
+    async () => {
+      const user = userEvent.setup();
+      administrationMocks.createGrant.mockRejectedValueOnce(
+        new ApiError({
+          detail: '该授权与现有 Grant 冲突',
+          requestId: 'req-grant-create-409',
+          status: 409,
+        }),
+      );
+      renderPage();
+      await screen.findByRole('table', {}, INITIAL_WAIT);
+
+      await user.click(screen.getByRole('button', { name: '新增授权' }));
+      const dialog = await screen.findByRole('dialog', { name: '新增授权' });
+      await selectOption(user, '主体', 'E1002 · 吴桐');
+      await selectOption(user, '能力', '工作区配置');
+      await selectOption(user, '范围', '全平台');
+      await user.type(
+        within(dialog).getByRole('textbox', { name: '授权原因' }),
+        '验证重复授权冲突',
+      );
+      const listCallsBeforeSubmit =
+        administrationMocks.listGrants.mock.calls.length;
+      await user.click(
+        within(dialog).getByRole('button', { name: '确认授予' }),
+      );
+
+      expect(
+        await screen.findByText(/该授权与现有 Grant 冲突/),
+      ).toHaveTextContent('requestId: req-grant-create-409');
+      expect(screen.getByRole('dialog', { name: '新增授权' })).toBeVisible();
+      expect(administrationMocks.listGrants).toHaveBeenCalledTimes(
+        listCallsBeforeSubmit,
+      );
+    },
+    INTERACTION_TEST_TIMEOUT,
+  );
+
+  it(
+    '撤销失败保留 Modal 并展示服务端 detail 与 requestId',
+    async () => {
+      const user = userEvent.setup();
+      administrationMocks.revokeGrant.mockRejectedValueOnce(
+        new ApiError({
+          detail: 'Grant 版本已过期',
+          requestId: 'req-grant-revoke-412',
+          status: 412,
+        }),
+      );
+      renderPage();
+      const row = await screen.findByRole(
+        'row',
+        { name: /陈晓.*开发任务.*营销工作区.*直接/ },
+        INITIAL_WAIT,
+      );
+      await user.click(within(row).getByRole('button', { name: '撤销' }));
+      const dialog = await screen.findByRole('dialog', { name: '撤销 Grant' });
+      await user.type(
+        within(dialog).getByRole('textbox', { name: '撤销原因' }),
+        '验证并发冲突',
+      );
+      await user.click(
+        within(dialog).getByRole('button', { name: '确认撤销' }),
+      );
+
+      expect(await screen.findByText(/Grant 版本已过期/)).toHaveTextContent(
+        'requestId: req-grant-revoke-412',
+      );
+      expect(screen.getByRole('dialog', { name: '撤销 Grant' })).toBeVisible();
+      expect(administrationMocks.listGrants).toHaveBeenCalledTimes(1);
     },
     INTERACTION_TEST_TIMEOUT,
   );

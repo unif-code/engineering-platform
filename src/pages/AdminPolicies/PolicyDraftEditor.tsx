@@ -10,6 +10,21 @@ interface PolicyDraftEditorProps {
   onChange: (key: string, value: PolicyValue | null) => void;
 }
 
+export function applyPolicyNumberInput(
+  text: string,
+  key: string,
+  onChange: (key: string, value: PolicyValue | null) => void,
+) {
+  if (text.trim().length === 0) {
+    onChange(key, null);
+    return;
+  }
+  const value = Number(text);
+  if (Number.isFinite(value)) {
+    onChange(key, value);
+  }
+}
+
 export function PolicyDraftEditor({
   catalog,
   content,
@@ -47,16 +62,9 @@ export function PolicyDraftEditor({
                     max={item.max}
                     min={item.min}
                     onChange={(value) => onChange(item.key, value)}
-                    onInput={(text) => {
-                      if (text.trim().length === 0) {
-                        onChange(item.key, null);
-                        return;
-                      }
-                      const value = Number(text);
-                      if (Number.isFinite(value)) {
-                        onChange(item.key, value);
-                      }
-                    }}
+                    onInput={(text) =>
+                      applyPolicyNumberInput(text, item.key, onChange)
+                    }
                     suffix={item.unit}
                     value={
                       typeof content[item.key] === 'number'

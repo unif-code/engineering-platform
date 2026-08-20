@@ -13,6 +13,24 @@ const GROUP_RANK: Record<MenuRow['group'], number> = {
   admin: 1,
 };
 
+export function compareMenuRows(
+  left: MenuRow,
+  right: MenuRow,
+  direction = 1,
+): number {
+  const groupDifference = GROUP_RANK[left.group] - GROUP_RANK[right.group];
+  if (groupDifference !== 0) {
+    return groupDifference;
+  }
+
+  const orderDifference = (left.order - right.order) * direction;
+  return orderDifference || left.key.localeCompare(right.key);
+}
+
+export function getMenuVisibilityAction(row: MenuRow): string {
+  return `${row.visible ? '隐藏' : '显示'}菜单 ${row.key}`;
+}
+
 function matchesVisibility(
   row: MenuRow,
   visibility: string | number | undefined,
@@ -47,15 +65,7 @@ export function selectMenuRows(
     const matchesGroup = !groups?.length || groups.includes(row.group);
 
     return matchesGroup && matchesVisibility(row, visibility);
-  }).sort((left, right) => {
-    const groupDifference = GROUP_RANK[left.group] - GROUP_RANK[right.group];
-    if (groupDifference !== 0) {
-      return groupDifference;
-    }
-
-    const orderDifference = (left.order - right.order) * direction;
-    return orderDifference || left.key.localeCompare(right.key);
-  });
+  }).sort((left, right) => compareMenuRows(left, right, direction));
 }
 
 export const queryMenuRows: NonNullable<

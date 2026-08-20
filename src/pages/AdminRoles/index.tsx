@@ -15,16 +15,13 @@ const DEFAULT_ROLE = ROLE_FIXTURES[0];
 export default function AdminRolesPage() {
   const { styles } = useStyles();
   const showStaticAction = useStaticPrototypeAction();
-  const [selectedRoleId, setSelectedRoleId] = useState<string>(DEFAULT_ROLE.id);
+  const [selectedRole, setSelectedRole] = useState<RoleFixture>(DEFAULT_ROLE);
   const [selectedCapabilities, setSelectedCapabilities] = useState<string[]>(
     () => [...DEFAULT_ROLE.capabilities],
   );
   const [modalOpen, setModalOpen] = useState(false);
-  const selectedRole =
-    ROLE_FIXTURES.find((role) => role.id === selectedRoleId) ?? DEFAULT_ROLE;
-
   const selectRole = (role: RoleFixture) => {
-    setSelectedRoleId(role.id);
+    setSelectedRole(role);
     setSelectedCapabilities([...role.capabilities]);
   };
 

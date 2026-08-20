@@ -11,7 +11,7 @@ import { MENU_GROUP_META } from './constant';
 import { useStyles } from './index.style';
 import { MenuModal } from './MenuModal';
 import type { MenuQueryParams, MenuRow } from './type';
-import { queryMenuRows } from './util';
+import { getMenuVisibilityAction, queryMenuRows } from './util';
 
 type MenuModalState =
   | { mode: 'create' }
@@ -63,11 +63,7 @@ export default function AdminMenusPage() {
             <Switch
               aria-label={`${row.name}显示状态`}
               checked={row.visible}
-              onChange={() =>
-                showStaticAction(
-                  `${row.visible ? '隐藏' : '显示'}菜单 ${row.key}`,
-                )
-              }
+              onChange={() => showStaticAction(getMenuVisibilityAction(row))}
               size="small"
             />
             <span>显示</span>

@@ -2,7 +2,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from 'antd';
 import { describe, expect, it } from 'vitest';
-import AdminSkillsPage from '.';
+import AdminSkillsPage, { getPreviousVersion, getPreviousVersions } from '.';
 
 function renderPage() {
   return render(
@@ -37,6 +37,14 @@ async function expectStaticAction(action: string) {
 }
 
 describe('AdminSkillsPage', () => {
+  it('只为可递减的有效版本生成历史版本', () => {
+    expect(getPreviousVersion('invalid')).toBeUndefined();
+    expect(getPreviousVersion('v1.0')).toBeUndefined();
+    expect(getPreviousVersion('v1.2')).toBe('v1.1');
+    expect(getPreviousVersions('v1.0')).toEqual([]);
+    expect(getPreviousVersions('v1.2')).toEqual(['v1.1']);
+  });
+
   it('按原型呈现分组目录、规范原文和版本历史', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -135,6 +143,18 @@ describe('AdminSkillsPage', () => {
     expect(
       within(chatDialog).getByText('为所有 HTTP API 制定统一错误码规范'),
     ).toBeInTheDocument();
+    await user.click(
+      within(chatDialog).getByRole('button', { name: '返回修改' }),
+    );
+    expect(
+      within(chatDialog).getByRole('textbox', {
+        name: '用一句话描述要生成的规范',
+      }),
+    ).toHaveValue('为所有 HTTP API 制定统一错误码规范');
+    expect(within(chatDialog).queryByText(/AI 草稿/)).not.toBeInTheDocument();
+    await user.click(
+      within(chatDialog).getByRole('button', { name: '生成草稿' }),
+    );
     await user.click(
       within(chatDialog).getByRole('button', { name: '确认创建' }),
     );
@@ -342,6 +362,16 @@ describe('AdminSkillsPage', () => {
       }),
     );
     await expectStaticAction('启用切换 Skill superpowers');
+
+    await user.click(getSkillOption('uniapp'));
+    const inactiveDetail = getSkillDetail('uniapp');
+    expect(inactiveDetail).toHaveTextContent('禁用');
+    await user.click(
+      within(inactiveDetail).getByRole('button', {
+        name: '禁用切换 uniapp',
+      }),
+    );
+    await expectStaticAction('禁用切换 Skill uniapp');
 
     await user.click(getSkillOption('frontend-react'));
     const reactDetail = getSkillDetail('frontend-react');

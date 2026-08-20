@@ -28,6 +28,7 @@ import {
 } from '@/features/administration';
 import {
   formatPolicyValue,
+  POLICY_GROUP_LABELS,
   POLICY_GROUPS,
   POLICY_NAMESPACE,
   type PolicyGroupKey,
@@ -43,22 +44,10 @@ import type {
   PolicyVersionRow,
   PublishPolicyFormValues,
 } from './type';
+import { getProblemStatus, mergePolicyDraftRevision } from './util';
 
 const POLICY_DESCRIPTION =
   '改动先落草稿，经校验与预览后整批发布；每次发布都记录原因与操作人，可按版本回滚';
-
-const problemStatus = (error: unknown) => {
-  if (typeof error !== 'object' || error === null || !('problem' in error)) {
-    return undefined;
-  }
-  const { problem } = error;
-  return typeof problem === 'object' &&
-    problem !== null &&
-    'status' in problem &&
-    typeof problem.status === 'number'
-    ? problem.status
-    : undefined;
-};
 
 export default function AdminPoliciesPage() {
   const { message } = App.useApp();
@@ -84,10 +73,7 @@ export default function AdminPoliciesPage() {
   const mergeDraftRevision = useCallback(
     (draftId: string, etag: string, revision: number) => {
       const current = draftRef.current;
-      if (current?.id !== draftId || revision < current.revision) {
-        return;
-      }
-      const next = { ...current, etag, revision };
+      const next = mergePolicyDraftRevision(current, draftId, etag, revision);
       draftRef.current = next;
       setDraft(next);
     },
@@ -156,8 +142,7 @@ export default function AdminPoliciesPage() {
       ) ?? [],
     [activeGroup, catalog],
   );
-  const activeGroupLabel =
-    POLICY_GROUPS.find(({ value }) => value === activeGroup)?.label ?? '';
+  const activeGroupLabel = POLICY_GROUP_LABELS[activeGroup];
   const effectiveContent = useMemo<DraftContent>(
     () => ({
       ...Object.fromEntries(
@@ -228,17 +213,17 @@ export default function AdminPoliciesPage() {
       const mustUpdate = Object.entries(content).some(
         ([key, value]) => savedDraft.content[key] !== value,
       );
-      if (mustUpdate) {
-        savedDraft = await updateMutation.mutateAsync({
-          content,
-          draftId: savedDraft.id,
-          etag: savedDraft.etag,
-        });
-      }
+      savedDraft = mustUpdate
+        ? await updateMutation.mutateAsync({
+            content,
+            draftId: savedDraft.id,
+            etag: savedDraft.etag,
+          })
+        : savedDraft;
       replaceDraft(savedDraft);
       return savedDraft;
     } catch (error) {
-      if (problemStatus(error) === 409) {
+      if (getProblemStatus(error) === 409) {
         setConflict('已被并发修改，刷新后重试');
         return undefined;
       }
@@ -247,12 +232,9 @@ export default function AdminPoliciesPage() {
     }
   };
 
-  const validateDraft = async () => {
-    if (candidateContent === undefined || pendingChanges.length === 0) {
-      return;
-    }
+  const validateDraft = async (content: Record<string, PolicyValue>) => {
     const candidateGeneration = candidateGenerationRef.current;
-    const savedDraft = await ensureSavedDraft(candidateContent);
+    const savedDraft = await ensureSavedDraft(content);
     if (savedDraft === undefined) {
       return;
     }
@@ -270,12 +252,9 @@ export default function AdminPoliciesPage() {
     }
   };
 
-  const previewDraft = async () => {
-    if (candidateContent === undefined || pendingChanges.length === 0) {
-      return;
-    }
+  const previewDraft = async (content: Record<string, PolicyValue>) => {
     const candidateGeneration = candidateGenerationRef.current;
-    const savedDraft = await ensureSavedDraft(candidateContent);
+    const savedDraft = await ensureSavedDraft(content);
     if (savedDraft === undefined) {
       return;
     }
@@ -293,11 +272,10 @@ export default function AdminPoliciesPage() {
     }
   };
 
-  const publishDraft = async (values: PublishPolicyFormValues) => {
-    const currentDraft = draftRef.current;
-    if (!currentDraft) {
-      return;
-    }
+  const publishDraft = async (
+    currentDraft: PolicyDraft,
+    values: PublishPolicyFormValues,
+  ) => {
     setPublishError(undefined);
     try {
       await publishMutation.mutateAsync({
@@ -316,15 +294,16 @@ export default function AdminPoliciesPage() {
     }
   };
 
-  const createRollbackDraft = async (values: PublishPolicyFormValues) => {
-    if (!rollbackVersion || !catalog) {
-      return;
-    }
+  const createRollbackDraft = async (
+    version: PolicyVersionRow,
+    activeVersion: number,
+    values: PublishPolicyFormValues,
+  ) => {
     setRollbackError(undefined);
     try {
       const created = await rollbackMutation.mutateAsync({
-        activeVersion: catalog.activeVersion,
-        input: { ...values, toVersion: rollbackVersion.version },
+        activeVersion,
+        input: { ...values, toVersion: version.version },
       });
       replaceDraft(created);
       setDraftContent({ ...created.content });
@@ -431,7 +410,7 @@ export default function AdminPoliciesPage() {
                         {effectiveContent[item.key] === null
                           ? '未填写'
                           : formatPolicyValue(
-                              effectiveContent[item.key] ?? item.activeValue,
+                              effectiveContent[item.key] as PolicyValue,
                               item.unit,
                             )}
                       </Typography.Text>
@@ -473,7 +452,11 @@ export default function AdminPoliciesPage() {
               <Button
                 disabled={!hasCandidate || candidateContent === undefined}
                 loading={candidateSaving || validateMutation.isPending}
-                onClick={validateDraft}
+                onClick={() =>
+                  void validateDraft(
+                    candidateContent as Record<string, PolicyValue>,
+                  )
+                }
                 size="small"
               >
                 校验
@@ -481,7 +464,11 @@ export default function AdminPoliciesPage() {
               <Button
                 disabled={!hasCandidate || candidateContent === undefined}
                 loading={candidateSaving || previewMutation.isPending}
-                onClick={previewDraft}
+                onClick={() =>
+                  void previewDraft(
+                    candidateContent as Record<string, PolicyValue>,
+                  )
+                }
                 size="small"
               >
                 预览
@@ -529,7 +516,9 @@ export default function AdminPoliciesPage() {
           loading={versionsQuery.isPending}
           onRollback={setRollbackVersion}
           rollbackDisabled={
-            draftDirty || (draft === undefined && pendingChanges.length > 0)
+            draftDirty ||
+            (draft === undefined && pendingChanges.length > 0) ||
+            catalog === undefined
           }
         />
 
@@ -538,12 +527,12 @@ export default function AdminPoliciesPage() {
             error={publishError}
             loading={publishMutation.isPending}
             onClose={() => setPublishOpen(false)}
-            onSubmit={publishDraft}
+            onSubmit={(values) => publishDraft(draft, values)}
             open
           />
         ) : null}
 
-        {rollbackVersion ? (
+        {rollbackVersion && catalog ? (
           <PublishPolicyModal
             error={rollbackError}
             loading={rollbackMutation.isPending}
@@ -552,7 +541,13 @@ export default function AdminPoliciesPage() {
               setRollbackError(undefined);
               setRollbackVersion(undefined);
             }}
-            onSubmit={createRollbackDraft}
+            onSubmit={(values) =>
+              createRollbackDraft(
+                rollbackVersion,
+                catalog.activeVersion,
+                values,
+              )
+            }
             open
           />
         ) : null}
