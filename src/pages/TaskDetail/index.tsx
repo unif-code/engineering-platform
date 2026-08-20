@@ -25,6 +25,34 @@ const actionItems: MenuProps['items'] = [
   { key: 'diff', label: '查看完整 Diff' },
 ];
 
+interface TaskDetailActionHandlers {
+  showStaticAction: (action: string) => void;
+  showReject: () => void;
+  showArtifact: () => void;
+  showDiff: () => void;
+}
+
+export function dispatchTaskDetailAction(
+  key: string,
+  handlers: TaskDetailActionHandlers,
+): void {
+  if (key === 'assign') {
+    handlers.showStaticAction('分配任务');
+    return;
+  }
+  if (key === 'reject') {
+    handlers.showReject();
+    return;
+  }
+  if (key === 'artifact') {
+    handlers.showArtifact();
+    return;
+  }
+  if (key === 'diff') {
+    handlers.showDiff();
+  }
+}
+
 export default function TaskDetailPage() {
   const { styles } = useStyles();
   const { taskId } = useParams<'taskId'>();
@@ -39,21 +67,12 @@ export default function TaskDetailPage() {
   );
 
   const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
-    if (key === 'assign') {
-      showStaticAction('分配任务');
-      return;
-    }
-    if (key === 'reject') {
-      setRejectOpen(true);
-      return;
-    }
-    if (key === 'artifact') {
-      setSelectedArtifact(ARTIFACT_RECORD);
-      return;
-    }
-    if (key === 'diff') {
-      setDiffOpen(true);
-    }
+    dispatchTaskDetailAction(key, {
+      showArtifact: () => setSelectedArtifact(ARTIFACT_RECORD),
+      showDiff: () => setDiffOpen(true),
+      showReject: () => setRejectOpen(true),
+      showStaticAction,
+    });
   };
 
   const topActions = (

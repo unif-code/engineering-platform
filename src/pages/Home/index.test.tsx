@@ -1,17 +1,27 @@
 import { render, screen, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+const homeMocks = vi.hoisted(() => ({
+  initialState: {
+    principal: { employeeId: crypto.randomUUID(), name: '平台管理员' },
+  } as { principal?: { employeeId: string; name?: string } } | undefined,
+}));
 
 vi.mock('@umijs/max', () => ({
   useModel: () => ({
-    initialState: {
-      principal: { employeeId: crypto.randomUUID(), name: '平台管理员' },
-    },
+    initialState: homeMocks.initialState,
   }),
 }));
 
 import HomePage from './index';
 
 describe('HomePage', () => {
+  afterEach(() => {
+    homeMocks.initialState = {
+      principal: { employeeId: crypto.randomUUID(), name: '平台管理员' },
+    };
+  });
+
   it('呈现工作台区块与四项关键指标', () => {
     render(<HomePage />);
 
@@ -34,6 +44,16 @@ describe('HomePage', () => {
     expect(
       screen.queryByText('聚合 Gate、任务、Agent Attempt 与交付动态'),
     ).not.toBeInTheDocument();
+  });
+
+  it('会为缺少当前用户信息的会话显示中性称呼', () => {
+    homeMocks.initialState = undefined;
+
+    render(<HomePage />);
+
+    expect(
+      screen.getByRole('heading', { name: '你好，平台用户' }),
+    ).toBeInTheDocument();
   });
 
   it.each([

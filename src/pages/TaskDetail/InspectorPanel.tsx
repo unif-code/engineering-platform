@@ -10,8 +10,18 @@ export interface InspectorPanelProps {
   onChange: (key: InspectorTabKey) => void;
 }
 
-function parseInspectorTabKey(key: string): InspectorTabKey | undefined {
+export function parseInspectorTabKey(key: string): InspectorTabKey | undefined {
   return INSPECTOR_TABS.find((tab) => tab.key === key)?.key;
+}
+
+export function applyInspectorTabChange(
+  key: string,
+  onChange: (key: InspectorTabKey) => void,
+): void {
+  const nextKey = parseInspectorTabKey(key);
+  if (nextKey) {
+    onChange(nextKey);
+  }
 }
 
 export function InspectorPanel({ activeKey, onChange }: InspectorPanelProps) {
@@ -89,12 +99,7 @@ export function InspectorPanel({ activeKey, onChange }: InspectorPanelProps) {
           key: tab.key,
           label: tab.label,
         }))}
-        onChange={(key) => {
-          const nextKey = parseInspectorTabKey(key);
-          if (nextKey) {
-            onChange(nextKey);
-          }
-        }}
+        onChange={(key) => applyInspectorTabChange(key, onChange)}
         size="small"
       />
     </aside>

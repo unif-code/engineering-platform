@@ -5,7 +5,23 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ant-design/charts', () => ({
   Bar: () => <div data-ant-design-chart="bar" />,
-  Column: () => <div data-ant-design-chart="column" />,
+  Column: ({
+    label,
+  }: {
+    label?: { text?: string | ((datum: Record<string, unknown>) => unknown) };
+  }) => {
+    const text = label?.text;
+    return (
+      <div data-ant-design-chart="column">
+        {typeof text === 'function'
+          ? String(text({ label: 'W1', value: 2 }))
+          : null}
+        {typeof text === 'function'
+          ? String(text({ label: 'W2', value: 3, valueLabel: '3 天' }))
+          : null}
+      </div>
+    );
+  },
 }));
 
 import TeamBoardPage from '.';
@@ -80,7 +96,7 @@ describe('TeamBoardPage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('figure', { name: '营销合并请求处理周期' }),
-    ).toHaveTextContent('当前 1.8 天');
+    ).toHaveTextContent('当前 1.8 天23 天');
     expect(
       screen.getByRole('list', { name: '营销阻塞事项' }),
     ).toHaveTextContent('需求对齐超 3 天');

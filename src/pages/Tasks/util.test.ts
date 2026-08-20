@@ -67,6 +67,13 @@ describe('queryTaskRows', () => {
     expect(result.total).toBe(6);
   });
 
+  it('缺少分页参数时使用第一页和默认页容量', async () => {
+    const result = await runQuery();
+
+    expect(result.data).toHaveLength(TASK_ROWS.length);
+    expect(result.total).toBe(TASK_ROWS.length);
+  });
+
   it('无匹配项时返回空页和零总数', async () => {
     const result = await runQuery({
       current: 1,

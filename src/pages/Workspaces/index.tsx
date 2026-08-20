@@ -6,24 +6,22 @@ import { useStyles } from './index.style';
 import { MemberPanel } from './MemberPanel';
 import { RepositoryPanel } from './RepositoryPanel';
 import { SettingsPanel } from './SettingsPanel';
-import type { WorkspaceTabKey } from './type';
+import type { WorkspaceFixture, WorkspaceTabKey } from './type';
 import { WorkspaceSelector } from './WorkspaceSelector';
 
 const DEFAULT_WORKSPACE = WORKSPACE_FIXTURES[0];
 
 export default function WorkspacesPage() {
   const { styles } = useStyles();
-  const [selectedId, setSelectedId] = useState<string>(DEFAULT_WORKSPACE.id);
+  const [selectedWorkspace, setSelectedWorkspace] =
+    useState<WorkspaceFixture>(DEFAULT_WORKSPACE);
   const [activeTab, setActiveTab] = useState<WorkspaceTabKey>('members');
-  const selectedWorkspace =
-    WORKSPACE_FIXTURES.find((workspace) => workspace.id === selectedId) ??
-    DEFAULT_WORKSPACE;
   const selectedRepositoryCount = selectedWorkspace.repositories.filter(
     ({ selected }) => selected,
   ).length;
 
-  const selectWorkspace = (workspaceId: string) => {
-    setSelectedId(workspaceId);
+  const selectWorkspace = (workspace: WorkspaceFixture) => {
+    setSelectedWorkspace(workspace);
     setActiveTab('members');
   };
 

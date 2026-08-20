@@ -144,6 +144,44 @@ describe('WorkspacesPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('成员工作区只显示已选仓库且不暴露 Owner 管理能力', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      screen.getByRole('button', { name: /交易协作工作区.*成员/ }),
+    );
+
+    expect(
+      screen.getByRole('region', { name: '交易协作工作区 工作区详情' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole('list', { name: '交易协作工作区 成员' }),
+    ).toBeEmptyDOMElement();
+    expect(
+      screen.queryByRole('button', { name: '添加成员' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: '设置' })).not.toBeInTheDocument();
+
+    const repositoryPanel = await openTab(user, '仓库');
+    expect(
+      within(repositoryPanel).getByRole('listitem', {
+        name: 'trade-console 仓库',
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(repositoryPanel).queryByRole('listitem', {
+        name: 'trade-internal-tools 仓库',
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(repositoryPanel).queryByRole('button', { name: '更新连接' }),
+    ).not.toBeInTheDocument();
+    expect(
+      within(repositoryPanel).queryByRole('checkbox'),
+    ).not.toBeInTheDocument();
+  });
+
   it('添加成员提交后仅提示且关闭重开仍保留原 fixture', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -188,6 +226,21 @@ describe('WorkspacesPage', () => {
     ).toHaveLength(memberCount);
   });
 
+  it('可取消添加成员并对非 Owner 成员发出移除反馈', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(screen.getByRole('button', { name: '添加成员' }));
+    const dialog = await screen.findByRole('dialog', { name: '添加成员' });
+    await user.click(within(dialog).getByRole('button', { name: /取\s*消/ }));
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: '移除成员 王悦' }));
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '静态原型操作：移除成员 王悦，未保存任何业务数据。',
+    );
+  });
+
   it('更新 GitLab Connection 只提示且不改仓库 fixture', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -219,6 +272,42 @@ describe('WorkspacesPage', () => {
     ).toHaveTextContent('React');
   });
 
+  it('仓库勾选和连接取消均不修改 fixture', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const repositoryPanel = await openTab(user, '仓库');
+    await user.click(
+      within(repositoryPanel).getByRole('checkbox', {
+        name: 'mk-activity-h5 选入工作区',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        '静态原型操作：移出仓库 mk-activity-h5，未保存任何业务数据。',
+      ),
+    ).toBeInTheDocument();
+    await user.click(
+      within(repositoryPanel).getByRole('checkbox', {
+        name: 'mk-legacy-h5 选入工作区',
+      }),
+    );
+    expect(
+      await screen.findByText(
+        '静态原型操作：选入仓库 mk-legacy-h5，未保存任何业务数据。',
+      ),
+    ).toBeInTheDocument();
+
+    await user.click(
+      within(repositoryPanel).getByRole('button', { name: '更新连接' }),
+    );
+    const dialog = await screen.findByRole('dialog', {
+      name: '更新 GitLab Connection',
+    });
+    await user.click(within(dialog).getByRole('button', { name: /取\s*消/ }));
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+  });
+
   it('保存工作区名称只提示且不改工作区 fixture', async () => {
     const user = userEvent.setup();
     renderPage();
@@ -234,5 +323,22 @@ describe('WorkspacesPage', () => {
       '静态原型操作：保存工作区名称，未保存任何业务数据。',
     );
     expect(screen.getByRole('heading', { name: '营销工作区' })).toBeVisible();
+  });
+
+  it('空名称禁用保存且归档只给出静态反馈', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const settingsPanel = await openTab(user, '设置');
+    await user.clear(within(settingsPanel).getByLabelText('工作区名称'));
+    expect(
+      within(settingsPanel).getByRole('button', { name: /保\s*存/ }),
+    ).toBeDisabled();
+    await user.click(
+      within(settingsPanel).getByRole('button', { name: /归\s*档/ }),
+    );
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '静态原型操作：归档工作区，未保存任何业务数据。',
+    );
   });
 });

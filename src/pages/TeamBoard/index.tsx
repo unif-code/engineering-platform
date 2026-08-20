@@ -11,15 +11,18 @@ import { useStyles } from './index.style';
 import type { TeamBoardFixture, TeamName } from './type';
 
 const DEFAULT_TEAM = TEAM_FIXTURES[0];
+const TEAM_BY_NAME: Record<TeamName, TeamBoardFixture> = {
+  中台: TEAM_FIXTURES[2],
+  交易: TEAM_FIXTURES[1],
+  营销: DEFAULT_TEAM,
+};
 
 export default function TeamBoardPage() {
   const { styles } = useStyles();
   const { token } = theme.useToken();
   const showStaticAction = useStaticPrototypeAction();
-  const [selectedTeamName, setSelectedTeamName] = useState<TeamName>('营销');
-  const selectedTeam: TeamBoardFixture =
-    TEAM_FIXTURES.find((team) => team.name === selectedTeamName) ??
-    DEFAULT_TEAM;
+  const [selectedTeam, setSelectedTeam] =
+    useState<TeamBoardFixture>(DEFAULT_TEAM);
 
   return (
     <PageContainer ghost pageHeaderRender={false}>
@@ -29,10 +32,10 @@ export default function TeamBoardPage() {
             aria-label="选择团队"
             className={styles.teamSelector}
             name="team-board-selector"
-            onChange={setSelectedTeamName}
+            onChange={(teamName) => setSelectedTeam(TEAM_BY_NAME[teamName])}
             options={TEAM_OPTIONS}
             size="small"
-            value={selectedTeamName}
+            value={selectedTeam.name}
           />
           <Typography.Text type="secondary">
             经理及以上可跨 Team 查看 · 数据为 Read Model 投影

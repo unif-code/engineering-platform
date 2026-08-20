@@ -7,7 +7,7 @@ import type { WorkspaceFixture } from './type';
 export interface WorkspaceSelectorProps {
   selectedId: string;
   workspaces: readonly WorkspaceFixture[];
-  onSelect: (workspaceId: string) => void;
+  onSelect: (workspace: WorkspaceFixture) => void;
 }
 
 export function WorkspaceSelector({
@@ -42,7 +42,7 @@ export function WorkspaceSelector({
                     styles.workspaceButton,
                     selected && styles.workspaceButtonActive,
                   )}
-                  onClick={() => onSelect(workspace.id)}
+                  onClick={() => onSelect(workspace)}
                   type="text"
                 >
                   <span className={styles.workspaceTitleRow}>

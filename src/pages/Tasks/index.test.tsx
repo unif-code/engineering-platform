@@ -246,6 +246,35 @@ describe('TasksPage', () => {
     });
   });
 
+  it('没有目标任务时保留可关闭的空分配弹窗', async () => {
+    const user = setupUser();
+    const onClose = vi.fn();
+    renderPage(<AssignTaskSteps onClose={onClose} open />);
+
+    const dialog = await screen.findByRole('dialog', { name: '分配任务' });
+    expect(within(dialog).queryByText('选择成员')).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+
+    await waitFor(() => expect(onClose).toHaveBeenCalledOnce());
+  });
+
+  it('从活动任务行打开并关闭分配弹窗', async () => {
+    const user = setupUser();
+    renderPage(<TasksPage />);
+
+    const row = await screen.findByRole('row', { name: /REQ-2026-0142/ });
+    await user.click(within(row).getByRole('button', { name: '分配任务' }));
+    expect(
+      await screen.findByRole('dialog', { name: '分配任务' }),
+    ).toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '分配任务' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it('合法分配只提示并关闭弹窗，不修改 owner', async () => {
     const user = setupUser();
     renderPage(<AssignmentHarness />);
@@ -287,5 +316,9 @@ describe('ArchivedTasksPage', () => {
     expect(
       screen.queryByRole('button', { name: '分配任务' }),
     ).not.toBeInTheDocument();
+    const archivedRow = await screen.findByRole('row', {
+      name: /REQ-2026-0098/,
+    });
+    expect(within(archivedRow).getByText('留存')).toBeInTheDocument();
   });
 });

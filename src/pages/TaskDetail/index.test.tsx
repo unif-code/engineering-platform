@@ -2,8 +2,17 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
-import TaskDetailPage from '.';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import TaskDetailPage, { dispatchTaskDetailAction } from '.';
+import {
+  applyInspectorTabChange,
+  parseInspectorTabKey,
+} from './InspectorPanel';
+import { RejectApprovalModal } from './RejectApprovalModal';
+
+const taskDetailMocks = vi.hoisted(() => ({
+  taskId: 'REQ-2026-0142' as string | undefined,
+}));
 
 vi.hoisted(() => {
   Object.defineProperty(globalThis, 'Notification', {
@@ -25,7 +34,7 @@ vi.mock('@umijs/max', () => ({
       {children}
     </a>
   ),
-  useParams: () => ({ taskId: 'REQ-2026-0142' }),
+  useParams: () => ({ taskId: taskDetailMocks.taskId }),
 }));
 
 function renderPage() {
@@ -48,6 +57,10 @@ async function chooseMoreAction(
 }
 
 describe('TaskDetailPage', () => {
+  afterEach(() => {
+    taskDetailMocks.taskId = 'REQ-2026-0142';
+  });
+
   it('呈现任务 ID、静态对话与禁用的消息输入', async () => {
     renderPage();
 
@@ -72,6 +85,32 @@ describe('TaskDetailPage', () => {
       'placeholder',
       '静态原型，不会发送消息',
     );
+  });
+
+  it('路由缺少任务编号时使用详情 fixture 编号', async () => {
+    taskDetailMocks.taskId = undefined;
+
+    renderPage();
+
+    expect(
+      await screen.findByRole('region', { name: '任务 REQ-2026-0142' }),
+    ).toBeInTheDocument();
+  });
+
+  it('继续执行与分配任务只给出静态反馈', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
+
+    await user.click(screen.getByRole('button', { name: '继续执行' }));
+    expect(
+      await screen.findByText('静态原型操作：继续执行，未保存任何业务数据。'),
+    ).toBeInTheDocument();
+
+    await chooseMoreAction(user, '分配任务');
+    expect(
+      await screen.findByText('静态原型操作：分配任务，未保存任何业务数据。'),
+    ).toBeInTheDocument();
   });
 
   it('在三个原型 Inspector Tab 间只显示当前选中面板', async () => {
@@ -211,5 +250,52 @@ describe('TaskDetailPage', () => {
     expect(screen.getByRole('region', { name: '任务对话' }).textContent).toBe(
       conversationBefore,
     );
+  });
+});
+
+describe('TaskDetail supporting contracts', () => {
+  it('只接受已声明的 Inspector tab key', () => {
+    const onChange = vi.fn();
+    expect(parseInspectorTabKey('delivery')).toBe('delivery');
+    expect(parseInspectorTabKey('unknown')).toBeUndefined();
+    applyInspectorTabChange('delivery', onChange);
+    applyInspectorTabChange('unknown', onChange);
+    expect(onChange).toHaveBeenCalledOnce();
+    expect(onChange).toHaveBeenCalledWith('delivery');
+  });
+
+  it('忽略未知的任务菜单动作', () => {
+    const handlers = {
+      showArtifact: vi.fn(),
+      showDiff: vi.fn(),
+      showReject: vi.fn(),
+      showStaticAction: vi.fn(),
+    };
+
+    dispatchTaskDetailAction('unknown', handlers);
+
+    expect(handlers.showArtifact).not.toHaveBeenCalled();
+    expect(handlers.showDiff).not.toHaveBeenCalled();
+    expect(handlers.showReject).not.toHaveBeenCalled();
+    expect(handlers.showStaticAction).not.toHaveBeenCalled();
+  });
+
+  it('驳回弹窗没有焦点返回目标时仍可取消', async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(
+      <App>
+        <RejectApprovalModal onClose={onClose} open />
+      </App>,
+    );
+
+    await user.click(
+      within(await screen.findByRole('dialog', { name: '驳回审批' })).getByRole(
+        'button',
+        { name: /取\s*消/ },
+      ),
+    );
+
+    expect(onClose).toHaveBeenCalledOnce();
   });
 });
