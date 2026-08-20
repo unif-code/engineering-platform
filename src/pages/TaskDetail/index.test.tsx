@@ -3,11 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import TaskDetailPage, { dispatchTaskDetailAction } from '.';
-import {
-  applyInspectorTabChange,
-  parseInspectorTabKey,
-} from './InspectorPanel';
+import TaskDetailPage from '.';
 import { RejectApprovalModal } from './RejectApprovalModal';
 
 const taskDetailMocks = vi.hoisted(() => ({
@@ -254,32 +250,6 @@ describe('TaskDetailPage', () => {
 });
 
 describe('TaskDetail supporting contracts', () => {
-  it('只接受已声明的 Inspector tab key', () => {
-    const onChange = vi.fn();
-    expect(parseInspectorTabKey('delivery')).toBe('delivery');
-    expect(parseInspectorTabKey('unknown')).toBeUndefined();
-    applyInspectorTabChange('delivery', onChange);
-    applyInspectorTabChange('unknown', onChange);
-    expect(onChange).toHaveBeenCalledOnce();
-    expect(onChange).toHaveBeenCalledWith('delivery');
-  });
-
-  it('忽略未知的任务菜单动作', () => {
-    const handlers = {
-      showArtifact: vi.fn(),
-      showDiff: vi.fn(),
-      showReject: vi.fn(),
-      showStaticAction: vi.fn(),
-    };
-
-    dispatchTaskDetailAction('unknown', handlers);
-
-    expect(handlers.showArtifact).not.toHaveBeenCalled();
-    expect(handlers.showDiff).not.toHaveBeenCalled();
-    expect(handlers.showReject).not.toHaveBeenCalled();
-    expect(handlers.showStaticAction).not.toHaveBeenCalled();
-  });
-
   it('驳回弹窗没有焦点返回目标时仍可取消', async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();

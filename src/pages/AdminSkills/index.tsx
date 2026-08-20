@@ -10,6 +10,7 @@ import { useStyles } from './index.style';
 import { SkillCreateModal } from './SkillCreateModal';
 import { SkillModal } from './SkillModal';
 import type { SkillItem } from './type';
+import { getPreviousVersions } from './version';
 
 type SkillModalState =
   | { mode: 'create' }
@@ -35,19 +36,6 @@ ${skill.content}
 
 ## 校验
 CI 执行 lint / test / build 三段流水线，未通过禁止合并；违规项由 Agent 在 MR 描述中逐条说明。`;
-}
-
-export function getPreviousVersion(version: string) {
-  const parsedVersion = Number.parseFloat(version.replace('v', ''));
-  if (!Number.isFinite(parsedVersion) || parsedVersion <= 1) {
-    return undefined;
-  }
-  return `v${(parsedVersion - 0.1).toFixed(1)}`;
-}
-
-export function getPreviousVersions(version: string): string[] {
-  const previousVersion = getPreviousVersion(version);
-  return previousVersion ? [previousVersion] : [];
 }
 
 export default function AdminSkillsPage() {

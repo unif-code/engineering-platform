@@ -57,6 +57,8 @@ const umiImportForms = [
 ];
 const commentsAndStrings =
   /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/gu;
+const coverageIgnorePragma = /\b(?:c8|istanbul|v8)\s+ignore\b/iu;
+const skippedTestCall = /\b(?:describe|it|test)\s*\.\s*(?:skip|skipIf)\s*\(/u;
 
 async function readText(root, path, issues) {
   try {
@@ -300,14 +302,31 @@ function isExactStringArray(value, expected) {
 
 function isExactCoverageThresholds(thresholds) {
   if (!thresholds) return false;
-  return requiredCoverageThresholds.every((name) => {
-    const property = effectivePropertyValue(thresholds, name);
-    return (
-      property.kind === 'value' &&
-      ts.isNumericLiteral(property.value) &&
-      property.value.text === '100'
-    );
-  });
+  if (thresholds.properties.length !== requiredCoverageThresholds.length) {
+    return false;
+  }
+  const seen = new Set();
+  for (const property of thresholds.properties) {
+    if (
+      !ts.isPropertyAssignment(property) ||
+      (!ts.isIdentifier(property.name) &&
+        !ts.isStringLiteralLike(property.name))
+    ) {
+      return false;
+    }
+    const name = property.name.text;
+    const value = unwrapExpression(property.initializer);
+    if (
+      !requiredCoverageThresholds.includes(name) ||
+      seen.has(name) ||
+      !ts.isNumericLiteral(value) ||
+      value.text !== '100'
+    ) {
+      return false;
+    }
+    seen.add(name);
+  }
+  return seen.size === requiredCoverageThresholds.length;
 }
 
 function exportedDefineConfigObject(contents) {
@@ -358,6 +377,7 @@ function checkConfig(contents, issues) {
 function checkVitestCoverage(contents, issues) {
   if (contents === undefined) return;
   const config = exportedDefineConfigObject(contents);
+  const testConfig = config ? nestedObjectLiteral(config, ['test']) : undefined;
   const coverage = config
     ? nestedObjectLiteral(config, ['test', 'coverage'])
     : undefined;
@@ -389,6 +409,12 @@ function checkVitestCoverage(contents, issues) {
     !isExactCoverageThresholds(thresholds.value)
   ) {
     issues.push('Coverage 四项阈值必须为 100');
+  }
+  const retry = testConfig
+    ? effectivePropertyValue(testConfig, 'retry')
+    : { kind: 'absent' };
+  if (retry.kind !== 'absent') {
+    issues.push('测试配置不允许测试 retry');
   }
 }
 
@@ -527,6 +553,15 @@ async function checkSourceFiles(root, issues) {
       continue;
     }
     const contents = await readText(root, path, issues);
+    if (coverageIgnorePragma.test(contents)) {
+      issues.push(`${path}: 不允许 coverage ignore pragma`);
+    }
+    if (
+      /\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(path) &&
+      skippedTestCall.test(contents)
+    ) {
+      issues.push(`${path}: 不允许 skip 或 skipIf 测试`);
+    }
     const importForm = umiImportForms.find(({ pattern }) =>
       pattern.test(contents),
     );

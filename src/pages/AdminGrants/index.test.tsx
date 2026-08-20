@@ -323,85 +323,73 @@ describe('AdminGrantsPage', () => {
     },
   );
 
-  it(
-    '授予失败保留 Modal 并展示服务端 detail 与 requestId',
-    async () => {
-      const user = userEvent.setup();
-      administrationMocks.createGrant.mockRejectedValueOnce(
-        new ApiError({
-          detail: '该授权与现有 Grant 冲突',
-          requestId: 'req-grant-create-409',
-          status: 409,
-        }),
-      );
-      renderPage();
-      await screen.findByRole('table', {}, INITIAL_WAIT);
+  it('授予失败保留 Modal 并展示服务端 detail 与 requestId', async () => {
+    const user = userEvent.setup();
+    administrationMocks.createGrant.mockRejectedValueOnce(
+      new ApiError({
+        detail: '该授权与现有 Grant 冲突',
+        requestId: 'req-grant-create-409',
+        status: 409,
+      }),
+    );
+    renderPage();
+    await screen.findByRole('table', {}, INITIAL_WAIT);
 
-      await user.click(screen.getByRole('button', { name: '新增授权' }));
-      const dialog = await screen.findByRole('dialog', { name: '新增授权' });
-      await selectOption(user, '主体', 'E1002 · 吴桐');
-      await selectOption(user, '能力', '工作区配置');
-      await selectOption(user, '范围', '全平台');
-      await user.type(
-        within(dialog).getByRole('textbox', { name: '授权原因' }),
-        '验证重复授权冲突',
-      );
-      const listCallsBeforeSubmit =
-        administrationMocks.listGrants.mock.calls.length;
-      await user.click(
-        within(dialog).getByRole('button', { name: '确认授予' }),
-      );
+    await user.click(screen.getByRole('button', { name: '新增授权' }));
+    const dialog = await screen.findByRole('dialog', { name: '新增授权' });
+    await selectOption(user, '主体', 'E1002 · 吴桐');
+    await selectOption(user, '能力', '工作区配置');
+    await selectOption(user, '范围', '全平台');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: '授权原因' }),
+      '验证重复授权冲突',
+    );
+    const listCallsBeforeSubmit =
+      administrationMocks.listGrants.mock.calls.length;
+    await user.click(within(dialog).getByRole('button', { name: '确认授予' }));
 
-      expect(
-        await screen.findByText(/该授权与现有 Grant 冲突/),
-      ).toHaveTextContent('requestId: req-grant-create-409');
-      expect(screen.getByRole('dialog', { name: '新增授权' })).toBeVisible();
-      expect(administrationMocks.listGrants).toHaveBeenCalledTimes(
-        listCallsBeforeSubmit,
-      );
-    },
-    INTERACTION_TEST_TIMEOUT,
-  );
+    expect(
+      await screen.findByText(/该授权与现有 Grant 冲突/),
+    ).toHaveTextContent('requestId: req-grant-create-409');
+    expect(screen.getByRole('dialog', { name: '新增授权' })).toBeVisible();
+    expect(administrationMocks.listGrants).toHaveBeenCalledTimes(
+      listCallsBeforeSubmit,
+    );
+  });
 
-  it(
-    '撤销失败保留 Modal 并展示服务端 detail 与 requestId',
-    async () => {
-      const user = userEvent.setup();
-      administrationMocks.revokeGrant.mockRejectedValueOnce(
-        new ApiError({
-          detail: 'Grant 版本已过期',
-          requestId: 'req-grant-revoke-412',
-          status: 412,
-        }),
-      );
-      renderPage();
-      const row = await screen.findByRole(
-        'row',
-        { name: /陈晓.*开发任务.*营销工作区.*直接/ },
-        INITIAL_WAIT,
-      );
-      await user.click(within(row).getByRole('button', { name: '撤销' }));
-      const dialog = await screen.findByRole('dialog', { name: '撤销 Grant' });
-      await user.type(
-        within(dialog).getByRole('textbox', { name: '撤销原因' }),
-        '验证并发冲突',
-      );
-      const listCallsBeforeSubmit =
-        administrationMocks.listGrants.mock.calls.length;
-      await user.click(
-        within(dialog).getByRole('button', { name: '确认撤销' }),
-      );
+  it('撤销失败保留 Modal 并展示服务端 detail 与 requestId', async () => {
+    const user = userEvent.setup();
+    administrationMocks.revokeGrant.mockRejectedValueOnce(
+      new ApiError({
+        detail: 'Grant 版本已过期',
+        requestId: 'req-grant-revoke-412',
+        status: 412,
+      }),
+    );
+    renderPage();
+    const row = await screen.findByRole(
+      'row',
+      { name: /陈晓.*开发任务.*营销工作区.*直接/ },
+      INITIAL_WAIT,
+    );
+    await user.click(within(row).getByRole('button', { name: '撤销' }));
+    const dialog = await screen.findByRole('dialog', { name: '撤销 Grant' });
+    await user.type(
+      within(dialog).getByRole('textbox', { name: '撤销原因' }),
+      '验证并发冲突',
+    );
+    const listCallsBeforeSubmit =
+      administrationMocks.listGrants.mock.calls.length;
+    await user.click(within(dialog).getByRole('button', { name: '确认撤销' }));
 
-      expect(await screen.findByText(/Grant 版本已过期/)).toHaveTextContent(
-        'requestId: req-grant-revoke-412',
-      );
-      expect(screen.getByRole('dialog', { name: '撤销 Grant' })).toBeVisible();
-      expect(administrationMocks.listGrants).toHaveBeenCalledTimes(
-        listCallsBeforeSubmit,
-      );
-    },
-    INTERACTION_TEST_TIMEOUT,
-  );
+    expect(await screen.findByText(/Grant 版本已过期/)).toHaveTextContent(
+      'requestId: req-grant-revoke-412',
+    );
+    expect(screen.getByRole('dialog', { name: '撤销 Grant' })).toBeVisible();
+    expect(administrationMocks.listGrants).toHaveBeenCalledTimes(
+      listCallsBeforeSubmit,
+    );
+  });
 
   it(
     '撤销要求 reason，并把 Grant ID 与 version 交给 service 生成 ETag',

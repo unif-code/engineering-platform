@@ -2,7 +2,7 @@ import { createTotpCode } from '@root/tests/auth-fixtures';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
-import { App, ConfigProvider } from 'antd';
+import { App, ConfigProvider, theme } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   PolicyCatalogResponse,
@@ -40,6 +40,20 @@ vi.mock('@/features/administration', async (importOriginal) => ({
 }));
 
 import AdminPoliciesPage from '.';
+
+function styleRulesFor(element: Element): string {
+  const classNames = [...element.classList];
+  const collectRules = (rules: CSSRuleList): string[] =>
+    [...rules].flatMap((rule) => {
+      const nestedRules = (rule as CSSRule & { cssRules?: CSSRuleList })
+        .cssRules;
+      return [rule.cssText, ...(nestedRules ? collectRules(nestedRules) : [])];
+    });
+  return [...document.styleSheets]
+    .flatMap((sheet) => collectRules(sheet.cssRules))
+    .filter((rule) => classNames.some((name) => rule.includes(`.${name}`)))
+    .join('\n');
+}
 
 const INITIAL_WAIT = { timeout: 5_000 };
 const PAGE_INTERACTION_TEST_TIMEOUT = 30_000;
@@ -333,9 +347,14 @@ describe('AdminPoliciesPage', {
     expect(
       screen.getByRole('region', { name: 'Session 空闲期限策略' }),
     ).toBeVisible();
-    expect(
-      screen.getByRole('region', { name: '待发布草稿' }),
-    ).toHaveTextContent('当前没有改动');
+    const draftSummary = screen.getByRole('region', { name: '待发布草稿' });
+    expect(draftSummary).toHaveTextContent('当前没有改动');
+    const draftSummaryCss = styleRulesFor(draftSummary);
+    expect(draftSummaryCss).toMatch(/position:\s*sticky/u);
+    expect(draftSummaryCss).toMatch(/width:\s*330px/u);
+    expect(draftSummaryCss).toContain(
+      `padding: ${theme.getDesignToken().padding}px`,
+    );
     expect(
       screen.getByRole('spinbutton', { name: 'Session 空闲期限' }),
     ).toHaveValue('60');
@@ -353,6 +372,10 @@ describe('AdminPoliciesPage', {
     expect(
       await screen.findByRole('region', { name: 'Draft 编辑' }, INITIAL_WAIT),
     ).toHaveTextContent('60 分钟 → 30 分钟');
+    const changeHint = screen.getByText('草稿 · 原值 60 分钟');
+    expect(styleRulesFor(changeHint)).toContain(
+      theme.getDesignToken().colorWarningText,
+    );
   });
 
   it('校验前通过公开入口创建并保存 Draft，且每一步使用最新 ETag', async () => {

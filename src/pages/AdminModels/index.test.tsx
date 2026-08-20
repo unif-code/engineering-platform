@@ -149,35 +149,31 @@ describe('AdminModelsPage', () => {
     ).toBeInTheDocument();
   });
 
-  it(
-    '启用与停用操作只反馈且保持模型目录状态',
-    async () => {
-      const user = userEvent.setup();
-      renderPage();
+  it('启用与停用操作只反馈且保持模型目录状态', async () => {
+    const user = userEvent.setup();
+    renderPage();
 
-      const activeRow = await screen.findByRole('row', {
-        name: /DeepSeek V4/,
-      });
-      await user.click(
-        within(activeRow).getByRole('button', { name: '停用 DeepSeek V4' }),
-      );
-      await expectStaticAction('停用模型 DeepSeek V4');
+    const activeRow = await screen.findByRole('row', {
+      name: /DeepSeek V4/,
+    });
+    await user.click(
+      within(activeRow).getByRole('button', { name: '停用 DeepSeek V4' }),
+    );
+    await expectStaticAction('停用模型 DeepSeek V4');
 
-      const inactiveRow = screen.getByRole('row', { name: /GPT-5\.6/ });
-      await user.click(
-        within(inactiveRow).getByRole('button', { name: '启用 GPT-5.6' }),
-      );
-      await expectStaticAction('启用模型 GPT-5.6');
+    const inactiveRow = screen.getByRole('row', { name: /GPT-5\.6/ });
+    await user.click(
+      within(inactiveRow).getByRole('button', { name: '启用 GPT-5.6' }),
+    );
+    await expectStaticAction('启用模型 GPT-5.6');
 
-      expect(
-        within(activeRow).getByRole('button', { name: '停用 DeepSeek V4' }),
-      ).toBeInTheDocument();
-      expect(
-        within(inactiveRow).getByRole('button', { name: '启用 GPT-5.6' }),
-      ).toBeInTheDocument();
-    },
-    PAGE_INTERACTION_TEST_TIMEOUT,
-  );
+    expect(
+      within(activeRow).getByRole('button', { name: '停用 DeepSeek V4' }),
+    ).toBeInTheDocument();
+    expect(
+      within(inactiveRow).getByRole('button', { name: '启用 GPT-5.6' }),
+    ).toBeInTheDocument();
+  });
 
   it('模型评测 Tab 呈现评测作业和不可变证据表格', async () => {
     const user = userEvent.setup();

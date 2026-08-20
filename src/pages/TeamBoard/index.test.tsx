@@ -5,26 +5,11 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ant-design/charts', () => ({
   Bar: () => <div data-ant-design-chart="bar" />,
-  Column: ({
-    label,
-  }: {
-    label?: { text?: string | ((datum: Record<string, unknown>) => unknown) };
-  }) => {
-    const text = label?.text;
-    return (
-      <div data-ant-design-chart="column">
-        {typeof text === 'function'
-          ? String(text({ label: 'W1', value: 2 }))
-          : null}
-        {typeof text === 'function'
-          ? String(text({ label: 'W2', value: 3, valueLabel: '3 天' }))
-          : null}
-      </div>
-    );
-  },
+  Column: () => <div data-ant-design-chart="column" />,
 }));
 
 import TeamBoardPage from '.';
+import { formatChartValue } from './util';
 
 function renderPage() {
   return render(
@@ -49,6 +34,18 @@ async function selectTeam(
 }
 
 describe('TeamBoardPage', () => {
+  it('图表标签优先使用展示值并回退原始值', () => {
+    expect(formatChartValue({ key: 'w1', label: 'W1', value: 2 })).toBe(2);
+    expect(
+      formatChartValue({
+        key: 'w2',
+        label: 'W2',
+        value: 3,
+        valueLabel: '3 天',
+      }),
+    ).toBe('3 天');
+  });
+
   it('默认展示营销 Team 的原型完整分析视图', () => {
     renderPage();
 
@@ -96,7 +93,7 @@ describe('TeamBoardPage', () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole('figure', { name: '营销合并请求处理周期' }),
-    ).toHaveTextContent('当前 1.8 天23 天');
+    ).toHaveTextContent('当前 1.8 天');
     expect(
       screen.getByRole('list', { name: '营销阻塞事项' }),
     ).toHaveTextContent('需求对齐超 3 天');

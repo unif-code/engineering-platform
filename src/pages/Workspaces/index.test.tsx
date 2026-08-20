@@ -1,8 +1,11 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from 'antd';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import WorkspacesPage from '.';
+import type { WorkspaceFixture } from './type';
+import { WorkspaceDetail } from './WorkspaceDetail';
+import { WorkspaceSelector } from './WorkspaceSelector';
 
 function renderPage() {
   return render(
@@ -146,17 +149,45 @@ describe('WorkspacesPage', () => {
 
   it('成员工作区只显示已选仓库且不暴露 Owner 管理能力', async () => {
     const user = userEvent.setup();
-    renderPage();
-
-    await user.click(
-      screen.getByRole('button', { name: /交易协作工作区.*成员/ }),
+    const memberWorkspace: WorkspaceFixture = {
+      archived: false,
+      canManage: false,
+      foundRepositoryCount: 2,
+      id: 'member-workspace',
+      members: [],
+      membership: '成员',
+      name: '成员工作区',
+      owner: '测试负责人',
+      repositories: [
+        { name: 'selected-repository', selected: true, stack: 'React' },
+        { name: 'hidden-repository', selected: false, stack: 'TypeScript' },
+      ],
+      team: '交易',
+    };
+    const onSelect = vi.fn();
+    render(
+      <App>
+        <WorkspaceSelector
+          onSelect={onSelect}
+          selectedId={memberWorkspace.id}
+          workspaces={[memberWorkspace]}
+        />
+        <WorkspaceDetail workspace={memberWorkspace} />
+      </App>,
     );
 
+    const memberWorkspaceButton = screen.getByRole('button', {
+      name: /成员工作区.*成员/,
+    });
+    expect(memberWorkspaceButton).toHaveAttribute('aria-pressed', 'true');
+    await user.click(memberWorkspaceButton);
+    expect(onSelect).toHaveBeenCalledWith(memberWorkspace);
+
     expect(
-      screen.getByRole('region', { name: '交易协作工作区 工作区详情' }),
+      screen.getByRole('region', { name: '成员工作区 工作区详情' }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole('list', { name: '交易协作工作区 成员' }),
+      screen.getByRole('list', { name: '成员工作区 成员' }),
     ).toBeEmptyDOMElement();
     expect(
       screen.queryByRole('button', { name: '添加成员' }),
@@ -166,12 +197,12 @@ describe('WorkspacesPage', () => {
     const repositoryPanel = await openTab(user, '仓库');
     expect(
       within(repositoryPanel).getByRole('listitem', {
-        name: 'trade-console 仓库',
+        name: 'selected-repository 仓库',
       }),
     ).toBeInTheDocument();
     expect(
       within(repositoryPanel).queryByRole('listitem', {
-        name: 'trade-internal-tools 仓库',
+        name: 'hidden-repository 仓库',
       }),
     ).not.toBeInTheDocument();
     expect(

@@ -5,10 +5,10 @@ import { useState } from 'react';
 import { MetricCard } from '@/components/MetricCard';
 import { SemanticTag } from '@/components/SemanticTag';
 import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
-import type { ChartDatum } from '@/types/presentation';
 import { TEAM_FIXTURES, TEAM_OPTIONS } from './constant';
 import { useStyles } from './index.style';
 import type { TeamBoardFixture, TeamName } from './type';
+import { formatChartValue } from './util';
 
 const DEFAULT_TEAM = TEAM_FIXTURES[0];
 const TEAM_BY_NAME: Record<TeamName, TeamBoardFixture> = {
@@ -176,8 +176,7 @@ export default function TeamBoardPage() {
                   height={96}
                   label={{
                     position: 'top',
-                    text: (datum: ChartDatum) =>
-                      datum.valueLabel ?? datum.value,
+                    text: formatChartValue,
                   }}
                   style={{ fill: token.colorInfo }}
                   xField="label"

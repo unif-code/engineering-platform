@@ -363,6 +363,52 @@ test('requires all four coverage thresholds to remain 100', async () => {
   );
 });
 
+test('rejects additional coverage threshold keys', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'vitest.config.ts',
+    "import { defineConfig } from 'vitest/config';\nexport default defineConfig({ test: { coverage: { include: ['src/**/*.{ts,tsx}'], exclude: ['src/.umi*/**', 'src/services/generated/**', 'src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}'], thresholds: { statements: 100, branches: 100, functions: 100, lines: 100, perFile: false } } } });\n",
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /Coverage 四项阈值必须为 100/u,
+  );
+});
+
+test('rejects coverage ignore pragmas in runtime source', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'src/runtime.ts',
+    '/* c8 ignore next */\nexport const hiddenBranch = () => true;\n',
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /不允许 coverage ignore pragma/u,
+  );
+});
+
+test('rejects skipped tests and retry configuration', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'src/runtime.test.ts',
+    "test.skip('hidden', () => {});\ntest.skipIf(process.env.CI)('conditional', () => {});\n",
+  );
+  await write(
+    root,
+    'vitest.config.ts',
+    "import { defineConfig } from 'vitest/config';\nexport default defineConfig({ test: { retry: 1, coverage: { include: ['src/**/*.{ts,tsx}'], exclude: ['src/.umi*/**', 'src/services/generated/**', 'src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}'], thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 } } } });\n",
+  );
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(output, /不允许 skip 或 skipIf 测试/u);
+  assert.match(output, /不允许测试 retry/u);
+});
+
 test('fails closed for dynamic coverage arrays, numbers, and overrides', async () => {
   const cases = [
     {

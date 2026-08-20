@@ -2,7 +2,8 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App } from 'antd';
 import { describe, expect, it } from 'vitest';
-import AdminSkillsPage, { getPreviousVersion, getPreviousVersions } from '.';
+import AdminSkillsPage from '.';
+import { getPreviousVersion, getPreviousVersions } from './version';
 
 function renderPage() {
   return render(

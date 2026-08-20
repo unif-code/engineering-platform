@@ -74,21 +74,6 @@ export const WORKSPACE_FIXTURES = [
     ],
     team: '营销',
   },
-  {
-    archived: false,
-    canManage: false,
-    foundRepositoryCount: 2,
-    id: 'trading-collaboration',
-    name: '交易协作工作区',
-    membership: '成员',
-    owner: '何山',
-    members: [],
-    repositories: [
-      { name: 'trade-console', selected: true, stack: 'React' },
-      { name: 'trade-internal-tools', selected: false, stack: 'TypeScript' },
-    ],
-    team: '交易',
-  },
 ] as const satisfies readonly WorkspaceFixture[];
 
 export const MEMBER_CANDIDATE_OPTIONS = [

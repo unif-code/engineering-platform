@@ -404,13 +404,8 @@ describe('ThemeProvider', () => {
   });
 
   it('Theme hook 在 Provider 外 fail-fast', () => {
-    const consoleError = vi
-      .spyOn(console, 'error')
-      .mockImplementation(() => undefined);
-
     expect(() => render(<ThemeProbe />)).toThrow(
       'usePlatformTheme 必须在 ThemeProvider 内使用',
     );
-    consoleError.mockRestore();
   });
 });

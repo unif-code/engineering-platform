@@ -10,20 +10,6 @@ export interface InspectorPanelProps {
   onChange: (key: InspectorTabKey) => void;
 }
 
-export function parseInspectorTabKey(key: string): InspectorTabKey | undefined {
-  return INSPECTOR_TABS.find((tab) => tab.key === key)?.key;
-}
-
-export function applyInspectorTabChange(
-  key: string,
-  onChange: (key: InspectorTabKey) => void,
-): void {
-  const nextKey = parseInspectorTabKey(key);
-  if (nextKey) {
-    onChange(nextKey);
-  }
-}
-
 export function InspectorPanel({ activeKey, onChange }: InspectorPanelProps) {
   const { styles } = useStyles();
   const panels: Record<InspectorTabKey, React.ReactNode> = {
@@ -99,7 +85,7 @@ export function InspectorPanel({ activeKey, onChange }: InspectorPanelProps) {
           key: tab.key,
           label: tab.label,
         }))}
-        onChange={(key) => applyInspectorTabChange(key, onChange)}
+        onChange={(key) => onChange(key as InspectorTabKey)}
         size="small"
       />
     </aside>
