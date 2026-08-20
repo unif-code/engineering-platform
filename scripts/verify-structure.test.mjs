@@ -69,6 +69,33 @@ async function createValidFixture() {
   );
   await write(
     root,
+    'vitest.config.ts',
+    [
+      "import { defineConfig } from 'vitest/config';",
+      'export default defineConfig({',
+      '  test: {',
+      '    coverage: {',
+      "      include: ['src/**/*.{ts,tsx}'],",
+      '      exclude: [',
+      "        'src/.umi*/**',",
+      "        'src/services/generated/**',",
+      "        'src/**/*.d.ts',",
+      "        'src/**/*.{test,spec}.{ts,tsx}',",
+      '      ],',
+      '      thresholds: {',
+      '        statements: 100,',
+      '        branches: 100,',
+      '        functions: 100,',
+      '        lines: 100,',
+      '      },',
+      '    },',
+      '  },',
+      '});',
+      '',
+    ].join('\n'),
+  );
+  await write(
+    root,
     'tsconfig.json',
     JSON.stringify({
       compilerOptions: {
@@ -292,6 +319,78 @@ test('requires Umi runtime mock to stay disabled', async () => {
     (await verifyStructure(root)).join('\n'),
     /mock 必须显式为 false/u,
   );
+});
+
+test('requires coverage include to contain all handwritten src runtime code', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'vitest.config.ts',
+    "import { defineConfig } from 'vitest/config';\nexport default defineConfig({ test: { coverage: { include: ['src/pages/**'], exclude: ['src/.umi*/**', 'src/services/generated/**', 'src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}'], thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 } } } });\n",
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /Coverage include 必须覆盖全部 src 运行时代码/u,
+  );
+});
+
+test('allows only generated types and tests in coverage excludes', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'vitest.config.ts',
+    "import { defineConfig } from 'vitest/config';\nexport default defineConfig({ test: { coverage: { include: ['src/**/*.{ts,tsx}'], exclude: ['src/.umi*/**', 'src/services/generated/**', 'src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}', 'src/**/*.style.ts'], thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 } } } });\n",
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /Coverage exclude 只允许生成、类型与测试文件/u,
+  );
+});
+
+test('requires all four coverage thresholds to remain 100', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'vitest.config.ts',
+    "import { defineConfig } from 'vitest/config';\nexport default defineConfig({ test: { coverage: { include: ['src/**/*.{ts,tsx}'], exclude: ['src/.umi*/**', 'src/services/generated/**', 'src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}'], thresholds: { statements: 99, branches: 100, functions: 100, lines: 100 } } } });\n",
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /Coverage 四项阈值必须为 100/u,
+  );
+});
+
+test('fails closed for dynamic coverage arrays, numbers, and overrides', async () => {
+  const cases = [
+    {
+      config:
+        "const include = ['src/**/*.{ts,tsx}']; export default defineConfig({ test: { coverage: { include, exclude: ['src/.umi*/**', 'src/services/generated/**', 'src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}'], thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 } } } });",
+      message: /Coverage include 必须覆盖全部 src 运行时代码/u,
+    },
+    {
+      config:
+        "const override = {}; export default defineConfig({ test: { coverage: { include: ['src/**/*.{ts,tsx}'], exclude: ['src/.umi*/**', 'src/services/generated/**', 'src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}'], thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 }, ...override } } });",
+      message: /Coverage exclude 只允许生成、类型与测试文件/u,
+    },
+    {
+      config:
+        "const key = 'statements'; export default defineConfig({ test: { coverage: { include: ['src/**/*.{ts,tsx}'], exclude: ['src/.umi*/**', 'src/services/generated/**', 'src/**/*.d.ts', 'src/**/*.{test,spec}.{ts,tsx}'], thresholds: { statements: 100, branches: 100, functions: 100, lines: 100, [key]: 99 } } } });",
+      message: /Coverage 四项阈值必须为 100/u,
+    },
+  ];
+
+  for (const { config, message } of cases) {
+    const root = await createValidFixture();
+    await write(
+      root,
+      'vitest.config.ts',
+      `import { defineConfig } from 'vitest/config';\n${config}\n`,
+    );
+    assert.match((await verifyStructure(root)).join('\n'), message);
+  }
 });
 
 test('reads mock from the exported defineConfig object instead of decoys', async () => {

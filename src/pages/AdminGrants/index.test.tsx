@@ -386,6 +386,8 @@ describe('AdminGrantsPage', () => {
         within(dialog).getByRole('textbox', { name: '撤销原因' }),
         '验证并发冲突',
       );
+      const listCallsBeforeSubmit =
+        administrationMocks.listGrants.mock.calls.length;
       await user.click(
         within(dialog).getByRole('button', { name: '确认撤销' }),
       );
@@ -394,7 +396,9 @@ describe('AdminGrantsPage', () => {
         'requestId: req-grant-revoke-412',
       );
       expect(screen.getByRole('dialog', { name: '撤销 Grant' })).toBeVisible();
-      expect(administrationMocks.listGrants).toHaveBeenCalledTimes(1);
+      expect(administrationMocks.listGrants).toHaveBeenCalledTimes(
+        listCallsBeforeSubmit,
+      );
     },
     INTERACTION_TEST_TIMEOUT,
   );

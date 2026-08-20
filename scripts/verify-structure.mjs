@@ -36,6 +36,19 @@ const requiredSkills = {
   antd: 'skills/antd/SKILL.md',
 };
 const officialSkillSource = 'ant-design/antd-skill';
+const requiredCoverageInclude = ['src/**/*.{ts,tsx}'];
+const requiredCoverageExclude = [
+  'src/.umi*/**',
+  'src/services/generated/**',
+  'src/**/*.d.ts',
+  'src/**/*.{test,spec}.{ts,tsx}',
+];
+const requiredCoverageThresholds = [
+  'statements',
+  'branches',
+  'functions',
+  'lines',
+];
 const umiImportForms = [
   { label: "from 'umi'", pattern: /\bfrom\s+['"]umi['"]/u },
   { label: "import 'umi'", pattern: /\bimport\s+['"]umi['"]/u },
@@ -228,6 +241,75 @@ function effectiveMockSetting(objectLiteral) {
   return setting;
 }
 
+function effectivePropertyValue(objectLiteral, targetName) {
+  let result = { kind: 'absent' };
+
+  for (const property of objectLiteral.properties) {
+    if (ts.isSpreadAssignment(property)) {
+      const spread = unwrapExpression(property.expression);
+      if (ts.isObjectLiteralExpression(spread)) {
+        const spreadResult = effectivePropertyValue(spread, targetName);
+        if (spreadResult.kind !== 'absent') result = spreadResult;
+      } else {
+        result = { kind: 'unknown' };
+      }
+      continue;
+    }
+
+    if (!property.name) continue;
+    const propertyName = staticPropertyName(property.name);
+    if (!propertyName.known) {
+      result = { kind: 'unknown' };
+      continue;
+    }
+    if (propertyName.text !== targetName) continue;
+    result = ts.isPropertyAssignment(property)
+      ? { kind: 'value', value: unwrapExpression(property.initializer) }
+      : { kind: 'unknown' };
+  }
+
+  return result;
+}
+
+function nestedObjectLiteral(root, propertyNames) {
+  let current = root;
+  for (const propertyName of propertyNames) {
+    const property = effectivePropertyValue(current, propertyName);
+    if (
+      property.kind !== 'value' ||
+      !ts.isObjectLiteralExpression(property.value)
+    ) {
+      return undefined;
+    }
+    current = property.value;
+  }
+  return current;
+}
+
+function isExactStringArray(value, expected) {
+  if (!value || !ts.isArrayLiteralExpression(value)) return false;
+  const actual = value.elements.map((element) => {
+    const unwrapped = unwrapExpression(element);
+    return ts.isStringLiteralLike(unwrapped) ? unwrapped.text : undefined;
+  });
+  return (
+    actual.length === expected.length &&
+    actual.every((entry, index) => entry === expected[index])
+  );
+}
+
+function isExactCoverageThresholds(thresholds) {
+  if (!thresholds) return false;
+  return requiredCoverageThresholds.every((name) => {
+    const property = effectivePropertyValue(thresholds, name);
+    return (
+      property.kind === 'value' &&
+      ts.isNumericLiteral(property.value) &&
+      property.value.text === '100'
+    );
+  });
+}
+
 function exportedDefineConfigObject(contents) {
   const sourceFile = ts.createSourceFile(
     'config/config.ts',
@@ -270,6 +352,43 @@ function checkConfig(contents, issues) {
   }
   if (/\besbuildMinifyIIFE\s*:/u.test(executableContents)) {
     issues.push('config/config.ts 不得保留 esbuildMinifyIIFE');
+  }
+}
+
+function checkVitestCoverage(contents, issues) {
+  if (contents === undefined) return;
+  const config = exportedDefineConfigObject(contents);
+  const coverage = config
+    ? nestedObjectLiteral(config, ['test', 'coverage'])
+    : undefined;
+  const include = coverage
+    ? effectivePropertyValue(coverage, 'include')
+    : { kind: 'absent' };
+  const exclude = coverage
+    ? effectivePropertyValue(coverage, 'exclude')
+    : { kind: 'absent' };
+  const thresholds = coverage
+    ? effectivePropertyValue(coverage, 'thresholds')
+    : { kind: 'absent' };
+
+  if (
+    include.kind !== 'value' ||
+    !isExactStringArray(include.value, requiredCoverageInclude)
+  ) {
+    issues.push('Coverage include 必须覆盖全部 src 运行时代码');
+  }
+  if (
+    exclude.kind !== 'value' ||
+    !isExactStringArray(exclude.value, requiredCoverageExclude)
+  ) {
+    issues.push('Coverage exclude 只允许生成、类型与测试文件');
+  }
+  if (
+    thresholds.kind !== 'value' ||
+    !ts.isObjectLiteralExpression(thresholds.value) ||
+    !isExactCoverageThresholds(thresholds.value)
+  ) {
+    issues.push('Coverage 四项阈值必须为 100');
   }
 }
 
@@ -425,6 +544,7 @@ export async function verifyStructure(root = process.cwd()) {
   checkManifest(manifest, issues);
 
   checkConfig(await readText(root, 'config/config.ts', issues), issues);
+  checkVitestCoverage(await readText(root, 'vitest.config.ts', issues), issues);
   checkTsconfig(await readJson(root, 'tsconfig.json', issues), issues);
   checkBiome(await readJson(root, 'biome.json', issues), issues);
   checkDoctorConfig(await readJson(root, 'doctor.config.json', issues), issues);
