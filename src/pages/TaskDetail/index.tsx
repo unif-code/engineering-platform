@@ -45,7 +45,7 @@ export default function TaskDetailPage() {
       diff: () => setDiffOpen(true),
       reject: () => setRejectOpen(true),
     };
-    actions[key]();
+    actions[key]?.();
   };
 
   const topActions = (

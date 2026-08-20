@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { App } from 'antd';
 import { describe, expect, it } from 'vitest';
 import AdminSkillsPage from '.';
-import { getPreviousVersion, getPreviousVersions } from './version';
+import { getPreviousVersions } from './version';
 
 function renderPage() {
   return render(
@@ -39,9 +39,7 @@ async function expectStaticAction(action: string) {
 
 describe('AdminSkillsPage', () => {
   it('只为可递减的有效版本生成历史版本', () => {
-    expect(getPreviousVersion('invalid')).toBeUndefined();
-    expect(getPreviousVersion('v1.0')).toBeUndefined();
-    expect(getPreviousVersion('v1.2')).toBe('v1.1');
+    expect(getPreviousVersions('invalid')).toEqual([]);
     expect(getPreviousVersions('v1.0')).toEqual([]);
     expect(getPreviousVersions('v1.2')).toEqual(['v1.1']);
   });

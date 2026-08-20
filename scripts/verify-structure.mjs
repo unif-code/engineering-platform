@@ -58,7 +58,8 @@ const umiImportForms = [
 const commentsAndStrings =
   /'(?:\\.|[^'\\])*'|"(?:\\.|[^"\\])*"|`(?:\\.|[^`\\])*`|\/\*[\s\S]*?\*\/|\/\/[^\r\n]*/gu;
 const coverageIgnorePragma = /\b(?:c8|istanbul|v8)\s+ignore\b/iu;
-const skippedTestCall = /\b(?:describe|it|test)\s*\.\s*(?:skip|skipIf)\s*\(/u;
+const testDeclarationNames = new Set(['describe', 'it', 'suite', 'test']);
+const skippedTestModifiers = new Set(['skip', 'skipIf', 'todo']);
 
 async function readText(root, path, issues) {
   try {
@@ -205,6 +206,93 @@ function staticPropertyName(name) {
     return { known: false };
   }
   return { known: false };
+}
+
+function testCallChain(expression) {
+  let current = unwrapExpression(expression);
+  const modifiers = [];
+
+  while (true) {
+    if (ts.isCallExpression(current)) {
+      current = unwrapExpression(current.expression);
+      continue;
+    }
+    if (ts.isPropertyAccessExpression(current)) {
+      modifiers.unshift(current.name.text);
+      current = unwrapExpression(current.expression);
+      continue;
+    }
+    if (ts.isElementAccessExpression(current)) {
+      const argument = current.argumentExpression
+        ? unwrapExpression(current.argumentExpression)
+        : undefined;
+      if (!argument || !ts.isStringLiteralLike(argument)) return undefined;
+      modifiers.unshift(argument.text);
+      current = unwrapExpression(current.expression);
+      continue;
+    }
+    return ts.isIdentifier(current) && testDeclarationNames.has(current.text)
+      ? { modifiers, root: current.text }
+      : undefined;
+  }
+}
+
+function testOptionPolicy(options) {
+  let skip = false;
+  let retry = false;
+  for (const property of options.properties) {
+    if (ts.isSpreadAssignment(property) || !property.name) {
+      skip = true;
+      retry = true;
+      continue;
+    }
+    const name = staticPropertyName(property.name);
+    if (!name.known) {
+      skip = true;
+      retry = true;
+      continue;
+    }
+    if (name.text === 'skip') skip = true;
+    if (name.text === 'retry') retry = true;
+  }
+  return { retry, skip };
+}
+
+function testPolicy(contents, path) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    contents,
+    ts.ScriptTarget.Latest,
+    true,
+    path.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
+  );
+  let skip = false;
+  let retry = false;
+
+  function visit(node) {
+    if (ts.isCallExpression(node)) {
+      const chain = testCallChain(node.expression);
+      if (chain) {
+        if (chain.modifiers.some((name) => skippedTestModifiers.has(name))) {
+          skip = true;
+        }
+        if (chain.modifiers.includes('retry')) retry = true;
+        const options = node.arguments[1];
+        if (
+          options &&
+          ts.isObjectLiteralExpression(unwrapExpression(options))
+        ) {
+          const policy = testOptionPolicy(unwrapExpression(options));
+          skip ||= policy.skip;
+          retry ||= policy.retry;
+        }
+      }
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  return { retry, skip };
 }
 
 function effectiveMockSetting(objectLiteral) {
@@ -556,11 +644,14 @@ async function checkSourceFiles(root, issues) {
     if (coverageIgnorePragma.test(contents)) {
       issues.push(`${path}: 不允许 coverage ignore pragma`);
     }
-    if (
-      /\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(path) &&
-      skippedTestCall.test(contents)
-    ) {
-      issues.push(`${path}: 不允许 skip 或 skipIf 测试`);
+    if (/\.(?:test|spec)\.[cm]?[jt]sx?$/u.test(path)) {
+      const policy = testPolicy(contents, path);
+      if (policy.skip) {
+        issues.push(`${path}: 不允许 skip、skipIf 或 todo 测试`);
+      }
+      if (policy.retry) {
+        issues.push(`${path}: 不允许测试 retry`);
+      }
     }
     const importForm = umiImportForms.find(({ pattern }) =>
       pattern.test(contents),

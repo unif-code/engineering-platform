@@ -405,7 +405,26 @@ test('rejects skipped tests and retry configuration', async () => {
   );
 
   const output = (await verifyStructure(root)).join('\n');
-  assert.match(output, /不允许 skip 或 skipIf 测试/u);
+  assert.match(output, /不允许 skip、skipIf 或 todo 测试/u);
+  assert.match(output, /不允许测试 retry/u);
+});
+
+test('rejects todo, chained skip, and test-level skip or retry options', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'src/runtime.test.ts',
+    [
+      "test.todo('not implemented');",
+      "test.skip.each([{ value: 1 }])('skipped $value', () => {});",
+      "test('object skip', { skip: true }, () => {});",
+      "test('object retry', { retry: 1 }, () => {});",
+      '',
+    ].join('\n'),
+  );
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(output, /不允许 skip、skipIf 或 todo 测试/u);
   assert.match(output, /不允许测试 retry/u);
 });
 

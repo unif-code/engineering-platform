@@ -1,12 +1,14 @@
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { App, ConfigProvider } from 'antd';
+import { App, ConfigProvider, type DropdownProps, type TabsProps } from 'antd';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import TaskDetailPage from '.';
 import { RejectApprovalModal } from './RejectApprovalModal';
 
 const taskDetailMocks = vi.hoisted(() => ({
+  emitUnknownInspector: false,
+  emitUnknownMenu: false,
   taskId: 'REQ-2026-0142' as string | undefined,
 }));
 
@@ -33,6 +35,33 @@ vi.mock('@umijs/max', () => ({
   useParams: () => ({ taskId: taskDetailMocks.taskId }),
 }));
 
+vi.mock('antd', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('antd')>();
+  const { useEffect } = await import('react');
+  return {
+    ...actual,
+    Dropdown: (props: DropdownProps) => {
+      useEffect(() => {
+        if (!taskDetailMocks.emitUnknownMenu) return;
+        taskDetailMocks.emitUnknownMenu = false;
+        const onClick = props.menu?.onClick;
+        onClick?.({ key: 'unknown' } as Parameters<
+          NonNullable<typeof onClick>
+        >[0]);
+      }, [props.menu]);
+      return <actual.Dropdown {...props} />;
+    },
+    Tabs: (props: TabsProps) => {
+      useEffect(() => {
+        if (!taskDetailMocks.emitUnknownInspector) return;
+        taskDetailMocks.emitUnknownInspector = false;
+        props.onChange?.('unknown');
+      }, [props.onChange]);
+      return <actual.Tabs {...props} />;
+    },
+  };
+});
+
 function renderPage() {
   return render(
     <ConfigProvider theme={{ token: { motion: false } }}>
@@ -54,6 +83,8 @@ async function chooseMoreAction(
 
 describe('TaskDetailPage', () => {
   afterEach(() => {
+    taskDetailMocks.emitUnknownInspector = false;
+    taskDetailMocks.emitUnknownMenu = false;
     taskDetailMocks.taskId = 'REQ-2026-0142';
   });
 
@@ -134,6 +165,26 @@ describe('TaskDetailPage', () => {
     expect(within(inspector).queryByRole('tab', { name: '文档' })).toBeNull();
     expect(within(inspector).queryByRole('tab', { name: '代码' })).toBeNull();
     expect(within(inspector).queryByRole('tab', { name: '执行' })).toBeNull();
+  });
+
+  it('忽略组件边界传入的未知 Inspector 与菜单 key', async () => {
+    taskDetailMocks.emitUnknownInspector = true;
+    taskDetailMocks.emitUnknownMenu = true;
+
+    renderPage();
+
+    await waitFor(() => {
+      expect(taskDetailMocks.emitUnknownInspector).toBe(false);
+      expect(taskDetailMocks.emitUnknownMenu).toBe(false);
+    });
+    const inspector = screen.getByRole('complementary', {
+      name: '任务 Inspector',
+    });
+    expect(
+      within(inspector).getByRole('tab', { name: '总览' }),
+    ).toHaveAttribute('aria-selected', 'true');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
   it('查看并关闭 Artifact 与 Diff Drawer', async () => {

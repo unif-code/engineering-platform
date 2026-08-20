@@ -5,7 +5,28 @@ import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@ant-design/charts', () => ({
   Bar: () => <div data-ant-design-chart="bar" />,
-  Column: () => <div data-ant-design-chart="column" />,
+  Column: ({
+    data = [],
+    label,
+  }: {
+    data?: Array<Record<string, unknown>>;
+    label?: { text?: string | ((datum: Record<string, unknown>) => unknown) };
+  }) => (
+    <div data-ant-design-chart="column">
+      {data.map((datum, index) => {
+        const labelText = label?.text;
+        const value =
+          typeof labelText === 'function'
+            ? labelText(datum)
+            : typeof labelText === 'string'
+              ? datum[labelText]
+              : undefined;
+        return value === undefined ? null : (
+          <span key={String(datum.key ?? index)}>{String(value)}</span>
+        );
+      })}
+    </div>
+  ),
 }));
 
 import TeamBoardPage from '.';
@@ -91,9 +112,12 @@ describe('TeamBoardPage', () => {
         name: '陈晓：5 项，Agent 参与率 82%',
       }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole('figure', { name: '营销合并请求处理周期' }),
-    ).toHaveTextContent('当前 1.8 天');
+    const mergeCycle = screen.getByRole('figure', {
+      name: '营销合并请求处理周期',
+    });
+    expect(mergeCycle).toHaveTextContent('当前 1.8 天');
+    expect(within(mergeCycle).getByText('3.2d')).toBeInTheDocument();
+    expect(within(mergeCycle).getByText('1.8d')).toBeInTheDocument();
     expect(
       screen.getByRole('list', { name: '营销阻塞事项' }),
     ).toHaveTextContent('需求对齐超 3 天');

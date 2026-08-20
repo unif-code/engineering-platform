@@ -85,7 +85,10 @@ export function InspectorPanel({ activeKey, onChange }: InspectorPanelProps) {
           key: tab.key,
           label: tab.label,
         }))}
-        onChange={(key) => onChange(key as InspectorTabKey)}
+        onChange={(key) => {
+          const nextKey = INSPECTOR_TABS.find((tab) => tab.key === key)?.key;
+          if (nextKey) onChange(nextKey);
+        }}
         size="small"
       />
     </aside>
