@@ -1,6 +1,6 @@
-import { history } from '@umijs/max';
+import { history, useLocation } from '@umijs/max';
 import { Button, Form, Input, QRCode, Steps } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ApiError } from '@/services/transport';
 import { useBootstrapStyles } from './index.style';
 import {
@@ -72,13 +72,29 @@ const getProvisioningSecret = (provisioningUri: string): string => {
   }
 };
 
+const hasBootstrapSessionHandoff = (state: unknown): boolean =>
+  typeof state === 'object' &&
+  state !== null &&
+  'bootstrapSessionReady' in state &&
+  state.bootstrapSessionReady === true;
+
 export function BootstrapWizard() {
   const { styles } = useBootstrapStyles();
-  const [currentStep, setCurrentStep] = useState(0);
+  const location = useLocation();
+  const bootstrapSessionReady = hasBootstrapSessionHandoff(location.state);
+  const [currentStep, setCurrentStep] = useState(() =>
+    bootstrapSessionReady ? 1 : 0,
+  );
   const [passwordFieldErrors, setPasswordFieldErrors] = useState<string[]>([]);
   const [problemDetail, setProblemDetail] = useState<string>();
   const [provisioningUri, setProvisioningUri] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (bootstrapSessionReady) {
+      history.replace('/bootstrap');
+    }
+  }, [bootstrapSessionReady]);
 
   const submitTemporaryCredentials = async (values: LoginInput) => {
     setProblemDetail(undefined);

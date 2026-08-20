@@ -18,10 +18,12 @@ const mocks = vi.hoisted(() => ({
   push: vi.fn(),
   replace: vi.fn(),
   setBootstrapPassword: vi.fn(),
+  useLocation: vi.fn(),
 }));
 
 vi.mock('@umijs/max', () => ({
   history: { push: mocks.push, replace: mocks.replace },
+  useLocation: mocks.useLocation,
 }));
 
 vi.mock('./service', () => ({
@@ -85,9 +87,44 @@ beforeEach(() => {
   mocks.login.mockResolvedValue({ state: 'BOOTSTRAP_REQUIRED' });
   mocks.setBootstrapPassword.mockResolvedValue({ state: 'PASSWORD_SET' });
   mocks.confirmBootstrapTotp.mockResolvedValue({ state: 'AUTHENTICATED' });
+  mocks.useLocation.mockReturnValue({ state: undefined });
 });
 
 describe('BootstrapWizard', () => {
+  it('登录已建立 bootstrap Session 时直接设置正式密码且不重复消费临时密码', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    mocks.useLocation.mockReturnValue({
+      state: { bootstrapSessionReady: true },
+    });
+
+    render(<BootstrapWizard />);
+
+    expect(screen.getByLabelText('正式密码')).toBeInTheDocument();
+    expect(screen.queryByLabelText('临时密码')).not.toBeInTheDocument();
+    expect(mocks.login).not.toHaveBeenCalled();
+    await waitFor(() =>
+      expect(mocks.replace).toHaveBeenCalledWith('/bootstrap'),
+    );
+
+    await submitPermanentPassword(user, fixture.password);
+    expect(
+      await screen.findByRole('region', { name: 'TOTP 绑定二维码' }),
+    ).toBeInTheDocument();
+    await user.type(screen.getByLabelText('TOTP 动态码'), fixture.code);
+    await user.click(screen.getByRole('button', { name: '确认并完成' }));
+
+    await waitFor(() =>
+      expect(mocks.confirmBootstrapTotp).toHaveBeenCalledWith({
+        code: fixture.code,
+      }),
+    );
+    expect(mocks.setBootstrapPassword).toHaveBeenCalledWith({
+      password: fixture.password,
+    });
+    expect(mocks.login).not.toHaveBeenCalled();
+  });
+
   it('使用 HttpOnly bootstrap Session 完成密码、TOTP 与重新登录', async () => {
     const fixture = createBootstrapFixture();
     const user = userEvent.setup();

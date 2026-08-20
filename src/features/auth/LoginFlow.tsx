@@ -51,7 +51,7 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
     try {
       const result = await login(values);
       if (result.state === 'BOOTSTRAP_REQUIRED') {
-        history.push('/bootstrap');
+        history.push('/bootstrap', { bootstrapSessionReady: true });
         return true;
       }
       setChallengeExpired(false);

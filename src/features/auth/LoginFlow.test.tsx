@@ -222,7 +222,12 @@ describe('LoginFlow', () => {
     await fillCredentials(user, fixture.input);
     await user.click(screen.getByRole('button', { name: /继\s*续/ }));
 
-    await waitFor(() => expect(mocks.push).toHaveBeenCalledWith('/bootstrap'));
+    await waitFor(() =>
+      expect(mocks.push).toHaveBeenCalledWith('/bootstrap', {
+        bootstrapSessionReady: true,
+      }),
+    );
+    expect(mocks.login).toHaveBeenCalledOnce();
     expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
     expect(mocks.onAuthenticated).not.toHaveBeenCalled();
   });
