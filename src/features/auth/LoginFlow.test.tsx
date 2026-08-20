@@ -172,6 +172,31 @@ describe('LoginFlow', () => {
     expect(mocks.onAuthenticated).not.toHaveBeenCalled();
   });
 
+  it('服务端仅返回通用认证标题时展示中文建议与请求编号', async () => {
+    const fixture = createLoginFixture();
+    const user = userEvent.setup();
+    mocks.login.mockRejectedValue(
+      new ApiError({
+        requestId: 'req-login-generic',
+        status: 401,
+        title: 'Authentication failed',
+      }),
+    );
+    render(<LoginFlow onAuthenticated={mocks.onAuthenticated} />);
+
+    await fillCredentials(user, fixture.input);
+    await user.click(screen.getByRole('button', { name: /继\s*续/ }));
+
+    expect(
+      await screen.findByText(
+        '员工编号或密码错误，临时密码也可能已失效（请求编号：req-login-generic）',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Authentication failed')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('员工编号')).toBeInTheDocument();
+    expect(screen.queryByLabelText('TOTP 动态码')).not.toBeInTheDocument();
+  });
+
   it('429 时禁用凭据提交且只展示服务端等待文案', async () => {
     const fixture = createLoginFixture();
     const user = userEvent.setup();

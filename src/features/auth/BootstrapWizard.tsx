@@ -2,6 +2,7 @@ import { history, useLocation } from '@umijs/max';
 import { Button, Form, Input, QRCode, Steps } from 'antd';
 import { useEffect, useState } from 'react';
 import { ApiError } from '@/services/transport';
+import { getAuthErrorMessage } from './error';
 import { useBootstrapStyles } from './index.style';
 import {
   confirmBootstrapTotp,
@@ -12,6 +13,11 @@ import {
 import type { LoginInput } from './type';
 
 const CONTACT_ADMIN_MESSAGE = '联系管理员重新签发临时密码';
+
+const BOOTSTRAP_TITLE_MESSAGES = {
+  BOOTSTRAP_SESSION_EXPIRED: CONTACT_ADMIN_MESSAGE,
+  BOOTSTRAP_TOKEN_EXPIRED: CONTACT_ADMIN_MESSAGE,
+};
 
 const STEP_ITEMS = [
   { title: '验证临时密码' },
@@ -29,16 +35,7 @@ interface TotpFormValues {
 }
 
 const getErrorDetail = (error: unknown, fallback: string): string => {
-  if (error instanceof ApiError) {
-    if (
-      error.problem.title === 'BOOTSTRAP_TOKEN_EXPIRED' ||
-      error.problem.title === 'BOOTSTRAP_SESSION_EXPIRED'
-    ) {
-      return CONTACT_ADMIN_MESSAGE;
-    }
-    return error.problem.detail ?? error.message;
-  }
-  return error instanceof Error ? error.message : fallback;
+  return getAuthErrorMessage(error, fallback, BOOTSTRAP_TITLE_MESSAGES);
 };
 
 const getPasswordFieldErrors = (error: unknown): string[] => {
@@ -108,7 +105,9 @@ export function BootstrapWizard() {
       setCurrentStep(1);
       history.replace('/bootstrap');
     } catch (error) {
-      setProblemDetail(getErrorDetail(error, '临时密码验证失败'));
+      setProblemDetail(
+        getErrorDetail(error, '员工编号或临时密码错误，临时密码也可能已失效'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -130,7 +129,12 @@ export function BootstrapWizard() {
         if (fieldErrors.length > 0) {
           setPasswordFieldErrors(fieldErrors);
         }
-        setProblemDetail(getErrorDetail(error, '正式密码设置失败'));
+        setProblemDetail(
+          getErrorDetail(
+            error,
+            '初始化会话已失效，请联系管理员重新签发临时密码',
+          ),
+        );
         return;
       }
       setCurrentStep(2);
@@ -138,7 +142,12 @@ export function BootstrapWizard() {
         const enrollment = await enrollBootstrapTotp();
         setProvisioningUri(enrollment.provisioningUri);
       } catch (error) {
-        setProblemDetail(getErrorDetail(error, '绑定信息获取失败'));
+        setProblemDetail(
+          getErrorDetail(
+            error,
+            '初始化会话已失效，请联系管理员重新签发临时密码',
+          ),
+        );
       }
     } finally {
       setSubmitting(false);
@@ -152,7 +161,9 @@ export function BootstrapWizard() {
       const enrollment = await enrollBootstrapTotp();
       setProvisioningUri(enrollment.provisioningUri);
     } catch (error) {
-      setProblemDetail(getErrorDetail(error, '绑定信息获取失败'));
+      setProblemDetail(
+        getErrorDetail(error, '初始化会话已失效，请联系管理员重新签发临时密码'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -165,7 +176,9 @@ export function BootstrapWizard() {
       await confirmBootstrapTotp({ code });
       setCurrentStep(3);
     } catch (error) {
-      setProblemDetail(getErrorDetail(error, 'TOTP 验证失败'));
+      setProblemDetail(
+        getErrorDetail(error, '动态码验证失败，请检查动态码后重试'),
+      );
     } finally {
       setSubmitting(false);
     }
@@ -336,7 +349,7 @@ export function BootstrapWizard() {
   return (
     <section aria-labelledby="bootstrap-title" className={styles.page}>
       <div className={styles.panel}>
-        <p className={styles.eyebrow}>ACCOUNT BOOTSTRAP</p>
+        <p className={styles.eyebrow}>账号初始化</p>
         <h1 className={styles.title} id="bootstrap-title">
           初始化平台账号
         </h1>

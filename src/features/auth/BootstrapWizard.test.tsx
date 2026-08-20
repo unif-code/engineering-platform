@@ -91,6 +91,14 @@ beforeEach(() => {
 });
 
 describe('BootstrapWizard', () => {
+  it('账号初始化页使用中文标识', () => {
+    createBootstrapFixture();
+    render(<BootstrapWizard />);
+
+    expect(screen.getByText('账号初始化')).toBeInTheDocument();
+    expect(screen.queryByText('ACCOUNT BOOTSTRAP')).not.toBeInTheDocument();
+  });
+
   it('登录已建立 bootstrap Session 时直接设置正式密码且不重复消费临时密码', async () => {
     const fixture = createBootstrapFixture();
     const user = userEvent.setup();
@@ -312,5 +320,30 @@ describe('BootstrapWizard', () => {
     expect(
       await screen.findByText('联系管理员重新签发临时密码'),
     ).toBeInTheDocument();
+  });
+
+  it('正式密码提交收到通用认证失败时展示中文恢复建议与请求编号', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    mocks.setBootstrapPassword.mockRejectedValue(
+      new ApiError({
+        requestId: 'req-bootstrap-generic',
+        status: 401,
+        title: 'Authentication failed',
+      }),
+    );
+    render(<BootstrapWizard />);
+    await advanceToPassword(user, fixture);
+
+    await submitPermanentPassword(user, fixture.password);
+
+    expect(
+      await screen.findByText(
+        '初始化会话已失效，请联系管理员重新签发临时密码（请求编号：req-bootstrap-generic）',
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText('Authentication failed')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('正式密码')).toBeInTheDocument();
+    expect(mocks.enrollBootstrapTotp).not.toHaveBeenCalled();
   });
 });

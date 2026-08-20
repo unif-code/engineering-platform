@@ -4,6 +4,7 @@ import { Alert, Button } from 'antd';
 import type { CSSProperties } from 'react';
 import { useState } from 'react';
 import { ApiError } from '@/services/transport';
+import { getAuthErrorMessage } from './error';
 import { LoginStepHeader } from './LoginStepHeader';
 import { login, verifyTotp } from './service';
 import type { LoginInput } from './type';
@@ -23,13 +24,6 @@ const loginSubmitButtonStyle: CSSProperties = {
 export interface LoginFlowProps {
   onAuthenticated: () => Promise<void> | void;
 }
-
-const getErrorDetail = (error: unknown): string => {
-  if (error instanceof ApiError) {
-    return error.problem.detail ?? error.message;
-  }
-  return error instanceof Error ? error.message : '登录失败';
-};
 
 export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
   const [challengeToken, setChallengeToken] = useState<string>();
@@ -58,7 +52,9 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
       setChallengeToken(result.challengeToken);
       return true;
     } catch (error) {
-      setProblemDetail(getErrorDetail(error));
+      setProblemDetail(
+        getAuthErrorMessage(error, '员工编号或密码错误，临时密码也可能已失效'),
+      );
       if (error instanceof ApiError && error.problem.status === 429) {
         setRateLimited(true);
       }
@@ -76,7 +72,9 @@ export function LoginFlow({ onAuthenticated }: LoginFlowProps) {
       await onAuthenticated();
       return true;
     } catch (error) {
-      setProblemDetail(getErrorDetail(error));
+      setProblemDetail(
+        getAuthErrorMessage(error, '动态码验证失败，请检查动态码后重试'),
+      );
       if (
         error instanceof ApiError &&
         error.problem.challengeExpired === true
