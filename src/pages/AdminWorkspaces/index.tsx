@@ -49,7 +49,7 @@ export default function AdminWorkspacesPage() {
   });
   const membersQuery = useQuery({
     enabled: selectedWorkspace !== undefined,
-    queryFn: () => listWorkspaceMembers(selectedWorkspace?.id ?? ''),
+    queryFn: () => listWorkspaceMembers((selectedWorkspace as WorkspaceRow).id),
     queryKey: ['admin-workspace-members', selectedWorkspace?.id],
     retry: false,
   });
@@ -282,13 +282,6 @@ export default function AdminWorkspacesPage() {
   const createNewWorkspace = (values: CreateWorkspaceInput) =>
     createMutation.mutateAsync(values);
 
-  const requireSelectedWorkspace = () => {
-    if (selectedWorkspace === undefined) {
-      throw new Error('工作区详情已关闭');
-    }
-    return selectedWorkspace;
-  };
-
   return (
     <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
@@ -353,36 +346,33 @@ export default function AdminWorkspacesPage() {
             membersLoading={membersQuery.isLoading}
             onClose={() => setSelectedWorkspace(undefined)}
             onInvite={(accountId, reason) => {
-              const workspace = requireSelectedWorkspace();
               return applyWorkspaceChange(
                 inviteMutation.mutateAsync({
                   accountId,
                   reason,
-                  version: workspace.version,
-                  workspaceId: workspace.id,
+                  version: detailWorkspace.version,
+                  workspaceId: detailWorkspace.id,
                 }),
               );
             }}
             onMembersRetry={() => void membersQuery.refetch()}
             onRemove={(accountId, reason) => {
-              const workspace = requireSelectedWorkspace();
               return applyWorkspaceChange(
                 removeMutation.mutateAsync({
                   accountId,
                   reason,
-                  version: workspace.version,
-                  workspaceId: workspace.id,
+                  version: detailWorkspace.version,
+                  workspaceId: detailWorkspace.id,
                 }),
               );
             }}
             onTransfer={(accountId, reason) => {
-              const workspace = requireSelectedWorkspace();
               return applyWorkspaceChange(
                 transferMutation.mutateAsync({
                   accountId,
                   reason,
-                  version: workspace.version,
-                  workspaceId: workspace.id,
+                  version: detailWorkspace.version,
+                  workspaceId: detailWorkspace.id,
                 }),
               );
             }}

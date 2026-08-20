@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { AUDIT_PAGE_SIZE } from './constant';
 import type { AuditQueryParams, AuditRow } from './type';
 import {
   mergeAndSelectAuditRows,
@@ -185,6 +186,20 @@ describe('queryAuditRows', () => {
     });
     expect(result.data?.map((row) => row.id)).toEqual(['AUD-page-2']);
     expect(result.nextCursor).toBe('opaque-page-3');
+  });
+
+  it('缺少或非法 pageSize 时使用审计默认页大小', async () => {
+    listAuditEventsMock.mockResolvedValue({ items: [], nextCursor: null });
+
+    await runQuery({ range: 'all' });
+    expect(listAuditEventsMock).toHaveBeenLastCalledWith({
+      limit: AUDIT_PAGE_SIZE,
+    });
+
+    await runQuery({ pageSize: 0, range: 'all' });
+    expect(listAuditEventsMock).toHaveBeenLastCalledWith({
+      limit: AUDIT_PAGE_SIZE,
+    });
   });
 
   it.each([

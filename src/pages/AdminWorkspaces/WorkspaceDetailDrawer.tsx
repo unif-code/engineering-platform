@@ -89,17 +89,14 @@ export function WorkspaceDetailDrawer({
     ({ id }) => id !== workspace.owner.id,
   );
 
-  const confirmAction = async (values: WorkspaceActionFormValues) => {
-    if (actionState === undefined) {
-      return;
-    }
-    const accountId = actionState.leader?.id ?? values.accountId;
-    if (accountId === undefined) {
-      throw new Error('请选择目标账号');
-    }
-    if (actionState.action === 'invite') {
+  const confirmAction = async (
+    state: WorkspaceActionState,
+    values: WorkspaceActionFormValues,
+  ) => {
+    const accountId = state.leader?.id ?? values.accountId;
+    if (state.action === 'invite') {
       await onInvite(accountId, values.reason);
-    } else if (actionState.action === 'remove') {
+    } else if (state.action === 'remove') {
       await onRemove(accountId, values.reason);
     } else {
       await onTransfer(accountId, values.reason);
@@ -219,7 +216,7 @@ export function WorkspaceDetailDrawer({
           }
           leader={actionState.leader}
           onClose={() => setActionState(undefined)}
-          onConfirm={confirmAction}
+          onConfirm={(values) => confirmAction(actionState, values)}
           open
           workspace={workspace}
         />

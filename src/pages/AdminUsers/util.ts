@@ -53,7 +53,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 export function formatAccountError(error: unknown, fallback: string): string {
   if (!isRecord(error)) {
-    return error instanceof Error ? error.message : fallback;
+    return fallback;
   }
   const problem = isRecord(error.problem) ? error.problem : undefined;
   const detail =

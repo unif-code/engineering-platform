@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import type { OrganizationTreeResponse } from '@/features/administration';
 import { ApiError } from '@/services/transport';
 import { ORGANIZATION_TREE_FIXTURE } from '../../../tests/fixtures/accessGovernance';
 
@@ -144,6 +145,79 @@ describe('AdminOrganizationPage', () => {
     expect(within(members).getByRole('row', { name: /王悦/ })).toBeVisible();
     expect(within(members).getByRole('row', { name: /陈晓/ })).toBeVisible();
     expect(members).toHaveTextContent('负责人 吴桐 · 在册 7 人');
+  });
+
+  it('未知组织节点使用层级角色兜底并归入平台运营组', async () => {
+    administrationMocks.getOrganizationTree.mockResolvedValueOnce({
+      items: [
+        {
+          children: [
+            {
+              children: [
+                {
+                  children: [],
+                  displayName: '运行时成员',
+                  employeeNo: 'runtime-member',
+                  id: 'runtime-member-id',
+                  kind: 'MEMBER',
+                  superiorId: 'runtime-leader-id',
+                },
+              ],
+              displayName: '运行时 Leader',
+              employeeNo: 'runtime-leader',
+              id: 'runtime-leader-id',
+              kind: 'LEADER',
+              superiorId: 'runtime-manager-id',
+            },
+          ],
+          displayName: '运行时经理',
+          employeeNo: 'runtime-manager',
+          id: 'runtime-manager-id',
+          kind: 'MANAGER',
+          superiorId: null,
+        },
+      ],
+    } satisfies OrganizationTreeResponse);
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(await screen.findByRole('button', { name: /平台运营组/ }));
+    const members = await screen.findByRole('region', {
+      name: '平台运营组成员',
+    });
+    expect(
+      within(members).getByRole('row', { name: /运行时经理.*经理/ }),
+    ).toBeVisible();
+    expect(
+      within(members).getByRole('row', { name: /运行时 Leader.*Leader/ }),
+    ).toBeVisible();
+    expect(
+      within(members).getByRole('row', { name: /运行时成员.*成员/ }),
+    ).toBeVisible();
+  });
+
+  it('组织树加载失败展示 Problem 并允许重试', async () => {
+    administrationMocks.getOrganizationTree
+      .mockRejectedValueOnce(
+        new ApiError({
+          detail: '组织树暂时不可用',
+          requestId: 'request-org-retry',
+          status: 503,
+        }),
+      )
+      .mockResolvedValueOnce(ORGANIZATION_TREE_FIXTURE);
+    const user = userEvent.setup();
+    renderPage();
+
+    expect(await screen.findByText(/组织树暂时不可用/)).toHaveTextContent(
+      'requestId: request-org-retry',
+    );
+    await user.click(screen.getByRole('button', { name: /重\s*试/ }));
+
+    expect(
+      await screen.findByRole('region', { name: '部门概览' }),
+    ).toBeVisible();
+    expect(administrationMocks.getOrganizationTree).toHaveBeenCalledTimes(2);
   });
 
   it('普通员工只可选择 Leader，Leader 只可选择经理', async () => {

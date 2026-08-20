@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -6,6 +6,7 @@ import type {
   AuditEventsQuery,
   AuditEventsResponse,
 } from '@/features/administration';
+import { ApiError } from '@/services/transport';
 import { AUDIT_EVENT_FIXTURES } from '../../../tests/fixtures/accessGovernance';
 
 const administrationMocks = vi.hoisted(() => ({
@@ -225,6 +226,111 @@ describe('AuditPage', { timeout: 30_000 }, () => {
     expect(
       screen.queryByRole('combobox', { name: '目标类型' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('动作与风险筛选重置分页并只展示同时匹配的审计事件', async () => {
+    const user = userEvent.setup();
+    renderPage();
+    await screen.findByRole('row', { name: /AUD-2026-0810-001/ }, INITIAL_WAIT);
+
+    await selectOption(user, '审计动作', '配置发布 · Config Publish');
+    await selectOption(user, '风险等级', '低');
+
+    expect(
+      await screen.findByRole('row', { name: /AUD-2026-0810-004/ }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('row', { name: /AUD-2026-0810-001/ }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('未知审计动作保留后端标签而不丢失事件', async () => {
+    administrationMocks.listAuditEvents.mockResolvedValueOnce({
+      items: [
+        {
+          ...AUDIT_EVENT_FIXTURES[0],
+          action: 'Future Governance Action',
+          id: 'AUD-RUNTIME-ACTION',
+        },
+      ],
+      nextCursor: null,
+    });
+    renderPage();
+
+    const row = await screen.findByRole(
+      'row',
+      { name: /AUD-RUNTIME-ACTION/ },
+      INITIAL_WAIT,
+    );
+    expect(row).toHaveTextContent('Future Governance Action');
+  });
+
+  it('首屏加载失败清空列表并展示 Problem', async () => {
+    administrationMocks.listAuditEvents.mockRejectedValueOnce(
+      new ApiError({
+        detail: '审计服务暂时不可用',
+        requestId: 'request-audit-initial-error',
+        status: 503,
+      }),
+    );
+    renderPage();
+
+    expect(await screen.findByText(/审计服务暂时不可用/)).toHaveTextContent(
+      'requestId: request-audit-initial-error',
+    );
+    expect(screen.getByText('共 0 条')).toBeVisible();
+  });
+
+  it('页面卸载后忽略仍在途审计成功结果', async () => {
+    let resolvePending: (value: AuditEventsResponse) => void = () => {
+      throw new Error('pending audit request was not started');
+    };
+    administrationMocks.listAuditEvents.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePending = resolve;
+        }),
+    );
+    const view = renderPage();
+    await waitFor(() => {
+      expect(administrationMocks.listAuditEvents).toHaveBeenCalledTimes(1);
+    });
+
+    view.unmount();
+    await act(async () => {
+      resolvePending({ items: [...AUDIT_EVENT_FIXTURES], nextCursor: null });
+    });
+
+    expect(screen.queryByRole('row', { name: /AUD-2026-0810-001/ })).toBeNull();
+  });
+
+  it('页面卸载后忽略仍在途审计 Problem', async () => {
+    let rejectPending: (reason: unknown) => void = () => {
+      throw new Error('pending audit request was not started');
+    };
+    administrationMocks.listAuditEvents.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectPending = reject;
+        }),
+    );
+    const view = renderPage();
+    await waitFor(() => {
+      expect(administrationMocks.listAuditEvents).toHaveBeenCalledTimes(1);
+    });
+
+    view.unmount();
+    await act(async () => {
+      rejectPending(
+        new ApiError({
+          detail: '页面卸载后的审计错误',
+          requestId: 'unmounted-audit-request',
+          status: 503,
+        }),
+      );
+    });
+
+    expect(screen.queryByText(/页面卸载后的审计错误/)).not.toBeInTheDocument();
   });
 
   it('按时间查询契约端点，通用关键字只在页面本地过滤', async () => {

@@ -140,16 +140,16 @@ export default function AuditPage() {
     [message],
   );
 
-  const loadMore = useCallback(() => {
-    if (!nextCursor) {
-      return;
-    }
-    if (cursor === nextCursor) {
-      void actionRef.current?.reload();
-      return;
-    }
-    setCursor(nextCursor);
-  }, [cursor, nextCursor]);
+  const loadMore = useCallback(
+    (next: string) => {
+      if (cursor === next) {
+        void actionRef.current?.reload();
+        return;
+      }
+      setCursor(next);
+    },
+    [cursor],
+  );
 
   const showStaticAction = (actionLabel: string) => {
     message.info(`静态原型操作：${actionLabel}，未保存任何业务数据。`);
@@ -364,7 +364,7 @@ export default function AuditPage() {
 
         {nextCursor ? (
           <div className={styles.loadMore}>
-            <Button loading={loadingMore} onClick={loadMore}>
+            <Button loading={loadingMore} onClick={() => loadMore(nextCursor)}>
               加载更多
             </Button>
           </div>

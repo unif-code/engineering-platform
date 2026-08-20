@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -438,6 +438,118 @@ describe('AdminWorkspacesPage', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('工作区名称入口打开详情且关闭后移除抽屉', async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    await user.click(
+      await screen.findByRole(
+        'button',
+        { name: '查看工作区 营销工作区' },
+        INITIAL_WAIT,
+      ),
+    );
+    const drawer = await screen.findByRole('dialog', {
+      name: '工作区详情：营销工作区',
+    });
+    await user.click(within(drawer).getByRole('button', { name: '关闭' }));
+
+    await waitFor(() => {
+      expect(drawer).not.toBeInTheDocument();
+    });
+  });
+
+  it('成员投影失败展示 Problem 并允许重试恢复', async () => {
+    administrationMocks.listWorkspaceMembers
+      .mockRejectedValueOnce(
+        new ApiError({
+          detail: '成员投影暂时不可用',
+          requestId: 'request-members-retry',
+          status: 503,
+        }),
+      )
+      .mockResolvedValueOnce(initialMarketingMembers);
+    const user = userEvent.setup();
+    renderPage();
+
+    const workspaceRow = await screen.findByRole(
+      'row',
+      { name: /营销工作区/ },
+      INITIAL_WAIT,
+    );
+    await user.click(
+      within(workspaceRow).getByRole('button', {
+        name: '查看配置 营销工作区',
+      }),
+    );
+    const drawer = await screen.findByRole('dialog', {
+      name: '工作区详情：营销工作区',
+    });
+    expect(
+      await within(drawer).findByText(/成员投影暂时不可用/),
+    ).toHaveTextContent('requestId: request-members-retry');
+    await user.click(within(drawer).getByRole('button', { name: /重\s*试/ }));
+
+    expect(
+      await within(drawer).findByRole('row', { name: /陈晓/ }),
+    ).toBeVisible();
+    expect(administrationMocks.listWorkspaceMembers).toHaveBeenCalledTimes(2);
+  });
+
+  it('未知工作区安全保留后端 Owner 并展示可用计数与缺省字段', async () => {
+    administrationMocks.listWorkspaces.mockResolvedValueOnce({
+      items: [
+        {
+          id: 'runtime-workspace',
+          leaders: [],
+          memberCount: 2,
+          name: '运行时工作区',
+          owner: {
+            displayName: '运行时 Owner',
+            employeeNo: 'runtime-owner',
+            id: 'runtime-owner-id',
+          },
+          status: 'ACTIVE',
+          version: 7,
+        },
+      ],
+      total: 1,
+    } satisfies WorkspaceListResponse);
+    administrationMocks.listWorkspaceMembers.mockResolvedValueOnce({
+      items: [
+        {
+          accountId: 'runtime-owner-id',
+          displayName: '运行时 Owner',
+          employeeNo: 'runtime-owner',
+          source: 'OWNER',
+        },
+      ],
+    } satisfies WorkspaceMembersResponse);
+    const user = userEvent.setup();
+    renderPage();
+
+    const row = await screen.findByRole(
+      'row',
+      { name: /运行时工作区.*运行时 Owner/ },
+      INITIAL_WAIT,
+    );
+    expect(row).toHaveTextContent('2 人');
+    expect(row).toHaveTextContent('● —');
+    expect(within(row).getByText('—')).toBeVisible();
+    await user.click(
+      within(row).getByRole('button', { name: '查看配置 运行时工作区' }),
+    );
+    const drawer = await screen.findByRole('dialog', {
+      name: '工作区详情：运行时工作区',
+    });
+    expect(
+      within(drawer).getByRole('row', { name: /Owner.*运行时 Owner/ }),
+    ).toBeVisible();
+    expect(
+      within(drawer).getByRole('listitem', { name: /运行时 Owner/ }),
+    ).toBeVisible();
+  });
+
   it('列表请求延迟返回时仍只渲染服务端结果', async () => {
     let resolveInitial: (value: WorkspaceListResponse) => void = () => {
       throw new Error('initial workspace request was not started');
@@ -460,6 +572,60 @@ describe('AdminWorkspacesPage', () => {
       await screen.findByRole('row', { name: /营销工作区/ }, INITIAL_WAIT),
     ).toBeInTheDocument();
     expect(screen.getByRole('row', { name: /交易工作区/ })).toBeInTheDocument();
+  });
+
+  it('页面卸载后忽略仍在途工作区成功结果', async () => {
+    let resolvePending: (value: WorkspaceListResponse) => void = () => {
+      throw new Error('pending workspace request was not started');
+    };
+    administrationMocks.listWorkspaces.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePending = resolve;
+        }),
+    );
+    const view = renderPage();
+    await waitFor(() => {
+      expect(administrationMocks.listWorkspaces).toHaveBeenCalled();
+    });
+
+    view.unmount();
+    await act(async () => {
+      resolvePending(initialWorkspacePage);
+    });
+
+    expect(screen.queryByRole('row', { name: /营销工作区/ })).toBeNull();
+  });
+
+  it('页面卸载后忽略仍在途工作区 Problem', async () => {
+    let rejectPending: (reason: unknown) => void = () => {
+      throw new Error('pending workspace request was not started');
+    };
+    administrationMocks.listWorkspaces.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectPending = reject;
+        }),
+    );
+    const view = renderPage();
+    await waitFor(() => {
+      expect(administrationMocks.listWorkspaces).toHaveBeenCalled();
+    });
+
+    view.unmount();
+    await act(async () => {
+      rejectPending(
+        new ApiError({
+          detail: '页面卸载后的工作区错误',
+          requestId: 'unmounted-workspace-request',
+          status: 503,
+        }),
+      );
+    });
+
+    expect(
+      screen.queryByText(/页面卸载后的工作区错误/),
+    ).not.toBeInTheDocument();
   });
 
   it('Owner 移除入口禁用并提示先转让，转让候选仅含受邀 Leader', async () => {

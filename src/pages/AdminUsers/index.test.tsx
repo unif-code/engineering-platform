@@ -530,6 +530,57 @@ describe('AdminUsersPage', () => {
     expect(screen.queryByRole('row', { name: /00002002.*何山/ })).toBeNull();
   });
 
+  it('后端返回未知账号时安全展示缺省组织、角色和登录时间', async () => {
+    administrationMocks.listAccounts.mockResolvedValueOnce(
+      accountPage([
+        {
+          displayName: '运行时账号',
+          employeeNo: 'runtime-account',
+          etag: '"runtime-v1"',
+          id: 'runtime-account-id',
+          profession: null,
+          status: 'ENABLED',
+        },
+      ]),
+    );
+    renderPage();
+
+    const row = await screen.findByRole(
+      'row',
+      { name: /runtime-account.*运行时账号/ },
+      PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+    );
+    expect(within(row).getAllByText('—')).toHaveLength(3);
+  });
+
+  it('页面卸载后忽略仍在途请求的成功结果', async () => {
+    let resolvePendingRequest: (value: AccountListResponse) => void = () => {
+      throw new Error('pending account request was not started');
+    };
+    administrationMocks.listAccounts.mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolvePendingRequest = resolve;
+        }),
+    );
+    const pageShell = (showPage: boolean) => (
+      <ConfigProvider theme={{ token: { motion: false } }}>
+        <App>{showPage ? <AdminUsersPage /> : null}</App>
+      </ConfigProvider>
+    );
+    const view = render(pageShell(true));
+    await waitFor(() => {
+      expect(administrationMocks.listAccounts).toHaveBeenCalledTimes(1);
+    });
+
+    view.rerender(pageShell(false));
+    await act(async () => {
+      resolvePendingRequest(accountPage());
+    });
+
+    expect(screen.queryByRole('row', { name: /00002002.*何山/ })).toBeNull();
+  });
+
   it('页面卸载后忽略仍在途请求的 Problem', async () => {
     let rejectPendingRequest: (reason: unknown) => void = () => {
       throw new Error('pending account request was not started');

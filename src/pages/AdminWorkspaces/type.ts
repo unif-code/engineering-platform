@@ -26,7 +26,7 @@ export interface WorkspaceFormValues {
 export type WorkspaceAction = 'invite' | 'remove' | 'transfer';
 
 export interface WorkspaceActionFormValues {
-  accountId?: string;
+  accountId: string;
   reason: string;
 }
 

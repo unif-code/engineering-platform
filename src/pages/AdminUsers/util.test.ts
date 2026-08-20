@@ -121,6 +121,45 @@ describe('queryUserRows', () => {
     });
   });
 
+  it('从 ProTable filter 提取 profession/status，并把 ascend 转成 asc', () => {
+    expect(
+      toAccountListQuery(
+        {
+          current: 1,
+          displayName: '   ',
+          employeeNo: '   ',
+          pageSize: 20,
+        },
+        { profession: 'ascend' },
+        { profession: ['研发'], status: ['DISABLED'] },
+      ),
+    ).toEqual({
+      page: 1,
+      pageSize: 20,
+      profession: '研发',
+      sortBy: 'profession',
+      sortOrder: 'asc',
+      status: 'DISABLED',
+    });
+  });
+
+  it('null/all filter 与无效分页都回退安全默认值', () => {
+    expect(
+      toAccountListQuery(
+        { current: Number.NaN, pageSize: undefined },
+        { status: null },
+        { profession: [null as never], status: null },
+      ),
+    ).toEqual({ page: 1, pageSize: 10 });
+    expect(
+      toAccountListQuery(
+        { current: 1, pageSize: 10 },
+        {},
+        { profession: ['all'] },
+      ),
+    ).toEqual({ page: 1, pageSize: 10 });
+  });
+
   it('无匹配项时把服务端空页适配为 ProTable 成功响应', async () => {
     const result = await runQuery({
       current: 1,
@@ -152,4 +191,19 @@ describe('queryUserRows', () => {
       );
     },
   );
+
+  it.each([
+    [new Error('网络中断'), '网络中断'],
+    ['offline', '账号操作失败'],
+    [{ problem: null }, '账号操作失败'],
+    [
+      Object.assign(new Error('兼容错误'), {
+        name: 'ApiError',
+        problem: { detail: 422 },
+      }),
+      '兼容错误',
+    ],
+  ])('错误输入 %j 使用稳定消息', (error, expected) => {
+    expect(formatAccountError(error, '账号操作失败')).toBe(expected);
+  });
 });

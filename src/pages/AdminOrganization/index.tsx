@@ -72,8 +72,9 @@ export default function AdminOrganizationPage() {
   const mixClasses = [styles.mix0, styles.mix1, styles.mix2, styles.mix3];
   const [departmentOpen, setDepartmentOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<OrganizationTreeNode>();
-  const [selectedDepartmentKey, setSelectedDepartmentKey] =
-    useState('marketing');
+  const [selectedDepartment, setSelectedDepartment] = useState<
+    (typeof ORGANIZATION_DEPARTMENTS)[number]
+  >(ORGANIZATION_DEPARTMENTS[0]);
   const organizationQuery = useQuery({
     queryFn: getOrganizationTree,
     queryKey: ['admin-organization'],
@@ -114,16 +115,11 @@ export default function AdminOrganizationPage() {
   }, [allAccounts, editingAccount]);
 
   const departments = ORGANIZATION_DEPARTMENTS;
-  const selectedDepartment =
-    departments.find(({ key }) => key === selectedDepartmentKey) ??
-    departments[0];
   const departmentMembers = useMemo(
     () =>
-      selectedDepartment === undefined
-        ? []
-        : allAccounts.filter(
-            ({ departmentKey }) => departmentKey === selectedDepartment.key,
-          ),
+      allAccounts.filter(
+        ({ departmentKey }) => departmentKey === selectedDepartment.key,
+      ),
     [allAccounts, selectedDepartment],
   );
   const memberColumns = useMemo<TableColumnsType<OrganizationTreeNode>>(
@@ -182,12 +178,12 @@ export default function AdminOrganizationPage() {
     [styles.memberButton, styles.memberIdentity],
   );
 
-  const confirmSuperior = async (values: SuperiorFormValues) => {
-    if (editingAccount === undefined) {
-      return;
-    }
+  const confirmSuperior = async (
+    account: OrganizationTreeNode,
+    values: SuperiorFormValues,
+  ) => {
     await superiorMutation.mutateAsync({
-      accountId: editingAccount.id,
+      accountId: account.id,
       values,
     });
     await organizationQuery.refetch();
@@ -253,7 +249,7 @@ export default function AdminOrganizationPage() {
                       selected ? styles.departmentCardSelected : ''
                     }`}
                     key={department.key}
-                    onClick={() => setSelectedDepartmentKey(department.key)}
+                    onClick={() => setSelectedDepartment(department)}
                     type="text"
                   >
                     <span className={styles.departmentHeading}>
@@ -299,33 +295,31 @@ export default function AdminOrganizationPage() {
                 );
               })}
             </section>
-            {selectedDepartment ? (
-              <section
-                aria-label={`${selectedDepartment.name}成员`}
-                className={styles.memberCard}
-              >
-                <div className={styles.memberHeader}>
-                  <Typography.Text strong>
-                    {selectedDepartment.name}
-                  </Typography.Text>
-                  <Typography.Text type="secondary">
-                    负责人 {selectedDepartment.lead} · 在册{' '}
-                    {departmentMembers.length} 人
-                  </Typography.Text>
-                </div>
-                <Table<OrganizationTreeNode>
-                  columns={memberColumns}
-                  dataSource={departmentMembers}
-                  locale={{
-                    emptyText: <Empty description="该部门暂无在册成员" />,
-                  }}
-                  pagination={false}
-                  rowKey="id"
-                  scroll={{ x: 680 }}
-                  size="small"
-                />
-              </section>
-            ) : null}
+            <section
+              aria-label={`${selectedDepartment.name}成员`}
+              className={styles.memberCard}
+            >
+              <div className={styles.memberHeader}>
+                <Typography.Text strong>
+                  {selectedDepartment.name}
+                </Typography.Text>
+                <Typography.Text type="secondary">
+                  负责人 {selectedDepartment.lead} · 在册{' '}
+                  {departmentMembers.length} 人
+                </Typography.Text>
+              </div>
+              <Table<OrganizationTreeNode>
+                columns={memberColumns}
+                dataSource={departmentMembers}
+                locale={{
+                  emptyText: <Empty description="该部门暂无在册成员" />,
+                }}
+                pagination={false}
+                rowKey="id"
+                scroll={{ x: 680 }}
+                size="small"
+              />
+            </section>
           </>
         )}
       </div>
@@ -334,7 +328,7 @@ export default function AdminOrganizationPage() {
         <SuperiorModal
           account={editingAccount}
           onClose={() => setEditingAccount(undefined)}
-          onConfirm={confirmSuperior}
+          onConfirm={(values) => confirmSuperior(editingAccount, values)}
           open
           targets={superiorTargets}
         />
