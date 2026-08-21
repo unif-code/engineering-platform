@@ -953,21 +953,56 @@ describe('AdminWorkspacesPage', () => {
   });
 
   it('403 列表拒绝清空旧数据并展示 Problem 原文与 requestId', async () => {
-    administrationMocks.listWorkspaces.mockRejectedValueOnce(
-      createProblemError({
-        detail: '无 Workspace 治理权限',
-        requestId: 'req-workspace-list-403',
-        status: 403,
-      }),
+    let resolveOrganizationTree:
+      | ((value: OrganizationTreeResponse) => void)
+      | undefined;
+    const pendingOrganizationTree = new Promise<OrganizationTreeResponse>(
+      (resolve) => {
+        resolveOrganizationTree = resolve;
+      },
     );
+    administrationMocks.getOrganizationTree.mockReturnValue(
+      pendingOrganizationTree,
+    );
+    administrationMocks.listWorkspaces
+      .mockResolvedValueOnce(initialWorkspacePage)
+      .mockRejectedValueOnce(
+        createProblemError({
+          detail: '无 Workspace 治理权限',
+          requestId: 'req-workspace-list-403',
+          status: 403,
+        }),
+      );
     renderPage();
+
+    expect(
+      await screen.findByRole('row', { name: /营销工作区/ }, INITIAL_WAIT),
+    ).toBeVisible();
+    expect(screen.getByRole('row', { name: /交易工作区/ })).toBeVisible();
+
+    await act(async () => {
+      if (resolveOrganizationTree === undefined) {
+        throw new Error('organization request was not started');
+      }
+      resolveOrganizationTree(organizationTree);
+      await pendingOrganizationTree;
+    });
 
     expect(await screen.findByText(/无 Workspace 治理权限/)).toHaveTextContent(
       'requestId: req-workspace-list-403',
     );
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('row', { name: /营销工作区/ }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('row', { name: /交易工作区/ }),
+      ).not.toBeInTheDocument();
+    }, INITIAL_WAIT);
     expect(
-      screen.queryByRole('row', { name: /营销工作区/ }),
-    ).not.toBeInTheDocument();
+      await screen.findByText('暂无真实工作区', {}, INITIAL_WAIT),
+    ).toBeVisible();
     expect(screen.queryByText(/共 \d+ 个工作区/)).not.toBeInTheDocument();
+    expect(administrationMocks.listWorkspaces).toHaveBeenCalledTimes(2);
   });
 });
