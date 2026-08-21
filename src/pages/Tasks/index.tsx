@@ -1,7 +1,1 @@
-import { TaskListPage } from './TaskList';
-
-export { TaskListPage } from './TaskList';
-
-export default function TasksPage() {
-  return <TaskListPage />;
-}
+export { TasksScreen as default } from '@/features/portal';
