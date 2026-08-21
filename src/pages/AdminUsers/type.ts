@@ -4,20 +4,12 @@ import type {
   AccountSummary,
 } from '@/features/administration';
 
-export interface UserRow extends AccountSummary {
-  lastLogin?: string;
-  roles?: readonly string[];
-  superior?: string;
-  team?: string;
-}
+export type UserRow = AccountSummary;
 
 export type UserStatus = AccountStatus;
 export interface UserFormValues {
   displayName: string;
   employeeNo: string;
-  role: string;
-  superior: string;
-  team: string;
 }
 export type CredentialReceipt = AccountCredentialReceipt;
 

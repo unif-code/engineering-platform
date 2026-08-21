@@ -61,25 +61,11 @@ function renderPage() {
   );
 }
 
-async function selectOption(
-  user: UserEvent,
-  label: string,
-  option: string,
-  container?: HTMLElement,
-) {
-  const query = container === undefined ? screen : within(container);
-  await user.click(query.getByRole('combobox', { name: label }));
-  await user.click(await screen.findByRole('option', { name: option }));
-}
-
 async function fillCreateForm(
   user: UserEvent,
   values: {
     displayName: string;
     employeeNo: string;
-    role?: string;
-    superior?: string;
-    team?: string;
   },
 ) {
   await screen.findByRole(
@@ -98,9 +84,6 @@ async function fillCreateForm(
     within(dialog).getByRole('textbox', { name: '姓名' }),
     values.displayName,
   );
-  await selectOption(user, '所属 Team', values.team ?? '营销', dialog);
-  await selectOption(user, '角色', values.role ?? '前端开发', dialog);
-  await selectOption(user, '直属上级', values.superior ?? '无', dialog);
   return dialog;
 }
 
@@ -163,6 +146,20 @@ describe('AdminUsersPage', () => {
         '禁用即时失效 Session 与访问权；历史业务 actor 与 Audit 保留 · 超级管理员账号受平台保护',
       ),
     ).toBeInTheDocument();
+  });
+
+  it('只把公开 Feature 返回的账号字段投影到最终七列表格', async () => {
+    renderPage();
+
+    const row = await screen.findByRole(
+      'row',
+      { name: /00002002.*何山/ },
+      PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+    );
+    expect(within(row).getAllByText('—')).toHaveLength(3);
+    expect(row).not.toHaveTextContent('交易');
+    expect(row).not.toHaveTextContent('前端开发');
+    expect(row).not.toHaveTextContent('08-06 10:44');
   });
 
   it(
@@ -445,10 +442,9 @@ describe('AdminUsersPage', () => {
       const drawer = await fillCreateForm(user, {
         displayName: '临时用户',
         employeeNo: '00000009',
-        role: '前端开发',
-        superior: '李强 · 开发Leader · 营销',
-        team: '营销',
       });
+      expect(within(drawer).getByText('当前版本暂未接入')).toBeVisible();
+      expect(within(drawer).queryByRole('combobox')).toBeNull();
       await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
 
       expect(administrationMocks.createAccount).toHaveBeenCalledWith({
@@ -465,7 +461,7 @@ describe('AdminUsersPage', () => {
       });
       expect(
         await screen.findByRole('row', { name: /00000009.*临时用户/ }),
-      ).toHaveTextContent('前端开发');
+      ).toHaveTextContent('—');
     },
     INTERACTION_TEST_TIMEOUT,
   );
@@ -493,9 +489,6 @@ describe('AdminUsersPage', () => {
       const drawer = await fillCreateForm(user, {
         displayName: '创建失败用户',
         employeeNo: '00002002',
-        role: '前端开发',
-        superior: '无',
-        team: '营销',
       });
       await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
 
@@ -527,6 +520,7 @@ describe('AdminUsersPage', () => {
     expect(await screen.findByText(/无账号治理权限/)).toHaveTextContent(
       'requestId: req-account-list-403',
     );
+    expect(screen.getByRole('button', { name: '重试加载账号' })).toBeVisible();
     expect(screen.queryByRole('row', { name: /00002002.*何山/ })).toBeNull();
   });
 

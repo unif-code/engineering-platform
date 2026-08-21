@@ -7,9 +7,8 @@ import {
   type ProTableProps,
 } from '@ant-design/pro-components';
 import { useMutation, useQuery } from '@umijs/max';
-import { App, Button, Segmented, Typography } from 'antd';
+import { Alert, App, Button, Empty, Segmented, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { SemanticTag } from '@/components/SemanticTag';
 import {
   createGrant,
   formatGovernanceError,
@@ -18,12 +17,7 @@ import {
   listWorkspaces,
   revokeGrant,
 } from '@/features/administration';
-import {
-  GRANT_CAPABILITY_LABELS,
-  GRANT_FILTER_OPTIONS,
-  GRANT_PRINCIPAL_META,
-  toGrantRow,
-} from './constant';
+import { GRANT_FILTER_OPTIONS } from './constant';
 import { GrantModal } from './GrantModal';
 import { useStyles } from './index.style';
 import { RevokeGrantModal } from './RevokeGrantModal';
@@ -45,6 +39,7 @@ export default function AdminGrantsPage() {
   const [allGrants, setAllGrants] = useState<GrantRow[]>([]);
   const [grantOpen, setGrantOpen] = useState(false);
   const [revokingGrant, setRevokingGrant] = useState<GrantRow>();
+  const [listError, setListError] = useState<string>();
 
   const accountsQuery = useQuery({
     queryFn: () =>
@@ -131,7 +126,7 @@ export default function AdminGrantsPage() {
             grant.scope.id === null
               ? undefined
               : workspacesById.get(grant.scope.id);
-          return toGrantRow({
+          return {
             ...grant,
             principal: account
               ? {
@@ -143,13 +138,11 @@ export default function AdminGrantsPage() {
             scope: workspace
               ? { ...grant.scope, label: workspace.name }
               : grant.scope,
-          });
+          };
         });
+        setListError(undefined);
         setAllGrants(rows);
         const data = rows.filter((grant) => {
-          if (requestParams.filter === 'high-risk') {
-            return grant.risk === 'HIGH';
-          }
           if (requestParams.filter === 'temporary') {
             return grant.validTo !== null;
           }
@@ -161,7 +154,9 @@ export default function AdminGrantsPage() {
           return { data: [], success: false, total: 0 };
         }
         setAllGrants([]);
-        message.error(formatGovernanceError(error, 'Grant 列表加载失败'));
+        const detail = formatGovernanceError(error, 'Grant 列表加载失败');
+        setListError(detail);
+        message.error(detail);
         return { data: [], success: true, total: 0 };
       }
     },
@@ -180,26 +175,14 @@ export default function AdminGrantsPage() {
   }, [accountsQuery.data, reloadGrants, workspacesQuery.data]);
 
   const principalOptions = useMemo<GrantPrincipalOption[]>(
-    () => [
-      ...(accountsQuery.data?.items ?? []).map(
+    () =>
+      (accountsQuery.data?.items ?? []).map(
         ({ displayName, employeeNo, id }) => ({
           label: `${employeeNo} · ${displayName}`,
           type: 'ACCOUNT' as const,
           value: id,
         }),
       ),
-      { label: '管理员', type: 'ROLE', value: 'role-administrator' },
-      {
-        label: '开发Leader',
-        type: 'ROLE',
-        value: 'role-development-leader',
-      },
-      {
-        label: 'svc-agent-runner',
-        type: 'SERVICE_ACCOUNT',
-        value: 'service-agent-runner',
-      },
-    ],
     [accountsQuery.data?.items],
   );
   const scopeOptions = useMemo<GrantScopeOption[]>(
@@ -209,11 +192,6 @@ export default function AdminGrantsPage() {
         label: name,
         type: 'WORKSPACE' as const,
         value: id,
-      })),
-      ...['营销部门', '交易部门', '中台部门'].map((label) => ({
-        label,
-        type: 'DEPARTMENT' as const,
-        value: `department-${label}`,
       })),
     ],
     [workspacesQuery.data?.items],
@@ -231,7 +209,7 @@ export default function AdminGrantsPage() {
       },
       {
         label: '高危能力授权',
-        value: allGrants.filter(({ risk }) => risk === 'HIGH').length,
+        value: '—',
       },
     ],
     [allGrants],
@@ -241,12 +219,7 @@ export default function AdminGrantsPage() {
     () => [
       {
         dataIndex: ['principal', 'displayName'],
-        render: (_, row) => (
-          <span className={styles.principal}>
-            <SemanticTag {...GRANT_PRINCIPAL_META[row.principal.type]} />
-            <span>{row.principal.displayName}</span>
-          </span>
-        ),
+        render: (_, row) => row.principal.displayName,
         title: '主体',
         width: 170,
       },
@@ -254,9 +227,6 @@ export default function AdminGrantsPage() {
         dataIndex: 'capability',
         render: (_, row) => (
           <span className={styles.capability}>
-            <span>
-              {GRANT_CAPABILITY_LABELS[row.capability] ?? row.capability}
-            </span>
             <span className={styles.code}>{row.capability}</span>
           </span>
         ),
@@ -270,7 +240,7 @@ export default function AdminGrantsPage() {
       },
       {
         dataIndex: 'source',
-        render: (_, row) => (row.source === 'DIRECT' ? '直接' : '继承'),
+        render: (_, row) => (row.source === 'MANUAL' ? '直接' : '继承'),
         title: '来源',
         width: 80,
       },
@@ -286,7 +256,7 @@ export default function AdminGrantsPage() {
         width: 170,
       },
       {
-        dataIndex: 'grantedBy',
+        render: () => '—',
         title: '授予人',
         width: 100,
       },
@@ -307,7 +277,7 @@ export default function AdminGrantsPage() {
         width: 70,
       },
     ],
-    [styles.capability, styles.code, styles.principal],
+    [styles.capability, styles.code],
   );
 
   const submitGrant = async (input: GrantSubmitInput) => {
@@ -356,10 +326,48 @@ export default function AdminGrantsPage() {
           value={viewFilter}
         />
 
+        {accountsQuery.error ? (
+          <Alert
+            showIcon
+            title={formatGovernanceError(
+              accountsQuery.error,
+              'Grant 主体加载失败',
+            )}
+            type="error"
+          />
+        ) : null}
+        {workspacesQuery.error ? (
+          <Alert
+            showIcon
+            title={formatGovernanceError(
+              workspacesQuery.error,
+              'Grant 范围加载失败',
+            )}
+            type="error"
+          />
+        ) : null}
+        {listError ? (
+          <Alert
+            action={
+              <Button
+                aria-label="重试加载 Grant"
+                onClick={() => void reloadGrants()}
+                size="small"
+              >
+                重试
+              </Button>
+            }
+            showIcon
+            title={listError}
+            type="error"
+          />
+        ) : null}
+
         <ProTable<GrantRow, GrantQueryParams>
           actionRef={actionRef}
           columns={columns}
           key={viewFilter}
+          locale={{ emptyText: <Empty description="暂无数据" /> }}
           options={false}
           pagination={false}
           params={params}

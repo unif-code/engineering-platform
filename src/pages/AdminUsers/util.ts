@@ -4,7 +4,6 @@ import {
   type AccountSortField,
   listAccounts,
 } from '@/features/administration';
-import { toUserRow } from './constant';
 import type { UserQueryParams, UserRow, UserStatus } from './type';
 
 type UserRequest = NonNullable<
@@ -112,7 +111,7 @@ export function toAccountListQuery(
 export const queryUserRows: UserRequest = async (params, sort, filter) => {
   const page = await listAccounts(toAccountListQuery(params, sort, filter));
   return {
-    data: page.items.map(toUserRow),
+    data: page.items,
     success: true,
     total: page.total,
   };

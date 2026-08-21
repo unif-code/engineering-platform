@@ -5,7 +5,7 @@ import {
   ProTable,
   type ProTableProps,
 } from '@ant-design/pro-components';
-import { App, Avatar, Button, Space } from 'antd';
+import { Alert, App, Avatar, Button, Empty, Space } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
 import {
@@ -42,10 +42,10 @@ export default function AdminUsersPage() {
   const { styles } = useStyles();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
-  const presentationOverridesRef = useRef(new Map<string, Partial<UserRow>>());
   const [createOpen, setCreateOpen] = useState(false);
   const [actionState, setActionState] = useState<ActionState>();
   const [credentialState, setCredentialState] = useState<CredentialState>();
+  const [listError, setListError] = useState<string>();
 
   const invalidatePendingRequests = useCallback(() => {
     requestSequenceRef.current += 1;
@@ -68,18 +68,15 @@ export default function AdminUsersPage() {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        return {
-          ...result,
-          data: result.data?.map((row) => ({
-            ...row,
-            ...presentationOverridesRef.current.get(row.id),
-          })),
-        };
+        setListError(undefined);
+        return result;
       } catch (error) {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        message.error(formatAccountError(error, '账号列表加载失败'));
+        const detail = formatAccountError(error, '账号列表加载失败');
+        setListError(detail);
+        message.error(detail);
         return { data: [], success: true, total: 0 };
       }
     },
@@ -114,13 +111,13 @@ export default function AdminUsersPage() {
       },
       {
         dataIndex: 'team',
-        render: (_, row) => row.team ?? '—',
+        render: () => '—',
         title: 'Team',
         width: 100,
       },
       {
         dataIndex: 'roles',
-        render: (_, row) => row.roles?.join(' · ') ?? '—',
+        render: () => '—',
         title: '角色标签',
         width: 220,
       },
@@ -132,9 +129,7 @@ export default function AdminUsersPage() {
       },
       {
         dataIndex: 'lastLogin',
-        render: (_, row) => (
-          <span className={styles.lastLogin}>{row.lastLogin ?? '—'}</span>
-        ),
+        render: () => <span className={styles.lastLogin}>—</span>,
         title: '最近登录',
         width: 140,
       },
@@ -229,9 +224,27 @@ export default function AdminUsersPage() {
           </Button>
         </header>
 
+        {listError ? (
+          <Alert
+            action={
+              <Button
+                aria-label="重试加载账号"
+                onClick={() => void reloadAccounts()}
+                size="small"
+              >
+                重试
+              </Button>
+            }
+            showIcon
+            title={listError}
+            type="error"
+          />
+        ) : null}
+
         <ProTable<UserRow, UserQueryParams>
           actionRef={actionRef}
           columns={columns}
+          locale={{ emptyText: <Empty description="暂无数据" /> }}
           onChange={invalidatePendingRequests}
           options={false}
           pagination={{ pageSize: 20, showSizeChanger: false }}
@@ -251,13 +264,7 @@ export default function AdminUsersPage() {
         {createOpen ? (
           <UserModal
             onClose={() => setCreateOpen(false)}
-            onCreated={(receipt, values) => {
-              presentationOverridesRef.current.set(receipt.account.id, {
-                lastLogin: '—',
-                roles: [values.role],
-                superior: values.superior,
-                team: values.team,
-              });
+            onCreated={(receipt) => {
               setCredentialState({ kind: 'create', receipt });
               void reloadAccounts();
             }}

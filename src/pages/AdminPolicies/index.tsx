@@ -354,6 +354,15 @@ export default function AdminPoliciesPage() {
             ) : null}
             {catalogQuery.isError ? (
               <Alert
+                action={
+                  <Button
+                    aria-label="重试加载 Policy Catalog"
+                    onClick={() => void catalogQuery.refetch()}
+                    size="small"
+                  >
+                    重试
+                  </Button>
+                }
                 showIcon
                 title={formatGovernanceError(
                   catalogQuery.error,
@@ -503,6 +512,15 @@ export default function AdminPoliciesPage() {
 
         {versionsQuery.isError ? (
           <Alert
+            action={
+              <Button
+                aria-label="重试加载 Policy 历史"
+                onClick={() => void versionsQuery.refetch()}
+                size="small"
+              >
+                重试
+              </Button>
+            }
             showIcon
             title={formatGovernanceError(
               versionsQuery.error,

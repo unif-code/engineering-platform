@@ -57,13 +57,13 @@ describe('queryUserRows', () => {
     });
     expect(result).toEqual({
       data: [
-        expect.objectContaining({
+        {
+          displayName: '吴桐',
           employeeNo: 'E1002',
-          lastLogin: '08-06 08:41',
-          roles: ['产品Leader'],
-          superior: '赵敏 · 经理',
-          team: '营销',
-        }),
+          id: 'account-2',
+          profession: '产品',
+          status: 'ENABLED',
+        },
       ],
       success: true,
       total: 1,

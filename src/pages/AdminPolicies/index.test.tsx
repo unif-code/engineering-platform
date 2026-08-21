@@ -13,11 +13,6 @@ import type {
   PublishedPolicyVersion,
 } from '@/features/administration';
 import { ApiError } from '@/services/transport';
-import {
-  deepFreezeDto,
-  POLICY_CATALOG_FIXTURE,
-  POLICY_VERSION_FIXTURES,
-} from '../../../tests/fixtures/accessGovernance';
 
 const administrationMocks = vi.hoisted(() => ({
   createPolicyDraft: vi.fn(),
@@ -60,6 +55,145 @@ const PAGE_INTERACTION_TEST_TIMEOUT = 30_000;
 const PREVIEW_BUTTON_NAME = /预\s*览/;
 const PUBLISH_BUTTON_NAME = /发\s*布/;
 const VALIDATE_BUTTON_NAME = /校\s*验/;
+
+const deepFreezeDto = <T,>(value: T): T => {
+  if (Array.isArray(value)) {
+    return Object.freeze(value.map((entry) => deepFreezeDto(entry))) as T;
+  }
+  if (typeof value === 'object' && value !== null) {
+    return Object.freeze(
+      Object.fromEntries(
+        Object.entries(value).map(([key, entry]) => [
+          key,
+          deepFreezeDto(entry),
+        ]),
+      ),
+    ) as T;
+  }
+  return value;
+};
+
+const POLICY_CATALOG_FIXTURE = deepFreezeDto<PolicyCatalogResponse>({
+  activeVersion: 1,
+  items: [
+    {
+      activeValue: 24,
+      activeVersion: 1,
+      defaultValue: 24,
+      description: '一次性临时密码签发后的有效小时数',
+      effectSemantics: '仅影响后续签发的一次性临时密码。',
+      key: 'identity.temp_password_ttl_hours',
+      label: '临时密码有效期',
+      max: 72,
+      min: 1,
+      namespace: 'identity',
+      unit: '小时',
+      valueType: 'INTEGER',
+    },
+    {
+      activeValue: 'NEVER',
+      activeVersion: 1,
+      defaultValue: 'NEVER',
+      description: '正式密码的过期周期',
+      effectSemantics: '发布后用于后续认证时的密码有效性判断。',
+      enumOptions: [
+        { label: '永不过期', value: 'NEVER' },
+        { label: '90 天', value: '90_DAYS' },
+        { label: '180 天', value: '180_DAYS' },
+      ],
+      key: 'identity.password_expiry',
+      label: '密码过期周期',
+      namespace: 'identity',
+      unit: null,
+      valueType: 'ENUM',
+    },
+    {
+      activeValue: 3,
+      activeVersion: 1,
+      defaultValue: 3,
+      description: '同一账号同时有效的 Session 数量上限',
+      effectSemantics: '发布后登录会逐出超出上限的最旧 Session。',
+      key: 'identity.session_limit',
+      label: 'Session 上限',
+      max: 10,
+      min: 1,
+      namespace: 'identity',
+      unit: '个',
+      valueType: 'INTEGER',
+    },
+    {
+      activeValue: 60,
+      activeVersion: 1,
+      defaultValue: 60,
+      description: '人员 Session 连续无活动后的失效分钟数',
+      effectSemantics: '发布后用于认证 API 的空闲 Session 判定。',
+      key: 'identity.session_idle_minutes',
+      label: 'Session 空闲期限',
+      max: 240,
+      min: 15,
+      namespace: 'identity',
+      unit: '分钟',
+      valueType: 'INTEGER',
+    },
+    {
+      activeValue: 'STANDARD',
+      activeVersion: 1,
+      defaultValue: 'STANDARD',
+      description: '连续失败后按标准档位退避',
+      effectSemantics: '发布后仅影响后续登录失败的服务端退避判定。',
+      enumOptions: [{ label: '标准', value: 'STANDARD' }],
+      key: 'identity.login_backoff_profile',
+      label: '登录失败退避',
+      namespace: 'identity',
+      unit: null,
+      valueType: 'ENUM',
+    },
+    {
+      activeValue: 5,
+      activeVersion: 1,
+      defaultValue: 5,
+      description: '同一 TOTP Challenge 可失败的最大次数',
+      effectSemantics: '发布后仅影响新创建的 TOTP Challenge。',
+      key: 'identity.totp_attempt_limit',
+      label: 'TOTP 尝试上限',
+      max: 10,
+      min: 3,
+      namespace: 'identity',
+      unit: '次',
+      valueType: 'INTEGER',
+    },
+    {
+      activeValue: 30,
+      activeVersion: 1,
+      defaultValue: 30,
+      description: 'Draft 无活动后自动归档的等待天数',
+      effectSemantics: '按 NEXT_SCHEDULE 仅影响后续自动归档调度。',
+      key: 'identity.draft_auto_archive_days',
+      label: 'Draft 自动归档等待期',
+      max: 365,
+      min: 1,
+      namespace: 'identity',
+      unit: '天',
+      valueType: 'INTEGER',
+    },
+  ],
+  namespace: 'identity',
+  scope: 'PLATFORM',
+});
+
+const POLICY_VERSION_FIXTURES = deepFreezeDto<PolicyVersionsResponse>({
+  items: [
+    {
+      current: true,
+      namespace: 'identity',
+      publishedAt: '2026-08-01T08:00:00.000Z',
+      publishedBy: 'SYSTEM_SEED',
+      reason: '平台初始化默认策略',
+      scope: 'PLATFORM',
+      version: 1,
+    },
+  ],
+});
 
 const CONTENT_60 = deepFreezeDto({
   'identity.draft_auto_archive_days': 30,
@@ -952,6 +1086,12 @@ describe('AdminPoliciesPage', {
     expect(
       await screen.findByText(/Policy 历史无权访问/, {}, INITIAL_WAIT),
     ).toHaveTextContent('requestId: req-policy-versions-403');
+    expect(
+      screen.getByRole('button', { name: '重试加载 Policy Catalog' }),
+    ).toBeVisible();
+    expect(
+      screen.getByRole('button', { name: '重试加载 Policy 历史' }),
+    ).toBeVisible();
     expect(screen.getByText('该分类暂无已冻结策略')).toBeVisible();
   });
 

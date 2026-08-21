@@ -12,7 +12,6 @@ const principals: readonly GrantPrincipalOption[] = [
 const scopes: readonly GrantScopeOption[] = [
   { label: '全平台', type: 'PLATFORM', value: 'PLATFORM' },
   { label: '工作区', type: 'WORKSPACE', value: 'workspace-1' },
-  { label: '部门', type: 'DEPARTMENT', value: 'department-1' },
 ];
 
 function values(overrides: Partial<GrantFormValues> = {}): GrantFormValues {
@@ -47,13 +46,9 @@ describe('buildGrantSubmitInput', () => {
   it.each([
     {
       expected: '请选择与主体类型匹配的主体',
-      input: values({ principalType: 'ROLE' }),
+      input: values({ principalId: 'missing' }),
     },
     { expected: '请选择范围', input: values({ scopeId: 'missing' }) },
-    {
-      expected: '当前契约尚未开放部门范围授权',
-      input: values({ scopeId: 'department-1' }),
-    },
     {
       expected: '当前契约尚未开放临时有效期授权',
       input: values({ validity: 'TEMPORARY_30' }),

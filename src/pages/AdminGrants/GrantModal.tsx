@@ -2,13 +2,13 @@ import {
   ModalForm,
   type ProFormInstance,
   ProFormSelect,
+  ProFormText,
   ProFormTextArea,
 } from '@ant-design/pro-components';
 import { App, Typography } from 'antd';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import { formatGovernanceError } from '@/features/administration';
 import {
-  GRANT_CAPABILITY_OPTIONS,
   GRANT_PRINCIPAL_TYPE_OPTIONS,
   GRANT_VALIDITY_OPTIONS,
 } from './constant';
@@ -43,14 +43,11 @@ export function buildGrantSubmitInput(
   if (scope === undefined) {
     throw new Error('请选择范围');
   }
-  if (scope.type === 'DEPARTMENT') {
-    throw new Error('当前契约尚未开放部门范围授权');
-  }
   if (values.validity !== 'LONG_TERM') {
     throw new Error('当前契约尚未开放临时有效期授权');
   }
   return {
-    capability: values.capability,
+    capability: values.capability.trim(),
     principalId: values.principalId,
     reason: values.reason.trim(),
     scope:
@@ -71,8 +68,7 @@ export function GrantModal({
   const formRef = useRef<ProFormInstance<GrantFormValues> | undefined>(
     undefined,
   );
-  const [principalType, setPrincipalType] =
-    useState<GrantPrincipalType>('ACCOUNT');
+  const principalType: GrantPrincipalType = 'ACCOUNT';
 
   const submit = async (values: GrantFormValues) => {
     try {
@@ -114,13 +110,10 @@ export function GrantModal({
         Grant 以 Principal × Capability × Scope 成对保存，不从角色模板推导。
       </Typography.Paragraph>
       <ProFormSelect
+        disabled
         fieldProps={{
           'aria-label': '主体类型',
           id: 'admin-grant-principal-type',
-          onChange: (nextType: GrantPrincipalType) => {
-            setPrincipalType(nextType);
-            formRef.current?.setFieldValue('principalId', undefined);
-          },
           virtual: false,
         }}
         formItemProps={{ htmlFor: 'admin-grant-principal-type' }}
@@ -142,18 +135,19 @@ export function GrantModal({
         placeholder="请选择主体"
         rules={[{ required: true, message: '请选择主体' }]}
       />
-      <ProFormSelect
+      <ProFormText
         fieldProps={{
           'aria-label': '能力',
           id: 'admin-grant-capability',
-          virtual: false,
         }}
         formItemProps={{ htmlFor: 'admin-grant-capability' }}
         label="能力"
         name="capability"
-        options={GRANT_CAPABILITY_OPTIONS.map((option) => ({ ...option }))}
-        placeholder="请选择 Capability"
-        rules={[{ required: true, message: '请选择 Capability' }]}
+        placeholder="请输入 Capability，如 ws.config"
+        rules={[
+          { required: true, message: '请输入 Capability' },
+          { whitespace: true, message: 'Capability 不能为空' },
+        ]}
       />
       <ProFormSelect
         fieldProps={{

@@ -4,18 +4,10 @@ import type {
   GrantSummary,
 } from '@/features/administration';
 
-export type GrantPrincipalType = 'ACCOUNT' | 'ROLE' | 'SERVICE_ACCOUNT';
+export type GrantPrincipalType = 'ACCOUNT';
 export type GrantValidity = 'LONG_TERM' | 'TEMPORARY_30' | 'TEMPORARY_90';
-export type GrantFormScopeType = GrantScopeType | 'DEPARTMENT';
-export type GrantRisk = 'HIGH' | 'NORMAL';
-export type GrantViewSource = 'DIRECT' | 'INHERITED';
-
-export interface GrantRow extends Omit<GrantSummary, 'principal' | 'source'> {
-  grantedBy: string;
-  principal: GrantSummary['principal'] & { type: GrantPrincipalType };
-  risk: GrantRisk;
-  source: GrantViewSource;
-}
+export type GrantFormScopeType = GrantScopeType;
+export type GrantRow = GrantSummary;
 export type GrantViewFilter = 'all' | 'high-risk' | 'temporary';
 
 export interface GrantQueryParams {

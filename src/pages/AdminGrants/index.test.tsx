@@ -3,13 +3,12 @@ import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GrantSummary } from '@/features/administration';
+import type {
+  AccountSummary,
+  GrantSummary,
+  WorkspaceSummary,
+} from '@/features/administration';
 import { ApiError } from '@/services/transport';
-import {
-  ACCOUNT_FIXTURES,
-  GRANT_FIXTURES,
-  WORKSPACE_FIXTURES,
-} from '../../../tests/fixtures/accessGovernance';
 
 const administrationMocks = vi.hoisted(() => ({
   createGrant: vi.fn(),
@@ -32,6 +31,84 @@ import AdminGrantsPage from '.';
 
 const INITIAL_WAIT = { timeout: 15_000 };
 const INTERACTION_TEST_TIMEOUT = 30_000;
+const ACCOUNT_FIXTURES = Object.freeze<AccountSummary[]>([
+  {
+    displayName: '吴桐',
+    employeeNo: 'E1002',
+    etag: '"v1"',
+    id: 'account-2',
+    profession: '产品',
+    status: 'ENABLED',
+  },
+  {
+    displayName: '陈晓',
+    employeeNo: 'E1004',
+    etag: '"v1"',
+    id: 'account-4',
+    profession: '研发',
+    status: 'ENABLED',
+  },
+  {
+    displayName: '何山',
+    employeeNo: 'E2002',
+    etag: '"v1"',
+    id: 'account-9',
+    profession: '研发',
+    status: 'ENABLED',
+  },
+]);
+const WORKSPACE_FIXTURES = Object.freeze<WorkspaceSummary[]>([
+  {
+    id: 'workspace-platform-core',
+    leaders: [],
+    memberCount: 12,
+    name: '营销工作区',
+    owner: { displayName: '吴桐', employeeNo: 'E1002', id: 'account-2' },
+    status: 'ACTIVE',
+    version: 1,
+  },
+  {
+    id: 'workspace-agent-runtime',
+    leaders: [],
+    memberCount: 9,
+    name: '交易工作区',
+    owner: { displayName: '何山', employeeNo: 'E2002', id: 'account-9' },
+    status: 'ACTIVE',
+    version: 1,
+  },
+]);
+const GRANT_FIXTURES = Object.freeze<GrantSummary[]>([
+  {
+    capability: 'task.develop',
+    id: 'grant-audit-reader',
+    principal: { displayName: '陈晓', employeeNo: 'E1004', id: 'account-4' },
+    scope: {
+      id: 'workspace-platform-core',
+      label: '营销工作区',
+      type: 'WORKSPACE',
+    },
+    source: 'MANUAL',
+    status: 'ACTIVE',
+    validFrom: '2026-07-01T08:00:00.000Z',
+    validTo: null,
+    version: 1,
+  },
+  {
+    capability: 'mr.merge',
+    id: 'grant-merge-trading',
+    principal: { displayName: '何山', employeeNo: 'E2002', id: 'account-9' },
+    scope: {
+      id: 'workspace-agent-runtime',
+      label: '交易工作区',
+      type: 'WORKSPACE',
+    },
+    source: 'MANUAL',
+    status: 'ACTIVE',
+    validFrom: '2026-07-01T08:00:00.000Z',
+    validTo: '2026-10-01T08:00:00.000Z',
+    version: 1,
+  },
+]);
 const ACTIVE_WORKSPACES = Object.freeze(
   WORKSPACE_FIXTURES.filter(({ status }) => status === 'ACTIVE'),
 );
@@ -112,7 +189,7 @@ describe('AdminGrantsPage', () => {
     expect(
       await screen.findByRole(
         'row',
-        { name: /陈晓.*开发任务.*营销工作区.*直接/ },
+        { name: /陈晓.*task\.develop.*营销工作区.*直接/ },
         INITIAL_WAIT,
       ),
     ).toBeInTheDocument();
@@ -128,6 +205,7 @@ describe('AdminGrantsPage', () => {
     for (const label of ['生效中授权', '临时授权', '高危能力授权']) {
       expect(within(stats).getByText(label)).toBeVisible();
     }
+    expect(within(stats).getByText('—')).toBeVisible();
     expect(within(stats).queryByText('角色继承')).not.toBeInTheDocument();
     expect(
       screen.getByRole('radiogroup', { name: 'Grant 分类' }),
@@ -168,32 +246,35 @@ describe('AdminGrantsPage', () => {
 
       await user.click(screen.getByRole('button', { name: '新增授权' }));
       const dialog = await screen.findByRole('dialog', { name: '新增授权' });
-      await selectOption(user, '主体类型', '用户');
       await selectOption(user, '主体', 'E1002 · 吴桐');
-      await selectOption(user, '能力', '工作区配置');
+      await user.type(
+        within(dialog).getByRole('textbox', { name: '能力' }),
+        'ws.config',
+      );
       await user.click(screen.getByRole('combobox', { name: '范围' }));
       for (const department of ['营销部门', '交易部门', '中台部门']) {
-        expect(screen.getByRole('option', { name: department })).toBeVisible();
+        expect(screen.queryByRole('option', { name: department })).toBeNull();
       }
       await user.click(
         await screen.findByRole('option', { name: '营销工作区' }),
       );
       await user.click(screen.getByRole('combobox', { name: '有效期' }));
-      expect(screen.getByRole('option', { name: '30 天临时' })).toBeVisible();
-      expect(screen.getByRole('option', { name: '90 天临时' })).toBeVisible();
+      expect(screen.getByRole('option', { name: '30 天临时' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
+      expect(screen.getByRole('option', { name: '90 天临时' })).toHaveAttribute(
+        'aria-disabled',
+        'true',
+      );
       await user.click(await screen.findByRole('option', { name: '长期' }));
       await user.type(
         within(dialog).getByRole('textbox', { name: '授权原因' }),
         '承担营销工作区治理职责',
       );
-      await selectOption(user, '主体类型', '角色');
-      await user.click(
-        within(dialog).getByRole('button', { name: '确认授予' }),
-      );
-      expect(await within(dialog).findByText('请选择主体')).toBeVisible();
-      expect(administrationMocks.createGrant).not.toHaveBeenCalled();
-      await selectOption(user, '主体类型', '用户');
-      await selectOption(user, '主体', 'E1002 · 吴桐');
+      expect(
+        within(dialog).getByRole('combobox', { name: '主体类型' }),
+      ).toBeDisabled();
       administrationMocks.listGrants.mockResolvedValue(
         Object.freeze({
           items: Object.freeze([...GRANT_FIXTURES, CREATED_GRANT]),
@@ -214,7 +295,7 @@ describe('AdminGrantsPage', () => {
       expect(
         await screen.findByRole(
           'row',
-          { name: /吴桐.*工作区配置.*营销工作区/ },
+          { name: /吴桐.*ws\.config.*营销工作区/ },
           INITIAL_WAIT,
         ),
       ).toBeInTheDocument();
@@ -222,23 +303,27 @@ describe('AdminGrantsPage', () => {
     INTERACTION_TEST_TIMEOUT,
   );
 
-  it('按高危和临时分类重新查询并只展示匹配授权', async () => {
+  it('高危分类在无服务端事实时禁用，临时分类只使用 validTo', async () => {
     const user = userEvent.setup();
     renderPage();
-    await screen.findByRole('row', { name: /陈晓.*开发任务/ }, INITIAL_WAIT);
+    await screen.findByRole(
+      'row',
+      { name: /陈晓.*task\.develop/ },
+      INITIAL_WAIT,
+    );
 
     const filters = screen.getByRole('radiogroup', { name: 'Grant 分类' });
-    await user.click(within(filters).getByText('高危能力'));
     expect(
-      await screen.findByRole('row', { name: /何山.*合并代码/ }, INITIAL_WAIT),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole('row', { name: /陈晓.*开发任务/ })).toBeNull();
+      within(filters).getByRole('radio', { name: '高危能力' }),
+    ).toBeDisabled();
 
     await user.click(within(filters).getByText('临时授权'));
     expect(
-      await screen.findByRole('row', { name: /何山.*合并代码/ }, INITIAL_WAIT),
+      await screen.findByRole('row', { name: /何山.*mr\.merge/ }, INITIAL_WAIT),
     ).toBeInTheDocument();
-    expect(screen.queryByRole('row', { name: /陈晓.*开发任务/ })).toBeNull();
+    expect(
+      screen.queryByRole('row', { name: /陈晓.*task\.develop/ }),
+    ).toBeNull();
   });
 
   it('呈现平台范围、未知能力、继承来源与立即生效兜底', async () => {
@@ -263,6 +348,7 @@ describe('AdminGrantsPage', () => {
       INITIAL_WAIT,
     );
     expect(within(row).getAllByText('继承')).toHaveLength(2);
+    expect(within(row).getByText('—')).toBeVisible();
     expect(within(row).queryByRole('button', { name: '撤销' })).toBeNull();
   });
 
@@ -279,6 +365,9 @@ describe('AdminGrantsPage', () => {
     expect(
       await screen.findByText(/Grant 列表无权访问/, {}, INITIAL_WAIT),
     ).toHaveTextContent('requestId: req-grant-list-403');
+    expect(
+      screen.getByRole('button', { name: '重试加载 Grant' }),
+    ).toBeVisible();
     expect(screen.queryByRole('row', { name: /陈晓.*开发任务/ })).toBeNull();
   });
 
@@ -338,7 +427,10 @@ describe('AdminGrantsPage', () => {
     await user.click(screen.getByRole('button', { name: '新增授权' }));
     const dialog = await screen.findByRole('dialog', { name: '新增授权' });
     await selectOption(user, '主体', 'E1002 · 吴桐');
-    await selectOption(user, '能力', '工作区配置');
+    await user.type(
+      within(dialog).getByRole('textbox', { name: '能力' }),
+      'ws.config',
+    );
     await selectOption(user, '范围', '全平台');
     await user.type(
       within(dialog).getByRole('textbox', { name: '授权原因' }),
@@ -369,7 +461,7 @@ describe('AdminGrantsPage', () => {
     renderPage();
     const row = await screen.findByRole(
       'row',
-      { name: /陈晓.*开发任务.*营销工作区.*直接/ },
+      { name: /陈晓.*task\.develop.*营销工作区.*直接/ },
       INITIAL_WAIT,
     );
     await user.click(within(row).getByRole('button', { name: '撤销' }));
@@ -398,7 +490,7 @@ describe('AdminGrantsPage', () => {
       renderPage();
       const row = await screen.findByRole(
         'row',
-        { name: /陈晓.*开发任务.*营销工作区.*直接/ },
+        { name: /陈晓.*task\.develop.*营销工作区.*直接/ },
         INITIAL_WAIT,
       );
 
@@ -430,7 +522,7 @@ describe('AdminGrantsPage', () => {
       );
       const revokedRow = await screen.findByRole(
         'row',
-        { name: /陈晓.*开发任务.*营销工作区.*已撤销/ },
+        { name: /陈晓.*task\.develop.*营销工作区.*已撤销/ },
         INITIAL_WAIT,
       );
       await waitFor(() => {

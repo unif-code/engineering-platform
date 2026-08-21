@@ -1,22 +1,13 @@
-import {
-  DrawerForm,
-  ProFormSelect,
-  ProFormText,
-} from '@ant-design/pro-components';
-import { App } from 'antd';
+import { DrawerForm, ProFormText } from '@ant-design/pro-components';
+import { Alert, App } from 'antd';
 import { createAccount } from '@/features/administration';
-import {
-  USER_CREATE_ROLE_OPTIONS,
-  USER_SUPERIOR_OPTIONS,
-  USER_TEAM_OPTIONS,
-} from './constant';
 import type { CredentialReceipt, UserFormValues } from './type';
 import { formatAccountError } from './util';
 
 interface UserModalProps {
   open: boolean;
   onClose: () => void;
-  onCreated: (receipt: CredentialReceipt, values: UserFormValues) => void;
+  onCreated: (receipt: CredentialReceipt) => void;
 }
 
 export function UserModal({ open, onClose, onCreated }: UserModalProps) {
@@ -31,7 +22,7 @@ export function UserModal({ open, onClose, onCreated }: UserModalProps) {
         reason: '通过用户管理新增用户',
       });
       onClose();
-      onCreated(receipt, values);
+      onCreated(receipt);
       return true;
     } catch (error) {
       message.error(formatAccountError(error, '账号创建失败'));
@@ -89,41 +80,41 @@ export function UserModal({ open, onClose, onCreated }: UserModalProps) {
           },
         ]}
       />
-      <ProFormSelect
+      <Alert
+        description="Team、角色与直属上级需要组织与授权契约支持"
+        showIcon
+        title="当前版本暂未接入"
+        type="info"
+      />
+      <ProFormText
+        disabled
         fieldProps={{
           'aria-label': '所属 Team',
           id: 'admin-user-create-team',
-          virtual: false,
         }}
         formItemProps={{ htmlFor: 'admin-user-create-team' }}
         label="所属 Team"
-        name="team"
-        options={USER_TEAM_OPTIONS}
-        rules={[{ required: true, message: '请选择所属 Team' }]}
+        placeholder="当前版本暂未接入"
       />
-      <ProFormSelect
+      <ProFormText
+        disabled
         fieldProps={{
           'aria-label': '角色',
           id: 'admin-user-create-role',
-          virtual: false,
         }}
         formItemProps={{ htmlFor: 'admin-user-create-role' }}
         label="角色"
-        name="role"
-        options={USER_CREATE_ROLE_OPTIONS}
-        rules={[{ required: true, message: '请选择角色' }]}
+        placeholder="当前版本暂未接入"
       />
-      <ProFormSelect
+      <ProFormText
+        disabled
         fieldProps={{
           'aria-label': '直属上级',
           id: 'admin-user-create-superior',
-          virtual: false,
         }}
         formItemProps={{ htmlFor: 'admin-user-create-superior' }}
         label="直属上级"
-        name="superior"
-        options={USER_SUPERIOR_OPTIONS}
-        rules={[{ required: true, message: '请选择直属上级' }]}
+        placeholder="当前版本暂未接入"
       />
     </DrawerForm>
   );
