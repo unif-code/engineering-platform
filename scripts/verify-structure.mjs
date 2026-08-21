@@ -42,6 +42,28 @@ const runtimePrototypeArtifacts = [
   { label: 'tasks.archived', pattern: /\btasks\.archived\b/u },
   { label: '/tasks/archived', pattern: /\/tasks\/archived\b/u },
 ];
+const routeScreenInterfaces = {
+  AccessDenied: ['access', 'AccessDeniedScreen'],
+  Bootstrap: ['access', 'BootstrapScreen'],
+  Login: ['access', 'LoginScreen'],
+  Home: ['portal', 'HomeScreen'],
+  Messages: ['portal', 'MessagesScreen'],
+  TaskDetail: ['portal', 'TaskDetailScreen'],
+  Tasks: ['portal', 'TasksScreen'],
+  TeamBoard: ['portal', 'TeamBoardScreen'],
+  Workspaces: ['portal', 'WorkspacesScreen'],
+  Admin: ['governance', 'AdminScreen'],
+  AdminGrants: ['governance', 'AdminGrantsScreen'],
+  AdminMenus: ['governance', 'AdminMenusScreen'],
+  AdminModels: ['governance', 'AdminModelsScreen'],
+  AdminOrganization: ['governance', 'AdminOrganizationScreen'],
+  AdminPolicies: ['governance', 'AdminPoliciesScreen'],
+  AdminRoles: ['governance', 'AdminRolesScreen'],
+  AdminSkills: ['governance', 'AdminSkillsScreen'],
+  AdminUsers: ['governance', 'AdminUsersScreen'],
+  AdminWorkspaces: ['governance', 'AdminWorkspacesScreen'],
+  Audit: ['governance', 'AuditScreen'],
+};
 const requiredBiomeScopes = ['config', 'scripts', 'src', 'tests'];
 const dependencySections = [
   'dependencies',
@@ -153,7 +175,7 @@ function staticStringProperty(objectLiteral, propertyName) {
   return ts.isStringLiteralLike(value) ? value.text : undefined;
 }
 
-function routeSourceFindings(contents) {
+function routedPagesFromSource(contents) {
   const sourceFile = ts.createSourceFile(
     'config/routes.ts',
     contents,
@@ -174,6 +196,11 @@ function routeSourceFindings(contents) {
   }
 
   visit(sourceFile);
+  return routedPages;
+}
+
+function routeSourceFindings(contents) {
+  const routedPages = routedPagesFromSource(contents);
   const findings = [];
   for (const [field, label] of [
     ['path', 'duplicate route path'],
@@ -193,6 +220,136 @@ function routeSourceFindings(contents) {
     }
   }
   return findings;
+}
+
+function collectFilesRecursively(root, path) {
+  const directory = join(root, path);
+  if (!existsSync(directory)) return [];
+
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const child = join(path, entry.name);
+    return entry.isDirectory()
+      ? collectFilesRecursively(root, child)
+      : [child.split(sep).join('/')];
+  });
+}
+
+function isExactPageAdapter(contents, path, feature, screen) {
+  const sourceFile = ts.createSourceFile(
+    path,
+    contents,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TSX,
+  );
+  if (
+    sourceFile.parseDiagnostics.length > 0 ||
+    sourceFile.statements.length !== 1
+  ) {
+    return false;
+  }
+
+  const statement = sourceFile.statements[0];
+  if (
+    !ts.isExportDeclaration(statement) ||
+    statement.isTypeOnly ||
+    !statement.moduleSpecifier ||
+    !ts.isStringLiteralLike(statement.moduleSpecifier) ||
+    statement.moduleSpecifier.text !== `@/features/${feature}` ||
+    !statement.exportClause ||
+    !ts.isNamedExports(statement.exportClause) ||
+    statement.exportClause.elements.length !== 1
+  ) {
+    return false;
+  }
+
+  const exported = statement.exportClause.elements[0];
+  return (
+    !exported.isTypeOnly &&
+    exported.name.text === 'default' &&
+    exported.propertyName?.text === screen
+  );
+}
+
+function checkPageRouteAdapters(root, issues) {
+  const routesPath = join(root, 'config/routes.ts');
+  const pagesRoot = join(root, 'src/pages');
+  if (!existsSync(routesPath) && !existsSync(pagesRoot)) return;
+  if (!existsSync(routesPath)) {
+    issues.push('src/pages route adapters require config/routes.ts');
+    return;
+  }
+
+  const routedPages = routedPagesFromSource(readFileSync(routesPath, 'utf8'));
+  const routeDirectories = new Set();
+  for (const route of routedPages) {
+    const match = /^\.\/([A-Za-z][A-Za-z0-9]*)$/u.exec(route.component);
+    if (!match) {
+      issues.push(
+        `config/routes.ts: unsupported page component ${route.component}`,
+      );
+      continue;
+    }
+    routeDirectories.add(match[1]);
+  }
+
+  if (!existsSync(pagesRoot)) {
+    issues.push('缺少 src/pages route adapters');
+    return;
+  }
+
+  const actualDirectories = readdirSync(pagesRoot, { withFileTypes: true });
+  for (const entry of actualDirectories) {
+    const entryPath = `src/pages/${entry.name}`;
+    if (!entry.isDirectory()) {
+      issues.push(`${entryPath}: route adapter only allows <Route>/index.tsx`);
+      continue;
+    }
+    if (!routeDirectories.has(entry.name)) {
+      issues.push(
+        `${entryPath}: route directory is not registered in config/routes.ts`,
+      );
+    }
+  }
+
+  for (const routeDirectory of routeDirectories) {
+    const contract = routeScreenInterfaces[routeDirectory];
+    if (!contract) {
+      issues.push(
+        `src/pages/${routeDirectory}: no approved Feature screen interface`,
+      );
+      continue;
+    }
+    const [feature, screen] = contract;
+    const adapterPath = `src/pages/${routeDirectory}/index.tsx`;
+    const routeFiles = collectFilesRecursively(
+      root,
+      `src/pages/${routeDirectory}`,
+    );
+    if (!routeFiles.includes(adapterPath)) {
+      issues.push(`${adapterPath}: missing route adapter`);
+    }
+    for (const routeFile of routeFiles) {
+      if (routeFile !== adapterPath) {
+        issues.push(
+          `${routeFile}: route adapter only allows <Route>/index.tsx`,
+        );
+      }
+    }
+    if (
+      existsSync(join(root, adapterPath)) &&
+      !isExactPageAdapter(
+        readFileSync(join(root, adapterPath), 'utf8'),
+        adapterPath,
+        feature,
+        screen,
+      )
+    ) {
+      issues.push(
+        `${adapterPath}: expected single default re-export from @/features/${feature} using ${screen}`,
+      );
+    }
+  }
 }
 
 export function assertNoRuntimePrototypeArtifacts(rootDir = process.cwd()) {
@@ -789,6 +946,7 @@ export async function verifyStructure(root = process.cwd()) {
   } catch (error) {
     issues.push(error.message);
   }
+  checkPageRouteAdapters(root, issues);
   await checkSourceFiles(root, issues);
 
   return issues;

@@ -259,6 +259,60 @@ test('rejects duplicate route paths and duplicate capability components', async 
   );
 });
 
+test('rejects route screen implementation and private files under pages', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/routes.ts',
+    "export default [{ path: '/home', component: './Home', routeKey: 'home' }];\n",
+  );
+  await write(
+    root,
+    'src/pages/Home/index.tsx',
+    [
+      "import { Typography } from 'antd';",
+      'export default function HomePage() {',
+      '  return <Typography.Title>Home</Typography.Title>;',
+      '}',
+      '',
+    ].join('\n'),
+  );
+  await write(
+    root,
+    'src/pages/Home/index.style.ts',
+    "export const pageClassName = 'home';\n",
+  );
+
+  const output = (await verifyStructure(root)).join('\n');
+  assert.match(
+    output,
+    /src\/pages\/Home\/index\.tsx.*single default re-export/u,
+  );
+  assert.match(
+    output,
+    /src\/pages\/Home\/index\.style\.ts.*route adapter only/u,
+  );
+});
+
+test('rejects page adapters that bypass their approved feature screen interface', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/routes.ts',
+    "export default [{ path: '/home', component: './Home', routeKey: 'home' }];\n",
+  );
+  await write(
+    root,
+    'src/pages/Home/index.tsx',
+    "export { HomeScreen as default } from '@/features/governance';\n",
+  );
+
+  assert.match(
+    (await verifyStructure(root)).join('\n'),
+    /src\/pages\/Home\/index\.tsx.*@\/features\/portal.*HomeScreen/u,
+  );
+});
+
 test('allows prototype fixtures confined to test files and tests fixtures', async () => {
   const root = await createValidFixture();
   await write(
