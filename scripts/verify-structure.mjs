@@ -25,21 +25,22 @@ const developmentDependencies = [
   'vitest',
 ];
 const sourceRoots = ['config', 'src'];
-const runtimePrototypeSourceRoots = [
-  'src/pages',
-  'src/features',
-  'src/components',
-  'src/hooks',
-];
+const runtimePrototypeSourceRoots = ['config', 'src'];
 const runtimePrototypeArtifacts = [
-  { label: 'WorkspaceFixture', pattern: /\bWorkspaceFixture\b/u },
-  { label: 'TASK_FIXTURE', pattern: /\bTASK_FIXTURE\b/u },
+  {
+    label: 'business fixture',
+    pattern: /\b[$\p{L}_][$\p{L}\p{N}_]*fixture[$\p{L}\p{N}_]*\b/iu,
+  },
   {
     label: 'useStaticPrototypeAction',
     pattern: /\buseStaticPrototypeAction\b/u,
   },
   { label: 'prototype: true', pattern: /\bprototype\s*:\s*true\b/u },
   { label: '静态原型操作', pattern: /静态原型操作/u },
+  { label: '重置演示数据', pattern: /重置演示数据/u },
+  { label: '异常态演示', pattern: /异常态演示/u },
+  { label: 'tasks.archived', pattern: /\btasks\.archived\b/u },
+  { label: '/tasks/archived', pattern: /\/tasks\/archived\b/u },
 ];
 const requiredBiomeScopes = ['config', 'scripts', 'src', 'tests'];
 const dependencySections = [
@@ -153,6 +154,13 @@ function collectRuntimePrototypeSourceFiles(root, path) {
     const child = join(path, entry.name);
     const normalizedChild = child.split(sep).join('/');
     if (entry.isDirectory()) {
+      if (
+        normalizedChild === 'src/.umi' ||
+        normalizedChild.startsWith('src/.umi-') ||
+        normalizedChild === 'src/services/generated'
+      ) {
+        return [];
+      }
       return collectRuntimePrototypeSourceFiles(root, child);
     }
     return /\.(?:ts|tsx)$/u.test(entry.name) &&
@@ -162,11 +170,63 @@ function collectRuntimePrototypeSourceFiles(root, path) {
   });
 }
 
+function staticStringProperty(objectLiteral, propertyName) {
+  const property = effectivePropertyValue(objectLiteral, propertyName);
+  if (property.kind !== 'value') return undefined;
+  const value = unwrapExpression(property.value);
+  return ts.isStringLiteralLike(value) ? value.text : undefined;
+}
+
+function routeSourceFindings(contents) {
+  const sourceFile = ts.createSourceFile(
+    'config/routes.ts',
+    contents,
+    ts.ScriptTarget.Latest,
+    true,
+    ts.ScriptKind.TS,
+  );
+  const routedPages = [];
+
+  function visit(node) {
+    if (ts.isObjectLiteralExpression(node)) {
+      const component = staticStringProperty(node, 'component');
+      const path = staticStringProperty(node, 'path');
+      const routeKey = staticStringProperty(node, 'routeKey');
+      if (component && path) routedPages.push({ component, path, routeKey });
+    }
+    ts.forEachChild(node, visit);
+  }
+
+  visit(sourceFile);
+  const findings = [];
+  for (const [field, label] of [
+    ['path', 'duplicate route path'],
+    ['component', 'duplicate capability component'],
+    ['routeKey', 'duplicate routeKey'],
+  ]) {
+    const seen = new Set();
+    const duplicates = new Set();
+    for (const route of routedPages) {
+      const value = route[field];
+      if (!value) continue;
+      if (seen.has(value)) duplicates.add(value);
+      seen.add(value);
+    }
+    for (const duplicate of duplicates) {
+      findings.push(`${label}: ${duplicate}`);
+    }
+  }
+  return findings;
+}
+
 export function assertNoRuntimePrototypeArtifacts(rootDir = process.cwd()) {
   const findings = [];
 
   if (existsSync(join(rootDir, 'mock'))) {
     findings.push('mock/ directory');
+  }
+  if (existsSync(join(rootDir, 'src/mock'))) {
+    findings.push('src/mock/ directory');
   }
 
   for (const sourceRoot of runtimePrototypeSourceRoots) {
@@ -176,11 +236,17 @@ export function assertNoRuntimePrototypeArtifacts(rootDir = process.cwd()) {
     )) {
       const contents = readFileSync(join(rootDir, path), 'utf8');
       for (const artifact of runtimePrototypeArtifacts) {
-        if (artifact.pattern.test(contents)) {
-          findings.push(`${path}: ${artifact.label}`);
+        const match = contents.match(artifact.pattern);
+        if (match) {
+          findings.push(`${path}: ${artifact.label} (${match[0]})`);
         }
       }
     }
+  }
+
+  const routesPath = join(rootDir, 'config/routes.ts');
+  if (existsSync(routesPath)) {
+    findings.push(...routeSourceFindings(readFileSync(routesPath, 'utf8')));
   }
 
   if (findings.length > 0) {

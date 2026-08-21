@@ -201,9 +201,9 @@ describe('ROUTE_REGISTRY', () => {
       ([routeKey, registration]) =>
         routeKey !== 'bootstrap' && registration.kind === 'page',
     );
-    const concretePaths = screenEntries
-      .map(([, registration]) => registration.path)
-      .filter((path) => !path.includes(':'));
+    const screenPaths = screenEntries.map(
+      ([, registration]) => registration.path,
+    );
 
     expect(screenEntries.map(([routeKey]) => routeKey)).toEqual([
       'login',
@@ -226,7 +226,7 @@ describe('ROUTE_REGISTRY', () => {
       'admin.menus',
       'access-denied',
     ]);
-    expect(new Set(concretePaths).size).toBe(concretePaths.length);
+    expect(new Set(screenPaths).size).toBe(screenPaths.length);
   });
 
   it('只接受对象自身的 dotted key，拒绝旧 camelCase、未知值和原型属性', () => {

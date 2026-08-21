@@ -43,6 +43,13 @@ Vitest 在 `happy-dom` 环境中运行，并结合 Testing Library 与 `jest-dom
 
 通过 `REACT_APP_ENV` 和 `config/proxy.ts` 选择代理配置。禁止提交凭据；敏感值应保存在本地环境配置中，并在 Pull Request 中说明所需环境变量名称。
 
+## 最终原型开发候选规则
+
+- “最终原型”只是已锁定的设计事实源；当前代码是发布候选，完整 CI、真实联调与发布验收通过前不得宣称已发布最终版。
+- 开发期只维护最新目标的单线实现：旧路由、别名、deprecated 包装、旧 DTO 转换、双实现和数据回退路径直接删除，不保留 shim 或迁移注释。
+- 本地按受影响范围运行结构/文档门禁、分组页面测试、Biome、TypeScript、scoped Ant Design lint 与 OpenAPI release check；不为日常小改反复运行全量 coverage、doctor 或 build。发布前 CI 必须运行完整 `pnpm verify`，不得以本地 focused 结果替代。
+- 可视化验收只使用安装 ChatGPT 插件的外部 Chrome，覆盖 1440×900 与 1280px 桌面宽度；Chrome 控制不可用时记录 `CANNOT VERIFY`，不得使用应用内浏览器代替。
+
 ## Codex 原生记忆
 
 - 平台共享记忆位于同级 `engineering-platform-docs/memories_1.sqlite`，同步规则以该仓 `MEMORIES.md` 为准。

@@ -91,6 +91,29 @@ describe('buildMenuData', () => {
     ).toEqual(visibleRouteKeys);
     expect(groups[0]?.children).toHaveLength(6);
     expect(groups[1]?.children).toHaveLength(9);
+
+    const menuItems = groups.flatMap(({ children }) => children ?? []);
+    expect(new Set(menuItems.map(({ path }) => path)).size).toBe(
+      menuItems.length,
+    );
+    for (const item of menuItems) {
+      expect(item.key).toEqual(expect.any(String));
+      const routeKey = item.key as keyof typeof ROUTE_REGISTRY;
+      expect(ROUTE_REGISTRY[routeKey]).toMatchObject({
+        kind: 'page',
+        menu: true,
+        path: item.path,
+      });
+    }
+    const menuKeys = menuItems.map(({ key }) => key);
+    for (const hiddenRouteKey of [
+      'login',
+      'bootstrap',
+      'tasks.detail',
+      'access-denied',
+    ]) {
+      expect(menuKeys).not.toContain(hiddenRouteKey);
+    }
   });
 
   it('三个新版治理页面保留正常名称并使用独立视觉徽标', () => {

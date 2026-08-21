@@ -325,7 +325,7 @@ describe('AdminGrantsPage', () => {
       expect(
         await screen.findByRole(
           'row',
-          { name: /吴桐.*ws\.config.*营销工作区/ },
+          { name: /吴桐.*ws\.config.*营销工作区.*直接/ },
           INITIAL_WAIT,
         ),
       ).toBeInTheDocument();

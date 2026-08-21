@@ -191,7 +191,7 @@ describe('RouteGuard', () => {
       routeKey: 'messages',
     },
     {
-      findPage: () => screen.findByRole('radiogroup', { name: '选择团队' }),
+      findPage: () => screen.findByRole('radiogroup', { name: '团队范围' }),
       Page: TeamBoardPage,
       path: '/team-board',
       routeKey: 'team-board',

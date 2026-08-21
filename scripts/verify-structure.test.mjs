@@ -200,6 +200,65 @@ test('rejects production prototype artifacts', async () => {
   );
 });
 
+test('rejects every production business fixture and demo control marker', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'src/pages/Accounts.tsx',
+    [
+      'const ACCOUNT_FIXTURE = [];',
+      "const resetLabel = '重置演示数据';",
+      "const errorPanel = '异常态演示';",
+      '',
+    ].join('\n'),
+  );
+
+  assert.throws(
+    () => assertNoRuntimePrototypeArtifacts(root),
+    /ACCOUNT_FIXTURE.*重置演示数据.*异常态演示/u,
+  );
+});
+
+test('rejects the retired archived route and registration', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/routes.ts',
+    "export default [{ path: '/tasks/archived', component: './Tasks/Archived', routeKey: 'tasks.archived' }];\n",
+  );
+  await write(
+    root,
+    'src/features/navigation/registry.ts',
+    "export const ROUTE_REGISTRY = { 'tasks.archived': { path: '/tasks/archived' } };\n",
+  );
+
+  assert.throws(
+    () => assertNoRuntimePrototypeArtifacts(root),
+    /tasks\.archived.*\/tasks\/archived/u,
+  );
+});
+
+test('rejects duplicate route paths and duplicate capability components', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/routes.ts',
+    [
+      'export default [',
+      "  { path: '/tasks', component: './Tasks', routeKey: 'tasks' },",
+      "  { path: '/tasks', component: './TaskListCopy', routeKey: 'tasks.copy' },",
+      "  { path: '/task-list', component: './Tasks', routeKey: 'tasks.alias' },",
+      '];',
+      '',
+    ].join('\n'),
+  );
+
+  assert.throws(
+    () => assertNoRuntimePrototypeArtifacts(root),
+    /duplicate route path.*duplicate capability component/i,
+  );
+});
+
 test('allows prototype fixtures confined to test files and tests fixtures', async () => {
   const root = await createValidFixture();
   await write(
