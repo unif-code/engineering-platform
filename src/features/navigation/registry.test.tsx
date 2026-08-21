@@ -61,14 +61,6 @@ const expectedRoutes = {
     kind: 'page',
     path: '/tasks',
   },
-  'tasks.archived': {
-    access: 'session',
-    group: null,
-    kind: 'redirect',
-    parent: 'tasks',
-    path: '/tasks/archived',
-    redirectTo: '/tasks?view=archived',
-  },
   'tasks.detail': {
     access: 'session',
     kind: 'page',
@@ -243,6 +235,7 @@ describe('ROUTE_REGISTRY', () => {
       ROUTE_REGISTRY['admin.users'],
     );
     expect(isRouteKey('adminUsers')).toBe(false);
+    expect(isRouteKey('tasks.archived')).toBe(false);
     expect(isRouteKey('ghost')).toBe(false);
     expect(isRouteKey('constructor')).toBe(false);
     expect(getRouteRegistration('ghost')).toBeUndefined();
@@ -266,12 +259,6 @@ describe('ROUTE_REGISTRY', () => {
       group: null,
       icon: null,
     });
-    expect(ROUTE_REGISTRY['tasks.archived']).toMatchObject({
-      icon: null,
-      kind: 'redirect',
-      menu: false,
-      redirectTo: '/tasks?view=archived',
-    });
     expect(ROUTE_REGISTRY.admin).toMatchObject({
       menu: false,
       path: '/admin',
@@ -294,9 +281,10 @@ describe('ROUTE_REGISTRY', () => {
     }
   });
 
-  it('优先匹配静态归档路由，再匹配动态任务详情，并拒绝未登记路径', () => {
+  it('不注册旧归档 routeKey，动态任务详情仍按唯一页面规则匹配', () => {
+    expect(getRouteRegistration('tasks.archived')).toBeUndefined();
     expect(findRouteRegistration('/tasks/archived')).toMatchObject({
-      routeKey: 'tasks.archived',
+      routeKey: 'tasks.detail',
     });
     expect(findRouteRegistration('/tasks/task-42')).toMatchObject({
       routeKey: 'tasks.detail',

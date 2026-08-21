@@ -1,11 +1,6 @@
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
-
-vi.mock('@ant-design/charts', () => ({
-  Bar: () => <div data-ant-design-chart="bar" />,
-  Column: () => <div data-ant-design-chart="column" />,
-}));
+import { describe, expect, it } from 'vitest';
 
 import AdminModelsPage from '.';
 
@@ -64,6 +59,25 @@ describe('AdminModelsPage', () => {
     }
     expect(screen.queryByText('42,318')).not.toBeInTheDocument();
     expect(screen.queryByText('38%')).not.toBeInTheDocument();
+    for (const oldKpi of [
+      '今日调用',
+      'Token 消耗',
+      '成本估算',
+      '成功率',
+      'P95 延迟',
+      'Chat / Agent',
+    ]) {
+      expect(screen.queryByText(oldKpi)).not.toBeInTheDocument();
+    }
+    for (const oldChart of [
+      '近十四日模型调用量',
+      '按模型调用分布',
+      '按 Team 调用分布',
+    ]) {
+      expect(
+        screen.queryByRole('figure', { name: oldChart }),
+      ).not.toBeInTheDocument();
+    }
   });
 
   it('模型评测保留作业与证据表格且两者都明确为空', async () => {

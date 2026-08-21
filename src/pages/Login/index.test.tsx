@@ -47,7 +47,6 @@ vi.mock('@umijs/max', async () => {
       name: string;
       order: number;
       routeKey: string;
-      sort: number;
     }>;
     principal: null | { employeeId: string; name: string };
   };
@@ -98,14 +97,12 @@ const navigation = [
     name: '首页',
     order: 1,
     routeKey: 'home',
-    sort: 10,
   },
   {
     meta: {},
     name: '管理后台',
     order: 2,
     routeKey: 'admin',
-    sort: 20,
   },
 ];
 function createLoginFixture() {

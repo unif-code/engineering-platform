@@ -115,7 +115,6 @@ describe('getInitialState', () => {
         name: '首页',
         order: 1,
         routeKey: 'home',
-        sort: 10,
       },
     ];
     featureMocks.fetchMe.mockResolvedValue(me);
@@ -161,7 +160,6 @@ describe('getInitialState', () => {
         name: '首页',
         order: 1,
         routeKey: 'home',
-        sort: 10,
       },
     ]);
 
@@ -248,21 +246,18 @@ describe('layout', () => {
             name: '管理后台',
             order: 3,
             routeKey: 'admin',
-            sort: 30,
           },
           {
             meta: {},
             name: '未知菜单',
             order: 1,
             routeKey: 'ghost',
-            sort: 10,
           },
           {
             meta: {},
             name: '首页',
             order: 2,
             routeKey: 'home',
-            sort: 20,
           },
         ],
         principal: { employeeId, name: '平台用户' },
@@ -304,35 +299,30 @@ describe('layout', () => {
             name: '管理概览',
             order: 3,
             routeKey: 'admin',
-            sort: 30,
           },
           {
             meta: {},
             name: '工作区管理',
             order: 4,
             routeKey: 'admin.workspaces',
-            sort: 40,
           },
           {
             meta: {},
             name: '组织管理',
             order: 5,
             routeKey: 'admin.organization',
-            sort: 50,
           },
           {
             meta: {},
             name: '未知菜单',
             order: 1,
             routeKey: 'ghost',
-            sort: 10,
           },
           {
             meta: {},
             name: '首页',
             order: 2,
             routeKey: 'home',
-            sort: 20,
           },
         ],
         principal: null,
@@ -448,21 +438,18 @@ describe('layout', () => {
         name: '工作台',
         order: 1,
         routeKey: 'home',
-        sort: 10,
       },
       {
         meta: {},
         name: '工作区',
         order: 2,
         routeKey: 'workspaces',
-        sort: 20,
       },
       {
         meta: {},
         name: '审计看板',
         order: 3,
         routeKey: 'audit',
-        sort: 30,
       },
     ];
     const adminNavigation = [
@@ -472,14 +459,12 @@ describe('layout', () => {
         name: '管理概览',
         order: 4,
         routeKey: 'admin',
-        sort: 40,
       },
       {
         meta: {},
         name: '账号管理',
         order: 5,
         routeKey: 'admin.users',
-        sort: 50,
       },
     ];
 

@@ -25,11 +25,6 @@ export default [
         routeKey: 'tasks',
       },
       {
-        path: '/tasks/archived',
-        redirect: '/tasks?view=archived',
-        routeKey: 'tasks.archived',
-      },
-      {
         name: '任务详情',
         path: '/tasks/:taskId',
         component: './TaskDetail',

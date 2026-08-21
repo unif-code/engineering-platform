@@ -71,16 +71,6 @@ function getComponentRoute(path: string): RouteConfig {
   return route;
 }
 
-function getRedirectRoute(path: string): RouteConfig {
-  const route = allRoutes.find(
-    (candidate) => candidate.path === path && candidate.redirect,
-  );
-  if (!route) {
-    throw new Error(`Missing redirect route: ${path}`);
-  }
-  return route;
-}
-
 describe('route registry integration', () => {
   it('将全部页面绑定到精确且唯一的静态 component route', () => {
     const componentRoutes = allRoutes.filter(
@@ -100,13 +90,13 @@ describe('route registry integration', () => {
     expect(getComponentRoute('/admin').name).toBe('管理概览');
   });
 
-  it('config 的 23 条 public、parent、redirect、page route 与 Registry 一一对应', () => {
-    expect(allRoutes).toHaveLength(23);
+  it('config 的 22 条 public、parent、redirect、page route 与 Registry 一一对应', () => {
+    expect(allRoutes).toHaveLength(22);
     expect(allRoutes.every(({ routeKey }) => routeKey)).toBe(true);
     expect(allRoutes.map(({ routeKey }) => routeKey)).toEqual(
       Object.keys(ROUTE_REGISTRY),
     );
-    expect(new Set(allRoutes.map(({ routeKey }) => routeKey))).toHaveLength(23);
+    expect(new Set(allRoutes.map(({ routeKey }) => routeKey))).toHaveLength(22);
 
     for (const route of allRoutes) {
       const registration =
@@ -183,29 +173,16 @@ describe('route registry integration', () => {
     expect(topLevelAdminRoutes).toEqual([]);
   });
 
-  it('归档仅作为兼容跳转，且位于动态详情之前', () => {
-    expect(getRedirectRoute('/tasks/archived')).toMatchObject({
-      redirect: '/tasks?view=archived',
-      routeKey: 'tasks.archived',
-    });
+  it('删除旧归档兼容路由，只保留动态任务详情页面', () => {
+    expect(
+      allRoutes.find(({ path }) => path === '/tasks/archived'),
+    ).toBeUndefined();
     expect(getComponentRoute('/tasks/:taskId')).toMatchObject({
       hideInMenu: true,
       parentKeys: ['/tasks'],
       routeKey: 'tasks.detail',
     });
-    expect(ROUTE_REGISTRY['tasks.archived']).toMatchObject({
-      kind: 'redirect',
-      menu: false,
-      redirectTo: '/tasks?view=archived',
-    });
+    expect('tasks.archived' in ROUTE_REGISTRY).toBe(false);
     expect(ROUTE_REGISTRY['tasks.detail'].parent).toBe('tasks');
-
-    const protectedRoot = routes.find(
-      (route) => route.path === '/' && route.routes,
-    );
-    const childPaths = protectedRoot?.routes?.map(({ path }) => path) ?? [];
-    expect(childPaths.indexOf('/tasks/archived')).toBeLessThan(
-      childPaths.indexOf('/tasks/:taskId'),
-    );
   });
 });

@@ -1,23 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { NavigationItem } from '@/features/navigation';
-import * as menuUtil from './util';
-
-type ProjectNavigation = (
-  navigation: NavigationItem[],
-) => Array<{ group: string; key: string; name: string; order: number }>;
-
-const projectNavigationToMenuRows =
-  (
-    menuUtil as typeof menuUtil & {
-      projectNavigationToMenuRows?: ProjectNavigation;
-    }
-  ).projectNavigationToMenuRows ?? (() => []);
+import { projectNavigationToMenuRows } from './util';
 
 const navigationItem = (
   routeKey: string,
   name: string,
   order: number,
-): NavigationItem => ({ meta: {}, name, order, routeKey, sort: order });
+): NavigationItem => ({ meta: {}, name, order, routeKey });
 
 describe('projectNavigationToMenuRows', () => {
   it('仅投影已注册的可见菜单并使用服务端名称与顺序', () => {

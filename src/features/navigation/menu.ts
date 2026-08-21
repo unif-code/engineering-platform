@@ -52,9 +52,9 @@ function compareNavigationItems(
     return groupDifference;
   }
 
-  const sortDifference = first.item.sort - second.item.sort;
-  if (sortDifference !== 0) {
-    return sortDifference;
+  const orderDifference = first.item.order - second.item.order;
+  if (orderDifference !== 0) {
+    return orderDifference;
   }
 
   if (first.item.routeKey === second.item.routeKey) {

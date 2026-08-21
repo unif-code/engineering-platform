@@ -95,16 +95,6 @@ export const ROUTE_REGISTRY = {
     path: APP_PATHS.tasks,
     redirectTo: null,
   },
-  'tasks.archived': {
-    access: 'session',
-    group: null,
-    icon: null,
-    kind: 'redirect',
-    menu: false,
-    parent: 'tasks',
-    path: '/tasks/archived',
-    redirectTo: '/tasks?view=archived',
-  },
   'tasks.detail': {
     access: 'session',
     group: null,

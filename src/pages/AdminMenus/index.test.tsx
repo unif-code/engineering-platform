@@ -22,7 +22,6 @@ const navigationItem = (routeKey: string, name: string, order: number) => ({
   name,
   order,
   routeKey,
-  sort: order,
 });
 
 afterEach(() => {

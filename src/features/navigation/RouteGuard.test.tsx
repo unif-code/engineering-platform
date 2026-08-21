@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
       name: string;
       order: number;
       routeKey: string;
-      sort: number;
     }>,
     principal: null as null | {
       employeeId: string;
@@ -76,7 +75,6 @@ const navigationItem = (routeKey: string) => ({
   name: routeKey,
   order: 999,
   routeKey,
-  sort: 10,
 });
 
 beforeEach(() => {

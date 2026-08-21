@@ -55,7 +55,7 @@ export function projectNavigationToMenuRows(
           icon: registration.icon,
           key: item.routeKey,
           name: item.name,
-          order: item.sort,
+          order: item.order,
           path: registration.path,
         },
       ];

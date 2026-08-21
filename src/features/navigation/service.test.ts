@@ -21,7 +21,6 @@ describe('navigation feature service', () => {
         name: '首页',
         order: 1,
         routeKey: 'home',
-        sort: 10,
       },
     ]);
 
@@ -31,7 +30,6 @@ describe('navigation feature service', () => {
         name: '首页',
         order: 1,
         routeKey: 'home',
-        sort: 10,
       },
     ]);
   });

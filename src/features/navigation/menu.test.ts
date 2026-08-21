@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { buildMenuData } from './menu';
 import { ROUTE_REGISTRY } from './registry';
 
-function navigationItem(routeKey: string, title: string, sort: number) {
+function navigationItem(routeKey: string, title: string, order: number) {
   return {
     meta: { opaqueLabel: `不参与菜单渲染-${title}` },
     name: title,
-    order: 999 - sort,
+    order,
     routeKey,
-    sort,
   };
 }
 
@@ -90,7 +89,7 @@ describe('buildMenuData', () => {
     expect(
       groups.flatMap(({ children }) => children?.map(({ key }) => key) ?? []),
     ).toEqual(visibleRouteKeys);
-    expect(groups[0]?.children).toHaveLength(7);
+    expect(groups[0]?.children).toHaveLength(6);
     expect(groups[1]?.children).toHaveLength(9);
   });
 
@@ -178,7 +177,7 @@ describe('buildMenuData', () => {
     });
   });
 
-  it('管理概览只保留兼容路由，工作区管理优先于组织管理', () => {
+  it('管理概览不进入菜单，工作区管理优先于组织管理', () => {
     expect(
       buildMenuData([
         navigationItem('admin', '管理概览', 10),
@@ -209,7 +208,7 @@ describe('buildMenuData', () => {
     ]);
   });
 
-  it('过滤未知与非菜单 key，按 sort 排序并保留不透明 meta', () => {
+  it('过滤未知与非菜单 key，按 order 排序并保留不透明 meta', () => {
     const items = [
       navigationItem('admin.users', '账号管理', 4),
       navigationItem('admin', '管理概览', 8),
@@ -284,12 +283,6 @@ describe('buildMenuData', () => {
             path: '/tasks',
           },
           {
-            icon: ROUTE_REGISTRY['tasks.archived'].icon,
-            key: 'tasks.archived',
-            name: '归档数据',
-            path: '/tasks/archived',
-          },
-          {
             icon: ROUTE_REGISTRY.messages.icon,
             key: 'messages',
             name: '消息中心',
@@ -341,7 +334,7 @@ describe('buildMenuData', () => {
     ]);
   });
 
-  it('任意输入排列都只由 sort 决定分组内顺序', () => {
+  it('任意输入排列都只由 order 决定分组内顺序', () => {
     const items = [
       navigationItem('admin', '管理概览', 50),
       navigationItem('home', '首页', 20),
@@ -374,7 +367,7 @@ describe('buildMenuData', () => {
     }
   });
 
-  it('sort 相同时按 routeKey 稳定排序，重复 key 保持等价', () => {
+  it('order 相同时按 routeKey 稳定排序，重复 key 保持等价', () => {
     const sameRank = [
       navigationItem('tasks', '任务 A', 10),
       navigationItem('home', '首页', 10),

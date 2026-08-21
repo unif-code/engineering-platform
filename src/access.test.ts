@@ -10,7 +10,6 @@ function createInitialState(routeKeys: string[], loggedIn = true) {
       name: routeKey,
       order,
       routeKey,
-      sort: order,
     })),
     principal: loggedIn
       ? { employeeId: createEmployeeNo(), name: '平台用户' }

@@ -17,7 +17,6 @@ vi.mock('@umijs/max', () => ({
           name: '工作台',
           order: 1,
           routeKey: 'home',
-          sort: 10,
         },
       ],
       principal: mocks.principal,
