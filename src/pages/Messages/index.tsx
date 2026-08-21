@@ -1,5 +1,5 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
-import { Button, Empty, Segmented, Tooltip } from 'antd';
+import { Button, Checkbox, Empty, Segmented, Tooltip } from 'antd';
 import { useState } from 'react';
 import { useStyles } from './index.style';
 
@@ -9,6 +9,7 @@ export default function MessagesPage() {
   const { styles } = useStyles();
   const [selectedCategory, setSelectedCategory] =
     useState<MessageCategory>('all');
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
   return (
     <PageContainer ghost pageHeaderRender={false}>
@@ -28,13 +29,21 @@ export default function MessagesPage() {
               ]}
               value={selectedCategory}
             />
-            <Tooltip title="当前版本暂未接入">
-              <span>
-                <Button disabled type="link">
-                  全部已读
-                </Button>
-              </span>
-            </Tooltip>
+            <div className={styles.actions}>
+              <Checkbox
+                checked={unreadOnly}
+                onChange={(event) => setUnreadOnly(event.target.checked)}
+              >
+                只看未读
+              </Checkbox>
+              <Tooltip title="当前版本暂未接入">
+                <span>
+                  <Button disabled title="当前版本暂未接入" type="link">
+                    全部已读
+                  </Button>
+                </span>
+              </Tooltip>
+            </div>
           </div>
           <div aria-label="暂无消息" className={styles.empty} role="status">
             <Empty

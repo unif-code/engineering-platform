@@ -22,6 +22,11 @@ export const useStyles = createStyles(({ token }) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
+  actions: {
+    display: 'flex',
+    gap: token.marginSM,
+    alignItems: 'center',
+  },
   empty: {
     display: 'grid',
     minHeight: 420,

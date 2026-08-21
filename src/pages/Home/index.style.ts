@@ -8,6 +8,14 @@ export const useStyles = createStyles(({ token }) => ({
   },
   workbenchHeader: {
     display: 'flex',
+    flexWrap: 'wrap',
+    gap: token.margin,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  workbenchHeading: {
+    display: 'flex',
+    minWidth: 0,
     flexDirection: 'column',
     gap: token.marginXXS,
   },

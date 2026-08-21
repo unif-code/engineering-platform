@@ -18,6 +18,10 @@ describe('HomePage', () => {
     expect(
       screen.getByRole('heading', { name: '你好，当前用户' }),
     ).toBeVisible();
+    expect(screen.getByRole('button', { name: '创建任务' })).toMatchObject({
+      disabled: true,
+      title: '当前版本暂未接入',
+    });
     const myTasks = screen.getByRole('region', { name: '我的任务' });
     expect(within(myTasks).getByText('暂无真实任务数据')).toBeVisible();
     expect(screen.getByRole('region', { name: '关键指标' })).toBeVisible();

@@ -43,6 +43,17 @@ describe('TasksPage', () => {
       ).toBeVisible();
     }
     expect(screen.getByRole('button', { name: '创建任务' })).toBeDisabled();
+    const statusFilter = screen.getByRole('radiogroup', { name: '任务状态' });
+    await user.click(within(statusFilter).getByText('运行中'));
+    expect(
+      within(statusFilter).getByRole('radio', { name: '运行中' }),
+    ).toBeChecked();
+    expect(screen.getByText('暂无真实任务数据')).toBeVisible();
+    expect(
+      screen.getByRole('searchbox', {
+        name: '搜索任务：当前版本暂未接入',
+      }),
+    ).toMatchObject({ disabled: true, title: '当前版本暂未接入' });
     expect(screen.queryByText('REQ-2026-0142')).not.toBeInTheDocument();
 
     const viewSwitcher = screen.getByRole('radiogroup', { name: '任务视图' });

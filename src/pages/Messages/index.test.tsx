@@ -11,8 +11,15 @@ describe('MessagesPage', () => {
     expect(screen.getByRole('heading', { name: '消息中心' })).toBeVisible();
     expect(screen.getByText('暂无真实消息数据')).toBeVisible();
     expect(screen.getByRole('button', { name: '全部已读' })).toBeDisabled();
+    const unreadOnly = screen.getByRole('checkbox', { name: '只看未读' });
+    expect(unreadOnly).not.toBeChecked();
     const categories = screen.getByRole('radiogroup', { name: '消息分类' });
     await user.click(within(categories).getByText('Gate'));
+    await user.click(unreadOnly);
+    expect(
+      within(categories).getByRole('radio', { name: 'Gate' }),
+    ).toBeChecked();
+    expect(unreadOnly).toBeChecked();
     expect(screen.getByText('暂无真实消息数据')).toBeVisible();
     expect(
       screen.queryByText('Requirement Gate 等待审批'),

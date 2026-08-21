@@ -1,6 +1,6 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { Empty } from 'antd';
+import { Button, Empty, Tooltip } from 'antd';
 import { useStyles } from './index.style';
 
 interface EmptySectionProps {
@@ -37,10 +37,19 @@ export default function HomePage() {
     <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
         <header className={styles.workbenchHeader}>
-          <h1 className={styles.greeting}>你好，{userName}</h1>
-          <p className={styles.intro}>
-            查看今天的 Gate、任务、Agent Attempt 与交付动态
-          </p>
+          <div className={styles.workbenchHeading}>
+            <h1 className={styles.greeting}>你好，{userName}</h1>
+            <p className={styles.intro}>
+              查看今天的 Gate、任务、Agent Attempt 与交付动态
+            </p>
+          </div>
+          <Tooltip title="当前版本暂未接入">
+            <span>
+              <Button disabled title="当前版本暂未接入" type="primary">
+                创建任务
+              </Button>
+            </span>
+          </Tooltip>
         </header>
 
         <section aria-labelledby="workbench-metrics-title">

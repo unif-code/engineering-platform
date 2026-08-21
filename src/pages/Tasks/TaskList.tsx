@@ -21,6 +21,7 @@ interface TaskTableRow {
 }
 
 type TaskView = 'table' | 'board';
+type TaskStatus = '全部' | '待处理' | '运行中' | '阻塞' | '已完成';
 
 const taskRows: readonly TaskTableRow[] = [];
 
@@ -38,6 +39,7 @@ const columns: ProColumns<TaskTableRow>[] = [
 
 export function TaskListPage() {
   const { styles } = useStyles();
+  const [status, setStatus] = useState<TaskStatus>('全部');
   const [view, setView] = useState<TaskView>('table');
 
   return (
@@ -68,22 +70,28 @@ export function TaskListPage() {
           }
           ariaLabel="任务筛选与操作"
           filters={
-            <Segmented
+            <Segmented<TaskStatus>
               aria-label="任务状态"
+              onChange={setStatus}
               options={['全部', '待处理', '运行中', '阻塞', '已完成']}
               shape="round"
               size="small"
-              value="全部"
+              value={status}
             />
           }
           search={
-            <Input.Search
-              allowClear
-              aria-label="搜索任务"
-              className={styles.search}
-              disabled
-              placeholder="搜索标题 / 编号"
-            />
+            <Tooltip title="当前版本暂未接入">
+              <span className={styles.searchHint}>
+                <Input.Search
+                  allowClear
+                  aria-label="搜索任务：当前版本暂未接入"
+                  className={styles.search}
+                  disabled
+                  placeholder="搜索标题 / 编号"
+                  title="当前版本暂未接入"
+                />
+              </span>
+            </Tooltip>
           }
         />
 

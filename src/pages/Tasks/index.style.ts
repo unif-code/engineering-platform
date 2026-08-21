@@ -13,6 +13,10 @@ export const useStyles = createStyles(({ token }) => ({
     lineHeight: token.lineHeightHeading3,
   },
   search: {
+    width: '100%',
+  },
+  searchHint: {
+    display: 'inline-flex',
     width: 170,
     maxWidth: '100%',
   },
