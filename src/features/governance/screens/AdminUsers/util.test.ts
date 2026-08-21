@@ -1,4 +1,3 @@
-import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const listAccountsMock = vi.hoisted(() => vi.fn());
@@ -8,7 +7,7 @@ vi.mock('@/features/administration', () => ({
 }));
 
 import type { UserQueryParams } from './type';
-import { formatAccountError, queryUserRows, toAccountListQuery } from './util';
+import { queryUserRows, toAccountListQuery } from './util';
 
 async function runQuery(
   params: UserQueryParams = {},
@@ -170,40 +169,5 @@ describe('queryUserRows', () => {
     });
 
     expect(result).toEqual({ data: [], success: true, total: 0 });
-  });
-
-  it.each([
-    { detail: '无账号治理权限', requestId: 'req-403', status: 403 },
-    { detail: '员工号已存在', requestId: 'req-409', status: 409 },
-    { detail: '状态转换不合法', requestId: 'req-422', status: 422 },
-  ])(
-    '保留 $status Problem detail 与 requestId',
-    ({ detail, requestId, status }) => {
-      const error = createApiErrorFixture({
-        detail,
-        requestId,
-        status,
-        title: 'ACCOUNT_GOVERNANCE_ERROR',
-      });
-
-      expect(formatAccountError(error, '账号操作失败')).toBe(
-        `${detail}（requestId: ${requestId}）`,
-      );
-    },
-  );
-
-  it.each([
-    [new Error('网络中断'), '网络中断'],
-    ['offline', '账号操作失败'],
-    [{ problem: null }, '账号操作失败'],
-    [
-      Object.assign(new Error('兼容错误'), {
-        name: 'ApiError',
-        problem: { detail: 422 },
-      }),
-      '兼容错误',
-    ],
-  ])('错误输入 %j 使用稳定消息', (error, expected) => {
-    expect(formatAccountError(error, '账号操作失败')).toBe(expected);
   });
 });

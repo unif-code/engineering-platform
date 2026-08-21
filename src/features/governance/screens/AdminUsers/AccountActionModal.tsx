@@ -1,8 +1,8 @@
 import { ModalForm, ProFormTextArea } from '@ant-design/pro-components';
 import { App, Typography } from 'antd';
+import { formatGovernanceError } from '@/features/administration';
 import { USER_ACTION_META } from './constant';
 import type { UserAction, UserActionFormValues, UserRow } from './type';
-import { formatAccountError } from './util';
 
 interface AccountActionModalProps {
   action: UserAction;
@@ -27,7 +27,7 @@ export function AccountActionModal({
       await onConfirm(reason.trim());
       return true;
     } catch (error) {
-      message.error(formatAccountError(error, `${actionMeta.title}失败`));
+      message.error(formatGovernanceError(error, `${actionMeta.title}失败`));
       return false;
     }
   };

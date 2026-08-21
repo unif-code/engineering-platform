@@ -1,4 +1,4 @@
-import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
+import { createProblemError } from '@root/tests/fixtures/problemError';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
@@ -18,7 +18,10 @@ const administrationMocks = vi.hoisted(() => ({
   resetAccountTotp: vi.fn(),
 }));
 
-vi.mock('@/features/administration', () => administrationMocks);
+vi.mock('@/features/administration', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/administration')>()),
+  ...administrationMocks,
+}));
 
 import AdminUsersPage from '.';
 
@@ -244,7 +247,7 @@ describe('AdminUsersPage', () => {
     async ({ detail, requestId, status }) => {
       const user = userEvent.setup();
       administrationMocks.resetAccountPassword.mockRejectedValueOnce(
-        createApiErrorFixture({ detail, requestId, status }),
+        createProblemError({ detail, requestId, status }),
       );
       renderPage();
 
@@ -357,7 +360,7 @@ describe('AdminUsersPage', () => {
       administrationMocks.listAccounts
         .mockResolvedValueOnce(accountPage())
         .mockRejectedValueOnce(
-          createApiErrorFixture({
+          createProblemError({
             detail: '账号列表权限已撤销',
             requestId: 'req-account-reload-403',
             status: 403,
@@ -493,7 +496,7 @@ describe('AdminUsersPage', () => {
     async ({ detail, requestId, status }) => {
       const user = userEvent.setup();
       administrationMocks.createAccount.mockRejectedValueOnce(
-        createApiErrorFixture({ detail, requestId, status }),
+        createProblemError({ detail, requestId, status }),
       );
       renderPage();
 
@@ -520,7 +523,7 @@ describe('AdminUsersPage', () => {
 
   it('列表 403 展示服务端 detail 与 requestId', async () => {
     administrationMocks.listAccounts.mockRejectedValueOnce(
-      createApiErrorFixture({
+      createProblemError({
         detail: '无账号治理权限',
         requestId: 'req-account-list-403',
         status: 403,
@@ -609,7 +612,7 @@ describe('AdminUsersPage', () => {
     view.rerender(pageShell(false));
     await act(async () => {
       rejectPendingRequest(
-        createApiErrorFixture({
+        createProblemError({
           detail: '页面卸载后的旧请求',
           requestId: 'unmounted-admin-account-request',
           status: 403,

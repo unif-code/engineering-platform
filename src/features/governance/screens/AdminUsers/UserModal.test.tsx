@@ -2,7 +2,8 @@ import { render, screen } from '@testing-library/react';
 import { App, ConfigProvider } from 'antd';
 import { describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/features/administration', () => ({
+vi.mock('@/features/administration', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/administration')>()),
   createAccount: vi.fn(),
 }));
 

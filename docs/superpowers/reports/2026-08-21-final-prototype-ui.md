@@ -116,4 +116,4 @@
 - 外部 Chrome：`CANNOT VERIFY`。外部 Chrome 控制返回 `Browser is not available: chrome`，当前只能发现应用内浏览器，因此未完成 1440×900 与 1280px 的 19 屏对照、真实登录/授权跳转、明暗主题和真实 mutation 验收。未使用应用内浏览器替代。
 - 真实联调：`CANNOT VERIFY`。Workspace Owner 候选人的后端约束以及所有 V0.2 mutation 的真实端到端行为仍需联调/验收环境证明。
 - `.github/workflows/ci.yml` 的 `verify` job 仍执行 `pnpm verify`；`package.json` 中该命令包含 lint、tooling/structure/Markdown、完整 coverage、doctor、Ant Design checks 与 build。tag 触发的 `release-gate` 另外执行 `pnpm openapi:check:release`。
-- 只有 Task 7 最终提交的 PR CI 全绿、whole-branch Spec/Standards review 通过、真实联调和外部 Chrome 验收完成，并获得明确发布授权后，才能合并/发布并宣称最终版。
+- 只有精确当前候选 HEAD 的 PR CI 全绿，并在合并后确认精确 merge SHA 的 CI 与 whole-branch Spec/Standards review 全绿，同时完成真实联调、外部 Chrome 验收并获得明确发布授权后，才能发布并宣称最终版。

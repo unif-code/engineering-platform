@@ -38,6 +38,7 @@ export default function AdminWorkspacesPage() {
   const [listError, setListError] = useState<unknown>();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceRow>();
+  const [workspaceRows, setWorkspaceRows] = useState<WorkspaceRow[]>([]);
 
   const organizationQuery = useQuery({
     queryFn: getOrganizationTree,
@@ -171,7 +172,8 @@ export default function AdminWorkspacesPage() {
           return { data: [], success: false, total: 0 };
         }
         setListError(error);
-        return { data: [], success: true, total: 0 };
+        setWorkspaceRows([]);
+        return { data: [], success: false, total: 0 };
       }
     },
     [accountsById],
@@ -280,11 +282,13 @@ export default function AdminWorkspacesPage() {
     <ProTable<WorkspaceRow, WorkspaceQueryParams>
       actionRef={actionRef}
       columns={columns}
+      dataSource={workspaceRows}
       key="workspace-table"
       locale={{
         emptyText: <Empty description="暂无真实工作区" />,
       }}
       onChange={invalidatePendingRequests}
+      onLoad={setWorkspaceRows}
       options={false}
       pagination={{ pageSize: 10, showSizeChanger: false }}
       request={requestWorkspaces}

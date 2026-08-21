@@ -1,8 +1,10 @@
 import { DrawerForm, ProFormText } from '@ant-design/pro-components';
 import { Alert, App } from 'antd';
-import { createAccount } from '@/features/administration';
+import {
+  createAccount,
+  formatGovernanceError,
+} from '@/features/administration';
 import type { CredentialReceipt, UserFormValues } from './type';
-import { formatAccountError } from './util';
 
 interface UserModalProps {
   open: boolean;
@@ -25,7 +27,7 @@ export function UserModal({ open, onClose, onCreated }: UserModalProps) {
       onCreated(receipt);
       return true;
     } catch (error) {
-      message.error(formatAccountError(error, '账号创建失败'));
+      message.error(formatGovernanceError(error, '账号创建失败'));
       return false;
     }
   };

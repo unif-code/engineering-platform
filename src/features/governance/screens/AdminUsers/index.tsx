@@ -11,6 +11,7 @@ import { SemanticTag } from '@/components/SemanticTag';
 import {
   disableAccount,
   enableAccount,
+  formatGovernanceError,
   resetAccountPassword,
   resetAccountTotp,
 } from '@/features/administration';
@@ -25,7 +26,7 @@ import type {
   UserRow,
 } from './type';
 import { UserModal } from './UserModal';
-import { formatAccountError, queryUserRows } from './util';
+import { queryUserRows } from './util';
 
 interface ActionState {
   action: UserAction;
@@ -44,6 +45,7 @@ export default function AdminUsersPage() {
   const requestSequenceRef = useRef(0);
   const [createOpen, setCreateOpen] = useState(false);
   const [actionState, setActionState] = useState<ActionState>();
+  const [accountRows, setAccountRows] = useState<UserRow[]>([]);
   const [credentialState, setCredentialState] = useState<CredentialState>();
   const [listError, setListError] = useState<string>();
 
@@ -74,10 +76,11 @@ export default function AdminUsersPage() {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        const detail = formatAccountError(error, '账号列表加载失败');
+        const detail = formatGovernanceError(error, '账号列表加载失败');
         setListError(detail);
+        setAccountRows([]);
         message.error(detail);
-        return { data: [], success: true, total: 0 };
+        return { data: [], success: false, total: 0 };
       }
     },
     [message],
@@ -244,8 +247,10 @@ export default function AdminUsersPage() {
         <ProTable<UserRow, UserQueryParams>
           actionRef={actionRef}
           columns={columns}
+          dataSource={accountRows}
           locale={{ emptyText: <Empty description="暂无数据" /> }}
           onChange={invalidatePendingRequests}
+          onLoad={setAccountRows}
           options={false}
           pagination={{ pageSize: 20, showSizeChanger: false }}
           request={requestAccounts}

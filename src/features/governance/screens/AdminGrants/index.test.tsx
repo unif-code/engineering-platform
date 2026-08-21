@@ -1,4 +1,4 @@
-import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
+import { createProblemError } from '@root/tests/fixtures/problemError';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
@@ -406,7 +406,7 @@ describe('AdminGrantsPage', () => {
 
   it('列表失败展示服务端 detail 与 requestId 并清空旧数据', async () => {
     administrationMocks.listGrants.mockRejectedValueOnce(
-      createApiErrorFixture({
+      createProblemError({
         detail: 'Grant 列表无权访问',
         requestId: 'req-grant-list-403',
         status: 403,
@@ -456,7 +456,7 @@ describe('AdminGrantsPage', () => {
           resolvePending(INITIAL_GRANTS_RESPONSE);
         } else {
           rejectPending(
-            createApiErrorFixture({
+            createProblemError({
               detail: '页面卸载后的旧请求',
               requestId: 'unmounted-grant-request',
               status: 403,
@@ -472,7 +472,7 @@ describe('AdminGrantsPage', () => {
   it('授予失败保留 Modal 并展示服务端 detail 与 requestId', async () => {
     const user = userEvent.setup();
     administrationMocks.createGrant.mockRejectedValueOnce(
-      createApiErrorFixture({
+      createProblemError({
         detail: '该授权与现有 Grant 冲突',
         requestId: 'req-grant-create-409',
         status: 409,
@@ -509,7 +509,7 @@ describe('AdminGrantsPage', () => {
   it('撤销失败保留 Modal 并展示服务端 detail 与 requestId', async () => {
     const user = userEvent.setup();
     administrationMocks.revokeGrant.mockRejectedValueOnce(
-      createApiErrorFixture({
+      createProblemError({
         detail: 'Grant 版本已过期',
         requestId: 'req-grant-revoke-412',
         status: 412,

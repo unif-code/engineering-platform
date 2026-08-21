@@ -1,4 +1,4 @@
-import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
+import { createProblemError } from '@root/tests/fixtures/problemError';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
@@ -77,7 +77,7 @@ describe('GrantModal', () => {
     const onSubmit = vi
       .fn<(input: GrantSubmitInput) => Promise<void>>()
       .mockRejectedValue(
-        createApiErrorFixture({
+        createProblemError({
           detail: '该授权与现有 Grant 冲突',
           requestId: 'req-grant-modal-409',
           status: 409,

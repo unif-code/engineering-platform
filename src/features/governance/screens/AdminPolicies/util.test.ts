@@ -1,4 +1,4 @@
-import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
+import { createProblemError } from '@root/tests/fixtures/problemError';
 import { describe, expect, it } from 'vitest';
 import type { PolicyDraft } from '@/features/administration';
 import { getProblemStatus, mergePolicyDraftRevision } from './util';
@@ -19,7 +19,7 @@ const draft: PolicyDraft = {
 describe('getProblemStatus', () => {
   it('只接受 Problem 中的数值状态码', () => {
     expect(
-      getProblemStatus(createApiErrorFixture({ detail: '冲突', status: 409 })),
+      getProblemStatus(createProblemError({ detail: '冲突', status: 409 })),
     ).toBe(409);
     expect(getProblemStatus(new Error('普通错误'))).toBeUndefined();
     expect(getProblemStatus({ problem: null })).toBeUndefined();

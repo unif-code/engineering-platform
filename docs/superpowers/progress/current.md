@@ -1,31 +1,44 @@
 # 当前开发进度
 
 - Repository: engineering-platform
-- Updated At: 2026-08-21
-- Branch: feat/frontend-final-prototype
-- State: active release candidate development
-- Tracked Report: docs/superpowers/reports/2026-08-21-final-prototype-ui.md
+- Updated At: 2026-08-14T07:39:54Z
+- Based On Commit: 7aed47491f68cd51d37a0c990d76a2a5441c13a4
+- Branch: main
+- State: active
+- Active Plan: docs/superpowers/plans/2026-08-14-openapi-v02-release.md
+- Remote Recoverable: yes
 
 ## 已完成
 
-- Task 7 发布候选纯度与结构门禁已提交为 `06f4dfb`。
-- Whole-branch review 的行为与组件收口已完成实现和 focused 验证：归档 query、真实管理导航投影、全局 403/requestId、Audit/Grant 显式错误态、Sender、MetricCard、组织 Tooltip、GrantModal 私有 builder 与结构 collector 去重。
-- 后端 V0.2 管理概览契约保持唯一 routeKey `admin`，没有 `admin.overview` 或兼容别名。
-- 20 个 route screen（19 个产品屏幕与隐藏 Bootstrap）的实现、样式、私有 UI、类型、工具和测试已整体迁入 access/portal/governance 深 Feature；pages 只保留单行 Umi default re-export adapter，Feature 根只暴露命名 `*Screen` 接口。
-- route screen AST 结构契约完成 RED/GREEN；governance 生产代码只消费公开 administration/navigation，不直接依赖 generated/transport。
+- V0.2 mock 驱动计划 Task 0–9 已有完成 ledger；Task 9 提交为 `12fdec0`，其报告记录当时 `pnpm lint`、`pnpm test`、`pnpm build` 与 scoped antd 检查通过。
+- Bootstrap、Grant、Policy、Workspace 与 admin account/workspace service 的 V0.2 集成回归已提交为 `58e3860`。
+- 开发期 `0.x` breaking change 的 minor 版本判定、tooling tests 与 OpenAPI release plan 已提交为 `9674371`。
+- 两份旧 mock-only administration seam 测试已由 generated-client service tests 替代并删除，提交为 `7aed474`。
+- Codex 原生记忆映射已接入 docs 仓共享 SQLite，同步触发规则已提交。
 
-## 当前门禁
+## 进行中
 
-- PASS：access 3/13、portal 6/7、governance 23/151、test adapter 复验 9/100、Biome 89 个精确文件、TypeScript、dependency-cruiser、tooling 62/62、structure、Markdown、scoped Ant Design lint/usage 与 OpenAPI release check。
-- governance scoped Ant Design lint 报告 4 个既存 `Select virtual={false}` performance warning；选项集合有界且该公开属性用于稳定选项 DOM，没有 deprecated/usage/a11y issue。
-- generated OpenAPI 目录无改动；CI workflow 仍执行包含完整 coverage、doctor、Ant Design checks 与 build 的 `pnpm verify`。
+- OpenAPI V0.2 release plan 的 Task 1 已落地；Task 2–3 的 Artifact 0.2.0 同步、完整门禁、tag 与 CI 尚待继续。
+- AdminWorkspaces 的四个长链路测试在当前机器的 15 秒预算内超时，需在新电脑继续定位测试时序或产品异步状态，不得直接放宽 timeout。
 
 ## 剩余工作
 
-- normal hooks 提交 governance 深模块批次与验收报告，随后由 whole-branch review 继续检查。
-- 完整 coverage、doctor、build、完整 Ant Design gate 留给 CI；本地不运行。
-- 真实前后端联调、外部 Chrome 19 屏视觉验收和明确发布授权仍待完成。
+- 按 active plan 从后端 Artifact 重新锁定、生成并校验前端 OpenAPI 0.2.0，不手改 generated 文件。
+- 先复现并收敛 AdminWorkspaces 的四个 focused timeout 与 `act(...)` warning，再运行完整 `pnpm verify` 与 `pnpm openapi:check:release`。
+- 核对 frontend/backend 远端 SHA 后按计划创建 `v0.2.0` / `api-v0.2.0` tag，并确认 main/tag CI。
 
-## 状态边界
+## 阻塞项
 
-当前仍是发布候选开发版，不是已发布最终版；没有 merge、push、tag 或发布授权。
+- 无外部权限或契约 blocker；当前质量 blocker 是 AdminWorkspaces focused suite 4/10 超时，完整 `pnpm verify` 尚未运行。
+
+## 最近验证
+
+- `pnpm test:tooling` PASS，23/23；`pnpm tsc` PASS；`pnpm biome:check` PASS，310 files。
+- admin Grant/Audit/Policy generated-client service tests PASS，3 files / 8 tests。
+- 六个受影响文件的 focused Vitest：5 files passed、1 file failed，39/43 tests passed；失败均在 `AdminWorkspaces/index.test.tsx`，为创建、Owner 转让、Leader 邀请/移除、Leader 422 四个 15 秒 timeout，并观察到异步 `act(...)` warning。
+- 当前提交未运行完整 `pnpm verify` 或 release gate，不能宣称整仓全绿。
+
+## 工作树
+
+- clean。
+- 业务代码基线 `7aed474` 将与本次 progress commit 一起推送；代码、计划和已知失败证据均可恢复，因此 `Remote Recoverable: yes`。

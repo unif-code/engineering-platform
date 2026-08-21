@@ -47,25 +47,6 @@ const positiveInteger = (value: number | undefined, fallback: number) =>
     ? value
     : fallback;
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-export function formatAccountError(error: unknown, fallback: string): string {
-  if (!isRecord(error)) {
-    return fallback;
-  }
-  const problem = isRecord(error.problem) ? error.problem : undefined;
-  const detail =
-    typeof problem?.detail === 'string'
-      ? problem.detail
-      : error instanceof Error
-        ? error.message
-        : fallback;
-  return typeof error.requestId === 'string'
-    ? `${detail}（requestId: ${error.requestId}）`
-    : detail;
-}
-
 export function toAccountListQuery(
   params: UserQueryParams,
   sort: UserSort = {},
