@@ -27,4 +27,21 @@ export const useStyles = createStyles(({ token }) => ({
     borderColor: token.colorBorderSecondary,
     boxShadow: token.boxShadowTertiary,
   },
+  navigationList: {
+    display: 'grid',
+    gap: token.marginXS,
+    gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+    listStyle: 'none',
+    margin: 0,
+    padding: 0,
+  },
+  navigationLink: {
+    alignItems: 'center',
+    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadius,
+    color: token.colorText,
+    display: 'flex',
+    gap: token.marginXS,
+    padding: `${token.paddingSM}px ${token.padding}px`,
+  },
 }));

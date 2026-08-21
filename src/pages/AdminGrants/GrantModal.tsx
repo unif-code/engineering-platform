@@ -28,7 +28,7 @@ interface GrantModalProps {
   scopeOptions: readonly GrantScopeOption[];
 }
 
-export function buildGrantSubmitInput(
+function buildGrantSubmitInput(
   values: GrantFormValues,
   principalOptions: readonly GrantPrincipalOption[],
   scopeOptions: readonly GrantScopeOption[],

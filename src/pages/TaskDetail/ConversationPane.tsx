@@ -1,4 +1,5 @@
-import { Empty, Input, Tooltip } from 'antd';
+import { Sender } from '@ant-design/x';
+import { Empty, Tooltip } from 'antd';
 import { useStyles } from './index.style';
 
 export function ConversationPane() {
@@ -14,11 +15,15 @@ export function ConversationPane() {
         />
       </div>
       <Tooltip title="当前版本暂未接入">
-        <Input.TextArea
+        <Sender
           aria-label="任务消息"
+          autoSize={false}
           disabled
           placeholder="当前版本暂未接入"
-          rows={3}
+          styles={{ input: { minHeight: 72 } }}
+          suffix={(_, { components: { SendButton } }) => (
+            <SendButton aria-label="发送任务消息" />
+          )}
         />
       </Tooltip>
     </section>

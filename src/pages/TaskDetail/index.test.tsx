@@ -34,6 +34,12 @@ describe('TaskDetailPage', () => {
     expect(
       within(task).getByRole('region', { name: '任务对话' }),
     ).toHaveTextContent('暂无真实任务对话数据');
+    expect(
+      within(task).getByRole('textbox', { name: '任务消息' }),
+    ).toBeDisabled();
+    expect(
+      within(task).getByRole('button', { name: '发送任务消息' }),
+    ).toBeDisabled();
     const inspector = within(task).getByRole('complementary', {
       name: '任务 Inspector',
     });

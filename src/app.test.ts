@@ -43,6 +43,7 @@ vi.mock('@/features/navigation', async (importOriginal) => ({
 
 import { usePlatformTheme } from '@/features/theme';
 import {
+  ApiError,
   createApiClient,
   normalizeApiError,
   onUnauthorized,
@@ -349,6 +350,7 @@ describe('layout', () => {
         key: 'group-admin',
         name: '管理端',
         children: [
+          { key: 'admin', path: '/admin' },
           { key: 'admin.workspaces', path: '/admin/workspaces' },
           { key: 'admin.organization', path: '/admin/organization' },
         ],
@@ -565,6 +567,58 @@ describe('layout', () => {
     ).toThrow();
 
     await vi.waitFor(() => expect(setInitialState).toHaveBeenCalledOnce());
+  });
+
+  it('Umi request 403 进入统一拒绝页并保留 requestId', () => {
+    layout({});
+    const errorHandler = request.errorConfig?.errorHandler;
+
+    expect(() =>
+      errorHandler?.(
+        {
+          config: { url: '/api/v1/admin/grants' },
+          response: {
+            data: {
+              detail: '无权查看 Grant',
+              requestId: 'req-global-forbidden',
+              status: 403,
+            },
+            status: 403,
+          },
+        } as never,
+        {} as never,
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        problem: expect.objectContaining({
+          detail: '无权查看 Grant',
+          status: 403,
+        }),
+        requestId: 'req-global-forbidden',
+      }),
+    );
+    expect(featureMocks.replace).toHaveBeenCalledWith(
+      '/403?requestId=req-global-forbidden',
+    );
+  });
+
+  it('已归一化的全局 403 仍进入统一拒绝页', () => {
+    layout({});
+    const errorHandler = request.errorConfig?.errorHandler;
+
+    expect(() =>
+      errorHandler?.(
+        new ApiError({
+          detail: '无权访问管理资源',
+          requestId: 'req-normalized-forbidden',
+          status: 403,
+        }),
+        {} as never,
+      ),
+    ).toThrowError(ApiError);
+    expect(featureMocks.replace).toHaveBeenCalledWith(
+      '/403?requestId=req-normalized-forbidden',
+    );
   });
 
   it('并发 protected 401 合并为一次 Session 清理与跳转', async () => {

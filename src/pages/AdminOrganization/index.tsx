@@ -10,6 +10,7 @@ import {
   Spin,
   Table,
   type TableColumnsType,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useMemo, useState } from 'react';
@@ -146,16 +147,18 @@ export default function AdminOrganizationPage() {
             部门决定人员归属与默认可见范围；工作区成员由 Owner
             另行配置，两者不互相覆盖
           </Typography.Text>
-          <span className={styles.disabledAction}>
-            <Typography.Text type="secondary">当前版本暂未接入</Typography.Text>
-            <Button
-              disabled
-              icon={<PlusOutlined aria-hidden="true" />}
-              type="primary"
-            >
-              新建部门
-            </Button>
-          </span>
+          <Tooltip title="当前版本暂未接入">
+            <span className={styles.disabledAction}>
+              <Button
+                disabled
+                icon={<PlusOutlined aria-hidden="true" />}
+                title="当前版本暂未接入"
+                type="primary"
+              >
+                新建部门
+              </Button>
+            </span>
+          </Tooltip>
         </div>
 
         {organizationQuery.isError ? (

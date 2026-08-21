@@ -5,7 +5,7 @@ import {
   ProTable,
   type ProTableProps,
 } from '@ant-design/pro-components';
-import { App, Button, Input, Select, Space, Typography } from 'antd';
+import { Alert, Button, Input, Select, Space, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailDrawer } from '@/components/DetailDrawer';
 import { FilterToolbar } from '@/components/FilterToolbar';
@@ -43,7 +43,6 @@ const getActionMeta = (action: AuditRow['action']) =>
   ACTION_META[action] ?? { label: action, tone: 'brand' as const };
 
 export default function AuditPage() {
-  const { message } = App.useApp();
   const { styles } = useStyles();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
@@ -59,6 +58,7 @@ export default function AuditPage() {
   const [visibleCount, setVisibleCount] = useState(0);
   const [loadingMore, setLoadingMore] = useState(false);
   const [selectedRow, setSelectedRow] = useState<AuditRow>();
+  const [listError, setListError] = useState<string>();
 
   const resetCursor = useCallback(() => {
     requestSequenceRef.current += 1;
@@ -66,6 +66,7 @@ export default function AuditPage() {
     setCursor(undefined);
     setNextCursor(undefined);
     setVisibleCount(0);
+    setListError(undefined);
   }, []);
 
   useEffect(
@@ -89,50 +90,46 @@ export default function AuditPage() {
 
   const requestAuditRows = useCallback<
     NonNullable<ProTableProps<AuditRow, AuditQueryParams>['request']>
-  >(
-    async (params, sort, filter) => {
-      const requestSequence = ++requestSequenceRef.current;
-      const appending = params.cursor !== undefined;
-      if (appending) {
-        setLoadingMore(true);
+  >(async (params, sort, filter) => {
+    const requestSequence = ++requestSequenceRef.current;
+    const appending = params.cursor !== undefined;
+    if (appending) {
+      setLoadingMore(true);
+    }
+    try {
+      const result = await queryAuditRows(params, sort, filter);
+      if (requestSequence !== requestSequenceRef.current) {
+        return { data: [], success: false };
       }
-      try {
-        const result = await queryAuditRows(params, sort, filter);
-        if (requestSequence !== requestSequenceRef.current) {
-          return { data: [], success: false };
-        }
-        const nextRows = appending
-          ? mergeAndSelectAuditRows(
-              loadedRowsRef.current,
-              result.data,
-              params,
-              sort,
-              filter,
-            )
-          : [...result.data];
-        loadedRowsRef.current = nextRows;
-        setNextCursor(result.nextCursor);
-        setVisibleCount(nextRows.length);
-        return { data: nextRows, success: true };
-      } catch (error) {
-        if (requestSequence !== requestSequenceRef.current) {
-          return { data: [], success: false };
-        }
-        if (!appending) {
-          loadedRowsRef.current = [];
-          setVisibleCount(0);
-          setNextCursor(null);
-        }
-        message.error(formatGovernanceError(error, '审计事件加载失败'));
-        return { data: [...loadedRowsRef.current], success: true };
-      } finally {
-        if (requestSequence === requestSequenceRef.current) {
-          setLoadingMore(false);
-        }
+      const nextRows = appending
+        ? mergeAndSelectAuditRows(
+            loadedRowsRef.current,
+            result.data,
+            params,
+            sort,
+            filter,
+          )
+        : [...result.data];
+      loadedRowsRef.current = nextRows;
+      setListError(undefined);
+      setNextCursor(result.nextCursor);
+      setVisibleCount(nextRows.length);
+      return { data: nextRows, success: true };
+    } catch (error) {
+      if (requestSequence !== requestSequenceRef.current) {
+        return { data: [], success: false };
       }
-    },
-    [message],
-  );
+      loadedRowsRef.current = [];
+      setVisibleCount(0);
+      setNextCursor(null);
+      setListError(formatGovernanceError(error, '审计事件加载失败'));
+      return { data: [], success: false };
+    } finally {
+      if (requestSequence === requestSequenceRef.current) {
+        setLoadingMore(false);
+      }
+    }
+  }, []);
 
   const loadMore = useCallback(
     (next: string) => {
@@ -275,6 +272,23 @@ export default function AuditPage() {
             </Space>
           }
         />
+
+        {listError ? (
+          <Alert
+            action={
+              <Button
+                aria-label="重试加载审计事件"
+                onClick={() => void actionRef.current?.reload()}
+                size="small"
+              >
+                重试
+              </Button>
+            }
+            showIcon
+            title={listError}
+            type="error"
+          />
+        ) : null}
 
         <ProTable<AuditRow, AuditQueryParams>
           actionRef={actionRef}

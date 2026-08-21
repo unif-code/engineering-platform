@@ -3,6 +3,8 @@ import userEvent from '@testing-library/user-event';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+const routeMocks = vi.hoisted(() => ({ search: '' }));
+
 vi.mock('@umijs/max', () => ({
   Link: ({
     children,
@@ -16,12 +18,31 @@ vi.mock('@umijs/max', () => ({
       {children}
     </a>
   ),
+  useLocation: () => ({
+    hash: '',
+    pathname: '/tasks',
+    search: routeMocks.search,
+  }),
 }));
 
 import TasksPage from './index';
 
 describe('TasksPage', () => {
+  it('将 ?view=archived 作为当前任务列表的可观察归档筛选', () => {
+    routeMocks.search = '?view=archived';
+
+    render(<TasksPage />);
+
+    const statusFilter = screen.getByRole('radiogroup', { name: '任务状态' });
+    expect(
+      within(statusFilter).getByRole('radio', { name: '已归档' }),
+    ).toBeChecked();
+    expect(screen.getByRole('heading', { name: '归档任务' })).toBeVisible();
+    expect(screen.getByText('暂无真实归档任务数据')).toBeVisible();
+  });
+
   it('列表与看板复用同一个真实空数据集', async () => {
+    routeMocks.search = '';
     const user = userEvent.setup();
     render(<TasksPage />);
 

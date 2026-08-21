@@ -97,6 +97,7 @@ beforeEach(() => {
 
 describe('AdminOrganizationPage', () => {
   it('只用服务端组织树组成最终负责人概览与成员详情', async () => {
+    const user = userEvent.setup();
     renderPage();
 
     const overview = await screen.findByRole('region', { name: '负责人概览' });
@@ -107,7 +108,16 @@ describe('AdminOrganizationPage', () => {
       within(overview).getByRole('button', { name: /第二负责人/ }),
     ).toBeVisible();
     expect(screen.getByRole('button', { name: '新建部门' })).toBeDisabled();
-    expect(screen.getByText('当前版本暂未接入')).toBeVisible();
+    const createDepartment = screen.getByRole('button', { name: '新建部门' });
+    const tooltipTrigger = createDepartment.parentElement;
+    expect(tooltipTrigger).toBeInstanceOf(HTMLElement);
+    if (!(tooltipTrigger instanceof HTMLElement)) {
+      throw new TypeError('新建部门缺少 Tooltip 触发元素');
+    }
+    await user.hover(tooltipTrigger);
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      '当前版本暂未接入',
+    );
     expect(screen.queryByText('营销技术部')).not.toBeInTheDocument();
 
     const members = screen.getByRole('region', {

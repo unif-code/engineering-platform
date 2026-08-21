@@ -193,7 +193,41 @@ describe('AuditPage', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       '无权查看审计事件（requestId: req-audit-forbidden）',
     );
+    expect(
+      screen.getByRole('button', { name: '重试加载审计事件' }),
+    ).toBeVisible();
     expect(screen.getByText('共 0 条')).toBeInTheDocument();
+  });
+
+  it('刷新失败时清除旧行并进入显式错误态', async () => {
+    administrationMocks.listAuditEvents
+      .mockResolvedValueOnce({
+        items: [makeAuditEvent()],
+        nextCursor: null,
+      } satisfies AuditEventsResponse)
+      .mockRejectedValueOnce(
+        new ApiError({
+          detail: '审计刷新失败',
+          requestId: 'req-audit-refresh',
+          status: 503,
+        }),
+      );
+    renderPage();
+    expect(
+      await screen.findByRole(
+        'row',
+        { name: /AUD-2026-0810-001/ },
+        INITIAL_WAIT,
+      ),
+    ).toBeVisible();
+
+    await selectOption('时间范围', '今天');
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '审计刷新失败（requestId: req-audit-refresh）',
+    );
+    expect(screen.queryByRole('row', { name: /AUD-2026-0810-001/ })).toBeNull();
+    expect(screen.getByText('共 0 条')).toBeVisible();
   });
 
   it('uses the frozen system clock when mapping the today range to the API query', async () => {

@@ -150,7 +150,7 @@ export const ROUTE_REGISTRY = {
     group: 'admin',
     icon: <ControlOutlined />,
     kind: 'page',
-    menu: false,
+    menu: true,
     parent: 'app',
     path: APP_PATHS.admin,
     redirectTo: null,

@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
-import { readdir, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join, matchesGlob, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import ts from 'typescript';
@@ -117,36 +117,7 @@ function hasBiomeScope(includes, directory) {
   );
 }
 
-async function collectSourceFiles(root, path) {
-  try {
-    const entries = await readdir(join(root, path), { withFileTypes: true });
-    const nested = await Promise.all(
-      entries.map(async (entry) => {
-        const child = join(path, entry.name);
-        const normalizedChild = child.split(sep).join('/');
-        if (entry.isDirectory()) {
-          if (
-            normalizedChild === 'src/.umi' ||
-            normalizedChild.startsWith('src/.umi-') ||
-            normalizedChild === 'src/services/generated'
-          ) {
-            return [];
-          }
-          return collectSourceFiles(root, child);
-        }
-        return /\.(?:[cm]?[jt]sx?)$|\.less$/u.test(entry.name)
-          ? [normalizedChild]
-          : [];
-      }),
-    );
-    return nested.flat();
-  } catch (error) {
-    if (error?.code === 'ENOENT') return [];
-    throw error;
-  }
-}
-
-function collectRuntimePrototypeSourceFiles(root, path) {
+function collectSourceFiles(root, path, { runtimeOnly = false } = {}) {
   const directory = join(root, path);
   if (!existsSync(directory)) return [];
 
@@ -161,10 +132,15 @@ function collectRuntimePrototypeSourceFiles(root, path) {
       ) {
         return [];
       }
-      return collectRuntimePrototypeSourceFiles(root, child);
+      return collectSourceFiles(root, child, { runtimeOnly });
     }
-    return /\.(?:ts|tsx)$/u.test(entry.name) &&
-      !/\.(?:test|spec)\.tsx?$/u.test(entry.name)
+    if (runtimeOnly) {
+      return /\.(?:ts|tsx)$/u.test(entry.name) &&
+        !/\.(?:test|spec)\.tsx?$/u.test(entry.name)
+        ? [normalizedChild]
+        : [];
+    }
+    return /\.(?:[cm]?[jt]sx?)$|\.less$/u.test(entry.name)
       ? [normalizedChild]
       : [];
   });
@@ -230,10 +206,9 @@ export function assertNoRuntimePrototypeArtifacts(rootDir = process.cwd()) {
   }
 
   for (const sourceRoot of runtimePrototypeSourceRoots) {
-    for (const path of collectRuntimePrototypeSourceFiles(
-      rootDir,
-      sourceRoot,
-    )) {
+    for (const path of collectSourceFiles(rootDir, sourceRoot, {
+      runtimeOnly: true,
+    })) {
       const contents = readFileSync(join(rootDir, path), 'utf8');
       for (const artifact of runtimePrototypeArtifacts) {
         const match = contents.match(artifact.pattern);
@@ -760,9 +735,7 @@ async function checkHooks(root, issues) {
 }
 
 async function checkSourceFiles(root, issues) {
-  const files = (
-    await Promise.all(sourceRoots.map((path) => collectSourceFiles(root, path)))
-  ).flat();
+  const files = sourceRoots.flatMap((path) => collectSourceFiles(root, path));
   for (const path of files) {
     if (path.endsWith('.less')) {
       issues.push(`${path}: 不允许 .less 文件`);
@@ -808,7 +781,7 @@ export async function verifyStructure(root = process.cwd()) {
   );
   checkSkillLock(await readJson(root, 'skills-lock.json', issues), issues);
   await checkHooks(root, issues);
-  if ((await collectSourceFiles(root, 'mock')).length > 0) {
+  if (collectSourceFiles(root, 'mock').length > 0) {
     issues.push('禁止保留运行时 mock/ source');
   }
   try {

@@ -1,5 +1,5 @@
 import { StatisticCard } from '@ant-design/pro-components';
-import clsx from 'clsx';
+import { theme } from 'antd';
 import type React from 'react';
 import type { SemanticTone } from '@/types/presentation';
 import { useStyles } from './index.style';
@@ -20,12 +20,27 @@ export function MetricCard({
   extra,
 }: MetricCardProps) {
   const { styles } = useStyles();
+  const { token } = theme.useToken();
+  const toneColor: Record<SemanticTone, string> = {
+    brand: token.colorPrimary,
+    danger: token.colorError,
+    info: token.colorInfo,
+    neutral: token.colorText,
+    purple: token.purple6,
+    success: token.colorSuccess,
+    warning: token.colorWarning,
+  };
 
   return (
     <StatisticCard
-      className={clsx(styles.card, styles[tone])}
+      className={styles.card}
       extra={extra}
-      statistic={{ description, title, value }}
+      statistic={{
+        description,
+        styles: { content: { color: toneColor[tone] } },
+        title,
+        value,
+      }}
     />
   );
 }

@@ -24,7 +24,7 @@ function permutations<T>(items: readonly T[]): T[][] {
 }
 
 describe('buildMenuData', () => {
-  it('V0.2 超级管理员的八个后端路由只投影七个正式菜单', () => {
+  it('V0.2 超级管理员返回的 admin 是当前管理概览菜单入口', () => {
     const navigation = [
       navigationItem('home', '首页', 1),
       navigationItem('admin', '管理后台', 2),
@@ -53,13 +53,13 @@ describe('buildMenuData', () => {
     expect(menuKeys).toEqual([
       'home',
       'audit',
+      'admin',
       'admin.workspaces',
       'admin.organization',
       'admin.users',
       'admin.grants',
       'admin.policies',
     ]);
-    expect(menuKeys).not.toContain('admin');
     for (const prototypeRouteKey of [
       'tasks',
       'tasks.archived',
@@ -90,7 +90,7 @@ describe('buildMenuData', () => {
       groups.flatMap(({ children }) => children?.map(({ key }) => key) ?? []),
     ).toEqual(visibleRouteKeys);
     expect(groups[0]?.children).toHaveLength(6);
-    expect(groups[1]?.children).toHaveLength(9);
+    expect(groups[1]?.children).toHaveLength(10);
 
     const menuItems = groups.flatMap(({ children }) => children ?? []);
     expect(new Set(menuItems.map(({ path }) => path)).size).toBe(
@@ -161,6 +161,12 @@ describe('buildMenuData', () => {
     expect(buildMenuData(adminNavigation)).toContainEqual({
       children: [
         {
+          icon: ROUTE_REGISTRY.admin.icon,
+          key: 'admin',
+          name: '管理概览',
+          path: '/admin',
+        },
+        {
           icon: ROUTE_REGISTRY['admin.workspaces'].icon,
           key: 'admin.workspaces',
           name: '工作区管理',
@@ -200,7 +206,7 @@ describe('buildMenuData', () => {
     });
   });
 
-  it('管理概览不进入菜单，工作区管理优先于组织管理', () => {
+  it('管理概览进入菜单，工作区管理优先于组织管理', () => {
     expect(
       buildMenuData([
         navigationItem('admin', '管理概览', 10),
@@ -210,6 +216,12 @@ describe('buildMenuData', () => {
     ).toEqual([
       {
         children: [
+          {
+            icon: ROUTE_REGISTRY.admin.icon,
+            key: 'admin',
+            name: '管理概览',
+            path: '/admin',
+          },
           {
             icon: ROUTE_REGISTRY['admin.workspaces'].icon,
             key: 'admin.workspaces',
@@ -273,6 +285,12 @@ describe('buildMenuData', () => {
             path: '/admin/users',
             name: '账号管理',
             icon: ROUTE_REGISTRY['admin.users'].icon,
+          },
+          {
+            key: 'admin',
+            path: '/admin',
+            name: '管理概览',
+            icon: ROUTE_REGISTRY.admin.icon,
           },
         ],
       },
@@ -385,6 +403,7 @@ describe('buildMenuData', () => {
           'admin.grants',
           'admin.policies',
           'admin.users',
+          'admin',
         ],
       ]);
     }

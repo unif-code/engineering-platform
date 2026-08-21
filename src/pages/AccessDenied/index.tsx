@@ -1,5 +1,9 @@
+import { useLocation } from '@umijs/max';
 import { AccessDeniedResult } from '@/components/AccessDeniedResult';
 
 export default function AccessDeniedPage() {
-  return <AccessDeniedResult />;
+  const location = useLocation();
+  const requestId = new URLSearchParams(location.search).get('requestId');
+
+  return <AccessDeniedResult requestId={requestId || undefined} />;
 }

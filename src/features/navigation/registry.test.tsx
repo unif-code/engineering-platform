@@ -260,10 +260,11 @@ describe('ROUTE_REGISTRY', () => {
       icon: null,
     });
     expect(ROUTE_REGISTRY.admin).toMatchObject({
-      menu: false,
+      menu: true,
       path: '/admin',
     });
     for (const routeKey of [
+      'admin',
       'tasks',
       'messages',
       'team-board',

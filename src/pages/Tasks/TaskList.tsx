@@ -3,8 +3,9 @@ import {
   type ProColumns,
   ProTable,
 } from '@ant-design/pro-components';
+import { useLocation } from '@umijs/max';
 import { Button, Empty, Input, Segmented, Space, Tooltip } from 'antd';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FilterToolbar } from '@/components/FilterToolbar';
 import { useStyles } from './index.style';
 import { TaskBoard } from './TaskBoard';
@@ -21,7 +22,7 @@ interface TaskTableRow {
 }
 
 type TaskView = 'table' | 'board';
-type TaskStatus = '全部' | '待处理' | '运行中' | '阻塞' | '已完成';
+type TaskStatus = '全部' | '待处理' | '运行中' | '阻塞' | '已完成' | '已归档';
 
 const taskRows: readonly TaskTableRow[] = [];
 
@@ -39,13 +40,22 @@ const columns: ProColumns<TaskTableRow>[] = [
 
 export function TaskListPage() {
   const { styles } = useStyles();
-  const [status, setStatus] = useState<TaskStatus>('全部');
+  const location = useLocation();
+  const archived =
+    new URLSearchParams(location.search).get('view') === 'archived';
+  const [status, setStatus] = useState<TaskStatus>(
+    archived ? '已归档' : '全部',
+  );
   const [view, setView] = useState<TaskView>('table');
+
+  useEffect(() => {
+    setStatus(archived ? '已归档' : '全部');
+  }, [archived]);
 
   return (
     <PageContainer ghost pageHeaderRender={false}>
       <div className={styles.page}>
-        <h1 className={styles.pageTitle}>任务</h1>
+        <h1 className={styles.pageTitle}>{archived ? '归档任务' : '任务'}</h1>
         <FilterToolbar
           actions={
             <Space wrap>
@@ -73,7 +83,7 @@ export function TaskListPage() {
             <Segmented<TaskStatus>
               aria-label="任务状态"
               onChange={setStatus}
-              options={['全部', '待处理', '运行中', '阻塞', '已完成']}
+              options={['全部', '待处理', '运行中', '阻塞', '已完成', '已归档']}
               shape="round"
               size="small"
               value={status}
@@ -102,7 +112,9 @@ export function TaskListPage() {
             locale={{
               emptyText: (
                 <Empty
-                  description="暂无真实任务数据"
+                  description={
+                    archived ? '暂无真实归档任务数据' : '暂无真实任务数据'
+                  }
                   image={Empty.PRESENTED_IMAGE_SIMPLE}
                 />
               ),

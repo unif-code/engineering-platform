@@ -13,6 +13,7 @@ import {
   buildMenuData,
   fetchNavigation,
   type NavigationItem,
+  ROUTE_REGISTRY,
 } from '@/features/navigation';
 import { HeaderActions, HeaderTitle, MenuBrand } from '@/features/shell';
 import {
@@ -98,11 +99,21 @@ export function rootContainer(container: ReactNode): ReactNode {
 export const request: RequestConfig = {
   errorConfig: {
     errorHandler(error) {
-      const { status, url } = readRequestFailure(error);
+      const { status: responseStatus, url } = readRequestFailure(error);
+      const apiError = normalizeApiError(error);
+      const status = responseStatus ?? apiError.problem.status;
       if (status === 401 && !isAuthEndpoint(url)) {
         notifyRuntimeUnauthorized();
       }
-      throw normalizeApiError(error);
+      if (status === 403) {
+        const requestId = apiError.requestId;
+        history.replace(
+          `${ROUTE_REGISTRY['access-denied'].path}${
+            requestId ? `?requestId=${encodeURIComponent(requestId)}` : ''
+          }`,
+        );
+      }
+      throw apiError;
     },
   },
 };

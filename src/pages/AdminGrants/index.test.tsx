@@ -421,6 +421,11 @@ describe('AdminGrantsPage', () => {
       screen.getByRole('button', { name: '重试加载 Grant' }),
     ).toBeVisible();
     expect(screen.queryByRole('row', { name: /陈晓.*开发任务/ })).toBeNull();
+    expect(
+      within(screen.getByRole('region', { name: 'Grant 统计' })).getAllByText(
+        '—',
+      ),
+    ).toHaveLength(4);
   });
 
   it.each(['resolve', 'reject'] as const)(

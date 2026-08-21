@@ -7,7 +7,7 @@ import {
   type ProTableProps,
 } from '@ant-design/pro-components';
 import { useMutation, useQuery } from '@umijs/max';
-import { Alert, App, Button, Empty, Segmented, Typography } from 'antd';
+import { Alert, Button, Empty, Segmented, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createGrant,
@@ -31,7 +31,6 @@ import type {
 } from './type';
 
 export default function AdminGrantsPage() {
-  const { message } = App.useApp();
   const { styles } = useStyles();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
@@ -159,11 +158,10 @@ export default function AdminGrantsPage() {
         setAllGrants([]);
         const detail = formatGovernanceError(error, 'Grant 列表加载失败');
         setListError(detail);
-        message.error(detail);
-        return { data: [], success: true, total: 0 };
+        return { data: [], success: false, total: 0 };
       }
     },
-    [accountsById, message, workspacesById],
+    [accountsById, workspacesById],
   );
 
   const reloadGrants = useCallback(async () => {
@@ -200,8 +198,16 @@ export default function AdminGrantsPage() {
     [workspacesQuery.data?.items],
   );
 
-  const grantStats = useMemo(
-    () => [
+  const grantStats = useMemo(() => {
+    if (listError) {
+      return [
+        { label: '生效中授权', value: '—' },
+        { label: '临时授权', value: '—' },
+        { label: '高危能力授权', value: '—' },
+        { label: '角色继承', value: '—' },
+      ];
+    }
+    return [
       {
         label: '生效中授权',
         value: allGrants.filter(({ status }) => status === 'ACTIVE').length,
@@ -210,17 +216,13 @@ export default function AdminGrantsPage() {
         label: '临时授权',
         value: allGrants.filter(({ validTo }) => validTo !== null).length,
       },
-      {
-        label: '高危能力授权',
-        value: '—',
-      },
+      { label: '高危能力授权', value: '—' },
       {
         label: '角色继承',
         value: allGrants.filter(({ source }) => source === 'INHERITED').length,
       },
-    ],
-    [allGrants],
-  );
+    ];
+  }, [allGrants, listError]);
 
   const columns = useMemo<ProColumns<GrantRow>[]>(
     () => [
