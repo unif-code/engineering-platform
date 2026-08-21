@@ -25,11 +25,8 @@ export default [
         routeKey: 'tasks',
       },
       {
-        name: '归档任务',
         path: '/tasks/archived',
-        component: './Tasks/Archived',
-        hideInMenu: true,
-        parentKeys: ['/tasks'],
+        redirect: '/tasks?view=archived',
         routeKey: 'tasks.archived',
       },
       {
@@ -123,6 +120,12 @@ export default [
         path: '/admin/menus',
         component: './AdminMenus',
         routeKey: 'admin.menus',
+      },
+      {
+        path: '/403',
+        component: './AccessDenied',
+        hideInMenu: true,
+        routeKey: 'access-denied',
       },
     ],
   },

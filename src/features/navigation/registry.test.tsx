@@ -7,7 +7,6 @@ import {
   ClusterOutlined,
   ControlOutlined,
   HomeOutlined,
-  InboxOutlined,
   KeyOutlined,
   MenuOutlined,
   ReadOutlined,
@@ -61,22 +60,20 @@ const expectedRoutes = {
     group: 'user',
     kind: 'page',
     path: '/tasks',
-    prototype: true,
   },
   'tasks.archived': {
     access: 'session',
-    group: 'user',
-    kind: 'page',
+    group: null,
+    kind: 'redirect',
     parent: 'tasks',
     path: '/tasks/archived',
-    prototype: true,
+    redirectTo: '/tasks?view=archived',
   },
   'tasks.detail': {
     access: 'session',
     kind: 'page',
     parent: 'tasks',
     path: '/tasks/:taskId',
-    prototype: true,
   },
   workspaces: {
     access: 'session',
@@ -89,14 +86,12 @@ const expectedRoutes = {
     group: 'user',
     kind: 'page',
     path: '/messages',
-    prototype: true,
   },
   'team-board': {
     access: 'session',
     group: 'user',
     kind: 'page',
     path: '/team-board',
-    prototype: true,
   },
   audit: {
     access: 'session',
@@ -109,7 +104,6 @@ const expectedRoutes = {
     group: 'admin',
     kind: 'page',
     path: '/admin',
-    prototype: true,
   },
   'admin.workspaces': {
     access: 'session',
@@ -128,21 +122,18 @@ const expectedRoutes = {
     group: 'admin',
     kind: 'page',
     path: '/admin/skills',
-    prototype: true,
   },
   'admin.models': {
     access: 'session',
     group: 'admin',
     kind: 'page',
     path: '/admin/models',
-    prototype: true,
   },
   'admin.roles': {
     access: 'session',
     group: 'admin',
     kind: 'page',
     path: '/admin/roles',
-    prototype: true,
   },
   'admin.users': {
     access: 'session',
@@ -155,21 +146,23 @@ const expectedRoutes = {
     group: 'admin',
     kind: 'page',
     path: '/admin/grants',
-    prototype: false,
   },
   'admin.policies': {
     access: 'session',
     group: 'admin',
     kind: 'page',
     path: '/admin/policies',
-    prototype: false,
   },
   'admin.menus': {
     access: 'session',
     group: 'admin',
     kind: 'page',
     path: '/admin/menus',
-    prototype: true,
+  },
+  'access-denied': {
+    access: 'session',
+    kind: 'page',
+    path: '/403',
   },
 } as const;
 
@@ -177,7 +170,6 @@ const expectedIcons: Partial<Record<RouteKey, JSXElementConstructor<object>>> =
   {
     home: HomeOutlined,
     tasks: UnorderedListOutlined,
-    'tasks.archived': InboxOutlined,
     workspaces: AppstoreOutlined,
     messages: BellOutlined,
     'team-board': BarChartOutlined,
@@ -212,6 +204,39 @@ describe('ROUTE_REGISTRY', () => {
     });
   });
 
+  it('锁定 19 个产品屏幕，并为具体页面提供唯一路径', () => {
+    const screenEntries = Object.entries(ROUTE_REGISTRY).filter(
+      ([routeKey, registration]) =>
+        routeKey !== 'bootstrap' && registration.kind === 'page',
+    );
+    const concretePaths = screenEntries
+      .map(([, registration]) => registration.path)
+      .filter((path) => !path.includes(':'));
+
+    expect(screenEntries.map(([routeKey]) => routeKey)).toEqual([
+      'login',
+      'home',
+      'tasks',
+      'tasks.detail',
+      'workspaces',
+      'messages',
+      'team-board',
+      'audit',
+      'admin',
+      'admin.workspaces',
+      'admin.organization',
+      'admin.skills',
+      'admin.models',
+      'admin.roles',
+      'admin.users',
+      'admin.grants',
+      'admin.policies',
+      'admin.menus',
+      'access-denied',
+    ]);
+    expect(new Set(concretePaths).size).toBe(concretePaths.length);
+  });
+
   it('只接受对象自身的 dotted key，拒绝旧 camelCase、未知值和原型属性', () => {
     expect(isRouteKey('admin.users')).toBe(true);
     expect(getRouteRegistration('admin.users')).toBe(
@@ -241,13 +266,18 @@ describe('ROUTE_REGISTRY', () => {
       group: null,
       icon: null,
     });
+    expect(ROUTE_REGISTRY['tasks.archived']).toMatchObject({
+      icon: null,
+      kind: 'redirect',
+      menu: false,
+      redirectTo: '/tasks?view=archived',
+    });
     expect(ROUTE_REGISTRY.admin).toMatchObject({
       menu: false,
       path: '/admin',
     });
     for (const routeKey of [
       'tasks',
-      'tasks.archived',
       'messages',
       'team-board',
       'admin.workspaces',

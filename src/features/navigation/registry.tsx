@@ -7,7 +7,6 @@ import {
   ClusterOutlined,
   ControlOutlined,
   HomeOutlined,
-  InboxOutlined,
   KeyOutlined,
   MenuOutlined,
   ReadOutlined,
@@ -32,7 +31,6 @@ export interface RouteRegistration {
   menu: boolean;
   parent: string | null;
   path: string;
-  prototype: boolean;
   redirectTo: string | null;
 }
 
@@ -45,7 +43,6 @@ export const ROUTE_REGISTRY = {
     menu: false,
     parent: null,
     path: '/login',
-    prototype: false,
     redirectTo: null,
   },
   bootstrap: {
@@ -56,7 +53,6 @@ export const ROUTE_REGISTRY = {
     menu: false,
     parent: null,
     path: '/bootstrap',
-    prototype: false,
     redirectTo: null,
   },
   app: {
@@ -67,7 +63,6 @@ export const ROUTE_REGISTRY = {
     menu: false,
     parent: null,
     path: '/',
-    prototype: false,
     redirectTo: null,
   },
   root: {
@@ -78,7 +73,6 @@ export const ROUTE_REGISTRY = {
     menu: false,
     parent: 'app',
     path: '/',
-    prototype: false,
     redirectTo: APP_PATHS.home,
   },
   home: {
@@ -89,7 +83,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'app',
     path: APP_PATHS.home,
-    prototype: false,
     redirectTo: null,
   },
   tasks: {
@@ -100,19 +93,17 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'app',
     path: APP_PATHS.tasks,
-    prototype: true,
     redirectTo: null,
   },
   'tasks.archived': {
     access: 'session',
-    group: 'user',
-    icon: <InboxOutlined />,
-    kind: 'page',
-    menu: true,
+    group: null,
+    icon: null,
+    kind: 'redirect',
+    menu: false,
     parent: 'tasks',
     path: '/tasks/archived',
-    prototype: true,
-    redirectTo: null,
+    redirectTo: '/tasks?view=archived',
   },
   'tasks.detail': {
     access: 'session',
@@ -122,7 +113,6 @@ export const ROUTE_REGISTRY = {
     menu: false,
     parent: 'tasks',
     path: '/tasks/:taskId',
-    prototype: true,
     redirectTo: null,
   },
   workspaces: {
@@ -133,7 +123,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'app',
     path: APP_PATHS.workspaces,
-    prototype: false,
     redirectTo: null,
   },
   messages: {
@@ -144,7 +133,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'app',
     path: APP_PATHS.messages,
-    prototype: true,
     redirectTo: null,
   },
   'team-board': {
@@ -155,7 +143,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'app',
     path: APP_PATHS.teamBoard,
-    prototype: true,
     redirectTo: null,
   },
   audit: {
@@ -166,7 +153,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'app',
     path: APP_PATHS.audit,
-    prototype: false,
     redirectTo: null,
   },
   admin: {
@@ -177,7 +163,6 @@ export const ROUTE_REGISTRY = {
     menu: false,
     parent: 'app',
     path: APP_PATHS.admin,
-    prototype: true,
     redirectTo: null,
   },
   'admin.workspaces': {
@@ -188,7 +173,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminWorkspaces,
-    prototype: false,
     redirectTo: null,
   },
   'admin.organization': {
@@ -199,7 +183,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminOrganization,
-    prototype: false,
     redirectTo: null,
   },
   'admin.skills': {
@@ -210,7 +193,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminSkills,
-    prototype: true,
     redirectTo: null,
   },
   'admin.models': {
@@ -221,7 +203,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminModels,
-    prototype: true,
     redirectTo: null,
   },
   'admin.roles': {
@@ -232,7 +213,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminRoles,
-    prototype: true,
     redirectTo: null,
   },
   'admin.users': {
@@ -243,7 +223,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminUsers,
-    prototype: false,
     redirectTo: null,
   },
   'admin.grants': {
@@ -254,7 +233,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminGrants,
-    prototype: false,
     redirectTo: null,
   },
   'admin.policies': {
@@ -265,7 +243,6 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminPolicies,
-    prototype: false,
     redirectTo: null,
   },
   'admin.menus': {
@@ -276,7 +253,16 @@ export const ROUTE_REGISTRY = {
     menu: true,
     parent: 'admin',
     path: APP_PATHS.adminMenus,
-    prototype: true,
+    redirectTo: null,
+  },
+  'access-denied': {
+    access: 'session',
+    group: null,
+    icon: null,
+    kind: 'page',
+    menu: false,
+    parent: 'app',
+    path: '/403',
     redirectTo: null,
   },
 } as const satisfies Record<string, RouteRegistration>;

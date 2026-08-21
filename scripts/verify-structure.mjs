@@ -1,3 +1,4 @@
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { join, matchesGlob, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -24,6 +25,22 @@ const developmentDependencies = [
   'vitest',
 ];
 const sourceRoots = ['config', 'src'];
+const runtimePrototypeSourceRoots = [
+  'src/pages',
+  'src/features',
+  'src/components',
+  'src/hooks',
+];
+const runtimePrototypeArtifacts = [
+  { label: 'WorkspaceFixture', pattern: /\bWorkspaceFixture\b/u },
+  { label: 'TASK_FIXTURE', pattern: /\bTASK_FIXTURE\b/u },
+  {
+    label: 'useStaticPrototypeAction',
+    pattern: /\buseStaticPrototypeAction\b/u,
+  },
+  { label: 'prototype: true', pattern: /\bprototype\s*:\s*true\b/u },
+  { label: '静态原型操作', pattern: /静态原型操作/u },
+];
 const requiredBiomeScopes = ['config', 'scripts', 'src', 'tests'];
 const dependencySections = [
   'dependencies',
@@ -125,6 +142,51 @@ async function collectSourceFiles(root, path) {
   } catch (error) {
     if (error?.code === 'ENOENT') return [];
     throw error;
+  }
+}
+
+function collectRuntimePrototypeSourceFiles(root, path) {
+  const directory = join(root, path);
+  if (!existsSync(directory)) return [];
+
+  return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const child = join(path, entry.name);
+    const normalizedChild = child.split(sep).join('/');
+    if (entry.isDirectory()) {
+      return collectRuntimePrototypeSourceFiles(root, child);
+    }
+    return /\.(?:ts|tsx)$/u.test(entry.name) &&
+      !/\.(?:test|spec)\.tsx?$/u.test(entry.name)
+      ? [normalizedChild]
+      : [];
+  });
+}
+
+export function assertNoRuntimePrototypeArtifacts(rootDir = process.cwd()) {
+  const findings = [];
+
+  if (existsSync(join(rootDir, 'mock'))) {
+    findings.push('mock/ directory');
+  }
+
+  for (const sourceRoot of runtimePrototypeSourceRoots) {
+    for (const path of collectRuntimePrototypeSourceFiles(
+      rootDir,
+      sourceRoot,
+    )) {
+      const contents = readFileSync(join(rootDir, path), 'utf8');
+      for (const artifact of runtimePrototypeArtifacts) {
+        if (artifact.pattern.test(contents)) {
+          findings.push(`${path}: ${artifact.label}`);
+        }
+      }
+    }
+  }
+
+  if (findings.length > 0) {
+    throw new Error(
+      `Production prototype artifact detected: ${findings.join(', ')}`,
+    );
   }
 }
 
@@ -682,6 +744,11 @@ export async function verifyStructure(root = process.cwd()) {
   await checkHooks(root, issues);
   if ((await collectSourceFiles(root, 'mock')).length > 0) {
     issues.push('禁止保留运行时 mock/ source');
+  }
+  try {
+    assertNoRuntimePrototypeArtifacts(root);
+  } catch (error) {
+    issues.push(error.message);
   }
   await checkSourceFiles(root, issues);
 

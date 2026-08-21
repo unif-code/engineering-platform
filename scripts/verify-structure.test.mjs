@@ -3,7 +3,10 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { afterEach, test } from 'node:test';
-import { verifyStructure } from './verify-structure.mjs';
+import {
+  assertNoRuntimePrototypeArtifacts,
+  verifyStructure,
+} from './verify-structure.mjs';
 
 const fixtureRoots = [];
 
@@ -170,6 +173,48 @@ async function mutatePackage(root, mutate) {
 test('accepts the platform engineering baseline', async () => {
   const root = await createValidFixture();
   assert.deepEqual(await verifyStructure(root), []);
+});
+
+test('rejects production prototype artifacts while allowing test-only fixtures', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'src/pages/Workspace.tsx',
+    'const WorkspaceFixture = {};\n',
+  );
+  await write(root, 'src/features/tasks/data.ts', 'const TASK_FIXTURE = [];\n');
+  await write(
+    root,
+    'src/components/PrototypeAction.tsx',
+    'useStaticPrototypeAction();\n',
+  );
+  await write(
+    root,
+    'src/hooks/prototype.ts',
+    'const route = { prototype: true };\n',
+  );
+  await write(root, 'src/hooks/copy.ts', "const copy = '静态原型操作';\n");
+  await write(
+    root,
+    'src/pages/Workspace.test.tsx',
+    'const WorkspaceFixture = {};\n',
+  );
+  await write(root, 'tests/fixtures/task.ts', 'const TASK_FIXTURE = [];\n');
+
+  assert.throws(
+    () => assertNoRuntimePrototypeArtifacts(root),
+    /production prototype artifact/i,
+  );
+});
+
+test('rejects a runtime mock directory as a production prototype artifact', async () => {
+  const root = await createValidFixture();
+  await write(root, 'mock/api.ts', 'export default {};\n');
+
+  assert.throws(
+    () => assertNoRuntimePrototypeArtifacts(root),
+    /production prototype artifact/i,
+  );
 });
 
 test('reports obsolete builders and generated tsconfig coupling', async () => {

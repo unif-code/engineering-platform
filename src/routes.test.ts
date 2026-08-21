@@ -21,7 +21,6 @@ const expectedComponents = {
   '/bootstrap': './Bootstrap',
   '/home': './Home',
   '/tasks': './Tasks',
-  '/tasks/archived': './Tasks/Archived',
   '/tasks/:taskId': './TaskDetail',
   '/workspaces': './Workspaces',
   '/messages': './Messages',
@@ -37,6 +36,7 @@ const expectedComponents = {
   '/admin/grants': './AdminGrants',
   '/admin/policies': './AdminPolicies',
   '/admin/menus': './AdminMenus',
+  '/403': './AccessDenied',
 } as const;
 
 const expectedAdminPaths = [
@@ -173,36 +173,9 @@ describe('route registry integration', () => {
     expect(topLevelAdminRoutes).toEqual([]);
   });
 
-  it('V0.2 契约外页面全部标 prototype，契约内路由不得误标', () => {
-    expect(
-      Object.entries(ROUTE_REGISTRY)
-        .filter(([, registration]) => registration.prototype)
-        .map(([routeKey]) => routeKey),
-    ).toEqual([
-      'tasks',
-      'tasks.archived',
-      'tasks.detail',
-      'messages',
-      'team-board',
-      'admin',
-      'admin.skills',
-      'admin.models',
-      'admin.roles',
-      'admin.menus',
-    ]);
-
-    expect(ROUTE_REGISTRY['admin.users'].prototype).toBe(false);
-    expect(ROUTE_REGISTRY['admin.organization'].prototype).toBe(false);
-    expect(ROUTE_REGISTRY['admin.workspaces'].prototype).toBe(false);
-    expect(ROUTE_REGISTRY['admin.grants'].prototype).toBe(false);
-    expect(ROUTE_REGISTRY['admin.policies'].prototype).toBe(false);
-    expect(ROUTE_REGISTRY.audit.prototype).toBe(false);
-  });
-
-  it('归档与详情隐藏在任务父菜单下，且静态归档先于动态详情', () => {
+  it('归档仅作为兼容跳转，且位于动态详情之前', () => {
     expect(getRoute('/tasks/archived')).toMatchObject({
-      hideInMenu: true,
-      parentKeys: ['/tasks'],
+      redirect: '/tasks?view=archived',
       routeKey: 'tasks.archived',
     });
     expect(getRoute('/tasks/:taskId')).toMatchObject({
@@ -210,7 +183,11 @@ describe('route registry integration', () => {
       parentKeys: ['/tasks'],
       routeKey: 'tasks.detail',
     });
-    expect(ROUTE_REGISTRY['tasks.archived'].parent).toBe('tasks');
+    expect(ROUTE_REGISTRY['tasks.archived']).toMatchObject({
+      kind: 'redirect',
+      menu: false,
+      redirectTo: '/tasks?view=archived',
+    });
     expect(ROUTE_REGISTRY['tasks.detail'].parent).toBe('tasks');
 
     const protectedRoot = routes.find(

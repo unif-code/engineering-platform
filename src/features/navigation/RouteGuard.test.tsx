@@ -68,7 +68,6 @@ import AdminSkillsPage from '@/pages/AdminSkills';
 import MessagesPage from '@/pages/Messages';
 import TaskDetailPage from '@/pages/TaskDetail';
 import TasksPage from '@/pages/Tasks';
-import ArchivedTasksPage from '@/pages/Tasks/Archived';
 import TeamBoardPage from '@/pages/TeamBoard';
 import RouteGuard from './RouteGuard';
 
@@ -168,12 +167,6 @@ describe('RouteGuard', () => {
       routeKey: 'tasks',
     },
     {
-      findPage: () => screen.findByRole('toolbar', { name: '任务筛选与操作' }),
-      Page: ArchivedTasksPage,
-      path: '/tasks/archived',
-      routeKey: 'tasks.archived',
-    },
-    {
       findPage: () => screen.findByRole('region', { name: '任务 TASK-42' }),
       Page: TaskDetailPage,
       path: '/tasks/TASK-42',
@@ -222,10 +215,11 @@ describe('RouteGuard', () => {
       routeKey: 'admin.menus',
     },
   ])(
-    '$routeKey prototype 不在 navigation 也可直达，且真实页面无 /api/v1 请求',
-    async ({ findPage, Page, path }) => {
+    '$routeKey 仅在 navigation 授权后可直达，且真实页面无 /api/v1 请求',
+    async ({ findPage, Page, path, routeKey }) => {
       const fetchSpy = vi.fn();
       vi.stubGlobal('fetch', fetchSpy);
+      mocks.initialState.navigation = [navigationItem(routeKey)];
       mocks.location.pathname = path;
       mocks.outlet = (
         <App>

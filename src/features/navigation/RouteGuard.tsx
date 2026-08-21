@@ -28,7 +28,6 @@ export function RouteGuard() {
 
   if (
     match.registration.kind === 'redirect' ||
-    match.registration.prototype ||
     initialState.navigation.some(({ routeKey }) => routeKey === match.routeKey)
   ) {
     return <Outlet />;

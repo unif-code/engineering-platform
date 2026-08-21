@@ -6,7 +6,6 @@ import userEvent, {
 import { App } from 'antd';
 import { type AnchorHTMLAttributes, type ReactNode, useState } from 'react';
 import { describe, expect, it, vi } from 'vitest';
-import ArchivedTasksPage from './Archived';
 import { AssignTaskSteps } from './AssignTaskSteps';
 import { TASK_ROWS } from './constant';
 import TasksPage from './index';
@@ -298,27 +297,5 @@ describe('TasksPage', () => {
 
     expect(screen.getByText('当前责任人：陈晓')).toBeInTheDocument();
     expect(screen.queryByText('林一 · 前端开发')).not.toBeInTheDocument();
-  });
-});
-
-describe('ArchivedTasksPage', () => {
-  it('呈现只读归档列表且不提供创建或分配入口', async () => {
-    renderPage(<ArchivedTasksPage />);
-
-    expect(screen.getByText('只读')).toBeInTheDocument();
-    expect(screen.getByText(/已归档任务 · 只读留存/)).toBeInTheDocument();
-    expect(screen.getByRole('table').closest('.ant-table')).toHaveClass(
-      'ant-table-small',
-    );
-    expect(
-      screen.queryByRole('button', { name: '创建任务' }),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('button', { name: '分配任务' }),
-    ).not.toBeInTheDocument();
-    const archivedRow = await screen.findByRole('row', {
-      name: /REQ-2026-0098/,
-    });
-    expect(within(archivedRow).getByText('留存')).toBeInTheDocument();
   });
 });
