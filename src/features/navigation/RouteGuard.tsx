@@ -1,5 +1,6 @@
 import { Navigate, Outlet, useLocation, useModel } from '@umijs/max';
 import { Result } from 'antd';
+import { AccessDeniedResult } from '@/components/AccessDeniedResult';
 import { buildLoginPath } from './redirect';
 import { findRouteRegistration } from './registry';
 
@@ -23,17 +24,18 @@ export function RouteGuard() {
 
   const match = findRouteRegistration(location.pathname);
   if (!match) {
-    return <Result status="403" subTitle="无权访问此页面" title="403" />;
+    return <AccessDeniedResult />;
   }
 
   if (
+    match.routeKey === 'access-denied' ||
     match.registration.kind === 'redirect' ||
     initialState.navigation.some(({ routeKey }) => routeKey === match.routeKey)
   ) {
     return <Outlet />;
   }
 
-  return <Result status="403" subTitle="无权访问此页面" title="403" />;
+  return <AccessDeniedResult />;
 }
 
 export default RouteGuard;

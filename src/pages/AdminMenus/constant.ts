@@ -30,7 +30,6 @@ export const MENU_ROWS = Object.freeze([
   createMenuRow('home', '工作台', 1, '任意登录用户'),
   createMenuRow('tasks', '任务', 2, '任一业务能力'),
   createMenuRow('workspaces', '工作区', 3, '任一业务能力'),
-  createMenuRow('tasks.archived', '归档数据', 4, '任一业务能力'),
   createMenuRow('messages', '消息中心', 5, '任意登录用户'),
   createMenuRow('team-board', '团队看板', 6, 'board.team 团队看板'),
   createMenuRow('audit', '审计看板', 7, 'audit.view 审计看板'),

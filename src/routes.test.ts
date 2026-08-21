@@ -61,12 +61,22 @@ function collectRoutes(items: readonly RouteConfig[]): RouteConfig[] {
 
 const allRoutes = collectRoutes(routes);
 
-function getRoute(path: string): RouteConfig {
+function getComponentRoute(path: string): RouteConfig {
   const route = allRoutes.find(
     (candidate) => candidate.path === path && candidate.component,
   );
   if (!route) {
     throw new Error(`Missing component route: ${path}`);
+  }
+  return route;
+}
+
+function getRedirectRoute(path: string): RouteConfig {
+  const route = allRoutes.find(
+    (candidate) => candidate.path === path && candidate.redirect,
+  );
+  if (!route) {
+    throw new Error(`Missing redirect route: ${path}`);
   }
   return route;
 }
@@ -86,17 +96,17 @@ describe('route registry integration', () => {
   });
 
   it('使用工作台与管理概览的最终 route name', () => {
-    expect(getRoute('/home').name).toBe('工作台');
-    expect(getRoute('/admin').name).toBe('管理概览');
+    expect(getComponentRoute('/home').name).toBe('工作台');
+    expect(getComponentRoute('/admin').name).toBe('管理概览');
   });
 
-  it('config 的 22 条 public、parent、redirect、page route 与 Registry 一一对应', () => {
-    expect(allRoutes).toHaveLength(22);
+  it('config 的 23 条 public、parent、redirect、page route 与 Registry 一一对应', () => {
+    expect(allRoutes).toHaveLength(23);
     expect(allRoutes.every(({ routeKey }) => routeKey)).toBe(true);
     expect(allRoutes.map(({ routeKey }) => routeKey)).toEqual(
       Object.keys(ROUTE_REGISTRY),
     );
-    expect(new Set(allRoutes.map(({ routeKey }) => routeKey))).toHaveLength(22);
+    expect(new Set(allRoutes.map(({ routeKey }) => routeKey))).toHaveLength(23);
 
     for (const route of allRoutes) {
       const registration =
@@ -174,11 +184,11 @@ describe('route registry integration', () => {
   });
 
   it('归档仅作为兼容跳转，且位于动态详情之前', () => {
-    expect(getRoute('/tasks/archived')).toMatchObject({
+    expect(getRedirectRoute('/tasks/archived')).toMatchObject({
       redirect: '/tasks?view=archived',
       routeKey: 'tasks.archived',
     });
-    expect(getRoute('/tasks/:taskId')).toMatchObject({
+    expect(getComponentRoute('/tasks/:taskId')).toMatchObject({
       hideInMenu: true,
       parentKeys: ['/tasks'],
       routeKey: 'tasks.detail',

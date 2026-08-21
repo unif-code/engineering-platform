@@ -175,7 +175,7 @@ test('accepts the platform engineering baseline', async () => {
   assert.deepEqual(await verifyStructure(root), []);
 });
 
-test('rejects production prototype artifacts while allowing test-only fixtures', async () => {
+test('rejects production prototype artifacts', async () => {
   const root = await createValidFixture();
   await write(
     root,
@@ -194,6 +194,14 @@ test('rejects production prototype artifacts while allowing test-only fixtures',
     'const route = { prototype: true };\n',
   );
   await write(root, 'src/hooks/copy.ts', "const copy = '静态原型操作';\n");
+  assert.throws(
+    () => assertNoRuntimePrototypeArtifacts(root),
+    /production prototype artifact/i,
+  );
+});
+
+test('allows prototype fixtures confined to test files and tests fixtures', async () => {
+  const root = await createValidFixture();
   await write(
     root,
     'src/pages/Workspace.test.tsx',
@@ -201,10 +209,7 @@ test('rejects production prototype artifacts while allowing test-only fixtures',
   );
   await write(root, 'tests/fixtures/task.ts', 'const TASK_FIXTURE = [];\n');
 
-  assert.throws(
-    () => assertNoRuntimePrototypeArtifacts(root),
-    /production prototype artifact/i,
-  );
+  assert.doesNotThrow(() => assertNoRuntimePrototypeArtifacts(root));
 });
 
 test('rejects a runtime mock directory as a production prototype artifact', async () => {

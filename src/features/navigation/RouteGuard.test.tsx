@@ -134,24 +134,38 @@ describe('RouteGuard', () => {
     expect(screen.getByTestId('outlet')).toBeInTheDocument();
   });
 
-  it('navigation 缺 admin.users 时直达渲染 403', () => {
+  it('navigation 缺 admin.users 时复用 AccessDenied 视觉', () => {
     mocks.location.pathname = '/admin/users';
     mocks.initialState.navigation = [navigationItem('home')];
 
     render(<RouteGuard />);
 
-    expect(screen.getByText('403')).toBeInTheDocument();
-    expect(screen.getByText('无权访问此页面')).toBeInTheDocument();
+    expect(screen.getByText('无权访问')).toBeInTheDocument();
+    expect(
+      screen.getByText('当前账号没有访问此页面的能力，请联系管理员。'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '返回工作台' })).toHaveAttribute(
+      'href',
+      '/home',
+    );
     expect(screen.queryByTestId('outlet')).not.toBeInTheDocument();
   });
 
-  it('未登记路径 fail closed 渲染 403', () => {
+  it('未登记路径 fail closed 并复用 AccessDenied 视觉', () => {
     mocks.location.pathname = '/not-registered';
 
     render(<RouteGuard />);
 
-    expect(screen.getByText('403')).toBeInTheDocument();
+    expect(screen.getByText('无权访问')).toBeInTheDocument();
     expect(screen.queryByTestId('outlet')).not.toBeInTheDocument();
+  });
+
+  it('固定的 access-denied 路由不依赖 navigation 授权', () => {
+    mocks.location.pathname = '/403';
+
+    render(<RouteGuard />);
+
+    expect(screen.getByTestId('outlet')).toBeInTheDocument();
   });
 
   it.each<{
