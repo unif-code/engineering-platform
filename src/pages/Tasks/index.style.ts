@@ -6,18 +6,15 @@ export const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     gap: token.margin,
   },
+  pageTitle: {
+    margin: 0,
+    color: token.colorText,
+    fontSize: token.fontSizeHeading3,
+    lineHeight: token.lineHeightHeading3,
+  },
   search: {
     width: 170,
     maxWidth: '100%',
-  },
-  code: {
-    color: token.colorTextTertiary,
-    fontFamily: token.fontFamilyCode,
-    fontSize: token.fontSizeSM,
-  },
-  titleLink: {
-    color: token.colorText,
-    fontWeight: token.fontWeightStrong,
   },
   board: {
     maxWidth: '100%',
@@ -56,48 +53,6 @@ export const useStyles = createStyles(({ token }) => ({
     background: token.colorFillSecondary,
     color: token.colorTextSecondary,
     fontSize: token.fontSizeSM,
-    textAlign: 'center',
-  },
-  boardStack: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.marginSM,
-  },
-  taskCard: {
-    borderColor: token.colorBorderSecondary,
-  },
-  taskCardLink: {
-    color: 'inherit',
-    textDecoration: 'none',
-
-    '&:focus-visible': {
-      borderRadius: token.borderRadiusLG,
-      outline: `${token.lineWidthFocus}px solid ${token.colorPrimaryBorder}`,
-      outlineOffset: token.marginXXS,
-    },
-  },
-  taskCode: {
-    marginBlockEnd: token.marginXXS,
-    color: token.colorTextTertiary,
-    fontFamily: token.fontFamilyCode,
-    fontSize: token.fontSizeSM,
-  },
-  taskTitle: {
-    marginBlockEnd: token.marginXS,
-    color: token.colorText,
-    fontWeight: token.fontWeightStrong,
-  },
-  taskMeta: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.marginXXS,
-    marginBlockEnd: token.marginSM,
-    color: token.colorTextSecondary,
-    fontSize: token.fontSizeSM,
-  },
-  empty: {
-    display: 'block',
-    paddingBlock: token.padding,
     textAlign: 'center',
   },
 }));

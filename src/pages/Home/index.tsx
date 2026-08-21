@@ -1,63 +1,34 @@
 import { PageContainer, ProCard } from '@ant-design/pro-components';
 import { useModel } from '@umijs/max';
-import { Button } from 'antd';
-import { MetricCard } from '@/components/MetricCard';
-import { SemanticTag } from '@/components/SemanticTag';
-import {
-  MY_TASKS,
-  PENDING_APPROVALS,
-  PLATFORM_NOTICES,
-  RECENT_MERGE_REQUESTS,
-  RUNNING_AGENTS,
-  WORKBENCH_METRICS,
-} from './constant';
+import { Empty } from 'antd';
 import { useStyles } from './index.style';
-import type { WorkbenchListItem } from './type';
 
-interface WorkbenchSectionProps {
+interface EmptySectionProps {
+  description: string;
   id: string;
-  items: readonly WorkbenchListItem[];
   title: string;
 }
 
-function WorkbenchSection({ id, items, title }: WorkbenchSectionProps) {
+function EmptySection({ description, id, title }: EmptySectionProps) {
   const { styles } = useStyles();
 
   return (
     <section aria-labelledby={id}>
-      <ProCard className={styles.card} title={<span id={id}>{title}</span>}>
-        <ul className={styles.list}>
-          {items.map((item) => (
-            <li className={styles.listItem} key={item.key}>
-              <div className={styles.itemBody}>
-                <div className={styles.itemTitle}>
-                  {item.code ? (
-                    <span className={styles.code}>{item.code}</span>
-                  ) : null}
-                  <span>{item.title}</span>
-                </div>
-                <div className={styles.itemDescription}>
-                  <span>{item.description}</span>
-                  <SemanticTag label={item.status} tone={item.tone} />
-                </div>
-              </div>
-              <Button
-                className={styles.action}
-                href={item.href}
-                size="small"
-                type="link"
-              >
-                {item.actionLabel}
-              </Button>
-            </li>
-          ))}
-        </ul>
+      <ProCard
+        className={styles.card}
+        title={
+          <h2 className={styles.sectionTitle} id={id}>
+            {title}
+          </h2>
+        }
+      >
+        <Empty description={description} image={Empty.PRESENTED_IMAGE_SIMPLE} />
       </ProCard>
     </section>
   );
 }
 
-const HomePage: React.FC = () => {
+export default function HomePage() {
   const { styles } = useStyles();
   const { initialState } = useModel('@@initialState');
   const userName = initialState?.principal?.name ?? '平台用户';
@@ -72,40 +43,54 @@ const HomePage: React.FC = () => {
           </p>
         </header>
 
-        <section aria-label="关键指标" className={styles.metricsGrid}>
-          {WORKBENCH_METRICS.map((metric) => (
-            <MetricCard key={metric.title} {...metric} />
-          ))}
+        <section aria-labelledby="workbench-metrics-title">
+          <h2 className={styles.sectionTitle} id="workbench-metrics-title">
+            关键指标
+          </h2>
+          <div className={styles.metricsGrid}>
+            {[
+              '待处理 Gate',
+              '我的进行中任务',
+              '运行中 Agent Attempt',
+              '本周已合并 MR',
+            ].map((title) => (
+              <ProCard className={styles.card} key={title} title={title}>
+                <Empty
+                  description="暂无真实指标数据"
+                  image={Empty.PRESENTED_IMAGE_SIMPLE}
+                />
+              </ProCard>
+            ))}
+          </div>
         </section>
 
         <div className={styles.contentGrid}>
           <div className={styles.column}>
-            <WorkbenchSection
+            <EmptySection
+              description="暂无真实审批数据"
               id="pending-approvals-title"
-              items={PENDING_APPROVALS}
               title="待审批"
             />
-            <WorkbenchSection
+            <EmptySection
+              description="暂无真实任务数据"
               id="my-tasks-title"
-              items={MY_TASKS}
               title="我的任务"
             />
           </div>
-
           <div className={styles.column}>
-            <WorkbenchSection
+            <EmptySection
+              description="暂无真实 Agent 数据"
               id="running-agents-title"
-              items={RUNNING_AGENTS}
               title="运行中 Agent"
             />
-            <WorkbenchSection
+            <EmptySection
+              description="暂无真实合并请求数据"
               id="recent-merge-requests-title"
-              items={RECENT_MERGE_REQUESTS}
               title="最近 MR"
             />
-            <WorkbenchSection
+            <EmptySection
+              description="暂无真实公告数据"
               id="platform-notices-title"
-              items={PLATFORM_NOTICES}
               title="平台公告"
             />
           </div>
@@ -113,6 +98,4 @@ const HomePage: React.FC = () => {
       </div>
     </PageContainer>
   );
-};
-
-export default HomePage;
+}

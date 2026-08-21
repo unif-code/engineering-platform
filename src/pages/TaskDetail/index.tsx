@@ -1,73 +1,15 @@
 import { ArrowLeftOutlined, MoreOutlined } from '@ant-design/icons';
 import { PageContainer } from '@ant-design/pro-components';
 import { Link, useParams } from '@umijs/max';
-import { Button, Drawer, Dropdown, type MenuProps, Space } from 'antd';
-import { useRef, useState } from 'react';
-import { DetailDrawer } from '@/components/DetailDrawer';
-import { SemanticTag } from '@/components/SemanticTag';
-import { useStaticPrototypeAction } from '@/hooks/useStaticPrototypeAction';
+import { Button, Space, Tooltip } from 'antd';
 import { ConversationPane } from './ConversationPane';
-import {
-  ARTIFACT_RECORD,
-  artifactColumns,
-  TASK_DETAIL_FIXTURE,
-} from './constant';
-import { DiffContent } from './DiffContent';
 import { InspectorPanel } from './InspectorPanel';
 import { useStyles } from './index.style';
-import { RejectApprovalModal } from './RejectApprovalModal';
-import type { ArtifactRecord, InspectorTabKey } from './type';
-
-const actionItems: MenuProps['items'] = [
-  { key: 'assign', label: '分配任务' },
-  { key: 'reject', label: '驳回审批' },
-  { key: 'artifact', label: '查看 Artifact' },
-  { key: 'diff', label: '查看完整 Diff' },
-];
 
 export default function TaskDetailPage() {
   const { styles } = useStyles();
   const { taskId } = useParams<'taskId'>();
-  const resolvedTaskId = taskId ?? TASK_DETAIL_FIXTURE.id;
-  const showStaticAction = useStaticPrototypeAction();
-  const [activeTab, setActiveTab] = useState<InspectorTabKey>('overview');
-  const [selectedArtifact, setSelectedArtifact] = useState<ArtifactRecord>();
-  const [diffOpen, setDiffOpen] = useState(false);
-  const [rejectOpen, setRejectOpen] = useState(false);
-  const moreActionsButtonRef = useRef<HTMLAnchorElement | HTMLButtonElement>(
-    null,
-  );
-
-  const handleMenuClick: MenuProps['onClick'] = ({ key }) => {
-    const actions: Record<string, () => void> = {
-      artifact: () => setSelectedArtifact(ARTIFACT_RECORD),
-      assign: () => showStaticAction('分配任务'),
-      diff: () => setDiffOpen(true),
-      reject: () => setRejectOpen(true),
-    };
-    actions[key]?.();
-  };
-
-  const topActions = (
-    <Space aria-label="任务操作" role="group">
-      <Button onClick={() => showStaticAction('继续执行')} type="primary">
-        继续执行
-      </Button>
-      <Dropdown
-        destroyOnHidden
-        menu={{ items: actionItems, onClick: handleMenuClick }}
-        trigger={['click']}
-      >
-        <Button
-          aria-label="更多操作"
-          icon={<MoreOutlined />}
-          ref={moreActionsButtonRef}
-        >
-          更多操作
-        </Button>
-      </Dropdown>
-    </Space>
-  );
+  const resolvedTaskId = taskId ?? '未知任务';
 
   return (
     <PageContainer ghost pageHeaderRender={false}>
@@ -84,54 +26,35 @@ export default function TaskDetailPage() {
             <ArrowLeftOutlined />
           </Link>
           <span className={styles.detailCode}>{resolvedTaskId}</span>
-          <h1 className={styles.detailTitle}>{TASK_DETAIL_FIXTURE.title}</h1>
-          <SemanticTag label={TASK_DETAIL_FIXTURE.status} tone="brand" />
-          <SemanticTag
-            label={`优先级 ${TASK_DETAIL_FIXTURE.priority}`}
-            tone="neutral"
-          />
-          <span className={styles.detailRepository}>
-            {TASK_DETAIL_FIXTURE.repository}
-          </span>
-          <div className={styles.detailActions}>{topActions}</div>
+          <h1 className={styles.detailTitle}>任务详情</h1>
+          <div className={styles.detailActions}>
+            <Space aria-label="任务操作" role="group">
+              <Tooltip title="当前版本暂未接入">
+                <span>
+                  <Button disabled type="primary">
+                    继续执行
+                  </Button>
+                </span>
+              </Tooltip>
+              <Tooltip title="当前版本暂未接入">
+                <span>
+                  <Button
+                    aria-label="更多操作"
+                    disabled
+                    icon={<MoreOutlined />}
+                  >
+                    更多操作
+                  </Button>
+                </span>
+              </Tooltip>
+            </Space>
+          </div>
         </header>
         <div className={styles.detailGrid}>
           <ConversationPane />
-          <InspectorPanel activeKey={activeTab} onChange={setActiveTab} />
+          <InspectorPanel />
         </div>
       </section>
-
-      <DetailDrawer<ArtifactRecord>
-        columns={artifactColumns}
-        dataSource={selectedArtifact}
-        focusReturnRef={moreActionsButtonRef}
-        onClose={() => setSelectedArtifact(undefined)}
-        open={selectedArtifact !== undefined}
-        size={560}
-        title="Artifact 文档"
-      />
-
-      <Drawer
-        afterOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            moreActionsButtonRef.current?.focus({ preventScroll: true });
-          }
-        }}
-        destroyOnHidden
-        focusable={{ focusTriggerAfterClose: false }}
-        onClose={() => setDiffOpen(false)}
-        open={diffOpen}
-        size={880}
-        title="代码 Diff"
-      >
-        <DiffContent />
-      </Drawer>
-
-      <RejectApprovalModal
-        focusReturnRef={moreActionsButtonRef}
-        onClose={() => setRejectOpen(false)}
-        open={rejectOpen}
-      />
     </PageContainer>
   );
 }

@@ -1,23 +1,6 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { App, ConfigProvider, type DropdownProps, type TabsProps } from 'antd';
+import { render, screen, within } from '@testing-library/react';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import TaskDetailPage from '.';
-import { RejectApprovalModal } from './RejectApprovalModal';
-
-const taskDetailMocks = vi.hoisted(() => ({
-  emitUnknownInspector: false,
-  emitUnknownMenu: false,
-  taskId: 'REQ-2026-0142' as string | undefined,
-}));
-
-vi.hoisted(() => {
-  Object.defineProperty(globalThis, 'Notification', {
-    configurable: true,
-    value: class NotificationMock {},
-  });
-});
+import { describe, expect, it, vi } from 'vitest';
 
 vi.mock('@umijs/max', () => ({
   Link: ({
@@ -32,291 +15,34 @@ vi.mock('@umijs/max', () => ({
       {children}
     </a>
   ),
-  useParams: () => ({ taskId: taskDetailMocks.taskId }),
+  useParams: () => ({ taskId: 'route-task-id' }),
 }));
 
-vi.mock('antd', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('antd')>();
-  const { useEffect } = await import('react');
-  return {
-    ...actual,
-    Dropdown: (props: DropdownProps) => {
-      useEffect(() => {
-        if (!taskDetailMocks.emitUnknownMenu) return;
-        taskDetailMocks.emitUnknownMenu = false;
-        const onClick = props.menu?.onClick;
-        onClick?.({ key: 'unknown' } as Parameters<
-          NonNullable<typeof onClick>
-        >[0]);
-      }, [props.menu]);
-      return <actual.Dropdown {...props} />;
-    },
-    Tabs: (props: TabsProps) => {
-      useEffect(() => {
-        if (!taskDetailMocks.emitUnknownInspector) return;
-        taskDetailMocks.emitUnknownInspector = false;
-        props.onChange?.('unknown');
-      }, [props.onChange]);
-      return <actual.Tabs {...props} />;
-    },
-  };
-});
-
-function renderPage() {
-  return render(
-    <ConfigProvider theme={{ token: { motion: false } }}>
-      <App>
-        <TaskDetailPage />
-      </App>
-    </ConfigProvider>,
-  );
-}
-
-async function chooseMoreAction(
-  user: ReturnType<typeof userEvent.setup>,
-  name: string,
-) {
-  const actions = screen.getByRole('group', { name: '任务操作' });
-  await user.click(within(actions).getByRole('button', { name: '更多操作' }));
-  await user.click(await screen.findByRole('menuitem', { name }));
-}
+import TaskDetailPage from '.';
 
 describe('TaskDetailPage', () => {
-  afterEach(() => {
-    taskDetailMocks.emitUnknownInspector = false;
-    taskDetailMocks.emitUnknownMenu = false;
-    taskDetailMocks.taskId = 'REQ-2026-0142';
-  });
+  it('展示路由任务编号与详情骨架但不伪造任务事实', () => {
+    render(<TaskDetailPage />);
 
-  it('呈现任务 ID、静态对话与禁用的消息输入', async () => {
-    renderPage();
-
-    const task = await screen.findByRole('region', {
-      name: '任务 REQ-2026-0142',
-    });
-    expect(task).toHaveAccessibleName('任务 REQ-2026-0142');
+    const task = screen.getByRole('region', { name: '任务 route-task-id' });
+    expect(within(task).getByText('route-task-id')).toBeVisible();
     expect(
-      within(task).getByRole('link', { name: '返回任务列表' }),
-    ).toHaveAttribute('href', '/tasks');
+      within(task).getByRole('heading', { name: '任务详情' }),
+    ).toBeVisible();
     expect(
-      within(task).getByRole('heading', { name: '统一任务创建链路' }),
-    ).toBeInTheDocument();
-    expect(within(task).getByText('REQ-2026-0142')).toBeInTheDocument();
-    expect(within(task).getByText('engineering-platform')).toBeInTheDocument();
-
-    const conversation = screen.getByRole('region', { name: '任务对话' });
-    expect(conversation).toHaveTextContent('Implementation');
-    expect(conversation).toHaveTextContent('已完成任务详情页面结构拆分。');
-    expect(within(conversation).getByRole('textbox')).toBeDisabled();
-    expect(within(conversation).getByRole('textbox')).toHaveAttribute(
-      'placeholder',
-      '静态原型，不会发送消息',
-    );
-  });
-
-  it('路由缺少任务编号时使用详情 fixture 编号', async () => {
-    taskDetailMocks.taskId = undefined;
-
-    renderPage();
-
+      within(task).getByRole('region', { name: '任务对话' }),
+    ).toHaveTextContent('暂无真实任务对话数据');
     expect(
-      await screen.findByRole('region', { name: '任务 REQ-2026-0142' }),
-    ).toBeInTheDocument();
-  });
-
-  it('继续执行与分配任务只给出静态反馈', async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
-
-    await user.click(screen.getByRole('button', { name: '继续执行' }));
+      within(task).getByRole('complementary', { name: '任务 Inspector' }),
+    ).toHaveTextContent('暂无真实任务详情数据');
     expect(
-      await screen.findByText('静态原型操作：继续执行，未保存任何业务数据。'),
-    ).toBeInTheDocument();
-
-    await chooseMoreAction(user, '分配任务');
+      within(task).getByRole('button', { name: '继续执行' }),
+    ).toBeDisabled();
+    expect(screen.queryByText('统一任务创建链路')).not.toBeInTheDocument();
+    expect(screen.queryByText('engineering-platform')).not.toBeInTheDocument();
+    expect(screen.queryByText('需求说明.md')).not.toBeInTheDocument();
     expect(
-      await screen.findByText('静态原型操作：分配任务，未保存任何业务数据。'),
-    ).toBeInTheDocument();
-  });
-
-  it('在三个原型 Inspector Tab 间只显示当前选中面板', async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
-
-    const inspector = screen.getByRole('complementary', {
-      name: '任务 Inspector',
-    });
-    const panels = [
-      ['总览', '任务进度'],
-      ['交付', '需求说明.md'],
-      ['预览', 'Sandbox Preview'],
-    ] as const;
-
-    for (const [tabName, panelContent] of panels) {
-      const tab = within(inspector).getByRole('tab', { name: tabName });
-      await user.click(tab);
-
-      expect(tab).toHaveAttribute('aria-selected', 'true');
-      const panel = within(inspector).getByRole('tabpanel');
-      expect(panel).toHaveTextContent(panelContent);
-    }
-    expect(within(inspector).queryByRole('tab', { name: '文档' })).toBeNull();
-    expect(within(inspector).queryByRole('tab', { name: '代码' })).toBeNull();
-    expect(within(inspector).queryByRole('tab', { name: '执行' })).toBeNull();
-  });
-
-  it('忽略组件边界传入的未知 Inspector 与菜单 key', async () => {
-    taskDetailMocks.emitUnknownInspector = true;
-    taskDetailMocks.emitUnknownMenu = true;
-
-    renderPage();
-
-    await waitFor(() => {
-      expect(taskDetailMocks.emitUnknownInspector).toBe(false);
-      expect(taskDetailMocks.emitUnknownMenu).toBe(false);
-    });
-    const inspector = screen.getByRole('complementary', {
-      name: '任务 Inspector',
-    });
-    expect(
-      within(inspector).getByRole('tab', { name: '总览' }),
-    ).toHaveAttribute('aria-selected', 'true');
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
-    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
-  });
-
-  it('查看并关闭 Artifact 与 Diff Drawer', async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
-
-    await chooseMoreAction(user, '查看 Artifact');
-    const artifactDrawer = await screen.findByRole('dialog', {
-      name: 'Artifact 文档',
-    });
-    expect(artifactDrawer).toHaveTextContent('需求说明.md');
-    await user.click(
-      within(artifactDrawer).getByRole('button', { name: /关闭|close/i }),
-    );
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: 'Artifact 文档' }),
-      ).not.toBeInTheDocument();
-    });
-
-    await chooseMoreAction(user, '查看完整 Diff');
-    const diffDrawer = await screen.findByRole('dialog', { name: '代码 Diff' });
-    expect(diffDrawer).toHaveTextContent('+ 增加任务详情页');
-    expect(diffDrawer).toHaveTextContent('- 移除旧占位内容');
-    await user.click(
-      within(diffDrawer).getByRole('button', { name: /关闭|close/i }),
-    );
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: '代码 Diff' }),
-      ).not.toBeInTheDocument();
-    });
-  });
-
-  it.each([
-    { actionName: '查看 Artifact', dialogName: 'Artifact 文档' },
-    { actionName: '查看完整 Diff', dialogName: '代码 Diff' },
-    { actionName: '驳回审批', dialogName: '驳回审批' },
-  ])(
-    '从菜单打开 $actionName 并按 Escape 关闭后焦点回到更多操作',
-    async ({ actionName, dialogName }) => {
-      // rc-component 在 test 环境为所有 Portal 生成相同 ID；development
-      // 分支使用真实唯一 ID，才能复现浏览器的 Overlay Escape 栈。
-      vi.stubEnv('NODE_ENV', 'development');
-      try {
-        const user = userEvent.setup();
-        renderPage();
-        await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
-
-        const actions = screen.getByRole('group', { name: '任务操作' });
-        const moreActionsButton = within(actions).getByRole('button', {
-          name: '更多操作',
-        });
-        await user.click(moreActionsButton);
-        const menuItem = await screen.findByRole('menuitem', {
-          name: actionName,
-        });
-        await user.click(menuItem);
-
-        const dialog = await screen.findByRole('dialog', { name: dialogName });
-        await user.keyboard('{Escape}');
-
-        await waitFor(() => {
-          expect(dialog).not.toBeInTheDocument();
-        });
-        await waitFor(() => {
-          expect(moreActionsButton).toHaveFocus();
-        });
-      } finally {
-        vi.unstubAllEnvs();
-      }
-    },
-  );
-
-  it('驳回审批必须填写原因，提交后仅提示且任务与对话不变', async () => {
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByRole('region', { name: '任务 REQ-2026-0142' });
-
-    const summary = screen.getByRole('region', { name: '任务状态摘要' });
-    const conversation = screen.getByRole('region', { name: '任务对话' });
-    const summaryBefore = summary.textContent;
-    const conversationBefore = conversation.textContent;
-
-    await chooseMoreAction(user, '驳回审批');
-    const dialog = await screen.findByRole('dialog', { name: '驳回审批' });
-    await user.click(within(dialog).getByRole('button', { name: '确认驳回' }));
-    await waitFor(() => {
-      expect(dialog).toHaveTextContent('请输入驳回原因');
-    });
-
-    await user.type(
-      within(dialog).getByRole('textbox', { name: '驳回原因' }),
-      '需要补充验收证据',
-    );
-    await user.click(within(dialog).getByRole('button', { name: '确认驳回' }));
-
-    await waitFor(() => {
-      expect(
-        screen.queryByRole('dialog', { name: '驳回审批' }),
-      ).not.toBeInTheDocument();
-    });
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      '静态原型操作：驳回审批，未保存任何业务数据。',
-    );
-    expect(
-      screen.getByRole('region', { name: '任务状态摘要' }).textContent,
-    ).toBe(summaryBefore);
-    expect(screen.getByRole('region', { name: '任务对话' }).textContent).toBe(
-      conversationBefore,
-    );
-  });
-});
-
-describe('TaskDetail supporting contracts', () => {
-  it('驳回弹窗没有焦点返回目标时仍可取消', async () => {
-    const user = userEvent.setup();
-    const onClose = vi.fn();
-    render(
-      <App>
-        <RejectApprovalModal onClose={onClose} open />
-      </App>,
-    );
-
-    await user.click(
-      within(await screen.findByRole('dialog', { name: '驳回审批' })).getByRole(
-        'button',
-        { name: /取\s*消/ },
-      ),
-    );
-
-    expect(onClose).toHaveBeenCalledOnce();
+      screen.queryByText('已完成任务详情页面结构拆分。'),
+    ).not.toBeInTheDocument();
   });
 });
