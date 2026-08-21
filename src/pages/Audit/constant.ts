@@ -2,7 +2,7 @@ import type { ProDescriptionsProps } from '@ant-design/pro-components';
 import { Typography } from 'antd';
 import { createElement } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
-import type { ChartDatum, SemanticTone } from '@/types/presentation';
+import type { SemanticTone } from '@/types/presentation';
 import { AuditRequestId } from './AuditRequestId';
 import type { AuditQueryParams, AuditRow } from './type';
 
@@ -27,35 +27,29 @@ export const toAuditRow = <T extends { id: string }>(event: T) => ({
 
 export const AUDIT_METRICS = [
   {
-    description: '最近 7 天审计事实',
+    description: '当前审计接口未提供聚合统计',
     title: '近 7 日操作',
     tone: 'neutral' as const,
-    value: 395,
+    value: '—',
   },
   {
-    description: '需要优先复核',
+    description: '当前审计接口未提供聚合统计',
     title: '高危操作',
     tone: 'danger' as const,
-    value: 3,
+    value: '—',
   },
   {
-    description: '策略已阻止业务效果',
+    description: '当前审计接口未提供聚合统计',
     title: '拦截事件',
     tone: 'warning' as const,
-    value: 1,
+    value: '—',
   },
   {
-    description: '全链路审计覆盖',
+    description: '当前审计接口未提供聚合统计',
     title: '覆盖率',
     tone: 'success' as const,
-    value: '100%',
+    value: '—',
   },
-] as const;
-
-export const AUDIT_RESULT_DISTRIBUTION = [
-  { key: 'success', label: '成功', tone: 'success', value: 92 },
-  { key: 'failure', label: '失败', tone: 'danger', value: 5 },
-  { key: 'blocked', label: '拦截', tone: 'warning', value: 3 },
 ] as const;
 
 export const AUDIT_RANGE_OPTIONS = [
@@ -100,24 +94,6 @@ export const AUDIT_TARGET_TYPE_OPTIONS = [
   label: string;
   value: NonNullable<AuditQueryParams['targetType']>;
 }>;
-
-export const AUDIT_TREND: readonly ChartDatum[] = [
-  { key: '07-31', label: '7-31', value: 38, valueLabel: '38' },
-  { key: '08-01', label: '8-1', value: 52, valueLabel: '52' },
-  { key: '08-02', label: '8-2', value: 61, valueLabel: '61' },
-  { key: '08-03', label: '8-3', value: 47, valueLabel: '47' },
-  { key: '08-04', label: '8-4', value: 73, valueLabel: '73' },
-  { key: '08-05', label: '8-5', value: 66, valueLabel: '66' },
-  { key: '08-06', label: '8-6', value: 58, valueLabel: '58' },
-];
-
-export const AUDIT_ACTION_DISTRIBUTION: readonly ChartDatum[] = [
-  { key: 'task', label: '任务流转', value: 38, valueLabel: '38%' },
-  { key: 'agent', label: 'Agent 执行', value: 27, valueLabel: '27%' },
-  { key: 'mr', label: 'MR / 代码', value: 15, valueLabel: '15%' },
-  { key: 'access', label: '权限变更', value: 12, valueLabel: '12%' },
-  { key: 'account', label: '登录 / 账号', value: 8, valueLabel: '8%' },
-];
 
 export const AUDIT_RISK_META: Record<
   AuditRow['risk'],

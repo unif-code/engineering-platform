@@ -1,13 +1,11 @@
-import { Bar, Column } from '@ant-design/charts';
 import {
   type ActionType,
   PageContainer,
-  ProCard,
   type ProColumns,
   ProTable,
   type ProTableProps,
 } from '@ant-design/pro-components';
-import { App, Button, Input, Select, Space, Typography, theme } from 'antd';
+import { App, Button, Input, Select, Space, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DetailDrawer } from '@/components/DetailDrawer';
 import { FilterToolbar } from '@/components/FilterToolbar';
@@ -15,17 +13,14 @@ import { MetricCard } from '@/components/MetricCard';
 import { SemanticTag } from '@/components/SemanticTag';
 import { formatGovernanceError } from '@/features/administration';
 import {
-  AUDIT_ACTION_DISTRIBUTION,
   AUDIT_ACTION_OPTIONS,
   AUDIT_DETAIL_COLUMNS,
   AUDIT_METRICS,
   AUDIT_PAGE_SIZE,
   AUDIT_RANGE_OPTIONS,
-  AUDIT_RESULT_DISTRIBUTION,
   AUDIT_RESULT_META,
   AUDIT_RISK_META,
   AUDIT_RISK_OPTIONS,
-  AUDIT_TREND,
 } from './constant';
 import { useStyles } from './index.style';
 import type { AuditQueryParams, AuditRange, AuditRow } from './type';
@@ -50,7 +45,6 @@ const getActionMeta = (action: AuditRow['action']) =>
 export default function AuditPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
-  const { token } = theme.useToken();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
   const loadedRowsRef = useRef<AuditRow[]>([]);
@@ -151,10 +145,6 @@ export default function AuditPage() {
     [cursor],
   );
 
-  const showStaticAction = (actionLabel: string) => {
-    message.info(`静态原型操作：${actionLabel}，未保存任何业务数据。`);
-  };
-
   const columns = useMemo<ProColumns<AuditRow>[]>(
     () => [
       {
@@ -224,64 +214,7 @@ export default function AuditPage() {
           ))}
         </section>
 
-        <div className={styles.analysisGrid}>
-          <ProCard className={styles.card} title="近 7 日操作数">
-            <figure aria-label="近 7 日审计趋势" className={styles.chartFigure}>
-              <Column
-                animate={false}
-                axis={{ x: { title: false }, y: false }}
-                data={[...AUDIT_TREND]}
-                height={140}
-                label={{ position: 'top', text: 'valueLabel' }}
-                style={{
-                  fill: token.colorText,
-                }}
-                xField="label"
-                yField="value"
-              />
-            </figure>
-          </ProCard>
-          <ProCard className={styles.card} title="动作分类占比">
-            <figure aria-label="审计动作分类" className={styles.chartFigure}>
-              <Bar
-                animate={false}
-                axis={{ x: false, y: { title: false } }}
-                data={[...AUDIT_ACTION_DISTRIBUTION]}
-                height={140}
-                label={{ position: 'right', text: 'valueLabel' }}
-                legend={false}
-                style={{ fill: token.colorPrimary }}
-                xField="value"
-                yField="label"
-              />
-            </figure>
-          </ProCard>
-          <ProCard className={styles.card} title="结果分布">
-            <ul aria-label="审计结果分布" className={styles.resultList}>
-              {AUDIT_RESULT_DISTRIBUTION.map((result) => (
-                <li className={styles.resultItem} key={result.key}>
-                  <span className={styles.resultLabel}>
-                    <SemanticTag label={result.label} tone={result.tone} />
-                  </span>
-                  <span className={styles.resultValue}>{result.value}%</span>
-                </li>
-              ))}
-            </ul>
-            <p className={styles.note}>
-              全链路以 Correlation ID 串联；审计事实不可修改。
-            </p>
-          </ProCard>
-        </div>
-
         <FilterToolbar
-          actions={
-            <Button
-              onClick={() => showStaticAction('导出审计报表')}
-              size="small"
-            >
-              导出报表
-            </Button>
-          }
           ariaLabel="审计筛选与操作"
           filters={
             <Space wrap>
