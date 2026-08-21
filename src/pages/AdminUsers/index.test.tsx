@@ -102,6 +102,13 @@ async function openAccountAction(
   return screen.findByRole('dialog', { name: dialogName });
 }
 
+function expectExactlyOneCall(
+  mock: { mock: { calls: unknown[][] } },
+  ...expectedArguments: unknown[]
+) {
+  expect(mock.mock.calls).toEqual([expectedArguments]);
+}
+
 beforeEach(() => {
   for (const mock of Object.values(administrationMocks)) {
     mock.mockReset();
@@ -193,7 +200,8 @@ describe('AdminUsersPage', () => {
       );
 
       await waitFor(() => {
-        expect(administrationMocks.resetAccountPassword).toHaveBeenCalledWith(
+        expectExactlyOneCall(
+          administrationMocks.resetAccountPassword,
           enabledAccount.id,
           { reason: '用户忘记密码' },
           enabledAccount.etag,
@@ -301,7 +309,8 @@ describe('AdminUsersPage', () => {
       await user.click(
         within(disableDialog).getByRole('button', { name: '确认停用' }),
       );
-      expect(administrationMocks.disableAccount).toHaveBeenCalledWith(
+      expectExactlyOneCall(
+        administrationMocks.disableAccount,
         enabledAccount.id,
         { reason: '人员离职' },
         enabledAccount.etag,
@@ -325,7 +334,8 @@ describe('AdminUsersPage', () => {
       await user.click(
         within(enableDialog).getByRole('button', { name: '确认启用' }),
       );
-      expect(administrationMocks.enableAccount).toHaveBeenCalledWith(
+      expectExactlyOneCall(
+        administrationMocks.enableAccount,
         disabledAccount.id,
         { reason: '恢复账号访问' },
         disabledAccount.etag,
@@ -404,7 +414,8 @@ describe('AdminUsersPage', () => {
       within(dialog).getByRole('button', { name: '确认重置 TOTP' }),
     );
 
-    expect(administrationMocks.resetAccountTotp).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.resetAccountTotp,
       enabledAccount.id,
       { reason: '用户更换认证设备' },
       enabledAccount.etag,
@@ -447,7 +458,7 @@ describe('AdminUsersPage', () => {
       expect(within(drawer).queryByRole('combobox')).toBeNull();
       await user.click(within(drawer).getByRole('button', { name: /创\s*建/ }));
 
-      expect(administrationMocks.createAccount).toHaveBeenCalledWith({
+      expectExactlyOneCall(administrationMocks.createAccount, {
         displayName: '临时用户',
         employeeNo: '00000009',
         reason: '通过用户管理新增用户',

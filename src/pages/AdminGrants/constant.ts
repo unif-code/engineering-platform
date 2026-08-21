@@ -7,6 +7,7 @@ export const GRANT_FILTER_OPTIONS = [
     value: 'high-risk',
   },
   { label: '临时授权', value: 'temporary' },
+  { label: '角色继承', value: 'inherited' },
 ] as const;
 
 export const GRANT_PRINCIPAL_TYPE_OPTIONS = [
@@ -15,6 +16,14 @@ export const GRANT_PRINCIPAL_TYPE_OPTIONS = [
 
 export const GRANT_VALIDITY_OPTIONS = [
   { label: '长期', value: 'LONG_TERM' },
-  { disabled: true, label: '30 天临时', value: 'TEMPORARY_30' },
-  { disabled: true, label: '90 天临时', value: 'TEMPORARY_90' },
+  {
+    disabled: true,
+    label: '30 天临时（当前版本暂未接入）',
+    value: 'TEMPORARY_30',
+  },
+  {
+    disabled: true,
+    label: '90 天临时（当前版本暂未接入）',
+    value: 'TEMPORARY_90',
+  },
 ] as const;

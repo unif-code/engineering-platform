@@ -108,6 +108,21 @@ const GRANT_FIXTURES = Object.freeze<GrantSummary[]>([
     validTo: '2026-10-01T08:00:00.000Z',
     version: 1,
   },
+  {
+    capability: 'ws.config',
+    id: 'grant-inherited-workspace-config',
+    principal: { displayName: '吴桐', employeeNo: 'E1002', id: 'account-2' },
+    scope: {
+      id: 'workspace-platform-core',
+      label: '营销工作区',
+      type: 'WORKSPACE',
+    },
+    source: 'INHERITED',
+    status: 'ACTIVE',
+    validFrom: '2026-07-01T08:00:00.000Z',
+    validTo: null,
+    version: 1,
+  },
 ]);
 const ACTIVE_WORKSPACES = Object.freeze(
   WORKSPACE_FIXTURES.filter(({ status }) => status === 'ACTIVE'),
@@ -161,6 +176,13 @@ async function selectOption(user: UserEvent, label: string, option: string) {
   await user.click(await screen.findByRole('option', { name: option }));
 }
 
+function expectExactlyOneCall(
+  mock: { mock: { calls: unknown[][] } },
+  ...expectedArguments: unknown[]
+) {
+  expect(mock.mock.calls).toEqual([expectedArguments]);
+}
+
 beforeEach(() => {
   Object.values(administrationMocks).forEach((mock) => {
     mock.mockReset();
@@ -202,11 +224,18 @@ describe('AdminGrantsPage', () => {
     expect(table).toBeInTheDocument();
     expect(table.closest('.ant-table-small')).not.toBeNull();
     const stats = screen.getByRole('region', { name: 'Grant 统计' });
-    for (const label of ['生效中授权', '临时授权', '高危能力授权']) {
+    for (const label of [
+      '生效中授权',
+      '临时授权',
+      '高危能力授权',
+      '角色继承',
+    ]) {
       expect(within(stats).getByText(label)).toBeVisible();
     }
     expect(within(stats).getByText('—')).toBeVisible();
-    expect(within(stats).queryByText('角色继承')).not.toBeInTheDocument();
+    expect(within(stats).getByText('角色继承').parentElement).toHaveTextContent(
+      '1角色继承',
+    );
     expect(
       screen.getByRole('radiogroup', { name: 'Grant 分类' }),
     ).toBeVisible();
@@ -228,13 +257,8 @@ describe('AdminGrantsPage', () => {
     });
 
     expect(
-      within(
-        screen.getByRole('radiogroup', { name: 'Grant 分类' }),
-      ).queryByText('继承'),
-    ).not.toBeInTheDocument();
-    expect(
-      screen.queryByRole('row', { name: /开发Leader.*分配任务.*继承/ }),
-    ).not.toBeInTheDocument();
+      screen.getByRole('row', { name: /吴桐.*ws\.config.*营销工作区.*继承/ }),
+    ).toBeInTheDocument();
   });
 
   it(
@@ -259,14 +283,16 @@ describe('AdminGrantsPage', () => {
         await screen.findByRole('option', { name: '营销工作区' }),
       );
       await user.click(screen.getByRole('combobox', { name: '有效期' }));
-      expect(screen.getByRole('option', { name: '30 天临时' })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      );
-      expect(screen.getByRole('option', { name: '90 天临时' })).toHaveAttribute(
-        'aria-disabled',
-        'true',
-      );
+      expect(
+        screen.getByRole('option', {
+          name: '30 天临时（当前版本暂未接入）',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true');
+      expect(
+        screen.getByRole('option', {
+          name: '90 天临时（当前版本暂未接入）',
+        }),
+      ).toHaveAttribute('aria-disabled', 'true');
       await user.click(await screen.findByRole('option', { name: '长期' }));
       await user.type(
         within(dialog).getByRole('textbox', { name: '授权原因' }),
@@ -286,12 +312,16 @@ describe('AdminGrantsPage', () => {
       );
 
       expect(await screen.findByText('能力已授予')).toBeInTheDocument();
-      expect(administrationMocks.createGrant.mock.calls[0]?.[0]).toEqual({
-        capability: 'ws.config',
-        principalId: 'account-2',
-        reason: '承担营销工作区治理职责',
-        scope: { id: 'workspace-platform-core', type: 'WORKSPACE' },
-      });
+      expectExactlyOneCall(
+        administrationMocks.createGrant,
+        {
+          capability: 'ws.config',
+          principalId: 'account-2',
+          reason: '承担营销工作区治理职责',
+          scope: { id: 'workspace-platform-core', type: 'WORKSPACE' },
+        },
+        expect.any(Object),
+      );
       expect(
         await screen.findByRole(
           'row',
@@ -303,7 +333,7 @@ describe('AdminGrantsPage', () => {
     INTERACTION_TEST_TIMEOUT,
   );
 
-  it('高危分类在无服务端事实时禁用，临时分类只使用 validTo', async () => {
+  it('高危分类禁用，临时与角色继承分类只使用真实 DTO 字段', async () => {
     const user = userEvent.setup();
     renderPage();
     await screen.findByRole(
@@ -324,6 +354,28 @@ describe('AdminGrantsPage', () => {
     expect(
       screen.queryByRole('row', { name: /陈晓.*task\.develop/ }),
     ).toBeNull();
+
+    await user.click(within(filters).getByText('角色继承'));
+    expect(
+      await screen.findByRole(
+        'row',
+        { name: /吴桐.*ws\.config.*营销工作区.*继承/ },
+        INITIAL_WAIT,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('row', { name: /何山.*mr\.merge/ })).toBeNull();
+  });
+
+  it('真实 Grant 列表为空时展示明确空态', async () => {
+    administrationMocks.listGrants.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText('暂无真实 Grant', {}, INITIAL_WAIT),
+    ).toBeVisible();
   });
 
   it('呈现平台范围、未知能力、继承来源与立即生效兜底', async () => {
@@ -515,7 +567,8 @@ describe('AdminGrantsPage', () => {
       );
 
       expect(await screen.findByText('Grant 已撤销')).toBeInTheDocument();
-      expect(administrationMocks.revokeGrant).toHaveBeenCalledWith(
+      expectExactlyOneCall(
+        administrationMocks.revokeGrant,
         'grant-audit-reader',
         { reason: '审计轮值结束' },
         1,

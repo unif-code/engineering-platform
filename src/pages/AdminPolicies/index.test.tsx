@@ -73,6 +73,13 @@ const deepFreezeDto = <T,>(value: T): T => {
   return value;
 };
 
+function expectExactlyOneCall(
+  mock: { mock: { calls: unknown[][] } },
+  ...expectedArguments: unknown[]
+) {
+  expect(mock.mock.calls).toEqual([expectedArguments]);
+}
+
 const POLICY_CATALOG_FIXTURE = deepFreezeDto<PolicyCatalogResponse>({
   activeVersion: 1,
   items: [
@@ -538,11 +545,11 @@ describe('AdminPoliciesPage', {
     expect(
       screen.getByRole('button', { name: PUBLISH_BUTTON_NAME }),
     ).toBeEnabled();
-    expect(administrationMocks.createPolicyDraft).toHaveBeenCalledWith(
-      'identity',
-      { values: {} },
-    );
-    expect(administrationMocks.updatePolicyDraft).toHaveBeenCalledWith(
+    expectExactlyOneCall(administrationMocks.createPolicyDraft, 'identity', {
+      values: {},
+    });
+    expectExactlyOneCall(
+      administrationMocks.updatePolicyDraft,
       'identity',
       'draft-1',
       {
@@ -558,7 +565,8 @@ describe('AdminPoliciesPage', {
       },
       '"v1"',
     );
-    expect(administrationMocks.validatePolicyDraft).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.validatePolicyDraft,
       'identity',
       'draft-1',
       '"v2"',
@@ -576,7 +584,8 @@ describe('AdminPoliciesPage', {
     await validateDraft(user);
 
     expect(administrationMocks.updatePolicyDraft).not.toHaveBeenCalled();
-    expect(administrationMocks.validatePolicyDraft).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.validatePolicyDraft,
       'identity',
       'draft-1',
       '"v2"',
@@ -773,7 +782,8 @@ describe('AdminPoliciesPage', {
       screen.getByRole('button', { name: VALIDATE_BUTTON_NAME }),
     );
     await waitFor(() => {
-      expect(administrationMocks.validatePolicyDraft).toHaveBeenCalledWith(
+      expectExactlyOneCall(
+        administrationMocks.validatePolicyDraft,
         'identity',
         'draft-1',
         '"v2"',
@@ -828,7 +838,8 @@ describe('AdminPoliciesPage', {
         INITIAL_WAIT,
       ),
     ).toBeInTheDocument();
-    expect(administrationMocks.previewPolicyDraft).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.previewPolicyDraft,
       'identity',
       'draft-1',
       '"v2"',
@@ -897,7 +908,8 @@ describe('AdminPoliciesPage', {
 
       const dialog = await publishVersionTwo(user, totpCode);
 
-      expect(administrationMocks.publishPolicyDraft).toHaveBeenCalledWith(
+      expectExactlyOneCall(
+        administrationMocks.publishPolicyDraft,
         'identity',
         'draft-1',
         { reason: '收紧 Session 空闲期限', totpCode },
@@ -932,7 +944,8 @@ describe('AdminPoliciesPage', {
     const dialog = await publishVersionTwo(user, totpCode);
 
     expect(await screen.findByText('Policy 已发布')).toBeInTheDocument();
-    expect(administrationMocks.publishPolicyDraft).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.publishPolicyDraft,
       'identity',
       'draft-1',
       { reason: '收紧 Session 空闲期限', totpCode },
@@ -1008,7 +1021,8 @@ describe('AdminPoliciesPage', {
     await user.click(within(dialog).getByRole('button', { name: '确认创建' }));
 
     expect(await screen.findByText('已创建回滚 Draft')).toBeInTheDocument();
-    expect(administrationMocks.rollbackPolicyVersion).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.rollbackPolicyVersion,
       'identity',
       {
         reason: '回滚到稳定版本',

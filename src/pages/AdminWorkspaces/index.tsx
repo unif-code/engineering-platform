@@ -6,7 +6,7 @@ import {
   type ProTableProps,
 } from '@ant-design/pro-components';
 import { useMutation, useQuery } from '@umijs/max';
-import { Alert, Button, Empty } from 'antd';
+import { Alert, Button, Empty, Spin, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
 import {
@@ -288,60 +288,65 @@ export default function AdminWorkspacesPage() {
             aria-expanded={modalOpen}
             aria-haspopup="dialog"
             aria-label="创建工作区"
+            disabled={!organizationQuery.isSuccess}
             onClick={() => setModalOpen(true)}
             type="primary"
           >
             ＋ 创建工作区
           </Button>
+          {!organizationQuery.isSuccess ? (
+            <Typography.Text type="secondary">当前版本暂未接入</Typography.Text>
+          ) : null}
         </header>
 
-        {organizationQuery.isLoading ? null : (
-          <>
-            {organizationQuery.isError ? (
-              <Alert
-                action={
-                  <Button onClick={() => void organizationQuery.refetch()}>
-                    重试组织关系
-                  </Button>
-                }
-                title={formatGovernanceError(
-                  organizationQuery.error,
-                  '组织关系加载失败',
-                )}
-                showIcon
-                type="error"
-              />
-            ) : null}
-            {listError ? (
-              <Alert
-                action={
-                  <Button onClick={() => void reloadWorkspaces()}>
-                    重试工作区
-                  </Button>
-                }
-                title={formatGovernanceError(listError, '工作区列表加载失败')}
-                showIcon
-                type="error"
-              />
-            ) : null}
-            <ProTable<WorkspaceRow, WorkspaceQueryParams>
-              actionRef={actionRef}
-              columns={columns}
-              locale={{
-                emptyText: <Empty description="暂无真实工作区" />,
-              }}
-              onChange={invalidatePendingRequests}
-              options={false}
-              pagination={{ pageSize: 10, showSizeChanger: false }}
-              request={requestWorkspaces}
-              rowKey="id"
-              scroll={{ x: 1050 }}
-              search={false}
-              size="small"
-              toolBarRender={false}
-            />
-          </>
-        )}
+        {organizationQuery.isError ? (
+          <Alert
+            action={
+              <Button onClick={() => void organizationQuery.refetch()}>
+                重试组织关系
+              </Button>
+            }
+            title={formatGovernanceError(
+              organizationQuery.error,
+              '组织关系加载失败',
+            )}
+            showIcon
+            type="error"
+          />
+        ) : null}
+        {listError ? (
+          <Alert
+            action={
+              <Button onClick={() => void reloadWorkspaces()}>
+                重试工作区
+              </Button>
+            }
+            title={formatGovernanceError(listError, '工作区列表加载失败')}
+            showIcon
+            type="error"
+          />
+        ) : null}
+        <Spin
+          description="正在加载 Owner 候选"
+          spinning={organizationQuery.isLoading}
+        >
+          <ProTable<WorkspaceRow, WorkspaceQueryParams>
+            actionRef={actionRef}
+            columns={columns}
+            locale={{
+              emptyText: <Empty description="暂无真实工作区" />,
+            }}
+            onChange={invalidatePendingRequests}
+            options={false}
+            pagination={{ pageSize: 10, showSizeChanger: false }}
+            request={requestWorkspaces}
+            rowKey="id"
+            scroll={{ x: 1050 }}
+            search={false}
+            size="small"
+            toolBarRender={false}
+          />
+        </Spin>
 
         <p className={styles.pageNote}>
           每个工作区恰有一个 Owner；正式成员为动态投影（Owner + 受邀 Leader

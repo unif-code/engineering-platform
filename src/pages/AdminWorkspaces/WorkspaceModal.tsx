@@ -76,6 +76,14 @@ export function WorkspaceModal({
           { whitespace: true, message: '工作区名称不能为空' },
         ]}
       />
+      <ProFormText
+        disabled
+        fieldProps={{ id: 'admin-workspace-create-team' }}
+        formItemProps={{ htmlFor: 'admin-workspace-create-team' }}
+        label="所属 Team"
+        name="team"
+        placeholder="当前版本暂未接入"
+      />
       <ProFormSelect
         fieldProps={{
           'aria-label': 'Owner（开发Leader）',

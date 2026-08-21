@@ -146,6 +146,9 @@ export default function AdminGrantsPage() {
           if (requestParams.filter === 'temporary') {
             return grant.validTo !== null;
           }
+          if (requestParams.filter === 'inherited') {
+            return grant.source === 'INHERITED';
+          }
           return true;
         });
         return { data, success: true, total: data.length };
@@ -210,6 +213,10 @@ export default function AdminGrantsPage() {
       {
         label: '高危能力授权',
         value: '—',
+      },
+      {
+        label: '角色继承',
+        value: allGrants.filter(({ source }) => source === 'INHERITED').length,
       },
     ],
     [allGrants],
@@ -367,7 +374,7 @@ export default function AdminGrantsPage() {
           actionRef={actionRef}
           columns={columns}
           key={viewFilter}
-          locale={{ emptyText: <Empty description="暂无数据" /> }}
+          locale={{ emptyText: <Empty description="暂无真实 Grant" /> }}
           options={false}
           pagination={false}
           params={params}

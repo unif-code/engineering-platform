@@ -8,7 +8,7 @@ export type GrantPrincipalType = 'ACCOUNT';
 export type GrantValidity = 'LONG_TERM' | 'TEMPORARY_30' | 'TEMPORARY_90';
 export type GrantFormScopeType = GrantScopeType;
 export type GrantRow = GrantSummary;
-export type GrantViewFilter = 'all' | 'high-risk' | 'temporary';
+export type GrantViewFilter = 'all' | 'high-risk' | 'temporary' | 'inherited';
 
 export interface GrantQueryParams {
   current?: number;

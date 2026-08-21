@@ -260,6 +260,13 @@ async function findTopmostDialog() {
   return dialog;
 }
 
+function expectExactlyOneCall(
+  mock: { mock: { calls: unknown[][] } },
+  ...expectedArguments: unknown[]
+) {
+  expect(mock.mock.calls).toEqual([expectedArguments]);
+}
+
 beforeEach(() => {
   for (const mock of Object.values(administrationMocks)) {
     mock.mockReset();
@@ -390,12 +397,16 @@ describe('AdminWorkspacesPage', () => {
       'Prototype Workspace',
     );
     expect(
-      within(dialog).queryByRole('combobox', { name: '所属 Team' }),
-    ).not.toBeInTheDocument();
+      within(dialog).getByRole('textbox', { name: '所属 Team' }),
+    ).toBeDisabled();
+    expect(
+      within(dialog).getByRole('textbox', { name: '所属 Team' }),
+    ).toHaveAttribute('placeholder', '当前版本暂未接入');
     await selectOption(user, 'Owner（开发Leader）', '李强');
     await user.click(within(dialog).getByRole('button', { name: /创\s*建/ }));
 
-    expect(administrationMocks.createWorkspace).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.createWorkspace,
       {
         name: 'Prototype Workspace',
         ownerId: leaderLi.id,
@@ -728,7 +739,8 @@ describe('AdminWorkspacesPage', () => {
         within(drawer).queryByRole('row', { name: /陈晓/ }),
       ).not.toBeInTheDocument();
     });
-    expect(administrationMocks.transferWorkspaceOwner).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.transferWorkspaceOwner,
       activeWorkspace.id,
       { accountId: leaderWu.id, reason: '职责交接' },
       activeWorkspace.version,
@@ -790,7 +802,8 @@ describe('AdminWorkspacesPage', () => {
       within(inviteDialog).getByRole('button', { name: '确认邀请' }),
     );
     expect(await screen.findByText('Leader 已邀请')).toBeInTheDocument();
-    expect(administrationMocks.inviteWorkspaceLeader).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.inviteWorkspaceLeader,
       activeWorkspace.id,
       {
         accountId: leaderLiu.id,
@@ -818,7 +831,8 @@ describe('AdminWorkspacesPage', () => {
       within(removeDialog).getByRole('button', { name: '确认移除' }),
     );
     expect(await screen.findByText('Leader 已移除')).toBeInTheDocument();
-    expect(administrationMocks.removeWorkspaceLeader).toHaveBeenCalledWith(
+    expectExactlyOneCall(
+      administrationMocks.removeWorkspaceLeader,
       activeWorkspace.id,
       leaderLiu.id,
       { reason: '协作结束' },
@@ -829,6 +843,48 @@ describe('AdminWorkspacesPage', () => {
         within(drawer).queryByRole('listitem', { name: /刘洋/ }),
       ).not.toBeInTheDocument();
     });
+  });
+
+  it('组织候选加载时保留工作区列表、显示依赖进度并禁用创建', async () => {
+    administrationMocks.getOrganizationTree.mockReturnValueOnce(
+      new Promise(() => undefined),
+    );
+    renderPage();
+
+    expect(await screen.findByRole('table', {}, INITIAL_WAIT)).toBeVisible();
+    expect(screen.getByText('正在加载 Owner 候选')).toBeVisible();
+    expect(screen.getByRole('button', { name: '创建工作区' })).toBeDisabled();
+    expect(screen.getByText('当前版本暂未接入')).toBeVisible();
+  });
+
+  it('组织候选失败时保留 requestId、重试入口并禁用创建', async () => {
+    administrationMocks.getOrganizationTree.mockRejectedValueOnce(
+      new ApiError({
+        detail: '组织关系无权访问',
+        requestId: 'req-organization-403',
+        status: 403,
+      }),
+    );
+    renderPage();
+
+    expect(
+      await screen.findByText(/组织关系无权访问/, {}, INITIAL_WAIT),
+    ).toHaveTextContent('requestId: req-organization-403');
+    expect(screen.getByRole('button', { name: '重试组织关系' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '创建工作区' })).toBeDisabled();
+    expect(screen.getByText('当前版本暂未接入')).toBeVisible();
+  });
+
+  it('真实工作区列表为空时展示明确空态', async () => {
+    administrationMocks.listWorkspaces.mockResolvedValueOnce({
+      items: [],
+      total: 0,
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText('暂无真实工作区', {}, INITIAL_WAIT),
+    ).toBeVisible();
   });
 
   it('重复名称保留创建 Modal 并展示 409 Problem 原文与 requestId', async () => {

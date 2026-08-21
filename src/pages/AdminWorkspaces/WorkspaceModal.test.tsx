@@ -37,5 +37,10 @@ describe('WorkspaceModal', () => {
     );
     expect(await screen.findByRole('option', { name: '李强' })).toBeVisible();
     expect(screen.getByRole('option', { name: '运行时 Leader' })).toBeVisible();
+    expect(screen.getByRole('textbox', { name: '所属 Team' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: '所属 Team' })).toHaveAttribute(
+      'placeholder',
+      '当前版本暂未接入',
+    );
   });
 });
