@@ -1,3 +1,4 @@
+import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
@@ -7,7 +8,6 @@ import type {
   AuditEventsQuery,
   AuditEventsResponse,
 } from '@/features/administration';
-import { ApiError } from '@/services/transport';
 
 const administrationMocks = vi.hoisted(() => ({
   listAuditEvents: vi.fn(),
@@ -180,7 +180,7 @@ describe('AuditPage', () => {
 
   it('shows a 403 Problem Details message with its requestId and clears the table', async () => {
     administrationMocks.listAuditEvents.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: '无权查看审计事件',
         requestId: 'req-audit-forbidden',
         status: 403,
@@ -206,7 +206,7 @@ describe('AuditPage', () => {
         nextCursor: null,
       } satisfies AuditEventsResponse)
       .mockRejectedValueOnce(
-        new ApiError({
+        createApiErrorFixture({
           detail: '审计刷新失败',
           requestId: 'req-audit-refresh',
           status: 503,

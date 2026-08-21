@@ -1,3 +1,4 @@
+import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
@@ -9,7 +10,6 @@ import type {
   WorkspaceMembersResponse,
   WorkspaceSummary,
 } from '@/features/administration';
-import { ApiError } from '@/services/transport';
 
 const administrationMocks = vi.hoisted(() => ({
   createWorkspace: vi.fn(),
@@ -480,7 +480,7 @@ describe('AdminWorkspacesPage', () => {
   it('成员投影失败展示 Problem 并允许重试恢复', async () => {
     administrationMocks.listWorkspaceMembers
       .mockRejectedValueOnce(
-        new ApiError({
+        createApiErrorFixture({
           detail: '成员投影暂时不可用',
           requestId: 'request-members-retry',
           status: 503,
@@ -515,7 +515,7 @@ describe('AdminWorkspacesPage', () => {
   });
 
   it('未知工作区安全保留后端 Owner 并展示可用计数与缺省字段', async () => {
-    administrationMocks.listWorkspaces.mockResolvedValueOnce({
+    administrationMocks.listWorkspaces.mockResolvedValue({
       items: [
         {
           id: 'runtime-workspace',
@@ -633,7 +633,7 @@ describe('AdminWorkspacesPage', () => {
     view.unmount();
     await act(async () => {
       rejectPending(
-        new ApiError({
+        createApiErrorFixture({
           detail: '页面卸载后的工作区错误',
           requestId: 'unmounted-workspace-request',
           status: 503,
@@ -859,7 +859,7 @@ describe('AdminWorkspacesPage', () => {
 
   it('组织候选失败时保留 requestId、重试入口并禁用创建', async () => {
     administrationMocks.getOrganizationTree.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: '组织关系无权访问',
         requestId: 'req-organization-403',
         status: 403,
@@ -890,7 +890,7 @@ describe('AdminWorkspacesPage', () => {
   it('重复名称保留创建 Modal 并展示 409 Problem 原文与 requestId', async () => {
     const user = userEvent.setup();
     administrationMocks.createWorkspace.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: '工作区名称 营销工作区 已存在',
         requestId: 'req-workspace-create-409',
         status: 409,
@@ -915,7 +915,7 @@ describe('AdminWorkspacesPage', () => {
 
   it('Leader 写入的 422 Problem 保留原文与 requestId', async () => {
     administrationMocks.inviteWorkspaceLeader.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: '该 Leader 当前不可邀请',
         requestId: 'req-workspace-invite-422',
         status: 422,
@@ -954,7 +954,7 @@ describe('AdminWorkspacesPage', () => {
 
   it('403 列表拒绝清空旧数据并展示 Problem 原文与 requestId', async () => {
     administrationMocks.listWorkspaces.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: '无 Workspace 治理权限',
         requestId: 'req-workspace-list-403',
         status: 403,

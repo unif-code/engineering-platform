@@ -1,4 +1,5 @@
 import { createTotpCode } from '@root/tests/auth-fixtures';
+import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
@@ -12,7 +13,6 @@ import type {
   PolicyVersionsResponse,
   PublishedPolicyVersion,
 } from '@/features/administration';
-import { ApiError } from '@/services/transport';
 
 const administrationMocks = vi.hoisted(() => ({
   createPolicyDraft: vi.fn(),
@@ -643,7 +643,7 @@ describe('AdminPoliciesPage', {
   it('Draft ETag 409 保留编辑态并显示固定并发冲突提示', async () => {
     administrationMocks.createPolicyDraft.mockResolvedValueOnce(DRAFT_V1);
     administrationMocks.updatePolicyDraft.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: '已被并发修改，刷新后重试',
         requestId: 'req-policy-conflict',
         status: 409,
@@ -896,7 +896,7 @@ describe('AdminPoliciesPage', {
       const totpCode = createTotpCode();
       arrangeValidDraft();
       administrationMocks.publishPolicyDraft.mockRejectedValueOnce(
-        new ApiError({
+        createApiErrorFixture({
           detail,
           requestId,
           status,
@@ -1044,7 +1044,7 @@ describe('AdminPoliciesPage', {
     );
     administrationMocks.listPolicyVersions.mockResolvedValueOnce(VERSIONS_2);
     administrationMocks.rollbackPolicyVersion.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: '目标版本已不可回滚',
         requestId: 'req-policy-rollback-409',
         status: 409,
@@ -1079,14 +1079,14 @@ describe('AdminPoliciesPage', {
 
   it('Catalog 与版本查询失败分别展示服务端问题', async () => {
     administrationMocks.listPolicyCatalog.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: 'Policy Catalog 无权访问',
         requestId: 'req-policy-catalog-403',
         status: 403,
       }),
     );
     administrationMocks.listPolicyVersions.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: 'Policy 历史无权访问',
         requestId: 'req-policy-versions-403',
         status: 403,

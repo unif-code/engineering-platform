@@ -1,10 +1,10 @@
+import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { OrganizationTreeResponse } from '@/features/administration';
-import { ApiError } from '@/services/transport';
 
 const administrationMocks = vi.hoisted(() => ({
   getOrganizationTree: vi.fn(),
@@ -148,7 +148,7 @@ describe('AdminOrganizationPage', () => {
   it('组织树加载失败展示 Problem 与 requestId 并允许重试', async () => {
     administrationMocks.getOrganizationTree
       .mockRejectedValueOnce(
-        new ApiError({
+        createApiErrorFixture({
           detail: '组织树暂时不可用',
           requestId: 'request-org-retry',
           status: 503,
@@ -227,7 +227,7 @@ describe('AdminOrganizationPage', () => {
     '保留 $status Problem 原文与 requestId',
     async ({ detail, requestId, status }) => {
       administrationMocks.setOrganizationSuperior.mockRejectedValueOnce(
-        new ApiError({ detail, requestId, status }),
+        createApiErrorFixture({ detail, requestId, status }),
       );
       const user = userEvent.setup();
       renderPage();

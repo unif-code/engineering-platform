@@ -1,5 +1,5 @@
+import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { ApiError } from '@/services/transport';
 
 const listAccountsMock = vi.hoisted(() => vi.fn());
 
@@ -179,7 +179,7 @@ describe('queryUserRows', () => {
   ])(
     '保留 $status Problem detail 与 requestId',
     ({ detail, requestId, status }) => {
-      const error = new ApiError({
+      const error = createApiErrorFixture({
         detail,
         requestId,
         status,

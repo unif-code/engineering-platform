@@ -1,8 +1,8 @@
+import { POLICY_VERSION_FIXTURES } from '@root/tests/fixtures/accessGovernance';
 import { render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfigProvider } from 'antd';
 import { describe, expect, it, vi } from 'vitest';
-import { POLICY_VERSION_FIXTURES } from '../../../tests/fixtures/accessGovernance';
 import { PolicyVersionHistory } from './PolicyVersionHistory';
 
 const fourVersions = [

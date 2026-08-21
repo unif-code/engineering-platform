@@ -1,8 +1,8 @@
+import { POLICY_CATALOG_FIXTURE } from '@root/tests/fixtures/accessGovernance';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ConfigProvider } from 'antd';
 import { describe, expect, it, vi } from 'vitest';
-import { POLICY_CATALOG_FIXTURE } from '../../../tests/fixtures/accessGovernance';
 import { applyPolicyNumberInput, PolicyDraftEditor } from './PolicyDraftEditor';
 
 function policyByType(valueType: 'ENUM' | 'INTEGER') {

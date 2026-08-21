@@ -1,3 +1,4 @@
+import { createApiErrorFixture } from '@root/tests/fixtures/apiError';
 import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent, { type UserEvent } from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
@@ -7,7 +8,6 @@ import type {
   AccountListResponse,
   AccountSummary,
 } from '@/features/administration';
-import { ApiError } from '@/services/transport';
 
 const administrationMocks = vi.hoisted(() => ({
   createAccount: vi.fn(),
@@ -244,7 +244,7 @@ describe('AdminUsersPage', () => {
     async ({ detail, requestId, status }) => {
       const user = userEvent.setup();
       administrationMocks.resetAccountPassword.mockRejectedValueOnce(
-        new ApiError({ detail, requestId, status }),
+        createApiErrorFixture({ detail, requestId, status }),
       );
       renderPage();
 
@@ -357,7 +357,7 @@ describe('AdminUsersPage', () => {
       administrationMocks.listAccounts
         .mockResolvedValueOnce(accountPage())
         .mockRejectedValueOnce(
-          new ApiError({
+          createApiErrorFixture({
             detail: '账号列表权限已撤销',
             requestId: 'req-account-reload-403',
             status: 403,
@@ -493,7 +493,7 @@ describe('AdminUsersPage', () => {
     async ({ detail, requestId, status }) => {
       const user = userEvent.setup();
       administrationMocks.createAccount.mockRejectedValueOnce(
-        new ApiError({ detail, requestId, status }),
+        createApiErrorFixture({ detail, requestId, status }),
       );
       renderPage();
 
@@ -520,7 +520,7 @@ describe('AdminUsersPage', () => {
 
   it('列表 403 展示服务端 detail 与 requestId', async () => {
     administrationMocks.listAccounts.mockRejectedValueOnce(
-      new ApiError({
+      createApiErrorFixture({
         detail: '无账号治理权限',
         requestId: 'req-account-list-403',
         status: 403,
@@ -609,7 +609,7 @@ describe('AdminUsersPage', () => {
     view.rerender(pageShell(false));
     await act(async () => {
       rejectPendingRequest(
-        new ApiError({
+        createApiErrorFixture({
           detail: '页面卸载后的旧请求',
           requestId: 'unmounted-admin-account-request',
           status: 403,
