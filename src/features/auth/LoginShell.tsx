@@ -12,9 +12,13 @@ import { useLoginStyles } from './login.style';
 
 export interface LoginShellProps {
   children: ReactNode;
+  formLabel?: string;
 }
 
-export function LoginShell({ children }: LoginShellProps) {
+export function LoginShell({
+  children,
+  formLabel = '登录表单',
+}: LoginShellProps) {
   const { resolvedTheme } = usePlatformTheme();
   const { styles } = useLoginStyles({
     isLightTheme: resolvedTheme === 'light',
@@ -29,7 +33,11 @@ export function LoginShell({ children }: LoginShellProps) {
 
       <section className={styles.hero} aria-labelledby="login-hero-title">
         <p className={styles.eyebrow}>{PLATFORM_EYEBROW}</p>
-        <h1 className={styles.heroTitle} id="login-hero-title">
+        <h1
+          aria-label="需求到合并，一条可治理的 AI 交付链路。"
+          className={styles.heroTitle}
+          id="login-hero-title"
+        >
           需求到合并，
           <br />
           一条<span className={styles.heroAccent}>可治理</span>的
@@ -58,7 +66,7 @@ export function LoginShell({ children }: LoginShellProps) {
         <small className={styles.meta}>{PLATFORM_COPYRIGHT}</small>
       </section>
 
-      <section className={styles.formPane} aria-label="登录表单">
+      <section className={styles.formPane} aria-label={formLabel}>
         <div className={styles.formCard}>{children}</div>
       </section>
     </main>

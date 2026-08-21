@@ -379,27 +379,23 @@ export function BootstrapWizard() {
   };
 
   return (
-    <section aria-labelledby="bootstrap-title" className={styles.page}>
-      <div className={styles.panel}>
-        <p className={styles.eyebrow}>账号初始化</p>
-        <h1 className={styles.title} id="bootstrap-title">
-          初始化平台账号
-        </h1>
-        <Steps
-          className={styles.steps}
-          current={currentStep}
-          items={STEP_ITEMS}
-          responsive
-        />
-        <div className={styles.content}>
-          {problemDetail ? (
-            <div aria-live="polite" className={styles.alert} role="alert">
-              {problemDetail}
-            </div>
-          ) : null}
-          {renderStep()}
+    <section aria-labelledby="bootstrap-title" className={styles.content}>
+      <p className={styles.eyebrow}>账号初始化</p>
+      <h1 className={styles.title} id="bootstrap-title">
+        初始化平台账号
+      </h1>
+      <Steps
+        className={styles.steps}
+        current={currentStep}
+        items={STEP_ITEMS}
+        responsive
+      />
+      {problemDetail ? (
+        <div aria-live="polite" className={styles.alert} role="alert">
+          {problemDetail}
         </div>
-      </div>
+      ) : null}
+      {renderStep()}
     </section>
   );
 }

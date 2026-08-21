@@ -88,25 +88,21 @@ export function createProThemeConfig(resolvedTheme: ResolvedTheme) {
     token: {
       layout: {
         sider: {
-          colorBgCollapsedButton: dark ? '#262626' : '#FFFFFF',
-          colorBgMenuItemActive: dark ? 'rgba(255,255,255,.08)' : '#FFF7F0',
-          colorBgMenuItemHover: dark ? 'rgba(255,255,255,.08)' : '#FFF7F0',
-          colorBgMenuItemSelected: dark ? BRAND_ORANGE : '#FFF7F0',
-          colorMenuBackground: dark ? '#191919' : '#FFFFFF',
-          colorMenuItemDivider: dark ? 'rgba(255,255,255,.08)' : '#EBEBEB',
-          colorTextCollapsedButton: dark
-            ? 'rgba(255,255,255,.65)'
-            : 'rgba(0,0,0,.45)',
-          colorTextCollapsedButtonHover: dark ? '#FFFFFF' : BRAND_ORANGE,
-          colorTextMenu: dark ? 'rgba(255,255,255,.65)' : 'rgba(0,0,0,.7)',
-          colorTextMenuActive: dark ? '#FFFFFF' : BRAND_ORANGE,
-          colorTextMenuItemHover: dark ? '#FFFFFF' : BRAND_ORANGE,
-          colorTextMenuSecondary: dark
-            ? 'rgba(255,255,255,.3)'
-            : 'rgba(0,0,0,.35)',
-          colorTextMenuSelected: dark ? '#FFFFFF' : BRAND_ORANGE,
-          colorTextMenuTitle: dark ? '#FFFFFF' : '#191919',
-          colorTextSubMenuSelected: dark ? '#FFFFFF' : BRAND_ORANGE,
+          colorBgCollapsedButton: '#262626',
+          colorBgMenuItemActive: 'rgba(255,255,255,.08)',
+          colorBgMenuItemHover: 'rgba(255,255,255,.08)',
+          colorBgMenuItemSelected: BRAND_ORANGE,
+          colorMenuBackground: '#191919',
+          colorMenuItemDivider: 'rgba(255,255,255,.08)',
+          colorTextCollapsedButton: 'rgba(255,255,255,.65)',
+          colorTextCollapsedButtonHover: '#FFFFFF',
+          colorTextMenu: 'rgba(255,255,255,.65)',
+          colorTextMenuActive: '#FFFFFF',
+          colorTextMenuItemHover: '#FFFFFF',
+          colorTextMenuSecondary: 'rgba(255,255,255,.3)',
+          colorTextMenuSelected: '#FFFFFF',
+          colorTextMenuTitle: '#FFFFFF',
+          colorTextSubMenuSelected: '#FFFFFF',
         },
       },
     },

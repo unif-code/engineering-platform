@@ -1,25 +1,6 @@
 import { createStyles } from 'antd-style';
 
 export const useBootstrapStyles = createStyles(({ token }) => ({
-  page: {
-    boxSizing: 'border-box',
-    display: 'flex',
-    minHeight: '100vh',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: token.padding,
-    background: `linear-gradient(145deg, ${token.colorPrimaryBg} 0%, ${token.colorBgLayout} 55%, ${token.colorBgContainer} 100%)`,
-  },
-  panel: {
-    boxSizing: 'border-box',
-    width: '100%',
-    maxWidth: 760,
-    padding: token.paddingXL,
-    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
-    borderRadius: token.borderRadiusLG,
-    backgroundColor: token.colorBgElevated,
-    boxShadow: token.boxShadowSecondary,
-  },
   eyebrow: {
     marginBlock: 0,
     color: token.colorPrimary,

@@ -130,7 +130,7 @@ export const layout = (({
 
   return {
     layout: 'mix',
-    navTheme: undefined,
+    navTheme: 'realDark',
     logo: false,
     title: false,
     siderWidth: 208,

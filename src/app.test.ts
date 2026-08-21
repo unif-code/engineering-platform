@@ -272,7 +272,7 @@ describe('layout', () => {
     expect(config.logo).toBe(false);
     expect(config.title).toBe(false);
     expect(config.layout).toBe('mix');
-    expect(config).toHaveProperty('navTheme', undefined);
+    expect(config.navTheme).toBe('realDark');
     expect(config.siderWidth).toBe(208);
     expect(config.fixedHeader).toBe(true);
     expect(config.fixSiderbar).toBe(true);
@@ -651,14 +651,15 @@ describe('layout', () => {
     expect(featureMocks.replace).not.toHaveBeenCalled();
   });
 
-  it('静态 defaultSettings 使用品牌橙和固定 mix 布局且不锁定 navTheme', () => {
+  it('静态 defaultSettings 使用品牌橙和最终深色侧栏尺寸', () => {
     expect(defaultSettings).toMatchObject({
       colorPrimary: '#EB6E00',
       layout: 'mix',
       fixedHeader: true,
       fixSiderbar: true,
+      navTheme: 'realDark',
+      siderWidth: 208,
     });
-    expect(defaultSettings).not.toHaveProperty('navTheme');
   });
 });
 

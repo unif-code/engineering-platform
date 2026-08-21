@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { BrandMark } from '.';
 
 describe('BrandMark', () => {
-  it('展开和折叠时使用原型 4b 面罩标识与统一产品名', () => {
+  it('展开和折叠时使用最终 D 形标识与统一产品名', () => {
     const { rerender } = render(<BrandMark />);
     const brand = screen.getByRole('img', { name: '研发协作平台' });
     const mark = brand.querySelector('svg');
@@ -12,7 +12,7 @@ describe('BrandMark', () => {
     expect(mark).toHaveAttribute('viewBox', '0 0 48 48');
     expect(mark?.querySelector('path')).toHaveAttribute(
       'd',
-      'M16,10 h16 a10,10 0 0 1 10,10 v8 a10,10 0 0 1 -10,10 h-16 a10,10 0 0 1 -10,-10 v-8 a10,10 0 0 1 10,-10 Z M16,20 h16 a4,4 0 0 1 0,8 h-16 a4,4 0 0 1 0,-8 Z M27.8,24 a2.2,2.2 0 1 0 4.4,0 a2.2,2.2 0 1 0 -4.4,0 Z',
+      'M10 7h14c11 0 20 7.6 20 17s-9 17-20 17H10V7Zm9 9v16h5c5.9 0 10.5-3.6 10.5-8S29.9 16 24 16h-5Z',
     );
     expect(mark).toHaveStyle({
       height: '32px',

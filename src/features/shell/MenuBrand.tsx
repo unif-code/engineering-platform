@@ -5,5 +5,5 @@ export interface MenuBrandProps {
 }
 
 export function MenuBrand({ collapsed }: MenuBrandProps) {
-  return <BrandMark collapsed={collapsed} size="small" />;
+  return <BrandMark collapsed={collapsed} inverse size="small" />;
 }

@@ -1,9 +1,9 @@
-import { BootstrapWizard } from '@/features/auth';
+import { BootstrapWizard, LoginShell } from '@/features/auth';
 
 export default function BootstrapPage() {
   return (
-    <main>
+    <LoginShell formLabel="账号初始化">
       <BootstrapWizard />
-    </main>
+    </LoginShell>
   );
 }

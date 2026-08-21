@@ -13,6 +13,7 @@ import {
   Input,
   type MenuProps,
   Space,
+  Tooltip,
   Typography,
 } from 'antd';
 import { useState } from 'react';
@@ -23,12 +24,6 @@ import {
   usePlatformTheme,
 } from '@/features/theme';
 import { ApiError } from '@/services/transport';
-
-const SEARCH_OPTIONS = [
-  { label: '搜索任务', value: '搜索任务' },
-  { label: '搜索工作区', value: '搜索工作区' },
-  { label: '搜索 Artifact', value: '搜索 Artifact' },
-];
 
 export interface HeaderActionsProps {
   onLogout: () => Promise<void>;
@@ -83,19 +78,17 @@ export function HeaderActions({ onLogout, user }: HeaderActionsProps) {
 
   return (
     <Space size="small">
-      <AutoComplete
-        onSelect={() => {
-          void message.info('静态原型：全局搜索暂未接入。');
-        }}
-        options={SEARCH_OPTIONS}
-        style={{ width: 220 }}
-      >
-        <Input
-          aria-label="全局搜索"
-          placeholder="搜索任务、工作区、Artifact"
-          prefix={<SearchOutlined aria-hidden="true" />}
-        />
-      </AutoComplete>
+      <Tooltip title="当前版本暂未接入">
+        <span data-disabled-search>
+          <AutoComplete disabled style={{ width: 220 }}>
+            <Input
+              aria-label="全局搜索"
+              placeholder="搜索任务、工作区、Artifact"
+              prefix={<SearchOutlined aria-hidden="true" />}
+            />
+          </AutoComplete>
+        </span>
+      </Tooltip>
       <Dropdown
         menu={{
           items: userMenuItems,

@@ -1,5 +1,5 @@
 import { RouteContext } from '@ant-design/pro-components';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App as AntdApp } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -92,7 +92,8 @@ describe('HeaderActions', () => {
     expect(selectedDark.querySelector('.anticon-check')).toBeInTheDocument();
   });
 
-  it('选择静态搜索项只展示未接入提示', async () => {
+  it('未接入的全局搜索保持原型位置但不可触发假结果', async () => {
+    const user = userEvent.setup();
     render(
       <AntdApp>
         <ThemeProvider>
@@ -102,13 +103,11 @@ describe('HeaderActions', () => {
     );
 
     const search = screen.getByRole('combobox', { name: '全局搜索' });
-    fireEvent.change(search, { target: { value: '搜索任务' } });
-    const options = await screen.findAllByText('搜索任务');
-    fireEvent.click(options.at(-1) as HTMLElement);
+    expect(search).toBeDisabled();
+    await user.hover(search.closest('[data-disabled-search]') as HTMLElement);
 
-    expect(
-      await screen.findByText('静态原型：全局搜索暂未接入。'),
-    ).toBeInTheDocument();
+    expect(await screen.findByText('当前版本暂未接入')).toBeInTheDocument();
+    expect(screen.queryByText(/静态原型/)).not.toBeInTheDocument();
   });
 
   it('退出成功调用 Session owner，失败展示 Problem detail 原文', async () => {

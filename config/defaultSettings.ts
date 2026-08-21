@@ -8,6 +8,8 @@ const defaultSettings = {
   contentWidth: 'Fluid',
   fixedHeader: true,
   fixSiderbar: true,
+  navTheme: 'realDark',
+  siderWidth: 208,
   title: PLATFORM_NAME,
 } as const;
 

@@ -17,6 +17,9 @@ export const useStyles = createStyles(({ token }) => ({
   collapsed: {
     justifyContent: 'center',
   },
+  inverse: {
+    color: token.colorWhite,
+  },
   mark: {
     display: 'block',
     flexShrink: 0,
