@@ -199,7 +199,7 @@ describe('RouteGuard', () => {
       routeKey: 'team-board',
     },
     {
-      findPage: () => screen.findByRole('region', { name: '平台关键指标' }),
+      findPage: () => screen.findByRole('region', { name: '管理导航' }),
       Page: AdminPage,
       path: '/admin',
       routeKey: 'admin',

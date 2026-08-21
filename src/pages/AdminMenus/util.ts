@@ -1,84 +1,64 @@
-import type { ProTableProps } from '@ant-design/pro-components';
-import { MENU_ROWS } from './constant';
-import type { MenuQueryParams, MenuRow } from './type';
+import {
+  getRouteRegistration,
+  isRouteKey,
+  type NavigationGroupKey,
+  type NavigationItem,
+  type RouteKey,
+} from '@/features/navigation';
+import type { MenuRow } from './type';
 
-type MenuRequest = NonNullable<
-  ProTableProps<MenuRow, MenuQueryParams>['request']
->;
-type MenuSort = Parameters<MenuRequest>[1];
-type MenuFilter = Parameters<MenuRequest>[2];
-
-const GROUP_RANK: Record<MenuRow['group'], number> = {
+const GROUP_RANK: Record<NavigationGroupKey, number> = {
   user: 0,
   admin: 1,
 };
 
-export function compareMenuRows(
-  left: MenuRow,
-  right: MenuRow,
-  direction = 1,
-): number {
+interface RegisteredMenu {
+  group: NavigationGroupKey;
+  icon: MenuRow['icon'];
+  key: RouteKey;
+  name: string;
+  order: number;
+  path: string;
+}
+
+function compareMenuRows(left: RegisteredMenu, right: RegisteredMenu): number {
   const groupDifference = GROUP_RANK[left.group] - GROUP_RANK[right.group];
   if (groupDifference !== 0) {
     return groupDifference;
   }
 
-  const orderDifference = (left.order - right.order) * direction;
-  return orderDifference || left.key.localeCompare(right.key);
-}
-
-export function getMenuVisibilityAction(row: MenuRow): string {
-  return `${row.visible ? '隐藏' : '显示'}菜单 ${row.key}`;
-}
-
-function matchesVisibility(
-  row: MenuRow,
-  visibility: string | number | undefined,
-): boolean {
-  if (visibility === 'visible' || visibility === 'true' || visibility === 1) {
-    return row.visible;
+  const orderDifference = left.order - right.order;
+  if (orderDifference !== 0) {
+    return orderDifference;
   }
-  if (visibility === 'hidden' || visibility === 'false' || visibility === 0) {
-    return !row.visible;
-  }
-  return true;
+
+  return left.key.localeCompare(right.key);
 }
 
-export function selectMenuRows(
-  params: MenuQueryParams,
-  sort: MenuSort = {},
-  filter: MenuFilter = {},
+export function projectNavigationToMenuRows(
+  navigation: NavigationItem[],
 ): MenuRow[] {
-  const groups =
-    params.group === 'all'
-      ? undefined
-      : params.group
-        ? [params.group]
-        : filter.group?.map(String);
-  const visibility =
-    params.visible === 'all'
-      ? undefined
-      : (params.visible ?? filter.visible?.map(String)[0]);
-  const direction = sort.order === 'descend' ? -1 : 1;
+  return navigation
+    .flatMap<RegisteredMenu>((item) => {
+      if (!isRouteKey(item.routeKey)) {
+        return [];
+      }
 
-  return MENU_ROWS.filter((row) => {
-    const matchesGroup = !groups?.length || groups.includes(row.group);
+      const registration = getRouteRegistration(item.routeKey);
+      if (!registration?.menu || registration.group === null) {
+        return [];
+      }
 
-    return matchesGroup && matchesVisibility(row, visibility);
-  }).sort((left, right) => compareMenuRows(left, right, direction));
+      return [
+        {
+          group: registration.group,
+          icon: registration.icon,
+          key: item.routeKey,
+          name: item.name,
+          order: item.sort,
+          path: registration.path,
+        },
+      ];
+    })
+    .sort(compareMenuRows);
 }
-
-export const queryMenuRows: NonNullable<
-  ProTableProps<MenuRow, MenuQueryParams>['request']
-> = async (params, sort, filter) => {
-  const rows = selectMenuRows(params, sort, filter);
-  const current = Math.max(params.current ?? 1, 1);
-  const pageSize = Math.max(params.pageSize ?? 20, 1);
-  const offset = (current - 1) * pageSize;
-
-  return {
-    data: rows.slice(offset, offset + pageSize),
-    success: true,
-    total: rows.length,
-  };
-};

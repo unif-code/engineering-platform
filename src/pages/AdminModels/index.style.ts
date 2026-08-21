@@ -6,69 +6,60 @@ export const useStyles = createStyles(({ token }) => ({
     flexDirection: 'column',
     gap: token.margin,
   },
-  code: {
-    fontFamily: token.fontFamilyCode,
-  },
-  catalogNote: {
-    display: 'block',
-    marginTop: token.marginSM,
-    fontSize: token.fontSizeSM,
-  },
-  metricsGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+  section: {
+    display: 'flex',
+    flexDirection: 'column',
     gap: token.marginSM,
   },
+  toolbar: {
+    display: 'flex',
+    gap: token.marginSM,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  note: {
+    fontSize: token.fontSizeSM,
+  },
+  usagePage: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.margin,
+  },
   usageGrid: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    gap: token.margin,
-    alignItems: 'flex-start',
-    '& > :first-child': {
-      flex: '1.4 1 560px',
-    },
-    '& > :last-child': {
-      flex: '1 1 320px',
-    },
-  },
-  distributionColumn: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.margin,
-  },
-  analysisCard: {
-    borderColor: token.colorBorderSecondary,
-  },
-  chartFigure: {
-    width: '100%',
-    margin: 0,
-  },
-  evaluationJobs: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+    gridTemplateColumns: '1.4fr 1fr',
     gap: token.margin,
-    marginBottom: token.margin,
   },
-  evaluationJob: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: token.marginXXS,
+  usagePrimary: {
+    display: 'grid',
+    gridTemplateRows: '1fr 1fr',
+    gap: token.margin,
+  },
+  usageSecondary: {
+    display: 'grid',
+    gridTemplateRows: '1fr 1fr',
+    gap: token.margin,
+  },
+  emptyRegion: {
+    minHeight: 150,
     padding: token.padding,
     border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
     borderRadius: token.borderRadiusLG,
     background: token.colorBgContainer,
   },
-  evaluationJobTitle: {
-    display: 'flex',
-    flexWrap: 'wrap',
-    alignItems: 'center',
-    gap: token.marginXS,
+  sectionTitle: {
+    margin: `0 0 ${token.marginSM}px`,
+    color: token.colorText,
+    fontSize: token.fontSize,
+    lineHeight: token.lineHeight,
   },
-  evaluationLatest: {
-    marginTop: token.marginXXS,
-    padding: `${token.paddingXXS}px ${token.paddingSM}px`,
-    borderRadius: token.borderRadius,
-    color: token.colorPrimary,
-    background: token.colorPrimaryBg,
+  evidence: {
+    display: 'flex',
+    flexDirection: 'column',
+  },
+  evidenceTitle: {
+    borderEndStartRadius: 0,
+    borderEndEndRadius: 0,
+    borderColor: token.colorBorderSecondary,
   },
 }));

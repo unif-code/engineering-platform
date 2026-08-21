@@ -15,26 +15,8 @@ export const useStyles = createStyles(({ token }) => ({
     alignItems: 'center',
     justifyContent: 'space-between',
   },
-  pageDescription: {
-    margin: 0,
-    color: token.colorTextSecondary,
-    fontSize: token.fontSizeSM,
-  },
   icon: {
     color: token.colorTextSecondary,
     fontSize: token.fontSizeLG,
-  },
-  menuName: {
-    display: 'inline-flex',
-    gap: token.marginXS,
-    alignItems: 'center',
-  },
-  capability: {
-    color: token.colorTextSecondary,
-  },
-  visibility: {
-    display: 'inline-flex',
-    gap: token.marginXS,
-    alignItems: 'center',
   },
 }));
