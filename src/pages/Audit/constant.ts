@@ -8,21 +8,9 @@ import type { AuditQueryParams, AuditRow } from './type';
 
 export const AUDIT_PAGE_SIZE = 3;
 
-export const AUDIT_SOURCE_IP_BY_ID: Readonly<Record<string, string>> = {
-  'AUD-2026-0802-009': '10.8.12.3',
-  'AUD-2026-0805-008': '10.8.12.40',
-  'AUD-2026-0807-007': '10.8.12.18',
-  'AUD-2026-0808-006': '10.8.12.7',
-  'AUD-2026-0809-002': '10.1.1.9',
-  'AUD-2026-0810-001': '10.1.1.9',
-  'AUD-2026-0810-003': '10.9.3.22',
-  'AUD-2026-0810-004': '10.8.12.31',
-  'AUD-2026-0810-005': '10.8.9.77',
-};
-
 export const toAuditRow = <T extends { id: string }>(event: T) => ({
   ...event,
-  sourceIp: AUDIT_SOURCE_IP_BY_ID[event.id] ?? '—',
+  sourceIp: '—',
 });
 
 export const AUDIT_METRICS = [

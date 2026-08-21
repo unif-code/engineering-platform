@@ -28,7 +28,7 @@ function makeAuditEvent(overrides: Partial<AuditEvent> = {}): AuditEvent {
     action: 'Config Publish',
     actor: '孙杰',
     correlationId: 'corr-audit-001',
-    id: 'AUD-RUNTIME-001',
+    id: 'AUD-2026-0810-001',
     occurredAt: '2026-08-10T08:30:00.000Z',
     reason: '策略发布前的复核完成',
     requestId: 'req-audit-001',
@@ -90,8 +90,28 @@ describe('AuditPage', () => {
       screen.queryByRole('article', { name: '近 7 日操作：395' }),
     ).not.toBeInTheDocument();
     expect(
+      screen.queryByRole('article', { name: '高危操作：3' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('article', { name: '拦截事件：1' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('article', { name: '覆盖率：100%' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('最近 7 天审计事实')).not.toBeInTheDocument();
+    expect(screen.queryByText('需要优先复核')).not.toBeInTheDocument();
+    expect(screen.queryByText('策略已阻止业务效果')).not.toBeInTheDocument();
+    expect(screen.queryByText('全链路审计覆盖')).not.toBeInTheDocument();
+    expect(
       screen.queryByRole('figure', { name: '近 7 日审计趋势' }),
     ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('figure', { name: '审计动作分类' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('list', { name: '审计结果分布' }),
+    ).not.toBeInTheDocument();
+    expect(screen.queryByText('成功92%')).not.toBeInTheDocument();
     expect(
       within(screen.getByRole('region', { name: '审计指标' })).getAllByText(
         '—',
@@ -117,11 +137,12 @@ describe('AuditPage', () => {
     ).toHaveLength(4);
     const row = await screen.findByRole(
       'row',
-      { name: /AUD-RUNTIME-001/ },
+      { name: /AUD-2026-0810-001/ },
       INITIAL_WAIT,
     );
     expect(row).toHaveTextContent('孙杰');
     expect(row).toHaveTextContent('CONFIGURATION / access-policy-v8');
+    expect(row).toHaveTextContent('—');
     expect(administrationMocks.listAuditEvents).toHaveBeenCalledWith({
       ...rangeBounds(7),
       limit: 3,
@@ -150,9 +171,10 @@ describe('AuditPage', () => {
     }, INITIAL_WAIT);
     expect(screen.getByRole('table')).toBeInTheDocument();
     expect(
-      screen.queryByRole('row', { name: /AUD-RUNTIME-/ }),
+      screen.queryByRole('row', { name: /AUD-2026-/ }),
     ).not.toBeInTheDocument();
     expect(screen.getByText('共 0 条')).toBeInTheDocument();
+    expect(screen.getByText('当前没有真实审计数据')).toBeInTheDocument();
     expect(screen.getAllByText('—')).toHaveLength(4);
   });
 

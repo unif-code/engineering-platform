@@ -289,6 +289,7 @@ export default function AuditPage() {
           params={queryParams}
           request={requestAuditRows}
           rowKey="id"
+          locale={{ emptyText: '当前没有真实审计数据' }}
           scroll={{ x: 1100 }}
           search={false}
           size="small"

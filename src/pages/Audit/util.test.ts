@@ -24,7 +24,7 @@ const auditEvent = (overrides: Partial<AuditRow> = {}): AuditRow => ({
   requestId: 'req-audit-0810-001',
   result: 'success',
   risk: 'high',
-  sourceIp: '10.1.1.9',
+  sourceIp: '—',
   summary: '生产策略 access-policy-v8 已发布，版本由 7 提升至 8。',
   target: '生产策略 / access-policy-v8',
   targetId: 'access-policy-v8',
@@ -50,7 +50,7 @@ beforeEach(() => {
 });
 
 describe('queryAuditRows', () => {
-  it('在页面适配器中补充原型来源 IP，不扩展 AuditEvent 契约', async () => {
+  it('在页面适配器中补充不可用来源 IP，不扩展 AuditEvent 契约', async () => {
     const { sourceIp: _sourceIp, ...serviceEvent } = auditEvent();
     listAuditEventsMock.mockResolvedValue({
       items: [serviceEvent],
@@ -62,7 +62,7 @@ describe('queryAuditRows', () => {
     expect(result.data).toEqual([
       expect.objectContaining({
         id: 'AUD-2026-0810-001',
-        sourceIp: '10.1.1.9',
+        sourceIp: '—',
       }),
     ]);
   });
@@ -207,7 +207,6 @@ describe('queryAuditRows', () => {
     ['对象类型', 'configuration'],
     ['对象标识', 'access-policy-v8'],
     ['对象摘要', '版本由 7 提升至 8'],
-    ['来源 IP', '10.1.1.9'],
   ])('关键字可在页面本地匹配%s', (_field, keyword) => {
     const rows = [
       auditEvent(),
@@ -215,7 +214,7 @@ describe('queryAuditRows', () => {
         actor: '刘洋',
         id: 'AUD-unmatched',
         requestId: 'req-unmatched',
-        sourceIp: '10.9.3.22',
+        sourceIp: '—',
         summary: '策略服务完成生产晋级。',
         target: '策略服务 / release-2026.08',
         targetId: 'release-2026.08',
@@ -234,7 +233,7 @@ describe('queryAuditRows', () => {
           actor: '周遥',
           id: 'AUD-theme-v3',
           requestId: 'req-theme-v3',
-          sourceIp: '10.8.12.31',
+          sourceIp: '—',
           summary: '开发策略 theme-v3 已发布。',
           target: '开发策略 / theme-v3',
           targetId: 'theme-v3',
