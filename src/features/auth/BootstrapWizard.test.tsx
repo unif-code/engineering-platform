@@ -77,7 +77,19 @@ async function submitPermanentPassword(
   password: string,
 ) {
   await user.type(screen.getByLabelText('正式密码'), password);
+  await user.type(screen.getByLabelText('确认密码'), password);
   await user.click(screen.getByRole('button', { name: '设置正式密码' }));
+}
+
+async function revealManualSecret(
+  user: ReturnType<typeof userEvent.setup>,
+  region: HTMLElement,
+) {
+  await user.click(
+    within(region).getByRole('button', {
+      name: '无法扫码？显示手动密钥',
+    }),
+  );
 }
 
 beforeEach(() => {
@@ -133,6 +145,26 @@ describe('BootstrapWizard', () => {
     expect(mocks.login).not.toHaveBeenCalled();
   });
 
+  it('确认密码与正式密码不一致时阻止提交', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    mocks.useLocation.mockReturnValue({
+      state: { bootstrapSessionReady: true },
+    });
+
+    render(<BootstrapWizard />);
+
+    await user.type(screen.getByLabelText('正式密码'), fixture.password);
+    await user.type(
+      screen.getByLabelText('确认密码'),
+      `${fixture.password}-different`,
+    );
+    await user.click(screen.getByRole('button', { name: '设置正式密码' }));
+
+    expect(await screen.findByText('两次输入的密码不一致')).toBeInTheDocument();
+    expect(mocks.setBootstrapPassword).not.toHaveBeenCalled();
+  });
+
   it('使用 HttpOnly bootstrap Session 完成密码、TOTP 与重新登录', async () => {
     const fixture = createBootstrapFixture();
     const user = userEvent.setup();
@@ -156,6 +188,7 @@ describe('BootstrapWizard', () => {
     const qrRegion = await screen.findByRole('region', {
       name: 'TOTP 绑定二维码',
     });
+    await revealManualSecret(user, qrRegion);
     expect(within(qrRegion).getByText(fixture.secret)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText('TOTP 动态码'), fixture.code);
@@ -338,6 +371,28 @@ describe('BootstrapWizard', () => {
     expect(screen.getByLabelText('TOTP 动态码')).toHaveValue(fixture.code);
   });
 
+  it('TOTP 手动密钥默认隐藏且只在用户请求后显示', async () => {
+    const fixture = createBootstrapFixture();
+    const user = userEvent.setup();
+    render(<BootstrapWizard />);
+    await advanceToPassword(user, fixture);
+    await submitPermanentPassword(user, fixture.password);
+
+    const qrRegion = await screen.findByRole('region', {
+      name: 'TOTP 绑定二维码',
+    });
+    expect(
+      within(qrRegion).queryByText(fixture.secret),
+    ).not.toBeInTheDocument();
+
+    await revealManualSecret(user, qrRegion);
+
+    expect(within(qrRegion).getByText(fixture.secret)).toBeInTheDocument();
+    expect(
+      within(qrRegion).getByRole('button', { name: '隐藏手动密钥' }),
+    ).toHaveAttribute('aria-expanded', 'true');
+  });
+
   it('TOTP enroll 失败后独立重试，不重复提交正式密码', async () => {
     const fixture = createBootstrapFixture();
     const user = userEvent.setup();
@@ -392,6 +447,7 @@ describe('BootstrapWizard', () => {
     const qrRegion = await screen.findByRole('region', {
       name: 'TOTP 绑定二维码',
     });
+    await revealManualSecret(user, qrRegion);
     expect(
       within(qrRegion).getByText(malformedProvisioningUri),
     ).toBeInTheDocument();
@@ -410,6 +466,7 @@ describe('BootstrapWizard', () => {
     const qrRegion = await screen.findByRole('region', {
       name: 'TOTP 绑定二维码',
     });
+    await revealManualSecret(user, qrRegion);
     expect(within(qrRegion).getByText(provisioningUri)).toBeInTheDocument();
   });
 

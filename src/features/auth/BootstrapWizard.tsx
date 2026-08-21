@@ -27,6 +27,7 @@ const STEP_ITEMS = [
 ];
 
 interface PasswordFormValues {
+  confirmPassword: string;
   password: string;
 }
 
@@ -85,6 +86,7 @@ export function BootstrapWizard() {
   const [passwordFieldErrors, setPasswordFieldErrors] = useState<string[]>([]);
   const [problemDetail, setProblemDetail] = useState<string>();
   const [provisioningUri, setProvisioningUri] = useState<string>();
+  const [showManualSecret, setShowManualSecret] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -140,6 +142,7 @@ export function BootstrapWizard() {
       setCurrentStep(2);
       try {
         const enrollment = await enrollBootstrapTotp();
+        setShowManualSecret(false);
         setProvisioningUri(enrollment.provisioningUri);
       } catch (error) {
         setProblemDetail(
@@ -159,6 +162,7 @@ export function BootstrapWizard() {
     setSubmitting(true);
     try {
       const enrollment = await enrollBootstrapTotp();
+      setShowManualSecret(false);
       setProvisioningUri(enrollment.provisioningUri);
     } catch (error) {
       setProblemDetail(
@@ -265,6 +269,24 @@ export function BootstrapWizard() {
             >
               <Input.Password autoComplete="new-password" showCount />
             </Form.Item>
+            <Form.Item
+              dependencies={['password']}
+              label="确认密码"
+              name="confirmPassword"
+              rules={[
+                { required: true, message: '请再次输入正式密码' },
+                ({ getFieldValue }) => ({
+                  validator(_, value) {
+                    if (!value || getFieldValue('password') === value) {
+                      return Promise.resolve();
+                    }
+                    return Promise.reject(new Error('两次输入的密码不一致'));
+                  },
+                }),
+              ]}
+            >
+              <Input.Password autoComplete="new-password" />
+            </Form.Item>
             <Button htmlType="submit" loading={submitting} type="primary">
               设置正式密码
             </Button>
@@ -282,7 +304,7 @@ export function BootstrapWizard() {
         <>
           <h2 className={styles.heading}>绑定认证器</h2>
           <p className={styles.description}>
-            使用认证器扫描二维码，或手动输入密钥，再填写 6 位动态码。
+            使用认证器扫描二维码，再填写 6 位动态码。
           </p>
           {provisioningUri === undefined ? (
             <Button
@@ -297,10 +319,20 @@ export function BootstrapWizard() {
               <section aria-label="TOTP 绑定二维码" className={styles.qrRegion}>
                 <QRCode type="svg" value={provisioningUri} />
                 <p className={styles.secretLabel}>
-                  手动输入密钥
-                  <code className={styles.secret}>
-                    {secret || provisioningUri}
-                  </code>
+                  <Button
+                    aria-expanded={showManualSecret}
+                    onClick={() => setShowManualSecret((visible) => !visible)}
+                    type="link"
+                  >
+                    {showManualSecret
+                      ? '隐藏手动密钥'
+                      : '无法扫码？显示手动密钥'}
+                  </Button>
+                  {showManualSecret ? (
+                    <code className={styles.secret}>
+                      {secret || provisioningUri}
+                    </code>
+                  ) : null}
                 </p>
               </section>
               <Form<TotpFormValues>
