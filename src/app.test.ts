@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { Children, createElement, isValidElement } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import defaultSettings from '../config/defaultSettings';
+import proxy from '../config/proxy';
 
 const featureMocks = vi.hoisted(() => ({
   fetchMe: vi.fn(),
@@ -82,6 +83,17 @@ describe('request runtime before layout registration', () => {
         expect.objectContaining({ name: 'ApiError' }),
       );
     }
+  });
+});
+
+describe('local development proxy', () => {
+  it('将同源 API 请求转发到 localhost:8080 且保留浏览器 Host', () => {
+    expect(proxy.dev).toEqual({
+      '/api/': {
+        changeOrigin: false,
+        target: 'http://localhost:8080',
+      },
+    });
   });
 });
 

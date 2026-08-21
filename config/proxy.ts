@@ -1,7 +1,7 @@
-/** 开发代理按环境配置；浏览器业务请求经同源 platform-gateway。 */
+/** 本地开发保留浏览器同源 Host，并将 API 转发到 Control Plane。 */
 const proxy = {
   dev: {
-    // '/api/': { target: 'http://localhost:8080', changeOrigin: true },
+    '/api/': { target: 'http://localhost:8080', changeOrigin: false },
   },
   test: {},
   pre: {},
