@@ -1,5 +1,6 @@
 import { createEmployeeNo } from '@root/tests/auth-fixtures';
 import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { theme } from 'antd';
 import type { ReactNode } from 'react';
 import { Children, createElement, isValidElement } from 'react';
@@ -11,6 +12,7 @@ const featureMocks = vi.hoisted(() => ({
   fetchMe: vi.fn(),
   fetchNavigation: vi.fn(),
   logout: vi.fn(),
+  push: vi.fn(),
   replace: vi.fn(),
   setAntdConfig: vi.fn(),
 }));
@@ -22,6 +24,7 @@ vi.mock('@umijs/max', () => ({
       pathname: '/admin/users',
       search: '?status=enabled',
     },
+    push: featureMocks.push,
     replace: featureMocks.replace,
   },
   useAntdConfigSetter: () => featureMocks.setAntdConfig,
@@ -50,6 +53,7 @@ beforeEach(() => {
   featureMocks.fetchMe.mockReset();
   featureMocks.fetchNavigation.mockReset();
   featureMocks.logout.mockReset();
+  featureMocks.push.mockReset();
   featureMocks.replace.mockReset();
   featureMocks.setAntdConfig.mockReset();
   featureMocks.logout.mockResolvedValue(undefined);
@@ -360,6 +364,31 @@ describe('layout', () => {
         ],
       },
     ]);
+  });
+
+  it('点击可见菜单项会跳转到该菜单的注册路由', async () => {
+    const user = userEvent.setup();
+    const collapseMobileMenu = vi.fn();
+    const config = layout({});
+    const menuItem = config.menuItemRender?.(
+      {
+        isUrl: false,
+        itemPath: '/workspaces',
+        key: 'workspaces',
+        name: '工作区',
+        onClick: collapseMobileMenu,
+        path: '/workspaces',
+        replace: false,
+      },
+      createElement('span', null, '工作区'),
+      { collapsed: false },
+    );
+    render(createElement('div', null, menuItem));
+
+    await user.click(screen.getByRole('link', { name: '工作区' }));
+
+    expect(featureMocks.push).toHaveBeenCalledWith('/workspaces');
+    expect(collapseMobileMenu).toHaveBeenCalledOnce();
   });
 
   it('消息菜单在展开时贴近文字显示未读数，折叠时仅显示圆点', () => {

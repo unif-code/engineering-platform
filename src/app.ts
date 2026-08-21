@@ -6,7 +6,7 @@ import {
   type RuntimeAntdConfig,
 } from '@umijs/max';
 import { Badge, Tag } from 'antd';
-import { createElement, type ReactNode } from 'react';
+import { createElement, type MouseEvent, type ReactNode } from 'react';
 import { fetchMe, logout, type Principal } from '@/features/auth';
 import {
   buildLoginPath,
@@ -157,20 +157,39 @@ export const layout = (({
       }),
     ],
     menuDataRender: () => buildMenuData(initialState?.navigation ?? []),
-    menuItemRender: (item, defaultDom, menuProps) =>
-      typeof item.unreadCount === 'number' &&
-      item.unreadCount > 0 &&
-      menuProps.collapsed
-        ? createElement(
-            Badge,
-            {
-              'aria-label': `${item.unreadCount} 条未读消息`,
-              dot: true,
-              offset: [-2, 2],
-            },
-            defaultDom,
-          )
-        : defaultDom,
+    menuItemRender: (item, defaultDom, menuProps) => {
+      const content =
+        typeof item.unreadCount === 'number' &&
+        item.unreadCount > 0 &&
+        menuProps.collapsed
+          ? createElement(
+              Badge,
+              {
+                'aria-label': `${item.unreadCount} 条未读消息`,
+                dot: true,
+                offset: [-2, 2],
+              },
+              defaultDom,
+            )
+          : defaultDom;
+      const path = item.path;
+      if (typeof path !== 'string') {
+        return content;
+      }
+
+      return createElement(
+        'a',
+        {
+          href: path,
+          onClick: (event: MouseEvent<HTMLAnchorElement>) => {
+            event.preventDefault();
+            item.onClick();
+            history.push(path);
+          },
+        },
+        content,
+      );
+    },
     menuTextRender: (item, defaultText, menuProps) => {
       const unreadCount =
         typeof item.unreadCount === 'number' ? item.unreadCount : 0;
