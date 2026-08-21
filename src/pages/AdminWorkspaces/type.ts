@@ -5,10 +5,7 @@ import type {
   WorkspaceSummary,
 } from '@/features/administration';
 
-export interface WorkspaceRow extends WorkspaceSummary {
-  repositoryCount?: number;
-  team?: string;
-}
+export type WorkspaceRow = WorkspaceSummary;
 
 export interface WorkspaceQueryParams {
   current?: number;
@@ -20,7 +17,6 @@ export interface WorkspaceQueryParams {
 export interface WorkspaceFormValues {
   name: string;
   ownerId: string;
-  team: string;
 }
 
 export type WorkspaceAction = 'invite' | 'remove' | 'transfer';

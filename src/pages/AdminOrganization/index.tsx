@@ -13,68 +13,45 @@ import {
   Typography,
 } from 'antd';
 import { useMemo, useState } from 'react';
-import { SemanticTag } from '@/components/SemanticTag';
 import {
   formatGovernanceError,
   getOrganizationTree,
   type OrganizationNode,
   setOrganizationSuperior,
 } from '@/features/administration';
-import {
-  ORGANIZATION_DEPARTMENTS,
-  ORGANIZATION_MEMBER_META,
-  ORGANIZATION_ROLE_MIX,
-  ORGANIZATION_ROOT_DEPARTMENTS,
-} from './constant';
-import { DepartmentModal } from './DepartmentModal';
 import { useStyles } from './index.style';
 import { SuperiorModal } from './SuperiorModal';
-import type {
-  DepartmentFormValues,
-  OrganizationTreeNode,
-  SuperiorFormValues,
-  SuperiorTarget,
-} from './type';
+import type { SuperiorFormValues, SuperiorTarget } from './type';
 
-const toPresentationNode = (
-  node: OrganizationNode,
-  departmentKey: string,
-): OrganizationTreeNode => {
-  const metadata = ORGANIZATION_MEMBER_META[node.id] ?? {
-    lastLoginAt: '—',
-    roles: [
-      node.kind === 'MANAGER'
-        ? '经理'
-        : node.kind === 'LEADER'
-          ? 'Leader'
-          : '成员',
-    ],
-    status: 'ACTIVE' as const,
-  };
-  return {
-    ...node,
-    ...metadata,
-    children: node.children.map((child) =>
-      toPresentationNode(child, departmentKey),
-    ),
-    departmentKey,
-  };
+interface OrganizationMemberRow extends OrganizationNode {
+  levelLabel: string;
+  superiorName: string;
+}
+
+const levelLabel = (kind: OrganizationNode['kind']) => {
+  if (kind === 'MANAGER') {
+    return '负责人';
+  }
+  if (kind === 'LEADER') {
+    return 'Leader';
+  }
+  return '成员';
 };
 
 const flattenOrganization = (
-  nodes: readonly OrganizationTreeNode[],
-): OrganizationTreeNode[] =>
-  nodes.flatMap((node) => [node, ...flattenOrganization(node.children)]);
+  nodes: readonly OrganizationNode[],
+  superiorName = '—',
+): OrganizationMemberRow[] =>
+  nodes.flatMap((node) => [
+    { ...node, levelLabel: levelLabel(node.kind), superiorName },
+    ...flattenOrganization(node.children, node.displayName),
+  ]);
 
 export default function AdminOrganizationPage() {
   const { message } = App.useApp();
   const { styles } = useStyles();
-  const mixClasses = [styles.mix0, styles.mix1, styles.mix2, styles.mix3];
-  const [departmentOpen, setDepartmentOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState<OrganizationTreeNode>();
-  const [selectedDepartment, setSelectedDepartment] = useState<
-    (typeof ORGANIZATION_DEPARTMENTS)[number]
-  >(ORGANIZATION_DEPARTMENTS[0]);
+  const [editingAccount, setEditingAccount] = useState<OrganizationNode>();
+  const [selectedManagerId, setSelectedManagerId] = useState<string>();
   const organizationQuery = useQuery({
     queryFn: getOrganizationTree,
     queryKey: ['admin-organization'],
@@ -90,19 +67,13 @@ export default function AdminOrganizationPage() {
     }) => setOrganizationSuperior(accountId, values),
   });
 
-  const organizationItems = useMemo(
-    () =>
-      (organizationQuery.data?.items ?? []).map((node) =>
-        toPresentationNode(
-          node,
-          ORGANIZATION_ROOT_DEPARTMENTS[node.id] ?? 'operations',
-        ),
-      ),
-    [organizationQuery.data?.items],
-  );
-  const allAccounts = useMemo(
-    () => flattenOrganization(organizationItems),
-    [organizationItems],
+  const managers = organizationQuery.data?.items ?? [];
+  const allAccounts = useMemo(() => flattenOrganization(managers), [managers]);
+  const selectedManager =
+    managers.find(({ id }) => id === selectedManagerId) ?? managers[0];
+  const selectedMembers = useMemo(
+    () => (selectedManager ? flattenOrganization([selectedManager]) : []),
+    [selectedManager],
   );
   const superiorTargets = useMemo<SuperiorTarget[]>(() => {
     if (editingAccount === undefined) {
@@ -110,90 +81,61 @@ export default function AdminOrganizationPage() {
     }
     const targetKind = editingAccount.kind === 'MEMBER' ? 'LEADER' : 'MANAGER';
     return allAccounts
-      .filter(({ kind }) => kind === targetKind)
+      .filter(({ id, kind }) => id !== editingAccount.id && kind === targetKind)
       .map(({ displayName, id }) => ({ label: displayName, value: id }));
   }, [allAccounts, editingAccount]);
 
-  const departments = ORGANIZATION_DEPARTMENTS;
-  const departmentMembers = useMemo(
-    () =>
-      allAccounts.filter(
-        ({ departmentKey }) => departmentKey === selectedDepartment.key,
-      ),
-    [allAccounts, selectedDepartment],
-  );
-  const memberColumns = useMemo<TableColumnsType<OrganizationTreeNode>>(
+  const memberColumns = useMemo<TableColumnsType<OrganizationMemberRow>>(
     () => [
       {
         key: 'member',
-        render: (_, account) =>
-          account.kind === 'MANAGER' ? (
-            <span className={styles.memberIdentity}>
-              <Avatar size={26}>{account.displayName.slice(0, 1)}</Avatar>
-              {account.displayName}
-            </span>
-          ) : (
-            <Button
-              aria-label={`调整归属 ${account.displayName}`}
-              className={styles.memberButton}
-              onClick={() => setEditingAccount(account)}
-              type="text"
-            >
-              <Avatar size={26}>{account.displayName.slice(0, 1)}</Avatar>
-              {account.displayName}
-            </Button>
-          ),
+        render: (_, account) => (
+          <span className={styles.memberIdentity}>
+            <Avatar size={26}>{account.displayName.slice(0, 1)}</Avatar>
+            {account.displayName}
+          </span>
+        ),
         title: '成员',
         width: 180,
       },
+      { dataIndex: 'employeeNo', key: 'employeeNo', title: '工号', width: 140 },
       {
-        dataIndex: 'employeeNo',
-        key: 'employeeNo',
-        title: '工号',
+        dataIndex: 'levelLabel',
+        key: 'levelLabel',
+        title: '组织层级',
         width: 110,
       },
+      { dataIndex: 'superiorName', key: 'superiorName', title: '直属上级' },
       {
-        key: 'roles',
-        render: (_, account) => account.roles.join(' · '),
-        title: '角色',
-      },
-      {
-        key: 'status',
-        render: (_, account) => (
-          <SemanticTag
-            label={account.status === 'ACTIVE' ? '在职' : '已停用'}
-            tone={account.status === 'ACTIVE' ? 'success' : 'neutral'}
-          />
-        ),
-        title: '状态',
-        width: 90,
-      },
-      {
-        dataIndex: 'lastLoginAt',
-        key: 'lastLoginAt',
-        title: '最近登录',
-        width: 130,
+        key: 'action',
+        render: (_, account) =>
+          account.kind === 'MANAGER' ? (
+            '—'
+          ) : (
+            <Button
+              aria-label={`调整归属 ${account.displayName}`}
+              onClick={() => setEditingAccount(account)}
+              size="small"
+              type="link"
+            >
+              调整归属
+            </Button>
+          ),
+        title: '操作',
+        width: 110,
       },
     ],
-    [styles.memberButton, styles.memberIdentity],
+    [styles.memberIdentity],
   );
 
   const confirmSuperior = async (
-    account: OrganizationTreeNode,
+    account: OrganizationNode,
     values: SuperiorFormValues,
   ) => {
-    await superiorMutation.mutateAsync({
-      accountId: account.id,
-      values,
-    });
+    await superiorMutation.mutateAsync({ accountId: account.id, values });
     await organizationQuery.refetch();
     setEditingAccount(undefined);
     message.success('组织归属已调整');
-  };
-
-  const submitDepartment = async (_values: DepartmentFormValues) => {
-    setDepartmentOpen(false);
-    message.info('静态原型：部门写契约尚未冻结');
   };
 
   return (
@@ -204,16 +146,18 @@ export default function AdminOrganizationPage() {
             部门决定人员归属与默认可见范围；工作区成员由 Owner
             另行配置，两者不互相覆盖
           </Typography.Text>
-          <Button
-            aria-expanded={departmentOpen}
-            aria-haspopup="dialog"
-            icon={<PlusOutlined aria-hidden="true" />}
-            onClick={() => setDepartmentOpen(true)}
-            type="primary"
-          >
-            新建部门
-          </Button>
+          <span className={styles.disabledAction}>
+            <Typography.Text type="secondary">当前版本暂未接入</Typography.Text>
+            <Button
+              disabled
+              icon={<PlusOutlined aria-hidden="true" />}
+              type="primary"
+            >
+              新建部门
+            </Button>
+          </span>
         </div>
+
         {organizationQuery.isError ? (
           <Alert
             action={
@@ -232,94 +176,73 @@ export default function AdminOrganizationPage() {
           <Spin />
         ) : (
           <>
-            <section aria-label="部门概览" className={styles.departmentGrid}>
-              {departments.map((department) => {
-                const total = Math.max(
-                  Object.values(department.roleMix).reduce(
-                    (sum, value) => sum + value,
-                    0,
-                  ),
-                  1,
-                );
-                const selected = department.key === selectedDepartment?.key;
-                return (
-                  <Button
-                    aria-pressed={selected}
-                    className={`${styles.departmentCard} ${
-                      selected ? styles.departmentCardSelected : ''
-                    }`}
-                    key={department.key}
-                    onClick={() => setSelectedDepartment(department)}
-                    type="text"
-                  >
-                    <span className={styles.departmentHeading}>
-                      <span className={styles.departmentTitle}>
-                        <Typography.Text strong>
-                          {department.name}
-                        </Typography.Text>
-                        <Typography.Text type="secondary">
-                          负责人 {department.lead} · {department.workspaceCount}{' '}
-                          个工作区
-                        </Typography.Text>
-                      </span>
-                      <span className={styles.memberCount}>
-                        <strong>{department.memberCount}</strong>
-                        <Typography.Text type="secondary">人</Typography.Text>
-                      </span>
-                    </span>
-                    <span className={styles.mixBar}>
-                      {ORGANIZATION_ROLE_MIX.map(({ key }, index) => (
-                        <span
-                          className={mixClasses[index]}
-                          key={key}
-                          style={{
-                            width: `${(department.roleMix[key] / total) * 100}%`,
-                          }}
-                        />
-                      ))}
-                    </span>
-                    <span className={styles.legend}>
-                      {ORGANIZATION_ROLE_MIX.map(({ key, label }, index) => (
-                        <span key={key}>
-                          <span className={mixClasses[index]} />
-                          {label} {department.roleMix[key]}
+            <section aria-label="负责人概览" className={styles.departmentGrid}>
+              {managers.length === 0 ? (
+                <div className={styles.emptyOverview}>
+                  <Empty description="暂无真实组织关系" />
+                </div>
+              ) : (
+                managers.map((manager) => {
+                  const memberCount = flattenOrganization([manager]).length;
+                  const selected = manager.id === selectedManager?.id;
+                  return (
+                    <Button
+                      aria-pressed={selected}
+                      className={`${styles.departmentCard} ${
+                        selected ? styles.departmentCardSelected : ''
+                      }`}
+                      key={manager.id}
+                      onClick={() => setSelectedManagerId(manager.id)}
+                      type="text"
+                    >
+                      <span className={styles.departmentHeading}>
+                        <span className={styles.departmentTitle}>
+                          <Typography.Text strong>
+                            {manager.displayName}负责范围
+                          </Typography.Text>
+                          <Typography.Text type="secondary">
+                            负责人 {manager.displayName} ·{' '}
+                            {manager.children.length} 个 Leader
+                          </Typography.Text>
                         </span>
-                      ))}
-                    </span>
-                    <span className={styles.subgroups}>
-                      {department.subgroups.map((subgroup) => (
-                        <span key={subgroup}>{subgroup}</span>
-                      ))}
-                    </span>
-                  </Button>
-                );
-              })}
+                        <span className={styles.memberCount}>
+                          <strong>{memberCount}</strong>
+                          <Typography.Text type="secondary">人</Typography.Text>
+                        </span>
+                      </span>
+                    </Button>
+                  );
+                })
+              )}
             </section>
-            <section
-              aria-label={`${selectedDepartment.name}成员`}
-              className={styles.memberCard}
-            >
-              <div className={styles.memberHeader}>
-                <Typography.Text strong>
-                  {selectedDepartment.name}
-                </Typography.Text>
-                <Typography.Text type="secondary">
-                  负责人 {selectedDepartment.lead} · 在册{' '}
-                  {departmentMembers.length} 人
-                </Typography.Text>
-              </div>
-              <Table<OrganizationTreeNode>
-                columns={memberColumns}
-                dataSource={departmentMembers}
-                locale={{
-                  emptyText: <Empty description="该部门暂无在册成员" />,
-                }}
-                pagination={false}
-                rowKey="id"
-                scroll={{ x: 680 }}
-                size="small"
-              />
-            </section>
+
+            {selectedManager ? (
+              <section
+                aria-label={`${selectedManager.displayName}负责范围成员`}
+                className={styles.memberCard}
+              >
+                <div className={styles.memberHeader}>
+                  <Typography.Text strong>
+                    {selectedManager.displayName}负责范围
+                  </Typography.Text>
+                  <Typography.Text type="secondary">
+                    负责人 {selectedManager.displayName} · 在册{' '}
+                    {selectedMembers.length} 人
+                  </Typography.Text>
+                </div>
+                <Table<OrganizationMemberRow>
+                  columns={memberColumns}
+                  dataSource={selectedMembers}
+                  locale={{
+                    emptyText: <Empty description="暂无真实组织关系" />,
+                  }}
+                  pagination={false}
+                  rowKey="id"
+                  scroll={{ x: 720 }}
+                  size="small"
+                />
+              </section>
+            ) : null}
           </>
         )}
       </div>
@@ -331,13 +254,6 @@ export default function AdminOrganizationPage() {
           onConfirm={(values) => confirmSuperior(editingAccount, values)}
           open
           targets={superiorTargets}
-        />
-      ) : null}
-      {departmentOpen ? (
-        <DepartmentModal
-          onClose={() => setDepartmentOpen(false)}
-          onSubmit={submitDepartment}
-          open
         />
       ) : null}
     </PageContainer>

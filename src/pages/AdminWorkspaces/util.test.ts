@@ -62,8 +62,6 @@ describe('queryWorkspaceRows', () => {
       data: [
         expect.objectContaining({
           name: '营销工作区',
-          repositoryCount: 10,
-          team: '营销',
         }),
       ],
       success: true,
@@ -144,7 +142,7 @@ describe('queryWorkspaceRows', () => {
 });
 
 describe('flattenLeaders', () => {
-  it('只把开发 Leader 投影为 Workspace Owner 候选', () => {
+  it('把真实组织树的全部 Leader 投影为 Workspace Owner 候选', () => {
     expect(
       flattenLeaders([
         {
@@ -173,6 +171,9 @@ describe('flattenLeaders', () => {
           superiorId: null,
         },
       ]),
-    ).toEqual([{ displayName: '李强', employeeNo: 'E1003', id: 'leader-li' }]);
+    ).toEqual([
+      { displayName: '吴桐', employeeNo: 'E1002', id: 'leader-wu' },
+      { displayName: '李强', employeeNo: 'E1003', id: 'leader-li' },
+    ]);
   });
 });

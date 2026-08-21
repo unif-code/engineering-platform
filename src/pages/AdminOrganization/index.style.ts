@@ -23,6 +23,11 @@ export const useStyles = createStyles(({ token }) => ({
     gap: token.marginSM,
     gridTemplateColumns: 'repeat(auto-fill, minmax(268px, 1fr))',
   },
+  disabledAction: {
+    alignItems: 'center',
+    display: 'inline-flex',
+    gap: token.marginXS,
+  },
   departmentHeading: {
     alignItems: 'center',
     display: 'flex',
@@ -58,6 +63,13 @@ export const useStyles = createStyles(({ token }) => ({
     gap: token.marginXS,
     height: 'auto',
     padding: 0,
+  },
+  emptyOverview: {
+    background: token.colorBgContainer,
+    border: `${token.lineWidth}px ${token.lineType} ${token.colorBorderSecondary}`,
+    borderRadius: token.borderRadiusLG,
+    gridColumn: '1 / -1',
+    padding: token.paddingXL,
   },
   memberCard: {
     background: token.colorBgContainer,

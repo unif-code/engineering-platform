@@ -4,15 +4,14 @@ import {
   ProFormTextArea,
 } from '@ant-design/pro-components';
 import { App, Typography } from 'antd';
-import { formatGovernanceError } from '@/features/administration';
-import type {
-  OrganizationTreeNode,
-  SuperiorFormValues,
-  SuperiorTarget,
-} from './type';
+import {
+  formatGovernanceError,
+  type OrganizationNode,
+} from '@/features/administration';
+import type { SuperiorFormValues, SuperiorTarget } from './type';
 
 interface SuperiorModalProps {
-  account: OrganizationTreeNode;
+  account: OrganizationNode;
   onClose: () => void;
   onConfirm: (values: SuperiorFormValues) => Promise<void>;
   open: boolean;

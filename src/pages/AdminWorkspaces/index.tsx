@@ -6,7 +6,7 @@ import {
   type ProTableProps,
 } from '@ant-design/pro-components';
 import { useMutation, useQuery } from '@umijs/max';
-import { App, Button } from 'antd';
+import { Alert, Button, Empty } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
 import {
@@ -32,13 +32,10 @@ import { WorkspaceDetailDrawer } from './WorkspaceDetailDrawer';
 import { WorkspaceModal } from './WorkspaceModal';
 
 export default function AdminWorkspacesPage() {
-  const { message } = App.useApp();
   const { styles } = useStyles();
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
-  const presentationOverridesRef = useRef(
-    new Map<string, Partial<WorkspaceRow>>(),
-  );
+  const [listError, setListError] = useState<unknown>();
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedWorkspace, setSelectedWorkspace] = useState<WorkspaceRow>();
 
@@ -161,23 +158,23 @@ export default function AdminWorkspacesPage() {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
+        setListError(undefined);
         return {
           ...result,
           data: result.data?.map((row) => ({
             ...row,
             owner: accountsById.get(row.owner.id) ?? row.owner,
-            ...presentationOverridesRef.current.get(row.id),
           })),
         };
       } catch (error) {
         if (requestSequence !== requestSequenceRef.current) {
           return { data: [], success: false, total: 0 };
         }
-        message.error(formatGovernanceError(error, '工作区列表加载失败'));
+        setListError(error);
         return { data: [], success: true, total: 0 };
       }
     },
-    [accountsById, message],
+    [accountsById],
   );
 
   useEffect(() => {
@@ -230,10 +227,8 @@ export default function AdminWorkspacesPage() {
         width: 150,
       },
       {
-        dataIndex: 'team',
-        render: (_, row) => (
-          <span className={styles.team}>● {row.team ?? '—'}</span>
-        ),
+        key: 'team',
+        render: () => <span className={styles.team}>—</span>,
         title: 'Team',
         width: 100,
       },
@@ -245,9 +240,8 @@ export default function AdminWorkspacesPage() {
         width: 90,
       },
       {
-        dataIndex: 'repositoryCount',
-        render: (_, row) =>
-          row.repositoryCount === undefined ? '—' : `${row.repositoryCount} 个`,
+        key: 'repositoryCount',
+        render: () => '—',
         title: '仓库',
         width: 90,
       },
@@ -302,19 +296,51 @@ export default function AdminWorkspacesPage() {
         </header>
 
         {organizationQuery.isLoading ? null : (
-          <ProTable<WorkspaceRow, WorkspaceQueryParams>
-            actionRef={actionRef}
-            columns={columns}
-            onChange={invalidatePendingRequests}
-            options={false}
-            pagination={{ pageSize: 10, showSizeChanger: false }}
-            request={requestWorkspaces}
-            rowKey="id"
-            scroll={{ x: 1050 }}
-            search={false}
-            size="small"
-            toolBarRender={false}
-          />
+          <>
+            {organizationQuery.isError ? (
+              <Alert
+                action={
+                  <Button onClick={() => void organizationQuery.refetch()}>
+                    重试组织关系
+                  </Button>
+                }
+                title={formatGovernanceError(
+                  organizationQuery.error,
+                  '组织关系加载失败',
+                )}
+                showIcon
+                type="error"
+              />
+            ) : null}
+            {listError ? (
+              <Alert
+                action={
+                  <Button onClick={() => void reloadWorkspaces()}>
+                    重试工作区
+                  </Button>
+                }
+                title={formatGovernanceError(listError, '工作区列表加载失败')}
+                showIcon
+                type="error"
+              />
+            ) : null}
+            <ProTable<WorkspaceRow, WorkspaceQueryParams>
+              actionRef={actionRef}
+              columns={columns}
+              locale={{
+                emptyText: <Empty description="暂无真实工作区" />,
+              }}
+              onChange={invalidatePendingRequests}
+              options={false}
+              pagination={{ pageSize: 10, showSizeChanger: false }}
+              request={requestWorkspaces}
+              rowKey="id"
+              scroll={{ x: 1050 }}
+              search={false}
+              size="small"
+              toolBarRender={false}
+            />
+          </>
         )}
 
         <p className={styles.pageNote}>
@@ -326,11 +352,7 @@ export default function AdminWorkspacesPage() {
           <WorkspaceModal
             leaderOptions={allLeaders}
             onClose={() => setModalOpen(false)}
-            onCreated={(workspace, values) => {
-              presentationOverridesRef.current.set(workspace.id, {
-                repositoryCount: 0,
-                team: values.team,
-              });
+            onCreated={() => {
               void reloadWorkspaces();
             }}
             onSubmit={createNewWorkspace}

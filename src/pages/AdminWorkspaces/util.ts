@@ -6,7 +6,6 @@ import {
   type WorkspaceListQuery,
   type WorkspaceStatus,
 } from '@/features/administration';
-import { toWorkspaceRow } from './constant';
 import type { WorkspaceQueryParams, WorkspaceRow } from './type';
 
 type WorkspaceRequest = NonNullable<
@@ -14,12 +13,6 @@ type WorkspaceRequest = NonNullable<
 >;
 
 const WORKSPACE_STATUSES: readonly WorkspaceStatus[] = ['ACTIVE', 'ARCHIVED'];
-const DEVELOPMENT_LEADER_IDS = new Set([
-  'leader-gao',
-  'leader-li',
-  'leader-liu',
-]);
-
 const positiveInteger = (value: number | undefined, fallback: number) =>
   value !== undefined && Number.isSafeInteger(value) && value > 0
     ? value
@@ -51,7 +44,7 @@ export function toWorkspaceListQuery(
 export const queryWorkspaceRows: WorkspaceRequest = async (params) => {
   const page = await listWorkspaces(toWorkspaceListQuery(params));
   return {
-    data: page.items.map(toWorkspaceRow),
+    data: page.items,
     success: true,
     total: page.total,
   };
@@ -61,7 +54,7 @@ export function flattenLeaders(
   nodes: readonly OrganizationNode[],
 ): WorkspaceAccountRef[] {
   return nodes.flatMap((node) => [
-    ...(node.kind === 'LEADER' && DEVELOPMENT_LEADER_IDS.has(node.id)
+    ...(node.kind === 'LEADER'
       ? [
           {
             displayName: node.displayName,

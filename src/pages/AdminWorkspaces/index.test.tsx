@@ -322,11 +322,16 @@ describe('AdminWorkspacesPage', () => {
     ).toBeInTheDocument();
     const firstWorkspaceRow = screen.getByRole('row', { name: /营销工作区/ });
     expect(firstWorkspaceRow).toHaveTextContent('李强');
-    expect(firstWorkspaceRow).toHaveTextContent('营销');
+    expect(firstWorkspaceRow).not.toHaveTextContent('● 营销');
+    expect(within(firstWorkspaceRow).getAllByRole('cell')[2]).toHaveTextContent(
+      '—',
+    );
     expect(within(firstWorkspaceRow).getAllByRole('cell')[3]).toHaveTextContent(
       '—',
     );
-    expect(firstWorkspaceRow).toHaveTextContent('10 个');
+    expect(within(firstWorkspaceRow).getAllByRole('cell')[4]).toHaveTextContent(
+      '—',
+    );
     expect(
       screen.getByText(
         '每个工作区恰有一个 Owner；正式成员为动态投影（Owner + 受邀 Leader 直属有效员工）',
@@ -384,8 +389,10 @@ describe('AdminWorkspacesPage', () => {
       within(dialog).getByRole('textbox', { name: '工作区名称' }),
       'Prototype Workspace',
     );
-    await selectOption(user, '所属 Team', '平台');
-    await selectOption(user, 'Owner（开发Leader）', '李强 · 营销');
+    expect(
+      within(dialog).queryByRole('combobox', { name: '所属 Team' }),
+    ).not.toBeInTheDocument();
+    await selectOption(user, 'Owner（开发Leader）', '李强');
     await user.click(within(dialog).getByRole('button', { name: /创\s*建/ }));
 
     expect(administrationMocks.createWorkspace).toHaveBeenCalledWith(
@@ -405,8 +412,8 @@ describe('AdminWorkspacesPage', () => {
     const createdRow = await screen.findByRole('row', {
       name: /Prototype Workspace/,
     });
-    expect(createdRow).toHaveTextContent('平台');
-    expect(createdRow).toHaveTextContent('0');
+    expect(within(createdRow).getAllByRole('cell')[2]).toHaveTextContent('—');
+    expect(within(createdRow).getAllByRole('cell')[4]).toHaveTextContent('—');
     expect(screen.queryByText(/静态原型操作/)).not.toBeInTheDocument();
   });
 
@@ -534,8 +541,8 @@ describe('AdminWorkspacesPage', () => {
       INITIAL_WAIT,
     );
     expect(row).toHaveTextContent('2 人');
-    expect(row).toHaveTextContent('● —');
-    expect(within(row).getByText('—')).toBeVisible();
+    expect(within(row).getAllByRole('cell')[2]).toHaveTextContent('—');
+    expect(within(row).getAllByRole('cell')[4]).toHaveTextContent('—');
     await user.click(
       within(row).getByRole('button', { name: '查看配置 运行时工作区' }),
     );
@@ -841,8 +848,7 @@ describe('AdminWorkspacesPage', () => {
       within(dialog).getByRole('textbox', { name: '工作区名称' }),
       '营销工作区',
     );
-    await selectOption(user, '所属 Team', '营销');
-    await selectOption(user, 'Owner（开发Leader）', '李强 · 营销');
+    await selectOption(user, 'Owner（开发Leader）', '李强');
     await user.click(within(dialog).getByRole('button', { name: /创\s*建/ }));
 
     expect(

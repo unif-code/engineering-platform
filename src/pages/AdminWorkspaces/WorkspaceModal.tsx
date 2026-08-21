@@ -9,13 +9,12 @@ import {
   type WorkspaceAccountRef,
   type WorkspaceSummary,
 } from '@/features/administration';
-import { WORKSPACE_OWNER_TEAM_BY_ID, WORKSPACE_TEAM_OPTIONS } from './constant';
 import type { WorkspaceFormValues } from './type';
 
 interface WorkspaceModalProps {
   leaderOptions: readonly WorkspaceAccountRef[];
   onClose: () => void;
-  onCreated: (workspace: WorkspaceSummary, values: WorkspaceFormValues) => void;
+  onCreated: (workspace: WorkspaceSummary) => void;
   onSubmit: (values: {
     name: string;
     ownerId: string;
@@ -40,7 +39,7 @@ export function WorkspaceModal({
         ownerId: values.ownerId,
         reason: '通过工作区管理创建工作区',
       });
-      onCreated(workspace, values);
+      onCreated(workspace);
       onClose();
       message.success('工作区已创建');
       return true;
@@ -79,18 +78,6 @@ export function WorkspaceModal({
       />
       <ProFormSelect
         fieldProps={{
-          'aria-label': '所属 Team',
-          id: 'admin-workspace-create-team',
-          virtual: false,
-        }}
-        formItemProps={{ htmlFor: 'admin-workspace-create-team' }}
-        label="所属 Team"
-        name="team"
-        options={WORKSPACE_TEAM_OPTIONS}
-        rules={[{ required: true, message: '请选择所属 Team' }]}
-      />
-      <ProFormSelect
-        fieldProps={{
           'aria-label': 'Owner（开发Leader）',
           id: 'admin-workspace-create-owner',
           virtual: false,
@@ -98,12 +85,10 @@ export function WorkspaceModal({
         formItemProps={{ htmlFor: 'admin-workspace-create-owner' }}
         label="Owner（开发Leader）"
         name="ownerId"
-        options={leaderOptions.flatMap(({ displayName, id }) => {
-          const team = WORKSPACE_OWNER_TEAM_BY_ID[id];
-          return team === undefined
-            ? []
-            : [{ label: `${displayName} · ${team}`, value: id }];
-        })}
+        options={leaderOptions.map(({ displayName, id }) => ({
+          label: displayName,
+          value: id,
+        }))}
         placeholder="请选择 Leader 作为 Owner"
         rules={[{ required: true, message: '请选择 Owner' }]}
       />
