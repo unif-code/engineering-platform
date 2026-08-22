@@ -19,11 +19,29 @@
 /.turbopack/
 .cache/
 
-# 本地配置（不入库）
-.env.local
-.env.*.local
+# 本地配置（不入库；示例模板允许提交）
+.env
+.env.*
+!.env.example
+!.env.*.example
 /config/config.local.ts
 /.umirc.local.ts
+
+# 本地凭据与私钥
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+*.kdbx
+
+# 本地数据库
+*.sqlite
+*.sqlite3
+*.sqlite-*
+*.db
+*.db-*
 
 # 测试与覆盖率
 /coverage
