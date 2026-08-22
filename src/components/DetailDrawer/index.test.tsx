@@ -118,6 +118,30 @@ describe('DetailDrawer', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('没有 dataSource 时只呈现调用方提供的治理内容', async () => {
+    render(
+      <ConfigProvider theme={{ token: { motion: false } }}>
+        <App>
+          <DetailDrawer<ArtifactSummary>
+            columns={artifactColumns}
+            onClose={() => undefined}
+            open
+            title="仅附加内容"
+          >
+            <section aria-label="独立治理内容">等待真实详情数据</section>
+          </DetailDrawer>
+        </App>
+      </ConfigProvider>,
+    );
+
+    const dialog = await screen.findByRole('dialog', { name: '仅附加内容' });
+    expect(
+      within(dialog).getByRole('region', { name: '独立治理内容' }),
+    ).toHaveTextContent('等待真实详情数据');
+    expect(within(dialog).queryByText('Artifact 名称')).not.toBeInTheDocument();
+    expect(within(dialog).queryByText('需求说明.md')).not.toBeInTheDocument();
+  });
+
   it('触发关闭回调并在重新打开时重置内容状态', async () => {
     const user = userEvent.setup();
     render(<DetailDrawerHarness />);

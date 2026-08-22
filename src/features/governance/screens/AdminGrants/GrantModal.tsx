@@ -30,22 +30,11 @@ interface GrantModalProps {
 
 function buildGrantSubmitInput(
   values: GrantFormValues,
-  principalOptions: readonly GrantPrincipalOption[],
   scopeOptions: readonly GrantScopeOption[],
 ): GrantSubmitInput {
-  const principal = principalOptions.find(
-    ({ value }) => value === values.principalId,
-  );
-  if (principal?.type !== values.principalType) {
-    throw new Error('请选择与主体类型匹配的主体');
-  }
-  const scope = scopeOptions.find(({ value }) => value === values.scopeId);
-  if (scope === undefined) {
-    throw new Error('请选择范围');
-  }
-  if (values.validity !== 'LONG_TERM') {
-    throw new Error('当前契约尚未开放临时有效期授权');
-  }
+  const scope = scopeOptions.find(
+    ({ value }) => value === values.scopeId,
+  ) as GrantScopeOption;
   return {
     capability: values.capability.trim(),
     principalId: values.principalId,
@@ -72,9 +61,7 @@ export function GrantModal({
 
   const submit = async (values: GrantFormValues) => {
     try {
-      await onSubmit(
-        buildGrantSubmitInput(values, principalOptions, scopeOptions),
-      );
+      await onSubmit(buildGrantSubmitInput(values, scopeOptions));
       onClose();
       message.success('能力已授予');
       return true;

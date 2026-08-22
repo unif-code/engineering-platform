@@ -261,6 +261,32 @@ describe('AdminGrantsPage', () => {
     ).toBeInTheDocument();
   });
 
+  it('主体与范围依赖查询失败时分别展示真实 Problem', async () => {
+    administrationMocks.listAccounts.mockRejectedValueOnce(
+      createProblemError({
+        detail: 'Grant 主体无权访问',
+        requestId: 'req-grant-accounts-403',
+        status: 403,
+      }),
+    );
+    administrationMocks.listWorkspaces.mockRejectedValueOnce(
+      createProblemError({
+        detail: 'Grant 范围暂时不可用',
+        requestId: 'req-grant-workspaces-503',
+        status: 503,
+      }),
+    );
+
+    renderPage();
+
+    expect(
+      await screen.findByText(/Grant 主体无权访问/, {}, INITIAL_WAIT),
+    ).toHaveTextContent('requestId: req-grant-accounts-403');
+    expect(
+      await screen.findByText(/Grant 范围暂时不可用/, {}, INITIAL_WAIT),
+    ).toHaveTextContent('requestId: req-grant-workspaces-503');
+  });
+
   it(
     '授予通过 Feature 公开入口传递 principal、capability、Workspace scope 与 reason',
     async () => {
@@ -405,6 +431,7 @@ describe('AdminGrantsPage', () => {
   });
 
   it('列表失败展示服务端 detail 与 requestId 并清空旧数据', async () => {
+    const user = userEvent.setup();
     administrationMocks.listGrants.mockRejectedValueOnce(
       createProblemError({
         detail: 'Grant 列表无权访问',
@@ -426,6 +453,18 @@ describe('AdminGrantsPage', () => {
         '—',
       ),
     ).toHaveLength(4);
+
+    await user.click(screen.getByRole('button', { name: '重试加载 Grant' }));
+
+    expect(
+      await screen.findByRole(
+        'row',
+        { name: /陈晓.*task\.develop.*营销工作区.*直接/ },
+        INITIAL_WAIT,
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText(/Grant 列表无权访问/)).not.toBeInTheDocument();
+    expect(administrationMocks.listGrants).toHaveBeenCalledTimes(2);
   });
 
   it.each(['resolve', 'reject'] as const)(

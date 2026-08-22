@@ -3,6 +3,10 @@ import userEvent from '@testing-library/user-event';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 
+const routeMocks = vi.hoisted(() => ({
+  taskId: 'route-task-id' as string | undefined,
+}));
+
 vi.mock('@umijs/max', () => ({
   Link: ({
     children,
@@ -16,7 +20,7 @@ vi.mock('@umijs/max', () => ({
       {children}
     </a>
   ),
-  useParams: () => ({ taskId: 'route-task-id' }),
+  useParams: () => ({ taskId: routeMocks.taskId }),
 }));
 
 import TaskDetailPage from '.';
@@ -64,5 +68,17 @@ describe('TaskDetailPage', () => {
     expect(
       screen.queryByText('已完成任务详情页面结构拆分。'),
     ).not.toBeInTheDocument();
+  });
+
+  it('路由缺少 taskId 时明确显示未知任务', async () => {
+    routeMocks.taskId = undefined;
+    const user = userEvent.setup();
+
+    render(<TaskDetailPage />);
+
+    await user.tab();
+
+    expect(screen.getByRole('region', { name: '任务 未知任务' })).toBeVisible();
+    expect(screen.getByText('未知任务')).toBeVisible();
   });
 });

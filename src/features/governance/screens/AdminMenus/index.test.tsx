@@ -7,7 +7,7 @@ const mocks = vi.hoisted(() => ({
     capabilities: [],
     navigation: [],
     principal: null,
-  } as InitialState,
+  } as InitialState | undefined,
 }));
 
 vi.mock('@umijs/max', async (importOriginal) => ({
@@ -34,11 +34,15 @@ afterEach(() => {
 
 describe('AdminMenusPage', () => {
   it('只读呈现真实 navigation 中的已知菜单并对未知 routeKey fail closed', () => {
-    mocks.initialState.navigation = [
-      navigationItem('admin.users', '账号管理（服务端）', 30),
-      navigationItem('ghost', '幽灵菜单', 1),
-      navigationItem('home', '工作台（服务端）', 10),
-    ];
+    mocks.initialState = {
+      capabilities: [],
+      navigation: [
+        navigationItem('admin.users', '账号管理（服务端）', 30),
+        navigationItem('ghost', '幽灵菜单', 1),
+        navigationItem('home', '工作台（服务端）', 10),
+      ],
+      principal: null,
+    };
 
     render(<AdminMenusPage />);
 
@@ -65,6 +69,15 @@ describe('AdminMenusPage', () => {
   });
 
   it('navigation 为空时保留列头并明确没有真实数据', () => {
+    render(<AdminMenusPage />);
+
+    expect(screen.getByRole('table')).toBeVisible();
+    expect(screen.getByText('当前没有真实数据')).toBeVisible();
+  });
+
+  it('initialState 缺失时保留只读空表', () => {
+    mocks.initialState = undefined;
+
     render(<AdminMenusPage />);
 
     expect(screen.getByRole('table')).toBeVisible();

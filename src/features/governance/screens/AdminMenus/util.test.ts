@@ -42,4 +42,13 @@ describe('projectNavigationToMenuRows', () => {
       ]).map((row) => row.key),
     ).toEqual(['home', 'tasks']);
   });
+
+  it('同组菜单使用服务端 order 排序', () => {
+    expect(
+      projectNavigationToMenuRows([
+        navigationItem('tasks', '任务', 30),
+        navigationItem('home', '工作台', 10),
+      ]).map((row) => row.key),
+    ).toEqual(['home', 'tasks']);
+  });
 });

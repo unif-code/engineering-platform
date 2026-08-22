@@ -28,4 +28,12 @@ describe('AccessDeniedPage', () => {
     );
     expect(screen.getByText('requestId: req-forbidden-page')).toBeVisible();
   });
+
+  it('没有 requestId 时不展示空追踪标识', () => {
+    routeMocks.search = '';
+    render(<AccessDeniedPage />);
+
+    expect(screen.getByText('无权访问')).toBeVisible();
+    expect(screen.queryByText(/requestId:/)).not.toBeInTheDocument();
+  });
 });

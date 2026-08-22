@@ -1,12 +1,18 @@
 import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
+const homeMocks = vi.hoisted(() => ({
+  initialState: {
+    principal: { employeeId: crypto.randomUUID(), name: '当前用户' },
+  } as
+    | {
+        principal: { employeeId: string; name: string };
+      }
+    | undefined,
+}));
+
 vi.mock('@umijs/max', () => ({
-  useModel: () => ({
-    initialState: {
-      principal: { employeeId: crypto.randomUUID(), name: '当前用户' },
-    },
-  }),
+  useModel: () => ({ initialState: homeMocks.initialState }),
 }));
 
 import HomePage from './index';
@@ -31,5 +37,15 @@ describe('HomePage', () => {
     expect(screen.getByRole('region', { name: '平台公告' })).toBeVisible();
     expect(screen.queryByText('TASK-1024')).not.toBeInTheDocument();
     expect(screen.queryByText('REQ-1042')).not.toBeInTheDocument();
+  });
+
+  it('initialState 缺失时使用中性欢迎语', () => {
+    homeMocks.initialState = undefined;
+
+    render(<HomePage />);
+
+    expect(
+      screen.getByRole('heading', { name: '你好，平台用户' }),
+    ).toBeVisible();
   });
 });

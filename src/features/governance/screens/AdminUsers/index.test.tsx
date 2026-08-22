@@ -522,6 +522,7 @@ describe('AdminUsersPage', () => {
   );
 
   it('列表 403 展示服务端 detail 与 requestId', async () => {
+    const user = userEvent.setup();
     administrationMocks.listAccounts.mockRejectedValueOnce(
       createProblemError({
         detail: '无账号治理权限',
@@ -536,6 +537,20 @@ describe('AdminUsersPage', () => {
     );
     expect(screen.getByRole('button', { name: '重试加载账号' })).toBeVisible();
     expect(screen.queryByRole('row', { name: /00002002.*何山/ })).toBeNull();
+
+    await user.click(screen.getByRole('button', { name: '重试加载账号' }));
+
+    expect(
+      await screen.findByRole(
+        'row',
+        { name: /00002002.*何山/ },
+        PRO_TABLE_INITIAL_ROW_WAIT_OPTIONS,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: '重试加载账号' }),
+    ).not.toBeInTheDocument();
+    expect(administrationMocks.listAccounts).toHaveBeenCalledTimes(2);
   });
 
   it('后端返回未知账号时安全展示缺省组织、角色和登录时间', async () => {

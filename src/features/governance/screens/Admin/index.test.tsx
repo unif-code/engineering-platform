@@ -1,8 +1,9 @@
 import { render, screen, within } from '@testing-library/react';
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const navigationMocks = vi.hoisted(() => ({
+  hasInitialState: true,
   navigation: [] as Array<{
     meta: Record<string, unknown>;
     name: string;
@@ -25,11 +26,18 @@ vi.mock('@umijs/max', () => ({
     </a>
   ),
   useModel: () => ({
-    initialState: { navigation: navigationMocks.navigation },
+    initialState: navigationMocks.hasInitialState
+      ? { navigation: navigationMocks.navigation }
+      : undefined,
   }),
 }));
 
 import AdminPage from '.';
+
+beforeEach(() => {
+  navigationMocks.hasInitialState = true;
+  navigationMocks.navigation = [];
+});
 
 describe('AdminPage', () => {
   it('只投影 initialState navigation 中当前已注册的管理导航', () => {
@@ -71,6 +79,31 @@ describe('AdminPage', () => {
         '当前没有可见管理导航',
       ),
     ).toBeVisible();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('initialState 缺失时保留明确空态', () => {
+    navigationMocks.hasInitialState = false;
+
+    render(<AdminPage />);
+
+    expect(screen.getByText('当前没有可见管理导航')).toBeVisible();
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
+
+  it('后端返回缺少名称的已知管理入口时 fail closed', () => {
+    navigationMocks.navigation = [
+      {
+        meta: {},
+        name: undefined as unknown as string,
+        order: 10,
+        routeKey: 'admin',
+      },
+    ];
+
+    render(<AdminPage />);
+
+    expect(screen.getByText('当前没有可见管理导航')).toBeVisible();
     expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 

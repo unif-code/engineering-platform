@@ -858,6 +858,7 @@ describe('AdminWorkspacesPage', () => {
   });
 
   it('组织候选失败时保留 requestId、重试入口并禁用创建', async () => {
+    const user = userEvent.setup();
     administrationMocks.getOrganizationTree.mockRejectedValueOnce(
       createProblemError({
         detail: '组织关系无权访问',
@@ -873,6 +874,16 @@ describe('AdminWorkspacesPage', () => {
     expect(screen.getByRole('button', { name: '重试组织关系' })).toBeVisible();
     expect(screen.getByRole('button', { name: '创建工作区' })).toBeDisabled();
     expect(screen.getByText('当前版本暂未接入')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: '重试组织关系' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '创建工作区' })).toBeEnabled();
+    }, INITIAL_WAIT);
+    expect(
+      screen.queryByRole('button', { name: '重试组织关系' }),
+    ).not.toBeInTheDocument();
+    expect(administrationMocks.getOrganizationTree).toHaveBeenCalledTimes(2);
   });
 
   it('真实工作区列表为空时展示明确空态', async () => {
@@ -953,6 +964,7 @@ describe('AdminWorkspacesPage', () => {
   });
 
   it('403 列表拒绝清空旧数据并展示 Problem 原文与 requestId', async () => {
+    const user = userEvent.setup();
     let resolveOrganizationTree:
       | ((value: OrganizationTreeResponse) => void)
       | undefined;
@@ -1004,5 +1016,16 @@ describe('AdminWorkspacesPage', () => {
     ).toBeVisible();
     expect(screen.queryByText(/共 \d+ 个工作区/)).not.toBeInTheDocument();
     expect(administrationMocks.listWorkspaces).toHaveBeenCalledTimes(2);
+
+    await user.click(screen.getByRole('button', { name: '重试工作区' }));
+
+    expect(
+      await screen.findByRole('row', { name: /营销工作区/ }, INITIAL_WAIT),
+    ).toBeVisible();
+    expect(screen.getByRole('row', { name: /交易工作区/ })).toBeVisible();
+    expect(
+      screen.queryByRole('button', { name: '重试工作区' }),
+    ).not.toBeInTheDocument();
+    expect(administrationMocks.listWorkspaces).toHaveBeenCalledTimes(3);
   });
 });

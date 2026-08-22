@@ -1078,6 +1078,7 @@ describe('AdminPoliciesPage', {
   });
 
   it('Catalog 与版本查询失败分别展示服务端问题', async () => {
+    const user = userEvent.setup();
     administrationMocks.listPolicyCatalog.mockRejectedValueOnce(
       createProblemError({
         detail: 'Policy Catalog 无权访问',
@@ -1107,6 +1108,20 @@ describe('AdminPoliciesPage', {
       screen.getByRole('button', { name: '重试加载 Policy 历史' }),
     ).toBeVisible();
     expect(screen.getByText('该分类暂无已冻结策略')).toBeVisible();
+
+    await user.click(
+      screen.getByRole('button', { name: '重试加载 Policy Catalog' }),
+    );
+    await user.click(
+      screen.getByRole('button', { name: '重试加载 Policy 历史' }),
+    );
+
+    await findPolicySettings();
+    expect(await screen.findByText('版本 1', {}, INITIAL_WAIT)).toBeVisible();
+    expect(screen.queryByText(/Policy Catalog 无权访问/)).toBeNull();
+    expect(screen.queryByText(/Policy 历史无权访问/)).toBeNull();
+    expect(administrationMocks.listPolicyCatalog).toHaveBeenCalledTimes(2);
+    expect(administrationMocks.listPolicyVersions).toHaveBeenCalledTimes(2);
   });
 
   it('存在未保存编辑时禁止 Rollback 覆盖当前 Draft', async () => {

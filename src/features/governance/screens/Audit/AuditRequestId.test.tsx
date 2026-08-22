@@ -25,6 +25,23 @@ afterEach(() => {
 });
 
 describe('AuditRequestId', () => {
+  it('Clipboard 写入成功时复制精确 Request ID 并展示成功反馈', async () => {
+    const user = userEvent.setup();
+    const requestId = `req-${crypto.randomUUID()}`;
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    installClipboard({ writeText });
+    render(
+      <AntdApp>
+        <AuditRequestId requestId={requestId} />
+      </AntdApp>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '复制 Request ID' }));
+
+    expect(writeText).toHaveBeenCalledExactlyOnceWith(requestId);
+    expect(await screen.findByText('Request ID 已复制')).toBeInTheDocument();
+  });
+
   it('Clipboard 缺失时展示浏览器能力提示且不抛错', async () => {
     const user = userEvent.setup();
     installClipboard(undefined);

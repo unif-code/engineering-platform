@@ -132,6 +132,24 @@ describe('AdminOrganizationPage', () => {
     expect(
       within(members).getByRole('row', { name: /运行时成员.*成员/ }),
     ).toBeVisible();
+
+    const secondManager = within(overview).getByRole('button', {
+      name: /第二负责人/,
+    });
+    await user.click(secondManager);
+
+    expect(secondManager).toHaveAttribute('aria-pressed', 'true');
+    const secondManagerMembers = await screen.findByRole('region', {
+      name: '第二负责人负责范围成员',
+    });
+    expect(
+      within(secondManagerMembers).getByRole('row', {
+        name: /第二负责人.*runtime-manager-2.*负责人/,
+      }),
+    ).toBeVisible();
+    expect(
+      within(secondManagerMembers).queryByRole('row', { name: /运行时成员/ }),
+    ).not.toBeInTheDocument();
   });
 
   it('空组织树保留最终结构并展示明确空态', async () => {

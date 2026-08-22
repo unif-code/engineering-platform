@@ -621,6 +621,25 @@ describe('layout', () => {
     );
   });
 
+  it('缺少 requestId 的全局 403 进入基础拒绝页且不拼接空查询参数', () => {
+    layout({});
+    const errorHandler = request.errorConfig?.errorHandler;
+
+    expect(() =>
+      errorHandler?.(
+        {
+          config: { url: '/api/v1/admin/grants' },
+          response: {
+            data: { detail: '无权访问管理资源', status: 403 },
+            status: 403,
+          },
+        } as never,
+        {} as never,
+      ),
+    ).toThrowError(ApiError);
+    expect(featureMocks.replace).toHaveBeenCalledWith('/403');
+  });
+
   it('并发 protected 401 合并为一次 Session 清理与跳转', async () => {
     let resolveState!: () => void;
     const stateCommit = new Promise<void>((resolve) => {
