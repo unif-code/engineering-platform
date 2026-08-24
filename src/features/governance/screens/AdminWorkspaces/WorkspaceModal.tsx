@@ -14,7 +14,7 @@ import type { WorkspaceFormValues } from './type';
 interface WorkspaceModalProps {
   leaderOptions: readonly WorkspaceAccountRef[];
   onClose: () => void;
-  onCreated: (workspace: WorkspaceSummary) => void;
+  onCreated: (workspace: WorkspaceSummary) => Promise<void>;
   onSubmit: (values: {
     name: string;
     ownerId: string;
@@ -39,7 +39,7 @@ export function WorkspaceModal({
         ownerId: values.ownerId,
         reason: '通过工作区管理创建工作区',
       });
-      onCreated(workspace);
+      await onCreated(workspace);
       onClose();
       message.success('工作区已创建');
       return true;

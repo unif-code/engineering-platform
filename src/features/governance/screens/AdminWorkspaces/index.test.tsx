@@ -227,6 +227,19 @@ const initialMarketingMembers = {
   ],
 } satisfies WorkspaceMembersResponse;
 
+const marketingMembersWithLiu = {
+  items: [
+    ...initialMarketingMembers.items,
+    { accountId: leaderLiu.id, ...leaderLiu, source: 'LEADER' },
+    {
+      accountId: 'member-he',
+      displayName: '何山',
+      employeeNo: 'E2002',
+      source: 'DIRECT_REPORT',
+    },
+  ],
+} satisfies WorkspaceMembersResponse;
+
 function renderPage() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -351,8 +364,16 @@ describe('AdminWorkspacesPage', () => {
 
   it('ACTIVE 与 ARCHIVED 工作区都只展示查看配置', async () => {
     renderPage();
-    const active = await screen.findByRole('row', { name: /营销工作区/ });
-    const archived = screen.getByRole('row', { name: /历史活动专区/ });
+    const active = await screen.findByRole(
+      'row',
+      { name: /营销工作区/ },
+      INITIAL_WAIT,
+    );
+    const archived = await screen.findByRole(
+      'row',
+      { name: /历史活动专区/ },
+      INITIAL_WAIT,
+    );
 
     expect(screen.queryByRole('searchbox')).not.toBeInTheDocument();
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
@@ -432,18 +453,28 @@ describe('AdminWorkspacesPage', () => {
     const user = userEvent.setup();
     renderPage();
 
-    await screen.findByRole('table');
-    const workspaceRow = await screen.findByRole('row', {
-      name: /营销工作区/,
-    });
+    const workspaceRow = await screen.findByRole(
+      'row',
+      { name: /营销工作区/ },
+      INITIAL_WAIT,
+    );
     await user.click(
       within(workspaceRow).getByRole('button', {
         name: '查看配置 营销工作区',
       }),
     );
-    const drawer = await screen.findByRole('dialog', {
-      name: '工作区详情：营销工作区',
-    });
+    const drawer = await screen.findByRole(
+      'dialog',
+      { name: '工作区详情：营销工作区' },
+      INITIAL_WAIT,
+    );
+    expect(
+      await within(drawer).findByRole(
+        'listitem',
+        { name: '吴桐 Leader' },
+        INITIAL_WAIT,
+      ),
+    ).toBeVisible();
     expect(drawer).toHaveTextContent('Leader 名单');
     expect(drawer).toHaveTextContent('李强');
     expect(drawer).toHaveTextContent('吴桐');
@@ -747,28 +778,11 @@ describe('AdminWorkspacesPage', () => {
     );
   });
 
-  it('邀请与移除 Leader 均要求 reason 并刷新成员投影', async () => {
+  it('邀请 Leader 要求 reason 并刷新成员投影', async () => {
     const user = userEvent.setup();
-    const membersWithLiu = {
-      items: [
-        ...initialMarketingMembers.items,
-        { accountId: leaderLiu.id, ...leaderLiu, source: 'LEADER' },
-        {
-          accountId: 'member-he',
-          displayName: '何山',
-          employeeNo: 'E2002',
-          source: 'DIRECT_REPORT',
-        },
-      ],
-    } satisfies WorkspaceMembersResponse;
     administrationMocks.listWorkspaceMembers
       .mockResolvedValueOnce(initialMarketingMembers)
-      .mockResolvedValueOnce(membersWithLiu)
-      .mockResolvedValue(initialMarketingMembers);
-    administrationMocks.removeWorkspaceLeader.mockResolvedValue({
-      ...activeWorkspace,
-      version: 3,
-    });
+      .mockResolvedValue(marketingMembersWithLiu);
     renderPage();
     const row = await screen.findByRole(
       'row',
@@ -814,15 +828,63 @@ describe('AdminWorkspacesPage', () => {
     drawer = await screen.findByRole('dialog', {
       name: '工作区详情：营销工作区',
     });
-    const invitedRow = await within(drawer).findByRole('listitem', {
-      name: /刘洋/,
+    expect(
+      await within(drawer).findByRole(
+        'listitem',
+        { name: /刘洋/ },
+        INITIAL_WAIT,
+      ),
+    ).toBeVisible();
+  });
+
+  it('移除 Leader 要求 reason、使用最新版本并刷新成员投影', async () => {
+    const user = userEvent.setup();
+    administrationMocks.listWorkspaces.mockResolvedValue({
+      ...initialWorkspacePage,
+      items: initialWorkspacePage.items.map((workspace) =>
+        workspace.id === activeWorkspace.id
+          ? { ...workspace, version: 2 }
+          : workspace,
+      ),
     });
+    administrationMocks.listWorkspaceMembers
+      .mockResolvedValueOnce(marketingMembersWithLiu)
+      .mockResolvedValue(initialMarketingMembers);
+    administrationMocks.removeWorkspaceLeader.mockResolvedValue({
+      ...activeWorkspace,
+      version: 3,
+    });
+    renderPage();
+    const row = await screen.findByRole(
+      'row',
+      { name: /营销工作区/ },
+      INITIAL_WAIT,
+    );
+    await user.click(
+      within(row).getByRole('button', { name: '查看配置 营销工作区' }),
+    );
+    const drawer = await screen.findByRole(
+      'dialog',
+      { name: '工作区详情：营销工作区' },
+      INITIAL_WAIT,
+    );
+    const invitedRow = await within(drawer).findByRole(
+      'listitem',
+      { name: /刘洋/ },
+      INITIAL_WAIT,
+    );
 
     await user.click(
       within(invitedRow).getByRole('button', { name: '移除 Leader 刘洋' }),
     );
     const removeDialog = await findTopmostDialog();
     expect(removeDialog).toHaveTextContent('移除 Leader');
+    await user.click(
+      within(removeDialog).getByRole('button', { name: '确认移除' }),
+    );
+    expect(
+      await within(removeDialog).findByText('请输入操作原因'),
+    ).toBeVisible();
     await user.type(
       within(removeDialog).getByRole('textbox', { name: '操作原因' }),
       '协作结束',
@@ -842,7 +904,7 @@ describe('AdminWorkspacesPage', () => {
       expect(
         within(drawer).queryByRole('listitem', { name: /刘洋/ }),
       ).not.toBeInTheDocument();
-    });
+    }, INITIAL_WAIT);
   });
 
   it('组织候选加载时保留工作区列表、显示依赖进度并禁用创建', async () => {

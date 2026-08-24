@@ -368,9 +368,7 @@ export default function AdminWorkspacesPage() {
           <WorkspaceModal
             leaderOptions={allLeaders}
             onClose={() => setModalOpen(false)}
-            onCreated={() => {
-              void reloadWorkspaces();
-            }}
+            onCreated={reloadWorkspaces}
             onSubmit={createNewWorkspace}
             open
           />
