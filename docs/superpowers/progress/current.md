@@ -1,12 +1,12 @@
 # 当前开发进度
 
 - Repository: engineering-platform
-- Updated At: 2026-08-25T02:16:56Z
+- Updated At: 2026-08-25T02:31:09Z
 - Based On Commit: da72238abc87a19c07a5cac96e41d88d5f6bf2d3
 - Branch: codex/final-prototype-acceptance
 - State: active
 - Active Plan: docs/superpowers/plans/2026-08-21-final-prototype-ui.md
-- Remote Recoverable: no
+- Remote Recoverable: yes
 
 ## 已完成
 
@@ -44,4 +44,4 @@
 ## 工作树
 
 - 隔离工作树：`D:\tongyi\code\.worktrees\engineering-platform-final-prototype-acceptance`。
-- 业务代码未改动；本次只同步 `docs/superpowers/progress/current.md`。本地提交尚未成功推送，当前仍有本机独有进度记录，因此 `Remote Recoverable: no`。
+- 业务代码未改动；本次只同步 `docs/superpowers/progress/current.md`。进度分支已推送，代码基线、计划和验收边界均可从远端恢复，因此 `Remote Recoverable: yes`。
