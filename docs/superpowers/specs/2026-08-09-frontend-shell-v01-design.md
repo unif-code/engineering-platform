@@ -1,5 +1,7 @@
 # V0.1 前端外壳设计（engineering-platform）
 
+> **路线图重分类（2026-08-28）**：本 spec 的技术实现仍归 V0.1 Application Foundation；旧“三子项目 V0.1”总括已被新的架构路线图取代。V0.1 前端、后端和 OpenAPI 应用接缝独立验收，不再由 DEV 部署、Backup/Restore、容量或 HA 阻塞。下文保留为已执行历史。
+
 日期：2026-08-09
 状态：已确认
 范围：`engineering-platform` 仓库（本仓）

@@ -1,5 +1,7 @@
 # V0.1 后端仓骨架实施计划
 
+> **Roadmap Reclassification（2026-08-28）**：本计划保留为 V0.1 Application Foundation 的已执行技术记录。原 V0.1 基础设施/恢复/容量依赖已被权威路线图取代，分别在 V0.14～V0.19 实施；不得用下文历史步骤重新扩大 V0.1 Release Gate。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在 `engineering-platform-backend` 空仓落地可重现构建的 FastAPI 模块化单体骨架：四个端点、Audit 追加式机制、OpenAPI Artifact 发布链，并与前端仓 openapi 链路闭环。

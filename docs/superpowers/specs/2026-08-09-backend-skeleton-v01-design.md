@@ -1,5 +1,7 @@
 # V0.1 后端仓骨架设计（engineering-platform-backend）
 
+> **路线图重分类（2026-08-28）**：本 spec 的技术实现仍归 V0.1 Application Foundation；“V0.1 同时包含 DEV 基础设施”及其环境 Gate 已被新的架构路线图取代。V0.1 只验收 Web/API/数据库/OpenAPI 应用链，部署、Backup/Restore、容量与 HA 分别进入 V0.14～V0.19。下文保留为已执行历史，不再指导未来版本归类。
+
 日期：2026-08-09
 状态：已确认
 范围：`engineering-platform-backend` 仓库（github.com/unif-code/engineering-platform-backend，现为空仓）

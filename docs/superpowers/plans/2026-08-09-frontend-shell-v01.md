@@ -1,5 +1,7 @@
 # V0.1 前端外壳实施计划
 
+> **Roadmap Reclassification（2026-08-28）**：本计划保留为 V0.1 Application Foundation 的已执行技术记录。V0.1 只承担前端、后端与 OpenAPI 应用接缝；部署、Backup/Restore、容量与 HA 已后移到 V0.14～V0.19。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 在本仓（engineering-platform）交付完整外壳：`/login → /home、/admin` 的守卫路径、mock 驱动的 Session Bootstrap、features 公开入口机制与依赖方向架构测试。
