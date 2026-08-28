@@ -1,5 +1,7 @@
 # V0.1 DEV 基础设施设计
 
+> **路线图重分类（2026-08-28）**：本文件不再属于 V0.1 Capability Release，而是历史 DEV 运维设计。可重复部署归 V0.14、OpenBao/Trust 归 V0.15、Observability 归 V0.16、Backup/Restore/DR 归 V0.17、容量归 V0.18、HA/Production Candidate 归 V0.19。下文所有“V0.1 Gate”表述仅记录原计划，不得继续阻塞 V0.1～V0.13 Application Release。
+
 日期：2026-08-09
 状态：已确认
 范围：DEV 单服务器 + 新建 `engineering-platform-gitops` 仓库（GitHub unif-code）
