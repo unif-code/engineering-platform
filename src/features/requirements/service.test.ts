@@ -99,9 +99,13 @@ const expectedWorkItem = {
   updatedAt,
 };
 
-const result = <T>(data: T) => ({
+const result = <T>(data: T, requestId?: string) => ({
   data,
-  response: new Response(null, { status: 200 }),
+  response: new Response(null, {
+    headers:
+      requestId === undefined ? undefined : { 'x-request-id': requestId },
+    status: 200,
+  }),
 });
 
 beforeEach(() => {
@@ -138,22 +142,27 @@ describe('Requirement Feature service seam', () => {
   });
 
   it('详情使用精确 Requirement path ID 并映射安全的 WorkItem 事实', async () => {
+    const abortController = new AbortController();
     apiMock.GET.mockResolvedValue(
-      result({
-        requirement: requirementDto,
-        workItems: [
-          {
-            ...workItemDto,
-            connectionRef: 'must-not-escape',
-            effectLedgerId: 'must-not-escape',
-          },
-        ],
-      }),
+      result(
+        {
+          requirement: requirementDto,
+          workItems: [
+            {
+              ...workItemDto,
+              connectionRef: 'must-not-escape',
+              effectLedgerId: 'must-not-escape',
+            },
+          ],
+        },
+        'req-detail-success',
+      ),
     );
 
-    const details = await getRequirement(requirementId);
+    const details = await getRequirement(requirementId, abortController.signal);
 
     expect(details).toEqual({
+      requestId: 'req-detail-success',
       requirement: expectedRequirement,
       workItems: [expectedWorkItem],
     });
@@ -161,11 +170,12 @@ describe('Requirement Feature service seam', () => {
     expect(details.workItems[0]).not.toHaveProperty('effectLedgerId');
     expect(apiMock.GET).toHaveBeenCalledWith(
       '/api/v1/requirements/{requirementId}',
-      { params: { path: { requirementId } } },
+      { params: { path: { requirementId } }, signal: abortController.signal },
     );
   });
 
   it('授权仓库查询使用精确 Workspace path 且剥离 Secret 与 Effect 字段', async () => {
+    const abortController = new AbortController();
     apiMock.GET.mockResolvedValue(
       result({
         items: [
@@ -183,7 +193,9 @@ describe('Requirement Feature service seam', () => {
       }),
     );
 
-    await expect(listAuthorizedRepositories(workspaceId)).resolves.toEqual([
+    await expect(
+      listAuthorizedRepositories(workspaceId, abortController.signal),
+    ).resolves.toEqual([
       {
         defaultBranch: 'main',
         projectPath: 'group/platform',
@@ -193,7 +205,7 @@ describe('Requirement Feature service seam', () => {
     ]);
     expect(apiMock.GET).toHaveBeenCalledWith(
       '/api/v1/workspaces/{workspaceId}/repositories',
-      { params: { path: { workspaceId } } },
+      { params: { path: { workspaceId } }, signal: abortController.signal },
     );
   });
 

@@ -3,6 +3,7 @@ import { App } from 'antd';
 import { useEffect, useState } from 'react';
 import { fetchMe, LoginFlow, LoginShell } from '@/features/auth';
 import { fetchNavigation, resolvePostLoginPath } from '@/features/navigation';
+import { clearSessionQueryCache } from '@/utils/sessionQueryCache';
 
 export default function LoginPage() {
   const [loginSucceeded, setLoginSucceeded] = useState(false);
@@ -26,6 +27,7 @@ export default function LoginPage() {
       return;
     }
     const { capabilities, scopedCapabilities, workspaces, ...principal } = me;
+    await clearSessionQueryCache();
     await setInitialState({
       capabilities,
       navigation,

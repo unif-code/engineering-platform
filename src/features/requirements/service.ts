@@ -89,13 +89,15 @@ export async function listRequirements(
 
 export async function getRequirement(
   requirementId: string,
+  signal?: AbortSignal,
 ): Promise<RequirementDetails> {
-  const details = requireApiData(
-    await api.GET('/api/v1/requirements/{requirementId}', {
-      params: { path: { requirementId } },
-    }),
-  );
+  const result = await api.GET('/api/v1/requirements/{requirementId}', {
+    ...(signal === undefined ? {} : { signal }),
+    params: { path: { requirementId } },
+  });
+  const details = requireApiData(result);
   return {
+    requestId: result.response.headers.get('x-request-id'),
     requirement: projectRequirement(details.requirement),
     workItems: details.workItems.map(projectWorkItem),
   };
@@ -103,9 +105,11 @@ export async function getRequirement(
 
 export async function listAuthorizedRepositories(
   workspaceId: string,
+  signal?: AbortSignal,
 ): Promise<AuthorizedRepository[]> {
   const repositories = requireApiData(
     await api.GET('/api/v1/workspaces/{workspaceId}/repositories', {
+      ...(signal === undefined ? {} : { signal }),
       params: { path: { workspaceId } },
     }),
   );

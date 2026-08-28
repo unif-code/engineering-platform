@@ -1,9 +1,12 @@
 import { useMutation, useQuery } from '@umijs/max';
 import { Alert, Button, Form, Input, Modal, Select, Typography } from 'antd';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import type { WorkspaceSummary } from '@/features/auth';
 import { REQUIREMENT_TYPE_META } from './constant';
-import { formatRequirementError } from './error';
+import {
+  formatRequirementError,
+  isRequirementAuthorizationFailure,
+} from './error';
 import { useStyles } from './index.style';
 import { createRequirement, listAuthorizedRepositories } from './service';
 import {
@@ -30,6 +33,7 @@ export interface CreateRequirementModalProps {
   onCancel: () => void;
   onCreated: (result: CreateRequirementResult) => Promise<void> | void;
   open: boolean;
+  sessionKey: string;
   workspaces: WorkspaceSummary[];
 }
 
@@ -38,6 +42,7 @@ export function CreateRequirementModal({
   onCancel,
   onCreated,
   open,
+  sessionKey,
   workspaces,
 }: CreateRequirementModalProps) {
   const { styles } = useStyles();
@@ -46,13 +51,17 @@ export function CreateRequirementModal({
   const submissionIdentityRef = useRef<
     RequirementSubmissionIdentity | undefined
   >(undefined);
+  const submissionSequenceRef = useRef(0);
   const repositoriesQuery = useQuery({
     enabled: open && workspaceId !== undefined,
-    queryFn: () => listAuthorizedRepositories(workspaceId as string),
-    queryKey: ['requirement-authorized-repositories', workspaceId],
+    gcTime: 0,
+    queryFn: ({ signal }) =>
+      listAuthorizedRepositories(workspaceId as string, signal),
+    queryKey: ['requirement-authorized-repositories', sessionKey, workspaceId],
     retry: false,
   });
   const createMutation = useMutation({
+    gcTime: 0,
     mutationFn: ({
       idempotencyKey,
       input,
@@ -61,18 +70,45 @@ export function CreateRequirementModal({
       input: CreateRequirementInput;
     }) => createRequirement(input, idempotencyKey),
   });
+  const repositoriesAuthorizationFailure = isRequirementAuthorizationFailure(
+    repositoriesQuery.error,
+  );
   const repositoryOptions = useMemo(
     () =>
-      (repositoriesQuery.data ?? []).map((repository) => ({
-        label: `${repository.projectPath} · ${repository.defaultBranch}`,
-        value: repository.repositoryId,
-      })),
-    [repositoriesQuery.data],
+      repositoriesAuthorizationFailure
+        ? []
+        : (repositoriesQuery.data ?? []).map((repository) => ({
+            label: `${repository.projectPath} · ${repository.defaultBranch}`,
+            value: repository.repositoryId,
+          })),
+    [repositoriesAuthorizationFailure, repositoriesQuery.data],
   );
   const repositoriesReady =
-    repositoriesQuery.isSuccess && repositoryOptions.length > 0;
+    repositoriesQuery.isSuccess &&
+    !repositoriesQuery.isFetching &&
+    repositoryOptions.length > 0;
+
+  useEffect(
+    () => () => {
+      submissionSequenceRef.current += 1;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    const selectedRepositoryId = form.getFieldValue('initialRepositoryId');
+    if (
+      selectedRepositoryId !== undefined &&
+      !repositoryOptions.some(
+        (repository) => repository.value === selectedRepositoryId,
+      )
+    ) {
+      form.setFieldValue('initialRepositoryId', undefined);
+    }
+  }, [form, repositoryOptions]);
 
   const cancel = () => {
+    submissionSequenceRef.current += 1;
     submissionIdentityRef.current = undefined;
     createMutation.reset();
     form.resetFields();
@@ -80,6 +116,7 @@ export function CreateRequirementModal({
   };
 
   const submit = async (values: CreateRequirementFormValues) => {
+    const submissionSequence = ++submissionSequenceRef.current;
     const prepared = prepareRequirementSubmission(
       values,
       submissionIdentityRef.current,
@@ -90,6 +127,9 @@ export function CreateRequirementModal({
         idempotencyKey: prepared.identity.idempotencyKey,
         input: prepared.input,
       });
+      if (submissionSequence !== submissionSequenceRef.current) {
+        return;
+      }
       submissionIdentityRef.current = undefined;
       form.resetFields();
       await onCreated(result);
@@ -153,26 +193,15 @@ export function CreateRequirementModal({
           rules={[{ message: '请输入描述', required: true, whitespace: true }]}
         >
           <Input.TextArea
-            maxLength={4_000}
+            maxLength={10_000}
             placeholder="说明目标、约束与上下文"
             rows={4}
             showCount
           />
         </Form.Item>
 
-        <Form.List
-          name="acceptanceCriteria"
-          rules={[
-            {
-              validator: async (_, criteria: string[] | undefined) => {
-                if (!criteria || criteria.length === 0) {
-                  throw new Error('至少添加一条验收条件');
-                }
-              },
-            },
-          ]}
-        >
-          {(fields, { add, remove }, { errors }) => (
+        <Form.List name="acceptanceCriteria">
+          {(fields, { add, remove }) => (
             <>
               <div className={styles.criteriaHeader}>
                 <Typography.Text strong>验收条件</Typography.Text>
@@ -197,10 +226,8 @@ export function CreateRequirementModal({
                       ]}
                     >
                       <Input.TextArea
-                        maxLength={500}
                         placeholder="写出可验证的完成条件"
                         rows={2}
-                        showCount
                       />
                     </Form.Item>
                     <Button
@@ -214,7 +241,6 @@ export function CreateRequirementModal({
                   </div>
                 );
               })}
-              <Form.ErrorList errors={errors} />
             </>
           )}
         </Form.List>
@@ -244,7 +270,7 @@ export function CreateRequirementModal({
             loading={repositoriesQuery.isLoading}
             options={repositoryOptions}
             placeholder="选择已授权仓库"
-            showSearch
+            showSearch={{ optionFilterProp: 'label' }}
             virtual={false}
           />
         </Form.Item>

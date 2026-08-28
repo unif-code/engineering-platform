@@ -13,6 +13,8 @@ import defaultSettings from '../config/defaultSettings';
 import proxy from '../config/proxy';
 
 const featureMocks = vi.hoisted(() => ({
+  cancelQueries: vi.fn(),
+  clearQueryCache: vi.fn(),
   fetchMe: vi.fn(),
   fetchNavigation: vi.fn(),
   logout: vi.fn(),
@@ -32,6 +34,10 @@ vi.mock('@umijs/max', () => ({
     replace: featureMocks.replace,
   },
   useAntdConfigSetter: () => featureMocks.setAntdConfig,
+  useQueryClient: () => ({
+    cancelQueries: featureMocks.cancelQueries,
+    clear: featureMocks.clearQueryCache,
+  }),
 }));
 
 vi.mock('@/features/auth', async (importOriginal) => ({
@@ -52,9 +58,12 @@ import {
   normalizeApiError,
   onUnauthorized,
 } from '@/services/transport';
+import { clearSessionQueryCache } from '@/utils/sessionQueryCache';
 import { antd, getInitialState, layout, request, rootContainer } from './app';
 
 beforeEach(() => {
+  featureMocks.cancelQueries.mockReset();
+  featureMocks.clearQueryCache.mockReset();
   featureMocks.fetchMe.mockReset();
   featureMocks.fetchNavigation.mockReset();
   featureMocks.logout.mockReset();
@@ -62,6 +71,7 @@ beforeEach(() => {
   featureMocks.replace.mockReset();
   featureMocks.setAntdConfig.mockReset();
   featureMocks.logout.mockResolvedValue(undefined);
+  featureMocks.cancelQueries.mockResolvedValue(undefined);
   delete window.__ENGINEERING_PLATFORM_THEME__;
 });
 
@@ -529,6 +539,7 @@ describe('layout', () => {
   });
 
   it('transport 401 先清 Session Initial State，再 replace 到带安全回跳的登录页', async () => {
+    render(rootContainer(createElement('span')));
     const setInitialState = vi.fn().mockResolvedValue(undefined);
     layout({ setInitialState });
     vi.stubGlobal(
@@ -568,6 +579,11 @@ describe('layout', () => {
     expect(setInitialState.mock.invocationCallOrder[0]).toBeLessThan(
       featureMocks.replace.mock.invocationCallOrder[0],
     );
+    expect(featureMocks.cancelQueries).toHaveBeenCalledOnce();
+    expect(featureMocks.clearQueryCache).toHaveBeenCalledOnce();
+    expect(
+      featureMocks.clearQueryCache.mock.invocationCallOrder[0],
+    ).toBeLessThan(setInitialState.mock.invocationCallOrder[0]);
   });
 
   it('Umi request 401 桥接同一 Session 清理，auth 业务 401 不误触发', async () => {
@@ -695,7 +711,7 @@ describe('layout', () => {
 
     expect(() => errorHandler?.(failure, {} as never)).toThrow();
     expect(() => errorHandler?.(failure, {} as never)).toThrow();
-    expect(setInitialState).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(setInitialState).toHaveBeenCalledOnce());
     expect(featureMocks.replace).not.toHaveBeenCalled();
 
     resolveState();
@@ -703,6 +719,7 @@ describe('layout', () => {
   });
 
   it('退出成功后清 Session 并 replace 登录页，失败时保留当前状态', async () => {
+    render(rootContainer(createElement('span')));
     const employeeId = createEmployeeNo();
     const setInitialState = vi.fn().mockResolvedValue(undefined);
     const config = layout({
@@ -731,6 +748,11 @@ describe('layout', () => {
       workspaces: [],
     });
     expect(featureMocks.replace).toHaveBeenCalledWith('/login');
+    expect(featureMocks.cancelQueries).toHaveBeenCalledOnce();
+    expect(featureMocks.clearQueryCache).toHaveBeenCalledOnce();
+    expect(
+      featureMocks.clearQueryCache.mock.invocationCallOrder[0],
+    ).toBeLessThan(setInitialState.mock.invocationCallOrder[0]);
 
     featureMocks.logout.mockRejectedValueOnce(
       normalizeApiError({
@@ -793,7 +815,7 @@ describe('theme runtime', () => {
     });
   });
 
-  it('rootContainer 保留子树并提供首屏主题上下文', () => {
+  it('rootContainer 保留子树、提供主题并注册 Session Query 缓存清理', async () => {
     window.__ENGINEERING_PLATFORM_THEME__ = {
       mode: 'dark',
       resolvedTheme: 'dark',
@@ -807,5 +829,8 @@ describe('theme runtime', () => {
     render(rootContainer(createElement(Probe)));
 
     expect(screen.getByText('dark/dark')).toBeInTheDocument();
+    await clearSessionQueryCache();
+    expect(featureMocks.cancelQueries).toHaveBeenCalledOnce();
+    expect(featureMocks.clearQueryCache).toHaveBeenCalledOnce();
   });
 });

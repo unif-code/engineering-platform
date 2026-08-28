@@ -1,26 +1,23 @@
 import { PageContainer } from '@ant-design/pro-components';
-import { useParams, useQuery } from '@umijs/max';
+import { useModel, useParams, useQuery } from '@umijs/max';
 import type { DescriptionsProps } from 'antd';
 import { Alert, Button, Descriptions, Empty, Skeleton, Typography } from 'antd';
-import { useCallback, useMemo } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
 import { BindingStatus } from './BindingStatus';
 import {
+  REQUIREMENT_AUTO_POLL_WINDOW_MS,
   REQUIREMENT_POLL_INTERVAL_MS,
   shouldPollRequirementBindings,
   validateRequirementBindings,
 } from './binding';
 import { REQUIREMENT_STATE_META, REQUIREMENT_TYPE_META } from './constant';
 import { useDetailStyles } from './detail.style';
-import { formatRequirementError } from './error';
+import {
+  formatRequirementError,
+  isRequirementAuthorizationFailure,
+} from './error';
 import { getRequirement } from './service';
-import type { RequirementDetails } from './type';
-
-interface RequestContext {
-  latest?: RequirementDetails;
-  requirementId?: string;
-  sequence: number;
-}
 
 const formatUpdatedAt = (value: string) =>
   new Intl.DateTimeFormat('zh-CN', {
@@ -32,51 +29,81 @@ const formatUpdatedAt = (value: string) =>
 
 export function RequirementDetailPage() {
   const { styles } = useDetailStyles();
+  const { initialState } = useModel('@@initialState');
   const { requirementId } = useParams<'requirementId'>();
-  const requestContext = useMemo<RequestContext>(
-    () => ({ requirementId, sequence: 0 }),
-    [requirementId],
-  );
-  const loadRequirement = useCallback(async () => {
-    if (!requirementId) {
-      throw new Error('Requirement ID 缺失');
-    }
-    const sequence = ++requestContext.sequence;
-    try {
-      const details = validateRequirementBindings(
-        await getRequirement(requirementId),
-      );
-      if (sequence !== requestContext.sequence && requestContext.latest) {
-        return requestContext.latest;
-      }
-      if (sequence === requestContext.sequence) {
-        requestContext.latest = details;
-      }
-      return details;
-    } catch (error) {
-      if (sequence !== requestContext.sequence && requestContext.latest) {
-        return requestContext.latest;
-      }
-      throw error;
-    }
-  }, [requestContext, requirementId]);
+  const sessionKey =
+    initialState?.principal?.accountId ?? initialState?.principal?.employeeId;
+  const pollingStartedAtRef = useRef<number | undefined>(undefined);
+  const [automaticPollingStopped, setAutomaticPollingStopped] = useState(false);
   const requirementQuery = useQuery({
-    enabled: Boolean(requirementId),
-    queryFn: loadRequirement,
-    queryKey: ['requirement-details', requirementId],
-    refetchInterval: (query) => {
-      const details = query.state.data;
-      return details && shouldPollRequirementBindings(details)
-        ? REQUIREMENT_POLL_INTERVAL_MS
-        : false;
-    },
+    enabled: Boolean(requirementId && sessionKey),
+    gcTime: 0,
+    queryFn: async ({ signal }) =>
+      validateRequirementBindings(
+        await getRequirement(requirementId as string, signal),
+      ),
+    queryKey: ['requirement-details', sessionKey, requirementId],
     retry: false,
   });
+  const pollingRequired = Boolean(
+    requirementQuery.data &&
+      shouldPollRequirementBindings(requirementQuery.data),
+  );
+
+  useEffect(() => {
+    if (!pollingRequired) {
+      pollingStartedAtRef.current = undefined;
+      setAutomaticPollingStopped(false);
+      return;
+    }
+    if (
+      automaticPollingStopped ||
+      requirementQuery.isFetching ||
+      requirementQuery.dataUpdatedAt === 0
+    ) {
+      return;
+    }
+    pollingStartedAtRef.current ??= Date.now();
+    const remaining =
+      REQUIREMENT_AUTO_POLL_WINDOW_MS -
+      (Date.now() - pollingStartedAtRef.current);
+    if (remaining <= 0) {
+      setAutomaticPollingStopped(true);
+      return;
+    }
+    const delay = Math.min(REQUIREMENT_POLL_INTERVAL_MS, remaining);
+    const timeout = window.setTimeout(() => {
+      if (delay === remaining) {
+        setAutomaticPollingStopped(true);
+        return;
+      }
+      void requirementQuery.refetch();
+    }, delay);
+    return () => window.clearTimeout(timeout);
+  }, [
+    automaticPollingStopped,
+    pollingRequired,
+    requirementQuery.dataUpdatedAt,
+    requirementQuery.isFetching,
+    requirementQuery.refetch,
+  ]);
+
+  const authorizationFailure = isRequirementAuthorizationFailure(
+    requirementQuery.error,
+  );
 
   if (!requirementId) {
     return (
       <PageContainer ghost pageHeaderRender={false}>
         <Alert showIcon title="缺少 Requirement ID" type="error" />
+      </PageContainer>
+    );
+  }
+
+  if (!sessionKey) {
+    return (
+      <PageContainer ghost pageHeaderRender={false}>
+        <Alert showIcon title="Session 未就绪，无法读取需求详情" type="error" />
       </PageContainer>
     );
   }
@@ -95,7 +122,7 @@ export function RequirementDetailPage() {
     );
   }
 
-  if (!requirementQuery.data) {
+  if (!requirementQuery.data || authorizationFailure) {
     return (
       <PageContainer ghost pageHeaderRender={false}>
         <Alert
@@ -198,6 +225,20 @@ export function RequirementDetailPage() {
           />
         ) : null}
 
+        {automaticPollingStopped && pollingRequired ? (
+          <Alert
+            action={
+              <Button onClick={() => void requirementQuery.refetch()}>
+                手动刷新
+              </Button>
+            }
+            description="自动对账已达到 60 秒上限；系统不会猜测结果，请手动刷新查看最新状态。"
+            showIcon
+            title="自动刷新已暂停"
+            type="warning"
+          />
+        ) : null}
+
         <Descriptions
           bordered
           column={{ lg: 3, md: 2, sm: 1, xs: 1 }}
@@ -232,7 +273,11 @@ export function RequirementDetailPage() {
             <Empty description="当前 Requirement 没有 WorkItem" />
           ) : (
             workItems.map((workItem) => (
-              <BindingStatus key={workItem.id} workItem={workItem} />
+              <BindingStatus
+                key={workItem.id}
+                requestId={requirementQuery.data.requestId ?? undefined}
+                workItem={workItem}
+              />
             ))
           )}
         </section>

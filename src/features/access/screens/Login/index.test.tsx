@@ -17,6 +17,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@/features/theme';
 
 const mocks = vi.hoisted(() => ({
+  clearSessionQueryCache: vi.fn(),
   committedMe: null as null | {
     accountId: string | null;
     employeeId: string;
@@ -31,6 +32,10 @@ const mocks = vi.hoisted(() => ({
   setInitialState: vi.fn(),
   startLogin: vi.fn(),
   verifyTotp: vi.fn(),
+}));
+
+vi.mock('@/utils/sessionQueryCache', () => ({
+  clearSessionQueryCache: mocks.clearSessionQueryCache,
 }));
 
 vi.mock('@/services/auth', () => ({
@@ -206,6 +211,7 @@ async function submitForm(
 
 beforeEach(() => {
   for (const mock of [
+    mocks.clearSessionQueryCache,
     mocks.fetchNavigation,
     mocks.getCurrentUser,
     mocks.messageError,
@@ -220,6 +226,7 @@ beforeEach(() => {
   mocks.committedMe = null;
   mocks.locationSearch = '';
   mocks.setInitialState.mockResolvedValue(undefined);
+  mocks.clearSessionQueryCache.mockResolvedValue(undefined);
 });
 
 describe('LoginPage', () => {
@@ -305,6 +312,7 @@ describe('LoginPage', () => {
       code: fixture.code,
     });
     await waitFor(() => {
+      expect(mocks.clearSessionQueryCache).toHaveBeenCalledOnce();
       expect(mocks.getCurrentUser).toHaveBeenCalledOnce();
       expect(mocks.fetchNavigation).toHaveBeenCalledOnce();
       expect(mocks.setInitialState).toHaveBeenCalledWith(fixture.initialState);
@@ -315,6 +323,9 @@ describe('LoginPage', () => {
     expect(mocks.verifyTotp.mock.invocationCallOrder[0]).toBeLessThan(
       mocks.fetchNavigation.mock.invocationCallOrder[0],
     );
+    expect(
+      mocks.clearSessionQueryCache.mock.invocationCallOrder[0],
+    ).toBeLessThan(mocks.setInitialState.mock.invocationCallOrder[0]);
     expect(mocks.push).not.toHaveBeenCalled();
 
     stateRefresh.resolve();

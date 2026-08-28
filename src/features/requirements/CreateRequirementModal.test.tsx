@@ -1,6 +1,6 @@
 import { createProblemError } from '@root/tests/fixtures/problemError';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { App, ConfigProvider } from 'antd';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -100,6 +100,7 @@ function renderModal(
             onCancel={onCancel}
             onCreated={onCreated}
             open
+            sessionKey="account-1"
             workspaces={[workspaceOne, workspaceTwo]}
             {...overrides}
           />
@@ -148,9 +149,17 @@ describe('CreateRequirementModal', () => {
     expect(
       await screen.findByRole('dialog', { name: '创建需求' }),
     ).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '描述' })).toHaveAttribute(
+      'maxlength',
+      '10000',
+    );
+    expect(
+      screen.getByRole('textbox', { name: '验收条件 1' }),
+    ).not.toHaveAttribute('maxlength');
     await waitFor(() => {
       expect(requirementMocks.listAuthorizedRepositories).toHaveBeenCalledWith(
         workspaceOne.id,
+        expect.any(AbortSignal),
       );
     });
 
@@ -215,6 +224,7 @@ describe('CreateRequirementModal', () => {
     await waitFor(() => {
       expect(requirementMocks.listAuthorizedRepositories).toHaveBeenCalledWith(
         workspaceOne.id,
+        expect.any(AbortSignal),
       );
     });
     await selectOption('仓库', 'platform/backend · main');
@@ -227,15 +237,37 @@ describe('CreateRequirementModal', () => {
     await waitFor(() => {
       expect(requirementMocks.listAuthorizedRepositories).toHaveBeenCalledWith(
         workspaceTwo.id,
+        expect.any(AbortSignal),
       );
     });
-    expect(
-      screen.getByRole('combobox', { name: '仓库' }).parentElement,
-    ).not.toHaveTextContent('platform/backend · main');
+    await waitFor(() => {
+      expect(
+        screen.getByRole('combobox', { name: '仓库' }).parentElement,
+      ).not.toHaveTextContent('platform/backend · main');
+    });
     await selectOption('仓库', 'delivery/portal · main');
     expect(
       screen.getByRole('combobox', { name: '仓库' }).parentElement,
     ).toHaveTextContent('delivery/portal · main');
+  });
+
+  it('可添加并删除额外验收条件，但始终保留首条必填条件', async () => {
+    renderModal();
+    const user = userEvent.setup();
+    expect(
+      await screen.findByRole('dialog', { name: '创建需求' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '添加验收条件' }));
+    expect(screen.getByRole('textbox', { name: '验收条件 2' })).toBeVisible();
+    await user.click(screen.getByRole('button', { name: '删除验收条件 2' }));
+
+    expect(
+      screen.queryByRole('textbox', { name: '验收条件 2' }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: '删除验收条件 1' }),
+    ).toBeDisabled();
   });
 
   it('仓库加载、空结果与 Problem 状态都不允许无效提交，并可重试恢复', async () => {
@@ -286,6 +318,118 @@ describe('CreateRequirementModal', () => {
 
     await selectOption('仓库', 'delivery/portal · main');
     expect(screen.getByRole('button', { name: '创建需求' })).toBeEnabled();
+  });
+
+  it('授权仓库缓存按 Session 隔离，后台回读期间禁用提交并清除已撤销选择', async () => {
+    const { queryClient } = renderModal();
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData([
+          'requirement-authorized-repositories',
+          'account-1',
+          workspaceOne.id,
+        ]),
+      ).toEqual([repositoryOne]);
+    });
+    expect(
+      queryClient.getQueryData([
+        'requirement-authorized-repositories',
+        workspaceOne.id,
+      ]),
+    ).toBeUndefined();
+    await selectOption('仓库', 'platform/backend · main');
+
+    let resolveRefetch: ((value: AuthorizedRepository[]) => void) | undefined;
+    const pendingRefetch = new Promise<AuthorizedRepository[]>((resolve) => {
+      resolveRefetch = resolve;
+    });
+    requirementMocks.listAuthorizedRepositories.mockReturnValueOnce(
+      pendingRefetch,
+    );
+    void queryClient.invalidateQueries({
+      queryKey: [
+        'requirement-authorized-repositories',
+        'account-1',
+        workspaceOne.id,
+      ],
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('combobox', { name: '仓库' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: '创建需求' })).toBeDisabled();
+    });
+
+    await act(async () => {
+      if (resolveRefetch === undefined) {
+        throw new Error('repository refetch was not started');
+      }
+      resolveRefetch([repositoryTwo]);
+      await pendingRefetch;
+    });
+
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData([
+          'requirement-authorized-repositories',
+          'account-1',
+          workspaceOne.id,
+        ]),
+      ).toEqual([repositoryTwo]);
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole('combobox', { name: '仓库' }).parentElement,
+      ).not.toHaveTextContent('platform/backend · main');
+    });
+  });
+
+  it('授权仓库后台回读 403 时立即隐藏缓存事实并清空旧选择', async () => {
+    const { queryClient } = renderModal();
+    await waitFor(() => {
+      expect(
+        queryClient.getQueryData([
+          'requirement-authorized-repositories',
+          'account-1',
+          workspaceOne.id,
+        ]),
+      ).toEqual([repositoryOne]);
+    });
+    await selectOption('仓库', 'platform/backend · main');
+
+    requirementMocks.listAuthorizedRepositories.mockRejectedValueOnce(
+      createProblemError({
+        detail: '当前账号已失去仓库读取权限',
+        requestId: 'req-repositories-revoked',
+        status: 403,
+      }),
+    );
+    await act(async () => {
+      await queryClient.invalidateQueries({
+        queryKey: [
+          'requirement-authorized-repositories',
+          'account-1',
+          workspaceOne.id,
+        ],
+      });
+    });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      '当前账号已失去仓库读取权限（requestId: req-repositories-revoked）',
+    );
+    expect(
+      queryClient.getQueryData([
+        'requirement-authorized-repositories',
+        'account-1',
+        workspaceOne.id,
+      ]),
+    ).toEqual([repositoryOne]);
+    await waitFor(() => {
+      expect(
+        screen.getByRole('combobox', { name: '仓库' }).parentElement,
+      ).not.toHaveTextContent('platform/backend · main');
+      expect(screen.getByRole('combobox', { name: '仓库' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: '创建需求' })).toBeDisabled();
+    });
   });
 
   it('未知结果按未变化 payload 复用 key，编辑 payload 后才生成新 key', async () => {
@@ -352,5 +496,35 @@ describe('CreateRequirementModal', () => {
     expect(screen.getByRole('alert')).toHaveTextContent(
       '相同 Idempotency-Key 对应不同 payload',
     );
+  });
+
+  it('关闭在途提交后忽略晚到成功，不触发创建完成或导航', async () => {
+    let resolveCreate: ((result: CreateRequirementResult) => void) | undefined;
+    const pendingCreate = new Promise<CreateRequirementResult>((resolve) => {
+      resolveCreate = resolve;
+    });
+    requirementMocks.createRequirement.mockReturnValueOnce(pendingCreate);
+    const { onCancel, onCreated } = renderModal();
+    await waitFor(() => {
+      expect(requirementMocks.listAuthorizedRepositories).toHaveBeenCalled();
+    });
+    const user = await fillValidForm();
+
+    await user.click(screen.getByRole('button', { name: '创建需求' }));
+    await waitFor(() => {
+      expect(requirementMocks.createRequirement).toHaveBeenCalledTimes(1);
+    });
+    await user.click(screen.getByRole('button', { name: 'Close' }));
+    expect(onCancel).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      if (resolveCreate === undefined) {
+        throw new Error('create request was not started');
+      }
+      resolveCreate(createdResult);
+      await pendingCreate;
+    });
+
+    expect(onCreated).not.toHaveBeenCalled();
   });
 });
