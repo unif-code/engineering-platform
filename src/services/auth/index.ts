@@ -1,5 +1,9 @@
 import { api, type components } from '@/services/generated';
-import { mutationHeaders, requireApiData } from '@/services/transport';
+import {
+  ApiError,
+  mutationHeaders,
+  requireApiData,
+} from '@/services/transport';
 import type {
   BootstrapPasswordInput,
   BootstrapPasswordResult,
@@ -10,16 +14,43 @@ import type {
   LoginResult,
   TotpInput,
   TotpResult,
+  WorkspaceSummary,
 } from './type';
+
+function projectWorkspaceSummary(
+  value: Record<string, unknown>,
+): WorkspaceSummary {
+  const { id, name, ownerId } = value;
+  if (
+    typeof id !== 'string' ||
+    typeof name !== 'string' ||
+    typeof ownerId !== 'string'
+  ) {
+    throw new ApiError({
+      detail: '当前 Session 的 Workspace 数据无效',
+      status: 502,
+      title: 'INVALID_RESPONSE',
+    });
+  }
+  return { id, name, ownerId };
+}
 
 export async function getCurrentUser(): Promise<CurrentUser> {
   const principal = requireApiData(await api.GET('/api/v1/me'));
+  const scopedCapabilities = (principal.capabilities ?? []).map(
+    ({ capability, scopeId, scopeType }) => ({
+      capability,
+      scopeId: scopeId ?? null,
+      scopeType,
+    }),
+  );
   return {
+    accountId: principal.accountId ?? null,
     employeeId: principal.employeeId,
     name: principal.name,
-    capabilities: (principal.capabilities ?? []).map(
-      ({ capability }) => capability,
-    ),
+    capabilities: scopedCapabilities.map(({ capability }) => capability),
+    scopedCapabilities,
+    workspaces: (principal.workspaces ?? []).map(projectWorkspaceSummary),
   };
 }
 
@@ -89,6 +120,8 @@ export type {
   LoginInput,
   LoginResult,
   Principal,
+  ScopedCapability,
   TotpInput,
   TotpResult,
+  WorkspaceSummary,
 } from './type';

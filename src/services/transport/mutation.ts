@@ -3,15 +3,24 @@ export type MutationHeaders = Record<string, string> & {
   'If-Match'?: string;
 };
 
-export function mutationHeaders(options: {
-  etag: string;
-}): Required<MutationHeaders>;
-export function mutationHeaders(options?: {
-  etag?: undefined;
-}): MutationHeaders;
-export function mutationHeaders(options?: { etag?: string }): MutationHeaders {
+interface MutationHeaderOptions {
+  etag?: string;
+  idempotencyKey?: string;
+}
+
+export function mutationHeaders(
+  options: MutationHeaderOptions & {
+    etag: string;
+  },
+): Required<MutationHeaders>;
+export function mutationHeaders(
+  options?: MutationHeaderOptions,
+): MutationHeaders;
+export function mutationHeaders(
+  options?: MutationHeaderOptions,
+): MutationHeaders {
   const headers: MutationHeaders = {
-    'Idempotency-Key': crypto.randomUUID(),
+    'Idempotency-Key': options?.idempotencyKey ?? crypto.randomUUID(),
   };
 
   if (options?.etag !== undefined) {

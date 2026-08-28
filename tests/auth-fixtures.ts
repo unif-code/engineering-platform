@@ -9,6 +9,14 @@ export function createEmployeeNo(): string {
   return String(10_000_000 + randomNumber(90_000_000));
 }
 
+export function createAccountId(): string {
+  return crypto.randomUUID();
+}
+
+export function createWorkspaceId(): string {
+  return crypto.randomUUID();
+}
+
 export function createPassword(): string {
   return `Aa!${crypto.randomUUID()}`;
 }

@@ -569,6 +569,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Requirement List */
+        get: operations["requirements_list"];
+        put?: never;
+        /** Requirement Create */
+        post: operations["requirements_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requirements/{requirementId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Requirement Get */
+        get: operations["requirements_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workspaces/{workspaceId}/repositories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Authorized Repositories List */
+        get: operations["source_control_authorized_repositories_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/healthz": {
         parameters: {
             query?: never;
@@ -662,6 +714,11 @@ export interface components {
             /** Totpcode */
             totpCode: string;
         };
+        /**
+         * AssignmentState
+         * @enum {string}
+         */
+        AssignmentState: "UNASSIGNED" | "ASSIGNED";
         /** AuditEventListResponseDto */
         AuditEventListResponseDto: {
             /** Items */
@@ -708,6 +765,22 @@ export interface components {
              */
             state: "AUTHENTICATED";
         };
+        /** AuthorizedRepositoryListResponseDto */
+        AuthorizedRepositoryListResponseDto: {
+            /** Items */
+            items: components["schemas"]["AuthorizedRepositoryResponseDto"][];
+        };
+        /** AuthorizedRepositoryResponseDto */
+        AuthorizedRepositoryResponseDto: {
+            /** Defaultbranch */
+            defaultBranch: string;
+            /** Projectpath */
+            projectPath: string;
+            /** Provider */
+            provider: string;
+            /** Repositoryid */
+            repositoryId: string;
+        };
         /** BootstrapPasswordRequestDto */
         BootstrapPasswordRequestDto: {
             /** Password */
@@ -737,6 +810,28 @@ export interface components {
             profession?: string | null;
             /** Reason */
             reason: string;
+        };
+        /** CreateRequirementRequestDto */
+        CreateRequirementRequestDto: {
+            /** Acceptancecriteria */
+            acceptanceCriteria: string[];
+            /** Description */
+            description: string;
+            /** Initialrepositoryid */
+            initialRepositoryId: string;
+            /** Title */
+            title: string;
+            type: components["schemas"]["RequirementType"];
+            /**
+             * Workspaceid
+             * Format: uuid
+             */
+            workspaceId: string;
+        };
+        /** CreateRequirementResponseDto */
+        CreateRequirementResponseDto: {
+            requirement: components["schemas"]["RequirementResponseDto"];
+            workItem: components["schemas"]["WorkItemResponseDto"];
         };
         /** CreateWorkspaceRequestDto */
         CreateWorkspaceRequestDto: {
@@ -811,6 +906,11 @@ export interface components {
                 [key: string]: unknown;
             };
         };
+        /**
+         * ExecutorType
+         * @enum {string}
+         */
+        ExecutorType: "HUMAN";
         /** FormalMemberListResponseDto */
         FormalMemberListResponseDto: {
             /** Items */
@@ -1140,6 +1240,11 @@ export interface components {
              */
             status: "ready";
         };
+        /**
+         * RecordState
+         * @enum {string}
+         */
+        RecordState: "ACTIVE";
         /** RemoveLeaderRequestDto */
         RemoveLeaderRequestDto: {
             /** Reason */
@@ -1152,6 +1257,89 @@ export interface components {
             /** Totpcode */
             totpCode: string;
         };
+        /**
+         * RepositoryBindingBlockedReason
+         * @enum {string}
+         */
+        RepositoryBindingBlockedReason: "CONNECTOR_UNAVAILABLE" | "REPOSITORY_NOT_FOUND" | "ACCESS_DENIED" | "POLICY_DENIED" | "BINDING_CONFLICT" | "OWNER_UNASSIGNED" | "OWNER_INELIGIBLE" | "REPOSITORY_NOT_AUTHORIZED" | "RECONCILIATION_PENDING";
+        /**
+         * RepositoryState
+         * @enum {string}
+         */
+        RepositoryState: "WAITING_REPOSITORY" | "BLOCKED" | "BOUND";
+        /** RequirementDetailsResponseDto */
+        RequirementDetailsResponseDto: {
+            requirement: components["schemas"]["RequirementResponseDto"];
+            /** Workitems */
+            workItems: components["schemas"]["WorkItemResponseDto"][];
+        };
+        /** RequirementListResponseDto */
+        RequirementListResponseDto: {
+            /** Items */
+            items: components["schemas"]["RequirementResponseDto"][];
+            /** Nextcursor */
+            nextCursor: string | null;
+        };
+        /** RequirementResponseDto */
+        RequirementResponseDto: {
+            /** Acceptancecriteria */
+            acceptanceCriteria: string[];
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Createdby */
+            createdBy: string;
+            /** Currentsddbaselineid */
+            currentSddBaselineId: string | null;
+            /** Description */
+            description: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Initialrepositoryid */
+            initialRepositoryId: string;
+            recordState: components["schemas"]["RecordState"];
+            /** Requiredworkitemsethash */
+            requiredWorkItemSetHash: string;
+            /** Requiredworkitemsetversion */
+            requiredWorkItemSetVersion: number;
+            /** Requirementversion */
+            requirementVersion: number;
+            /** Revision */
+            revision: number;
+            /** Routesnapshothash */
+            routeSnapshotHash: string;
+            /** Routesnapshotversion */
+            routeSnapshotVersion: number;
+            state: components["schemas"]["RequirementState"];
+            /** Title */
+            title: string;
+            type: components["schemas"]["RequirementType"];
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+            /**
+             * Workspaceid
+             * Format: uuid
+             */
+            workspaceId: string;
+        };
+        /**
+         * RequirementState
+         * @enum {string}
+         */
+        RequirementState: "CREATED" | "PREPARING" | "AWAITING_CONFIRMATION" | "READY" | "IN_PROGRESS" | "VERIFYING" | "CANCELED";
+        /**
+         * RequirementType
+         * @enum {string}
+         */
+        RequirementType: "feat" | "fix" | "refactor" | "chore";
         /** RollbackPolicyRequestDto */
         RollbackPolicyRequestDto: {
             /** Reason */
@@ -1254,6 +1442,57 @@ export interface components {
             /** Message */
             message: string;
         };
+        /** WorkItemResponseDto */
+        WorkItemResponseDto: {
+            assignmentState: components["schemas"]["AssignmentState"];
+            /** Basecommitsha */
+            baseCommitSha: string | null;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Createdby */
+            createdBy: string;
+            /** Executorid */
+            executorId: string | null;
+            executorType: components["schemas"]["ExecutorType"];
+            /** Humanownerid */
+            humanOwnerId: string | null;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Repositoryblockedat */
+            repositoryBlockedAt: string | null;
+            repositoryBlockedReasonCode: components["schemas"]["RepositoryBindingBlockedReason"] | null;
+            /** Repositoryid */
+            repositoryId: string;
+            repositoryState: components["schemas"]["RepositoryState"];
+            /** Requiredcapabilities */
+            requiredCapabilities: string[];
+            /**
+             * Requirementid
+             * Format: uuid
+             */
+            requirementId: string;
+            /** Revision */
+            revision: number;
+            state: components["schemas"]["WorkItemState"];
+            /** Taskbranch */
+            taskBranch: string | null;
+            /**
+             * Updatedat
+             * Format: date-time
+             */
+            updatedAt: string;
+        };
+        /**
+         * WorkItemState
+         * @enum {string}
+         */
+        WorkItemState: "DRAFT" | "READY" | "IN_PROGRESS" | "VERIFYING" | "CANCELED";
         /** WorkspaceListResponseDto */
         WorkspaceListResponseDto: {
             /** Items */
@@ -4566,6 +4805,339 @@ export interface operations {
             };
             /** @description Conflict */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_list: {
+        parameters: {
+            query: {
+                workspaceId: string;
+                cursor?: string | null;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementListResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_create: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Stable replay key: 8-128 ASCII letters, digits, dot, underscore, colon, or hyphen */
+                "Idempotency-Key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRequirementRequestDto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Strong Requirement revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateRequirementResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Strong Requirement revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequirementDetailsResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    source_control_authorized_repositories_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                workspaceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthorizedRepositoryListResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
                 headers: {
                     [name: string]: unknown;
                 };

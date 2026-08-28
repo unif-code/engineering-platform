@@ -1,8 +1,10 @@
 import {
+  createAccountId,
   createChallengeToken,
   createEmployeeNo,
   createPassword,
   createTotpCode,
+  createWorkspaceId,
 } from '@root/tests/auth-fixtures';
 import {
   fireEvent,
@@ -15,7 +17,11 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ThemeProvider } from '@/features/theme';
 
 const mocks = vi.hoisted(() => ({
-  committedMe: null as null | { employeeId: string; name: string },
+  committedMe: null as null | {
+    accountId: string | null;
+    employeeId: string;
+    name: string;
+  },
   fetchNavigation: vi.fn(),
   getCurrentUser: vi.fn(),
   locationSearch: '',
@@ -48,7 +54,17 @@ vi.mock('@umijs/max', async () => {
       order: number;
       routeKey: string;
     }>;
-    principal: null | { employeeId: string; name: string };
+    principal: null | {
+      accountId: string | null;
+      employeeId: string;
+      name: string;
+    };
+    scopedCapabilities: Array<{
+      capability: string;
+      scopeId: string | null;
+      scopeType: 'PLATFORM' | 'WORKSPACE';
+    }>;
+    workspaces: Array<{ id: string; name: string; ownerId: string }>;
   };
 
   return {
@@ -106,11 +122,22 @@ const navigation = [
   },
 ];
 function createLoginFixture() {
+  const accountId = createAccountId();
   const employeeNo = createEmployeeNo();
+  const workspaceId = createWorkspaceId();
   const me = {
+    accountId,
     capabilities: ['identity.account.manage', 'audit.read'],
     employeeId: employeeNo,
     name: '平台管理员',
+    scopedCapabilities: [
+      {
+        capability: 'requirement.create',
+        scopeId: workspaceId,
+        scopeType: 'WORKSPACE' as const,
+      },
+    ],
+    workspaces: [{ id: workspaceId, name: '研发一组', ownerId: accountId }],
   };
   const fixture = {
     challengeToken: createChallengeToken(),
@@ -118,7 +145,13 @@ function createLoginFixture() {
     initialState: {
       capabilities: me.capabilities,
       navigation,
-      principal: { employeeId: me.employeeId, name: me.name },
+      principal: {
+        accountId: me.accountId,
+        employeeId: me.employeeId,
+        name: me.name,
+      },
+      scopedCapabilities: me.scopedCapabilities,
+      workspaces: me.workspaces,
     },
     loginInput: { employeeNo, password: createPassword() },
     me,

@@ -7,6 +7,8 @@ export type {
   LoginInput,
   LoginResult,
   Principal,
+  ScopedCapability,
   TotpInput,
   TotpResult,
+  WorkspaceSummary,
 } from '@/services/auth';

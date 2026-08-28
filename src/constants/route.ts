@@ -1,6 +1,6 @@
 export const APP_PATHS = {
   home: '/home',
-  tasks: '/tasks',
+  requirements: '/requirements',
   workspaces: '/workspaces',
   messages: '/messages',
   teamBoard: '/team-board',

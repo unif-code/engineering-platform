@@ -16,9 +16,23 @@ import type {
   CurrentUser,
   LoginInput,
   LoginResult,
+  ScopedCapability,
   TotpInput,
   TotpResult,
 } from './type';
+
+export function hasWorkspaceCapability(
+  scopedCapabilities: readonly ScopedCapability[],
+  capability: string,
+  workspaceId: string,
+): boolean {
+  return scopedCapabilities.some(
+    (item) =>
+      item.capability === capability &&
+      item.scopeType === 'WORKSPACE' &&
+      item.scopeId === workspaceId,
+  );
+}
 
 export async function fetchMe(): Promise<CurrentUser | null> {
   try {

@@ -7,7 +7,13 @@ import {
 } from '@umijs/max';
 import { Badge, Tag } from 'antd';
 import { createElement, type MouseEvent, type ReactNode } from 'react';
-import { fetchMe, logout, type Principal } from '@/features/auth';
+import {
+  fetchMe,
+  logout,
+  type Principal,
+  type ScopedCapability,
+  type WorkspaceSummary,
+} from '@/features/auth';
 import {
   buildLoginPath,
   buildMenuData,
@@ -31,12 +37,16 @@ export interface InitialState {
   capabilities: string[];
   navigation: NavigationItem[];
   principal: Principal | null;
+  scopedCapabilities: ScopedCapability[];
+  workspaces: WorkspaceSummary[];
 }
 
 const EMPTY_INITIAL_STATE: InitialState = {
   capabilities: [],
   navigation: [],
   principal: null,
+  scopedCapabilities: [],
+  workspaces: [],
 };
 
 let notifyRuntimeUnauthorized: () => void = () => undefined;
@@ -77,8 +87,14 @@ export async function getInitialState(): Promise<InitialState> {
       return EMPTY_INITIAL_STATE;
     }
 
-    const { capabilities, ...principal } = me;
-    return { capabilities, navigation, principal };
+    const { capabilities, scopedCapabilities, workspaces, ...principal } = me;
+    return {
+      capabilities,
+      navigation,
+      principal,
+      scopedCapabilities,
+      workspaces,
+    };
   } catch (error) {
     if (error instanceof ApiError && error.problem.status === 401) {
       return EMPTY_INITIAL_STATE;

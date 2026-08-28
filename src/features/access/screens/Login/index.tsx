@@ -25,8 +25,14 @@ export default function LoginPage() {
       message.error('登录状态刷新失败');
       return;
     }
-    const { capabilities, ...principal } = me;
-    await setInitialState({ capabilities, navigation, principal });
+    const { capabilities, scopedCapabilities, workspaces, ...principal } = me;
+    await setInitialState({
+      capabilities,
+      navigation,
+      principal,
+      scopedCapabilities,
+      workspaces,
+    });
     setLoginSucceeded(true);
   };
 
