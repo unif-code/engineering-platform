@@ -61,8 +61,8 @@ describe('buildMenuData', () => {
       'admin.policies',
     ]);
     for (const prototypeRouteKey of [
-      'tasks',
-      'tasks.archived',
+      'requirements',
+      'requirements.archived',
       'workspaces',
       'messages',
       'team-board',
@@ -109,7 +109,7 @@ describe('buildMenuData', () => {
     for (const hiddenRouteKey of [
       'login',
       'bootstrap',
-      'tasks.detail',
+      'requirements.detail',
       'access-denied',
     ]) {
       expect(menuKeys).not.toContain(hiddenRouteKey);
@@ -247,7 +247,7 @@ describe('buildMenuData', () => {
     const items = [
       navigationItem('admin.users', '账号管理', 4),
       navigationItem('admin', '管理概览', 8),
-      navigationItem('tasks.detail', '不应出现的任务详情', 1),
+      navigationItem('requirements.detail', '不应出现的需求详情', 1),
       navigationItem('constructor', '原型属性', 0),
       navigationItem('home', '首页', 6),
       navigationItem('ghost', '未知菜单', 2),
@@ -302,8 +302,8 @@ describe('buildMenuData', () => {
   it('原型标记不影响明确声明的独立菜单项', () => {
     expect(
       buildMenuData([
-        navigationItem('tasks', '任务', 1),
-        navigationItem('tasks.archived', '归档数据', 2),
+        navigationItem('requirements', '需求', 1),
+        navigationItem('requirements.archived', '归档数据', 2),
         {
           ...navigationItem('messages', '消息中心', 3),
           meta: { unreadCount: 4 },
@@ -318,10 +318,10 @@ describe('buildMenuData', () => {
       {
         children: [
           {
-            icon: ROUTE_REGISTRY.tasks.icon,
-            key: 'tasks',
-            name: '任务',
-            path: '/tasks',
+            icon: ROUTE_REGISTRY.requirements.icon,
+            key: 'requirements',
+            name: '需求',
+            path: '/requirements',
           },
           {
             icon: ROUTE_REGISTRY.messages.icon,
@@ -411,9 +411,9 @@ describe('buildMenuData', () => {
 
   it('order 相同时按 routeKey 稳定排序，重复 key 保持等价', () => {
     const sameRank = [
-      navigationItem('tasks', '任务 A', 10),
+      navigationItem('requirements', '需求 A', 10),
       navigationItem('home', '首页', 10),
-      navigationItem('tasks', '任务 B', 10),
+      navigationItem('requirements', '需求 B', 10),
       navigationItem('messages', '消息中心', 10),
     ];
 
@@ -425,8 +425,8 @@ describe('buildMenuData', () => {
     ).toEqual([
       { key: 'home', name: '首页' },
       { key: 'messages', name: '消息中心' },
-      { key: 'tasks', name: '任务 A' },
-      { key: 'tasks', name: '任务 B' },
+      { key: 'requirements', name: '需求 A' },
+      { key: 'requirements', name: '需求 B' },
     ]);
   });
 });

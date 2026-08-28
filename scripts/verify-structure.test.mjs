@@ -294,6 +294,33 @@ test('rejects route screen implementation and private files under pages', async 
   );
 });
 
+test('accepts Requirement route adapters through the public feature interface', async () => {
+  const root = await createValidFixture();
+  await write(
+    root,
+    'config/routes.ts',
+    [
+      'export default [',
+      "  { path: '/requirements', component: './Requirements', routeKey: 'requirements' },",
+      "  { path: '/requirements/:requirementId', component: './RequirementDetail', routeKey: 'requirements.detail' },",
+      '];',
+      '',
+    ].join('\n'),
+  );
+  await write(
+    root,
+    'src/pages/Requirements/index.tsx',
+    "export { RequirementsPage as default } from '@/features/requirements';\n",
+  );
+  await write(
+    root,
+    'src/pages/RequirementDetail/index.tsx',
+    "export { RequirementDetailPage as default } from '@/features/requirements';\n",
+  );
+
+  assert.deepEqual(await verifyStructure(root), []);
+});
+
 test('rejects page adapters that bypass their approved feature screen interface', async () => {
   const root = await createValidFixture();
   await write(

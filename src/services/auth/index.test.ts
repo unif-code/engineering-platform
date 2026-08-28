@@ -1,10 +1,12 @@
 import {
+  createAccountId,
   createChallengeToken,
   createEmployeeNo,
   createPassword,
   createProvisioningUri,
   createTotpCode,
   createTotpSecret,
+  createWorkspaceId,
 } from '@root/tests/auth-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -33,37 +35,76 @@ beforeEach(() => {
 });
 
 describe('auth service V0.2 generated client seam', () => {
-  it('读取 generated Principal，并把 scoped capabilities 投影为现有权限字符串', async () => {
+  it('完整投影 Principal 的账号、Workspace 与 scoped capability 事实', async () => {
+    const accountId = createAccountId();
     const employeeId = createEmployeeNo();
+    const workspaceId = createWorkspaceId();
     apiMock.GET.mockResolvedValue(
       result({
+        accountId,
         capabilities: [
           {
             capability: 'identity.account.manage',
+            scopeId: null,
             scopeType: 'PLATFORM',
+          },
+          {
+            capability: 'requirement.create',
+            scopeId: workspaceId,
+            scopeType: 'WORKSPACE',
           },
         ],
         employeeId,
         name: '平台管理员',
+        workspaces: [
+          {
+            id: workspaceId,
+            name: '研发一组',
+            ownerId: accountId,
+          },
+        ],
       }),
     );
 
     await expect(getCurrentUser()).resolves.toEqual({
-      capabilities: ['identity.account.manage'],
+      accountId,
+      capabilities: ['identity.account.manage', 'requirement.create'],
       employeeId,
       name: '平台管理员',
+      scopedCapabilities: [
+        {
+          capability: 'identity.account.manage',
+          scopeId: null,
+          scopeType: 'PLATFORM',
+        },
+        {
+          capability: 'requirement.create',
+          scopeId: workspaceId,
+          scopeType: 'WORKSPACE',
+        },
+      ],
+      workspaces: [
+        {
+          id: workspaceId,
+          name: '研发一组',
+          ownerId: accountId,
+        },
+      ],
     });
     expect(apiMock.GET).toHaveBeenCalledWith('/api/v1/me');
   });
 
-  it('Principal 缺少 capabilities 时返回空权限数组', async () => {
+  it('Principal 缺少可选 Session 集合时归一为空集合', async () => {
     const employeeId = createEmployeeNo();
     apiMock.GET.mockResolvedValue(result({ employeeId, name: '普通用户' }));
 
     await expect(getCurrentUser()).resolves.toEqual({
+      accountId: null,
       capabilities: [],
       employeeId,
       name: '普通用户',
+      scopedCapabilities: [],
+      workspaces: [],
     });
   });
 

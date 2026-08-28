@@ -15,9 +15,12 @@ const mocks = vi.hoisted(() => ({
       routeKey: string;
     }>,
     principal: null as null | {
+      accountId: string | null;
       employeeId: string;
       name: string;
     },
+    scopedCapabilities: [],
+    workspaces: [],
   },
   location: {
     hash: '',
@@ -51,7 +54,7 @@ vi.mock('@umijs/max', () => ({
   request: mocks.request,
   useLocation: () => mocks.location,
   useModel: () => ({ error: mocks.error, initialState: mocks.initialState }),
-  useParams: () => ({ taskId: 'TASK-42' }),
+  useParams: () => ({ requirementId: 'REQUIREMENT-42' }),
 }));
 
 vi.mock('@ant-design/charts', () => ({
@@ -65,8 +68,6 @@ import AdminModelsPage from '@/pages/AdminModels';
 import AdminRolesPage from '@/pages/AdminRoles';
 import AdminSkillsPage from '@/pages/AdminSkills';
 import MessagesPage from '@/pages/Messages';
-import TaskDetailPage from '@/pages/TaskDetail';
-import TasksPage from '@/pages/Tasks';
 import TeamBoardPage from '@/pages/TeamBoard';
 import RouteGuard from './RouteGuard';
 
@@ -82,7 +83,13 @@ beforeEach(() => {
   mocks.initialState = {
     capabilities: ['identity.account.manage'],
     navigation: [],
-    principal: { employeeId: createEmployeeNo(), name: '平台用户' },
+    principal: {
+      accountId: null,
+      employeeId: createEmployeeNo(),
+      name: '平台用户',
+    },
+    scopedCapabilities: [],
+    workspaces: [],
   };
   mocks.location = { hash: '', pathname: '/home', search: '' };
   mocks.outlet = null;
@@ -166,24 +173,31 @@ describe('RouteGuard', () => {
     expect(screen.getByTestId('outlet')).toBeInTheDocument();
   });
 
+  it('Requirement 详情仅继承已激活的父 requirements 入口', () => {
+    mocks.location.pathname = '/requirements/REQUIREMENT-42';
+    mocks.initialState.navigation = [navigationItem('requirements')];
+
+    render(<RouteGuard />);
+
+    expect(screen.getByTestId('outlet')).toBeInTheDocument();
+  });
+
+  it('只有隐藏详情 routeKey 而没有父入口时仍 fail closed', () => {
+    mocks.location.pathname = '/requirements/REQUIREMENT-42';
+    mocks.initialState.navigation = [navigationItem('requirements.detail')];
+
+    render(<RouteGuard />);
+
+    expect(screen.getByText('无权访问')).toBeInTheDocument();
+    expect(screen.queryByTestId('outlet')).not.toBeInTheDocument();
+  });
+
   it.each<{
     findPage: () => Promise<HTMLElement>;
     Page: ComponentType;
     path: string;
     routeKey: string;
   }>([
-    {
-      findPage: () => screen.findByRole('toolbar', { name: '任务筛选与操作' }),
-      Page: TasksPage,
-      path: '/tasks',
-      routeKey: 'tasks',
-    },
-    {
-      findPage: () => screen.findByRole('region', { name: '任务 TASK-42' }),
-      Page: TaskDetailPage,
-      path: '/tasks/TASK-42',
-      routeKey: 'tasks.detail',
-    },
     {
       findPage: () => screen.findByRole('radiogroup', { name: '消息分类' }),
       Page: MessagesPage,

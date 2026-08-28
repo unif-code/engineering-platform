@@ -55,17 +55,17 @@ const expectedRoutes = {
     kind: 'page',
     path: '/home',
   },
-  tasks: {
+  requirements: {
     access: 'session',
     group: 'user',
     kind: 'page',
-    path: '/tasks',
+    path: '/requirements',
   },
-  'tasks.detail': {
+  'requirements.detail': {
     access: 'session',
     kind: 'page',
-    parent: 'tasks',
-    path: '/tasks/:taskId',
+    parent: 'requirements',
+    path: '/requirements/:requirementId',
   },
   workspaces: {
     access: 'session',
@@ -161,7 +161,7 @@ const expectedRoutes = {
 const expectedIcons: Partial<Record<RouteKey, JSXElementConstructor<object>>> =
   {
     home: HomeOutlined,
-    tasks: UnorderedListOutlined,
+    requirements: UnorderedListOutlined,
     workspaces: AppstoreOutlined,
     messages: BellOutlined,
     'team-board': BarChartOutlined,
@@ -192,7 +192,7 @@ describe('ROUTE_REGISTRY', () => {
       adminUsers: '/admin/users',
       home: '/home',
       teamBoard: '/team-board',
-      tasks: '/tasks',
+      requirements: '/requirements',
     });
   });
 
@@ -208,8 +208,8 @@ describe('ROUTE_REGISTRY', () => {
     expect(screenEntries.map(([routeKey]) => routeKey)).toEqual([
       'login',
       'home',
-      'tasks',
-      'tasks.detail',
+      'requirements',
+      'requirements.detail',
       'workspaces',
       'messages',
       'team-board',
@@ -235,7 +235,9 @@ describe('ROUTE_REGISTRY', () => {
       ROUTE_REGISTRY['admin.users'],
     );
     expect(isRouteKey('adminUsers')).toBe(false);
-    expect(isRouteKey('tasks.archived')).toBe(false);
+    expect(isRouteKey('requirements.archived')).toBe(false);
+    expect(isRouteKey('tasks')).toBe(false);
+    expect(isRouteKey('tasks.detail')).toBe(false);
     expect(isRouteKey('ghost')).toBe(false);
     expect(isRouteKey('constructor')).toBe(false);
     expect(getRouteRegistration('ghost')).toBeUndefined();
@@ -255,7 +257,7 @@ describe('ROUTE_REGISTRY', () => {
     expect(ROUTE_REGISTRY.login).toMatchObject({ group: null, icon: null });
     expect(ROUTE_REGISTRY.app).toMatchObject({ group: null, icon: null });
     expect(ROUTE_REGISTRY.root).toMatchObject({ group: null, icon: null });
-    expect(ROUTE_REGISTRY['tasks.detail']).toMatchObject({
+    expect(ROUTE_REGISTRY['requirements.detail']).toMatchObject({
       group: null,
       icon: null,
     });
@@ -265,7 +267,7 @@ describe('ROUTE_REGISTRY', () => {
     });
     for (const routeKey of [
       'admin',
-      'tasks',
+      'requirements',
       'messages',
       'team-board',
       'admin.workspaces',
@@ -282,14 +284,20 @@ describe('ROUTE_REGISTRY', () => {
     }
   });
 
-  it('不注册旧归档 routeKey，动态任务详情仍按唯一页面规则匹配', () => {
-    expect(getRouteRegistration('tasks.archived')).toBeUndefined();
-    expect(findRouteRegistration('/tasks/archived')).toMatchObject({
-      routeKey: 'tasks.detail',
+  it('不注册旧 Task 与归档 routeKey，动态 Requirement 详情按唯一页面匹配', () => {
+    expect(getRouteRegistration('requirements.archived')).toBeUndefined();
+    expect(getRouteRegistration('tasks')).toBeUndefined();
+    expect(getRouteRegistration('tasks.detail')).toBeUndefined();
+    expect(findRouteRegistration('/tasks')).toBeUndefined();
+    expect(findRouteRegistration('/tasks/task-42')).toBeUndefined();
+    expect(findRouteRegistration('/requirements/archived')).toMatchObject({
+      routeKey: 'requirements.detail',
     });
-    expect(findRouteRegistration('/tasks/task-42')).toMatchObject({
-      routeKey: 'tasks.detail',
-    });
+    expect(findRouteRegistration('/requirements/requirement-42')).toMatchObject(
+      {
+        routeKey: 'requirements.detail',
+      },
+    );
     expect(findRouteRegistration('/admin/users')).toMatchObject({
       routeKey: 'admin.users',
     });

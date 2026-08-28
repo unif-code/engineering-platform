@@ -12,8 +12,10 @@ function createInitialState(routeKeys: string[], loggedIn = true) {
       routeKey,
     })),
     principal: loggedIn
-      ? { employeeId: createEmployeeNo(), name: '平台用户' }
+      ? { accountId: null, employeeId: createEmployeeNo(), name: '平台用户' }
       : null,
+    scopedCapabilities: [],
+    workspaces: [],
   };
 }
 

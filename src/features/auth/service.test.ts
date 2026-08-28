@@ -1,10 +1,12 @@
 import {
+  createAccountId,
   createChallengeToken,
   createEmployeeNo,
   createPassword,
   createProvisioningUri,
   createTotpCode,
   createTotpSecret,
+  createWorkspaceId,
 } from '@root/tests/auth-fixtures';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from '@/services/transport';
@@ -25,6 +27,7 @@ import {
   confirmBootstrapTotp,
   enrollBootstrapTotp,
   fetchMe,
+  hasWorkspaceCapability,
   login,
   logout,
   setBootstrapPassword,
@@ -43,14 +46,68 @@ beforeEach(() => {
 
 describe('auth feature service', () => {
   it('fetchMe 返回下层 service 的当前用户', async () => {
+    const accountId = createAccountId();
+    const workspaceId = createWorkspaceId();
     const principal = {
+      accountId,
       capabilities: ['identity.account.manage'],
       employeeId: createEmployeeNo(),
       name: '平台管理员',
+      scopedCapabilities: [
+        {
+          capability: 'identity.account.manage',
+          scopeId: null,
+          scopeType: 'PLATFORM',
+        },
+      ],
+      workspaces: [
+        {
+          id: workspaceId,
+          name: '研发一组',
+          ownerId: accountId,
+        },
+      ],
     };
     authServiceMock.getCurrentUser.mockResolvedValue(principal);
 
     await expect(fetchMe()).resolves.toEqual(principal);
+  });
+
+  it('Workspace capability 必须精确匹配 WORKSPACE scope 与 scopeId', () => {
+    const workspaceId = createWorkspaceId();
+    const otherWorkspaceId = createWorkspaceId();
+
+    expect(
+      hasWorkspaceCapability(
+        [
+          {
+            capability: 'requirement.create',
+            scopeId: null,
+            scopeType: 'PLATFORM',
+          },
+          {
+            capability: 'requirement.create',
+            scopeId: otherWorkspaceId,
+            scopeType: 'WORKSPACE',
+          },
+        ],
+        'requirement.create',
+        workspaceId,
+      ),
+    ).toBe(false);
+    expect(
+      hasWorkspaceCapability(
+        [
+          {
+            capability: 'requirement.create',
+            scopeId: workspaceId,
+            scopeType: 'WORKSPACE',
+          },
+        ],
+        'requirement.create',
+        workspaceId,
+      ),
+    ).toBe(true);
   });
 
   it('logout 委托 auth service 且传播结果', async () => {

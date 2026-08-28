@@ -199,9 +199,9 @@ describe('shell branding', () => {
       <RouteContext.Provider
         value={{
           pageTitleInfo: {
-            id: '/tasks',
-            pageName: '任务',
-            title: '任务 - 研发协作平台',
+            id: '/requirements',
+            pageName: '需求',
+            title: '需求 - 研发协作平台',
           },
         }}
       >
@@ -209,7 +209,7 @@ describe('shell branding', () => {
       </RouteContext.Provider>,
     );
 
-    expect(screen.getByText('任务')).toBeInTheDocument();
+    expect(screen.getByText('需求')).toBeInTheDocument();
     expect(screen.queryByText('研发协作平台')).not.toBeInTheDocument();
   });
 });

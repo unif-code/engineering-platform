@@ -7,6 +7,8 @@ const mocks = vi.hoisted(() => ({
     capabilities: [],
     navigation: [],
     principal: null,
+    scopedCapabilities: [],
+    workspaces: [],
   } as InitialState | undefined,
 }));
 
@@ -29,6 +31,8 @@ afterEach(() => {
     capabilities: [],
     navigation: [],
     principal: null,
+    scopedCapabilities: [],
+    workspaces: [],
   };
 });
 
@@ -42,6 +46,8 @@ describe('AdminMenusPage', () => {
         navigationItem('home', '工作台（服务端）', 10),
       ],
       principal: null,
+      scopedCapabilities: [],
+      workspaces: [],
     };
 
     render(<AdminMenusPage />);

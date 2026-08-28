@@ -1,4 +1,8 @@
-import { createEmployeeNo } from '@root/tests/auth-fixtures';
+import {
+  createAccountId,
+  createEmployeeNo,
+  createWorkspaceId,
+} from '@root/tests/auth-fixtures';
 import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { theme } from 'antd';
@@ -104,11 +108,28 @@ describe('local development proxy', () => {
 
 describe('getInitialState', () => {
   it('聚合 auth 与 navigation Feature 的精确结果', async () => {
+    const accountId = createAccountId();
     const employeeId = createEmployeeNo();
+    const workspaceId = createWorkspaceId();
     const me = {
+      accountId,
       capabilities: ['identity.account.manage', 'audit.read'],
       employeeId,
       name: '平台管理员',
+      scopedCapabilities: [
+        {
+          capability: 'requirement.create',
+          scopeId: workspaceId,
+          scopeType: 'WORKSPACE',
+        },
+      ],
+      workspaces: [
+        {
+          id: workspaceId,
+          name: '研发一组',
+          ownerId: accountId,
+        },
+      ],
     };
     const navigation = [
       {
@@ -124,7 +145,9 @@ describe('getInitialState', () => {
     await expect(getInitialState()).resolves.toEqual({
       capabilities: me.capabilities,
       navigation,
-      principal: { employeeId, name: '平台管理员' },
+      principal: { accountId, employeeId, name: '平台管理员' },
+      scopedCapabilities: me.scopedCapabilities,
+      workspaces: me.workspaces,
     });
     expect(featureMocks.fetchMe).toHaveBeenCalledTimes(1);
     expect(featureMocks.fetchNavigation).toHaveBeenCalledTimes(1);
@@ -150,6 +173,8 @@ describe('getInitialState', () => {
       capabilities: [],
       navigation: [],
       principal: null,
+      scopedCapabilities: [],
+      workspaces: [],
     });
   });
 
@@ -168,6 +193,8 @@ describe('getInitialState', () => {
       capabilities: [],
       navigation: [],
       principal: null,
+      scopedCapabilities: [],
+      workspaces: [],
     });
   });
 
@@ -261,7 +288,9 @@ describe('layout', () => {
             routeKey: 'home',
           },
         ],
-        principal: { employeeId, name: '平台用户' },
+        principal: { accountId: null, employeeId, name: '平台用户' },
+        scopedCapabilities: [],
+        workspaces: [],
       },
     });
 
@@ -327,6 +356,8 @@ describe('layout', () => {
           },
         ],
         principal: null,
+        scopedCapabilities: [],
+        workspaces: [],
       },
     });
     const groups = config.menuDataRender?.() ?? [];
@@ -475,6 +506,8 @@ describe('layout', () => {
         capabilities: [],
         navigation: userOnlyNavigation,
         principal: null,
+        scopedCapabilities: [],
+        workspaces: [],
       },
     }).menuDataRender?.();
     const adminMenu = layout({
@@ -482,6 +515,8 @@ describe('layout', () => {
         capabilities: [],
         navigation: adminNavigation,
         principal: null,
+        scopedCapabilities: [],
+        workspaces: [],
       },
     }).menuDataRender?.();
 
@@ -523,6 +558,8 @@ describe('layout', () => {
         capabilities: [],
         navigation: [],
         principal: null,
+        scopedCapabilities: [],
+        workspaces: [],
       });
       expect(featureMocks.replace).toHaveBeenCalledWith(
         '/login?redirect=%2Fadmin%2Fusers%3Fstatus%3Denabled%23member',
@@ -672,7 +709,9 @@ describe('layout', () => {
       initialState: {
         capabilities: ['identity.account.manage'],
         navigation: [],
-        principal: { employeeId, name: '平台管理员' },
+        principal: { accountId: null, employeeId, name: '平台管理员' },
+        scopedCapabilities: [],
+        workspaces: [],
       },
       setInitialState,
     });
@@ -688,6 +727,8 @@ describe('layout', () => {
       capabilities: [],
       navigation: [],
       principal: null,
+      scopedCapabilities: [],
+      workspaces: [],
     });
     expect(featureMocks.replace).toHaveBeenCalledWith('/login');
 

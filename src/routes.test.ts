@@ -20,8 +20,8 @@ const expectedComponents = {
   '/login': './Login',
   '/bootstrap': './Bootstrap',
   '/home': './Home',
-  '/tasks': './Tasks',
-  '/tasks/:taskId': './TaskDetail',
+  '/requirements': './Requirements',
+  '/requirements/:requirementId': './RequirementDetail',
   '/workspaces': './Workspaces',
   '/messages': './Messages',
   '/team-board': './TeamBoard',
@@ -173,16 +173,18 @@ describe('route registry integration', () => {
     expect(topLevelAdminRoutes).toEqual([]);
   });
 
-  it('删除旧归档兼容路由，只保留动态任务详情页面', () => {
+  it('删除旧 Task 路由，只保留动态 Requirement 详情页面', () => {
+    expect(allRoutes.find(({ path }) => path === '/tasks')).toBeUndefined();
     expect(
-      allRoutes.find(({ path }) => path === '/tasks/archived'),
+      allRoutes.find(({ path }) => path === '/tasks/:taskId'),
     ).toBeUndefined();
-    expect(getComponentRoute('/tasks/:taskId')).toMatchObject({
+    expect(getComponentRoute('/requirements/:requirementId')).toMatchObject({
       hideInMenu: true,
-      parentKeys: ['/tasks'],
-      routeKey: 'tasks.detail',
+      parentKeys: ['/requirements'],
+      routeKey: 'requirements.detail',
     });
-    expect('tasks.archived' in ROUTE_REGISTRY).toBe(false);
-    expect(ROUTE_REGISTRY['tasks.detail'].parent).toBe('tasks');
+    expect('tasks' in ROUTE_REGISTRY).toBe(false);
+    expect('tasks.detail' in ROUTE_REGISTRY).toBe(false);
+    expect(ROUTE_REGISTRY['requirements.detail'].parent).toBe('requirements');
   });
 });

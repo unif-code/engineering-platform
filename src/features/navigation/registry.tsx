@@ -85,24 +85,24 @@ export const ROUTE_REGISTRY = {
     path: APP_PATHS.home,
     redirectTo: null,
   },
-  tasks: {
+  requirements: {
     access: 'session',
     group: 'user',
     icon: <UnorderedListOutlined />,
     kind: 'page',
     menu: true,
     parent: 'app',
-    path: APP_PATHS.tasks,
+    path: APP_PATHS.requirements,
     redirectTo: null,
   },
-  'tasks.detail': {
+  'requirements.detail': {
     access: 'session',
     group: null,
     icon: null,
     kind: 'page',
     menu: false,
-    parent: 'tasks',
-    path: '/tasks/:taskId',
+    parent: 'requirements',
+    path: '/requirements/:requirementId',
     redirectTo: null,
   },
   workspaces: {

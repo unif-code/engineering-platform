@@ -17,7 +17,10 @@ describe('session redirects', () => {
       candidate: '/admin/users?status=enabled#member',
       expected: '/admin/users?status=enabled#member',
     },
-    { candidate: '/tasks/task-42', expected: '/tasks/task-42' },
+    {
+      candidate: '/requirements/requirement-42',
+      expected: '/requirements/requirement-42',
+    },
     { candidate: '/', expected: '/' },
     { candidate: null, expected: '/home' },
     { candidate: '', expected: '/home' },

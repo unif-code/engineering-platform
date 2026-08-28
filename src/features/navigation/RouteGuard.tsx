@@ -29,8 +29,19 @@ export function RouteGuard() {
 
   if (
     match.routeKey === 'access-denied' ||
-    match.registration.kind === 'redirect' ||
-    initialState.navigation.some(({ routeKey }) => routeKey === match.routeKey)
+    match.registration.kind === 'redirect'
+  ) {
+    return <Outlet />;
+  }
+
+  const requiredRouteKey = match.registration.menu
+    ? match.routeKey
+    : match.registration.parent;
+  if (
+    requiredRouteKey !== null &&
+    initialState.navigation.some(
+      ({ routeKey }) => routeKey === requiredRouteKey,
+    )
   ) {
     return <Outlet />;
   }

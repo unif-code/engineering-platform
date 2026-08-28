@@ -6,6 +6,7 @@ export {
   confirmBootstrapTotp,
   enrollBootstrapTotp,
   fetchMe,
+  hasWorkspaceCapability,
   login,
   logout,
   setBootstrapPassword,
@@ -20,6 +21,8 @@ export type {
   LoginInput,
   LoginResult,
   Principal,
+  ScopedCapability,
   TotpInput,
   TotpResult,
+  WorkspaceSummary,
 } from './type';
