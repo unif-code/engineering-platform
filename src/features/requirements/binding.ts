@@ -6,6 +6,7 @@ import type {
 } from './type';
 
 export const REQUIREMENT_POLL_INTERVAL_MS = 3_000;
+export const REQUIREMENT_AUTO_POLL_WINDOW_MS = 60_000;
 
 export type RepositoryBindingView =
   | {

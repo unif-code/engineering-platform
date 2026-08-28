@@ -5,7 +5,7 @@ import {
   ProTable,
   type ProTableProps,
 } from '@ant-design/pro-components';
-import { history, useModel } from '@umijs/max';
+import { history, useLocation, useModel } from '@umijs/max';
 import { Alert, Button, Empty, Select, Typography } from 'antd';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
@@ -18,13 +18,7 @@ import {
 } from './constant';
 import { formatRequirementError } from './error';
 import { useStyles } from './index.style';
-import {
-  createCursorPagination,
-  cursorForPage,
-  hasNextCursorPage,
-  loadRequirementTablePage,
-  recordNextCursor,
-} from './list.util';
+import { loadRequirementTablePage } from './list.util';
 import { listRequirements } from './service';
 import type { CreateRequirementResult, RequirementSummary } from './type';
 
@@ -33,6 +27,54 @@ interface RequirementTableParams {
   cursorPage: number;
   limit: number;
   workspaceId: string;
+}
+
+interface RequirementListLocation {
+  cursor?: string;
+  page: number;
+  previous?: RequirementListLocation;
+  workspaceId?: string;
+}
+
+interface RequirementListHistoryState {
+  requirementList?: RequirementListLocation;
+}
+
+function parseRequirementListLocation(
+  search: string,
+  readableWorkspaceIds: ReadonlySet<string>,
+  fallbackWorkspaceId?: string,
+): RequirementListLocation {
+  const params = new URLSearchParams(search);
+  const requestedWorkspaceId = params.get('workspaceId') ?? undefined;
+  const workspaceId =
+    requestedWorkspaceId && readableWorkspaceIds.has(requestedWorkspaceId)
+      ? requestedWorkspaceId
+      : fallbackWorkspaceId;
+  const cursor = params.get('cursor')?.trim() || undefined;
+  const requestedPage = Number(params.get('page'));
+  const page =
+    cursor && Number.isSafeInteger(requestedPage) && requestedPage >= 2
+      ? requestedPage
+      : 1;
+  return {
+    ...(page === 1 ? {} : { cursor }),
+    page,
+    workspaceId,
+  };
+}
+
+function buildRequirementListPath(location: RequirementListLocation): string {
+  const params = new URLSearchParams();
+  if (location.workspaceId) {
+    params.set('workspaceId', location.workspaceId);
+  }
+  if (location.cursor) {
+    params.set('cursor', location.cursor);
+    params.set('page', String(location.page));
+  }
+  const search = params.toString();
+  return search ? `/requirements?${search}` : '/requirements';
 }
 
 const formatUpdatedAt = (value: string) =>
@@ -46,6 +88,9 @@ const formatUpdatedAt = (value: string) =>
 export function RequirementsPage() {
   const { styles } = useStyles();
   const { initialState } = useModel('@@initialState');
+  const location = useLocation();
+  const sessionKey =
+    initialState?.principal?.accountId ?? initialState?.principal?.employeeId;
   const actionRef = useRef<ActionType | undefined>(undefined);
   const requestSequenceRef = useRef(0);
   const readableWorkspaces = useMemo(
@@ -70,13 +115,26 @@ export function RequirementsPage() {
       ),
     [initialState?.scopedCapabilities, initialState?.workspaces],
   );
+  const readableWorkspaceIds = useMemo(
+    () => new Set(readableWorkspaces.map((workspace) => workspace.id)),
+    [readableWorkspaces],
+  );
+  const initialListLocation = parseRequirementListLocation(
+    location.search,
+    readableWorkspaceIds,
+    readableWorkspaces[0]?.id,
+  );
   const [workspaceId, setWorkspaceId] = useState<string | undefined>(
-    () => readableWorkspaces[0]?.id,
+    () => initialListLocation.workspaceId,
   );
-  const [currentPage, setCurrentPage] = useState(1);
-  const [cursorPagination, setCursorPagination] = useState(
-    createCursorPagination,
+  const [currentPage, setCurrentPage] = useState(initialListLocation.page);
+  const [currentCursor, setCurrentCursor] = useState<string | undefined>(
+    initialListLocation.cursor,
   );
+  const previousLocationRef = useRef<RequirementListLocation | undefined>(
+    undefined,
+  );
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [rows, setRows] = useState<RequirementSummary[]>([]);
   const [listError, setListError] = useState<unknown>();
   const [loading, setLoading] = useState(false);
@@ -86,12 +144,14 @@ export function RequirementsPage() {
     requestSequenceRef.current += 1;
   }, []);
 
-  const resetWorkspaceList = useCallback(
-    (nextWorkspaceId: string | undefined) => {
+  const applyListLocation = useCallback(
+    (nextLocation: RequirementListLocation) => {
       invalidatePendingRequests();
-      setWorkspaceId(nextWorkspaceId);
-      setCurrentPage(1);
-      setCursorPagination(createCursorPagination());
+      setWorkspaceId(nextLocation.workspaceId);
+      setCurrentPage(nextLocation.page);
+      setCurrentCursor(nextLocation.cursor);
+      previousLocationRef.current = nextLocation.previous;
+      setNextCursor(null);
       setRows([]);
       setListError(undefined);
     },
@@ -99,17 +159,43 @@ export function RequirementsPage() {
   );
 
   useEffect(() => {
+    const parsedLocation = parseRequirementListLocation(
+      location.search,
+      readableWorkspaceIds,
+      readableWorkspaces[0]?.id,
+    );
+    const historyLocation = (
+      location.state as RequirementListHistoryState | null
+    )?.requirementList;
+    const nextLocation =
+      historyLocation &&
+      buildRequirementListPath(historyLocation) ===
+        buildRequirementListPath(parsedLocation)
+        ? { ...parsedLocation, previous: historyLocation.previous }
+        : parsedLocation;
     if (
-      workspaceId !== undefined &&
-      readableWorkspaces.some((workspace) => workspace.id === workspaceId)
+      workspaceId !== nextLocation.workspaceId ||
+      currentPage !== nextLocation.page ||
+      currentCursor !== nextLocation.cursor ||
+      previousLocationRef.current !== nextLocation.previous
     ) {
-      return;
+      applyListLocation(nextLocation);
     }
-    const firstReadableWorkspaceId = readableWorkspaces[0]?.id;
-    if (workspaceId !== firstReadableWorkspaceId) {
-      resetWorkspaceList(firstReadableWorkspaceId);
+    const canonicalPath = buildRequirementListPath(nextLocation);
+    if (`${location.pathname}${location.search}` !== canonicalPath) {
+      history.replace(canonicalPath, { requirementList: nextLocation });
     }
-  }, [readableWorkspaces, resetWorkspaceList, workspaceId]);
+  }, [
+    applyListLocation,
+    currentCursor,
+    currentPage,
+    location.pathname,
+    location.search,
+    location.state,
+    readableWorkspaceIds,
+    readableWorkspaces,
+    workspaceId,
+  ]);
 
   useEffect(
     () => () => {
@@ -118,7 +204,52 @@ export function RequirementsPage() {
     [invalidatePendingRequests],
   );
 
-  const currentCursor = cursorForPage(cursorPagination, currentPage);
+  const navigateToListLocation = useCallback(
+    (nextLocation: RequirementListLocation) => {
+      history.push(buildRequirementListPath(nextLocation), {
+        requirementList: nextLocation,
+      });
+      applyListLocation(nextLocation);
+    },
+    [applyListLocation],
+  );
+
+  const resetWorkspaceList = useCallback(
+    (nextWorkspaceId: string | undefined) => {
+      navigateToListLocation({ page: 1, workspaceId: nextWorkspaceId });
+    },
+    [navigateToListLocation],
+  );
+
+  const goToNextPage = useCallback(() => {
+    const activeCursor = nextCursor as string;
+    const activeWorkspaceId = workspaceId as string;
+    navigateToListLocation({
+      cursor: activeCursor,
+      page: currentPage + 1,
+      previous: {
+        ...(currentCursor === undefined ? {} : { cursor: currentCursor }),
+        page: currentPage,
+        previous: previousLocationRef.current,
+        workspaceId: activeWorkspaceId,
+      },
+      workspaceId: activeWorkspaceId,
+    });
+  }, [
+    currentCursor,
+    currentPage,
+    navigateToListLocation,
+    nextCursor,
+    workspaceId,
+  ]);
+
+  const goToPreviousPage = useCallback(() => {
+    const previousLocation =
+      previousLocationRef.current as RequirementListLocation;
+    history.back();
+    applyListLocation(previousLocation);
+  }, [applyListLocation]);
+
   const requestParams = useMemo<RequirementTableParams | undefined>(
     () =>
       workspaceId
@@ -151,14 +282,13 @@ export function RequirementsPage() {
     }
     if (!result.success) {
       setListError(result.error);
+      setNextCursor(null);
       setRows([]);
       return { data: [], success: false };
     }
     setListError(undefined);
     setRows(result.data);
-    setCursorPagination((pagination) =>
-      recordNextCursor(pagination, params.cursorPage, result.nextCursor),
-    );
+    setNextCursor(result.nextCursor);
     return { data: result.data, success: true };
   }, []);
 
@@ -232,8 +362,8 @@ export function RequirementsPage() {
     [styles.requirementId],
   );
 
-  const hasPreviousPage = currentPage > 1;
-  const hasNextPage = hasNextCursorPage(cursorPagination, currentPage);
+  const hasPreviousPage = previousLocationRef.current !== undefined;
+  const hasNextPage = nextCursor !== null;
 
   return (
     <PageContainer ghost pageHeaderRender={false}>
@@ -260,12 +390,12 @@ export function RequirementsPage() {
                   value: workspace.id,
                 }))}
                 placeholder="选择可读取的工作区"
-                showSearch
+                showSearch={{ optionFilterProp: 'label' }}
                 value={workspaceId}
                 virtual={false}
               />
             </div>
-            {createWorkspaces.length > 0 ? (
+            {createWorkspaces.length > 0 && sessionKey ? (
               <Button onClick={() => setCreateOpen(true)} type="primary">
                 创建需求
               </Button>
@@ -315,31 +445,18 @@ export function RequirementsPage() {
             <nav aria-label="需求列表分页" className={styles.pagination}>
               <Button
                 disabled={!hasPreviousPage || loading}
-                onClick={() => {
-                  invalidatePendingRequests();
-                  setRows([]);
-                  setListError(undefined);
-                  setCurrentPage((page) => page - 1);
-                }}
+                onClick={goToPreviousPage}
               >
                 上一页
               </Button>
               <span className={styles.pageNumber}>第 {currentPage} 页</span>
-              <Button
-                disabled={!hasNextPage || loading}
-                onClick={() => {
-                  invalidatePendingRequests();
-                  setRows([]);
-                  setListError(undefined);
-                  setCurrentPage((page) => page + 1);
-                }}
-              >
+              <Button disabled={!hasNextPage || loading} onClick={goToNextPage}>
                 下一页
               </Button>
             </nav>
           </>
         )}
-        {createOpen ? (
+        {createOpen && sessionKey ? (
           <CreateRequirementModal
             initialWorkspaceId={
               createWorkspaces.some((workspace) => workspace.id === workspaceId)
@@ -349,6 +466,7 @@ export function RequirementsPage() {
             onCancel={() => setCreateOpen(false)}
             onCreated={handleCreated}
             open
+            sessionKey={sessionKey}
             workspaces={createWorkspaces}
           />
         ) : null}

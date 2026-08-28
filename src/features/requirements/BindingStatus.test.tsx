@@ -54,7 +54,7 @@ afterEach(() => {
 
 describe('BindingStatus', () => {
   it('PENDING 只展示等待事实，不猜测 branch 或 SHA', () => {
-    renderStatus(workItem());
+    renderStatus(workItem({ humanOwnerId: null }));
 
     const status = screen.getByRole('region', {
       name: 'WorkItem work-item-1 仓库绑定',
@@ -62,6 +62,7 @@ describe('BindingStatus', () => {
     expect(status).toHaveTextContent('等待仓库绑定');
     expect(status).toHaveTextContent('WAITING_REPOSITORY');
     expect(status).toHaveTextContent('repository-1');
+    expect(status).toHaveTextContent('—');
     expect(status).not.toHaveTextContent('task/');
     expect(status).not.toHaveTextContent(/base commit/i);
   });
@@ -116,6 +117,46 @@ describe('BindingStatus', () => {
     });
     expect(status).toHaveTextContent('结果未知，正在对账');
     expect(status).toHaveTextContent('系统不会猜测分支创建成功');
+  });
+
+  it('BLOCKED 没有 requestId 时只展示安全白名单文案', () => {
+    renderStatus(
+      workItem({
+        repositoryBlockedReasonCode: 'ACCESS_DENIED',
+        repositoryState: 'BLOCKED',
+      }),
+    );
+
+    const status = screen.getByRole('region', {
+      name: 'WorkItem work-item-1 仓库绑定',
+    });
+    expect(status).toHaveTextContent('仓库访问被拒绝');
+    expect(status).not.toHaveTextContent('requestId:');
+  });
+
+  it('复制能力缺失或写入失败时给出明确反馈', async () => {
+    const user = userEvent.setup();
+    renderStatus(
+      workItem({
+        baseCommitSha: '0123456789abcdef0123456789abcdef01234567',
+        repositoryState: 'BOUND',
+        taskBranch: 'task/req-requirement-1',
+      }),
+    );
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: undefined,
+    });
+    await user.click(screen.getByRole('button', { name: '复制任务分支' }));
+    expect(screen.getByText('当前浏览器不支持复制任务分支')).toBeVisible();
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+    });
+    await user.click(screen.getByRole('button', { name: '复制 base commit' }));
+    expect(await screen.findByText('base commit 复制失败')).toBeVisible();
   });
 
   it('未知 BLOCKED reason 仅展示通用文案与可用 requestId', () => {

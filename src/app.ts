@@ -4,9 +4,15 @@ import {
   type RequestConfig,
   type RunTimeLayoutConfig,
   type RuntimeAntdConfig,
+  useQueryClient,
 } from '@umijs/max';
 import { Badge, Tag } from 'antd';
-import { createElement, type MouseEvent, type ReactNode } from 'react';
+import {
+  createElement,
+  type MouseEvent,
+  type ReactNode,
+  useEffect,
+} from 'react';
 import {
   fetchMe,
   logout,
@@ -32,6 +38,10 @@ import {
   normalizeApiError,
   onUnauthorized,
 } from '@/services/transport';
+import {
+  clearSessionQueryCache,
+  registerSessionQueryCacheClearer,
+} from '@/utils/sessionQueryCache';
 
 export interface InitialState {
   capabilities: string[];
@@ -108,8 +118,29 @@ export const antd: RuntimeAntdConfig = (memo) => ({
   theme: createAntdThemeConfig(getInitialThemeSnapshot().resolvedTheme),
 });
 
+function SessionQueryCacheBoundary({
+  children,
+}: {
+  children: ReactNode;
+}): ReactNode {
+  const queryClient = useQueryClient();
+  useEffect(
+    () =>
+      registerSessionQueryCacheClearer(async () => {
+        await queryClient.cancelQueries();
+        queryClient.clear();
+      }),
+    [queryClient],
+  );
+  return children;
+}
+
 export function rootContainer(container: ReactNode): ReactNode {
-  return createElement(ThemeProvider, null, container);
+  return createElement(
+    ThemeProvider,
+    null,
+    createElement(SessionQueryCacheBoundary, null, container),
+  );
 }
 
 export const request: RequestConfig = {
@@ -141,6 +172,7 @@ export const layout = (({
   let clearingSession: Promise<void> | undefined;
   const clearSession = (loginPath: string): Promise<void> => {
     clearingSession ??= (async () => {
+      await clearSessionQueryCache();
       await setInitialState(EMPTY_INITIAL_STATE);
       history.replace(loginPath);
     })().finally(() => {

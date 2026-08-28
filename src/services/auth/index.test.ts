@@ -108,6 +108,26 @@ describe('auth service V0.2 generated client seam', () => {
     });
   });
 
+  it('拒绝 Session 中结构无效的 Workspace 投影', async () => {
+    apiMock.GET.mockResolvedValue(
+      result({
+        employeeId: createEmployeeNo(),
+        name: '普通用户',
+        workspaces: [{ id: 42, name: '研发一组', ownerId: 'account-1' }],
+      }),
+    );
+
+    await expect(getCurrentUser()).rejects.toEqual(
+      expect.objectContaining({
+        name: 'ApiError',
+        problem: expect.objectContaining({
+          detail: '当前 Session 的 Workspace 数据无效',
+          status: 502,
+        }),
+      }),
+    );
+  });
+
   it('登录使用 generated POST 并保留 V0.2 state 判别字段', async () => {
     const challengeToken = createChallengeToken();
     const input = {

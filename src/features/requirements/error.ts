@@ -1,6 +1,14 @@
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
+export function isRequirementAuthorizationFailure(error: unknown): boolean {
+  if (!isRecord(error) || !isRecord(error.problem)) {
+    return false;
+  }
+  const { status } = error.problem;
+  return status === 401 || status === 403;
+}
+
 export function formatRequirementError(
   error: unknown,
   fallback: string,

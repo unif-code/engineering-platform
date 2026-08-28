@@ -56,6 +56,7 @@ export interface WorkItem {
 }
 
 export interface RequirementDetails {
+  requestId: string | null;
   requirement: Requirement;
   workItems: WorkItem[];
 }

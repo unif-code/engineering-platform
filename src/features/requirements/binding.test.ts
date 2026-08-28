@@ -32,6 +32,7 @@ function workItem(overrides: Partial<WorkItem> = {}): WorkItem {
 
 function details(item: WorkItem): RequirementDetails {
   return {
+    requestId: null,
     requirement: {
       acceptanceCriteria: ['任务分支必须从精确 SHA 创建'],
       createdAt: '2026-08-28T08:00:00Z',
@@ -142,6 +143,37 @@ describe('Requirement Branch Binding state machine', () => {
       reasonCode: 'UNKNOWN',
       shouldPoll: false,
     });
+  });
+
+  it('BLOCKED 缺少 reason 时归一为 UNKNOWN 安全文案', () => {
+    expect(
+      resolveRepositoryBinding(
+        workItem({
+          repositoryBlockedReasonCode: null,
+          repositoryState: 'BLOCKED',
+        }),
+      ),
+    ).toEqual({
+      kind: 'BLOCKED',
+      label: '仓库绑定已阻塞，请联系平台管理员',
+      reasonCode: 'UNKNOWN',
+      shouldPoll: false,
+    });
+  });
+
+  it('拒绝未来未知 Repository state', () => {
+    expect(() =>
+      resolveRepositoryBinding(
+        workItem({ repositoryState: 'FUTURE_STATE' as never }),
+      ),
+    ).toThrowError(
+      expect.objectContaining({
+        problem: expect.objectContaining({
+          detail: expect.stringContaining('未知 Repository state'),
+          title: 'INVALID_API_RESPONSE',
+        }),
+      }),
+    );
   });
 
   it('详情验证在任何 WorkItem 无效时整体拒绝，不留下部分 READY', () => {

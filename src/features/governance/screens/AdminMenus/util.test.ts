@@ -14,7 +14,7 @@ describe('projectNavigationToMenuRows', () => {
       navigationItem('admin.users', '真实账号管理', 30),
       navigationItem('ghost', '未知菜单', 1),
       navigationItem('home', '真实工作台', 10),
-      navigationItem('tasks.detail', '任务详情', 2),
+      navigationItem('requirements.detail', '需求详情', 2),
     ];
 
     expect(projectNavigationToMenuRows(source)).toMatchObject([
@@ -30,25 +30,25 @@ describe('projectNavigationToMenuRows', () => {
       'admin.users',
       'ghost',
       'home',
-      'tasks.detail',
+      'requirements.detail',
     ]);
   });
 
   it('同组同序时按 routeKey 稳定排序', () => {
     expect(
       projectNavigationToMenuRows([
-        navigationItem('tasks', '任务', 10),
+        navigationItem('requirements', '需求', 10),
         navigationItem('home', '工作台', 10),
       ]).map((row) => row.key),
-    ).toEqual(['home', 'tasks']);
+    ).toEqual(['home', 'requirements']);
   });
 
   it('同组菜单使用服务端 order 排序', () => {
     expect(
       projectNavigationToMenuRows([
-        navigationItem('tasks', '任务', 30),
+        navigationItem('requirements', '需求', 30),
         navigationItem('home', '工作台', 10),
       ]).map((row) => row.key),
-    ).toEqual(['home', 'tasks']);
+    ).toEqual(['home', 'requirements']);
   });
 });
