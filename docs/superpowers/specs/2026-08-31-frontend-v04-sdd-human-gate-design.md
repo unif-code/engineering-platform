@@ -105,4 +105,3 @@ services/transport     统一认证、Problem Details、ETag 与幂等请求头
 4. 详情页测试覆盖 Route、WorkItem、SDD、Gate、权限、当前审核人、错误、refetch、会话切换和未知结果。
 5. 受影响测试、Biome、TypeScript、依赖方向、OpenAPI release check 全部通过；完整 `pnpm verify` 由 PR CI 执行。
 6. UI 发布候选最终以安装 ChatGPT 插件的外部 Chrome 在 1440×900 与 1280px 宽度验收；未完成该检查时只报告代码候选，不宣称视觉验收完成。
-
