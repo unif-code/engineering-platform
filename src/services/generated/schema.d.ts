@@ -604,6 +604,142 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/requirements/{requirementId}/baseline-confirmations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Requirement Submit Baseline Confirmation */
+        post: operations["requirements_submit_baseline_confirmation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requirements/{requirementId}/baseline-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Requirement Decide Baseline */
+        post: operations["requirements_decide_baseline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requirements/{requirementId}/baseline-gates/{gateId}:reassign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Requirement Reassign Baseline Gate */
+        post: operations["requirements_reassign_baseline_gate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requirements/{requirementId}/sdd-artifacts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Requirement Create Sdd Artifact */
+        post: operations["requirements_create_sdd_artifact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requirements/{requirementId}/sdd-artifacts/{artifactId}/versions/{artifactVersion}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Requirement Get Sdd Artifact Version */
+        get: operations["requirements_get_sdd_artifact_version"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requirements/{requirementId}/sdd-baselines": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Requirement Register Sdd Baseline */
+        post: operations["requirements_register_sdd_baseline"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requirements/{requirementId}/work-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Requirement Add Work Item */
+        post: operations["requirements_add_work_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/requirements/{requirementId}/work-items/{workItemId}:assign": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Requirement Assign Work Item */
+        post: operations["requirements_assign_work_item"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workspaces/{workspaceId}/repositories": {
         parameters: {
             query?: never;
@@ -714,6 +850,29 @@ export interface components {
             /** Totpcode */
             totpCode: string;
         };
+        /** AddWorkItemRequestDto */
+        AddWorkItemRequestDto: {
+            /** Repositoryid */
+            repositoryId: string;
+        };
+        /** AddWorkItemResponseDto */
+        AddWorkItemResponseDto: {
+            assignment: components["schemas"]["WorkItemAssignmentResponseDto"] | null;
+            requirement: components["schemas"]["RequirementResponseDto"];
+            workItem: components["schemas"]["WorkItemResponseDto"];
+        };
+        /** AssignWorkItemRequestDto */
+        AssignWorkItemRequestDto: {
+            /** Humanownerid */
+            humanOwnerId: string;
+            /** Reason */
+            reason: string;
+        };
+        /** AssignWorkItemResponseDto */
+        AssignWorkItemResponseDto: {
+            assignment: components["schemas"]["WorkItemAssignmentResponseDto"];
+            workItem: components["schemas"]["WorkItemResponseDto"];
+        };
         /**
          * AssignmentState
          * @enum {string}
@@ -781,6 +940,18 @@ export interface components {
             /** Repositoryid */
             repositoryId: string;
         };
+        /** BaselineConfirmationResponseDto */
+        BaselineConfirmationResponseDto: {
+            assignment: components["schemas"]["GateAssignmentResponseDto"];
+            gate: components["schemas"]["GateInstanceResponseDto"];
+            requirement: components["schemas"]["RequirementResponseDto"];
+        };
+        /** BaselineDecisionResponseDto */
+        BaselineDecisionResponseDto: {
+            decision: components["schemas"]["DecisionResponseDto"];
+            gate: components["schemas"]["GateInstanceResponseDto"];
+            requirement: components["schemas"]["RequirementResponseDto"];
+        };
         /** BootstrapPasswordRequestDto */
         BootstrapPasswordRequestDto: {
             /** Password */
@@ -833,6 +1004,18 @@ export interface components {
             requirement: components["schemas"]["RequirementResponseDto"];
             workItem: components["schemas"]["WorkItemResponseDto"];
         };
+        /** CreateSddArtifactRequestDto */
+        CreateSddArtifactRequestDto: {
+            /** Artifactid */
+            artifactId?: string | null;
+            /** Content */
+            content: string;
+        };
+        /** CreateSddArtifactResponseDto */
+        CreateSddArtifactResponseDto: {
+            artifact: components["schemas"]["SddArtifactVersionResponseDto"];
+            requirement: components["schemas"]["RequirementResponseDto"];
+        };
         /** CreateWorkspaceRequestDto */
         CreateWorkspaceRequestDto: {
             /** Name */
@@ -841,6 +1024,52 @@ export interface components {
             ownerId: string;
             /** Reason */
             reason: string;
+        };
+        /** DecideBaselineRequestDto */
+        DecideBaselineRequestDto: {
+            /**
+             * Gateid
+             * Format: uuid
+             */
+            gateId: string;
+            outcome: components["schemas"]["DecisionOutcome"];
+            /** Reason */
+            reason: string;
+        };
+        /**
+         * DecisionOutcome
+         * @enum {string}
+         */
+        DecisionOutcome: "APPROVED" | "CHANGES_REQUESTED" | "REJECTED";
+        /** DecisionResponseDto */
+        DecisionResponseDto: {
+            /**
+             * Decidedat
+             * Format: date-time
+             */
+            decidedAt: string;
+            /**
+             * Gateassignmentid
+             * Format: uuid
+             */
+            gateAssignmentId: string;
+            /**
+             * Gateinstanceid
+             * Format: uuid
+             */
+            gateInstanceId: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            outcome: components["schemas"]["DecisionOutcome"];
+            /** Reason */
+            reason: string;
+            /** Reviewerid */
+            reviewerId: string;
+            /** Subjectrevision */
+            subjectRevision: number;
         };
         /** DraftResponseDto */
         DraftResponseDto: {
@@ -930,6 +1159,94 @@ export interface components {
             /** Source */
             source: string;
         };
+        /** GateAssignmentResponseDto */
+        GateAssignmentResponseDto: {
+            /**
+             * Assignedat
+             * Format: date-time
+             */
+            assignedAt: string;
+            /** Currentreviewerid */
+            currentReviewerId: string;
+            /** Defaultreviewerid */
+            defaultReviewerId: string;
+            /**
+             * Gateinstanceid
+             * Format: uuid
+             */
+            gateInstanceId: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Revision */
+            revision: number;
+            /** Supersededat */
+            supersededAt: string | null;
+        };
+        /** GateInstanceResponseDto */
+        GateInstanceResponseDto: {
+            /** Artifacthash */
+            artifactHash: string;
+            /** Artifactid */
+            artifactId: string;
+            /** Artifactversion */
+            artifactVersion: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Decidedat */
+            decidedAt: string | null;
+            gateType: components["schemas"]["GateType"];
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Policycode */
+            policyCode: string;
+            /** Policysnapshothash */
+            policySnapshotHash: string;
+            /** Policyversion */
+            policyVersion: number;
+            /**
+             * Requirementid
+             * Format: uuid
+             */
+            requirementId: string;
+            /** Requirementversion */
+            requirementVersion: number;
+            /** Revision */
+            revision: number;
+            /** Routesnapshothash */
+            routeSnapshotHash: string;
+            /** Routesnapshotversion */
+            routeSnapshotVersion: number;
+            /**
+             * Sddbaselineid
+             * Format: uuid
+             */
+            sddBaselineId: string;
+            state: components["schemas"]["GateState"];
+        };
+        /** GateReassignmentResponseDto */
+        GateReassignmentResponseDto: {
+            assignment: components["schemas"]["GateAssignmentResponseDto"];
+            gate: components["schemas"]["GateInstanceResponseDto"];
+        };
+        /**
+         * GateState
+         * @enum {string}
+         */
+        GateState: "OPEN" | "DECIDED";
+        /**
+         * GateType
+         * @enum {string}
+         */
+        GateType: "REQUIREMENT_BASELINE_CONFIRMATION";
         /** GrantCreateRequestDto */
         GrantCreateRequestDto: {
             /** Capability */
@@ -1240,11 +1557,33 @@ export interface components {
              */
             status: "ready";
         };
+        /** ReassignBaselineGateRequestDto */
+        ReassignBaselineGateRequestDto: {
+            /** Reason */
+            reason: string;
+            /** Reviewerid */
+            reviewerId: string;
+        };
         /**
          * RecordState
          * @enum {string}
          */
         RecordState: "ACTIVE";
+        /** RegisterSddBaselineRequestDto */
+        RegisterSddBaselineRequestDto: {
+            /**
+             * Artifactid
+             * Format: uuid
+             */
+            artifactId: string;
+            /** Artifactversion */
+            artifactVersion: number;
+        };
+        /** RegisterSddBaselineResponseDto */
+        RegisterSddBaselineResponseDto: {
+            baseline: components["schemas"]["SddBaselineResponseDto"];
+            requirement: components["schemas"]["RequirementResponseDto"];
+        };
         /** RemoveLeaderRequestDto */
         RemoveLeaderRequestDto: {
             /** Reason */
@@ -1269,7 +1608,13 @@ export interface components {
         RepositoryState: "WAITING_REPOSITORY" | "BLOCKED" | "BOUND";
         /** RequirementDetailsResponseDto */
         RequirementDetailsResponseDto: {
+            currentDecision: components["schemas"]["DecisionResponseDto"] | null;
+            currentGate: components["schemas"]["GateInstanceResponseDto"] | null;
+            currentGateAssignment: components["schemas"]["GateAssignmentResponseDto"] | null;
+            currentSddBaseline: components["schemas"]["SddBaselineResponseDto"] | null;
             requirement: components["schemas"]["RequirementResponseDto"];
+            /** Workitemassignments */
+            workItemAssignments: components["schemas"]["WorkItemAssignmentResponseDto"][];
             /** Workitems */
             workItems: components["schemas"]["WorkItemResponseDto"][];
         };
@@ -1311,6 +1656,10 @@ export interface components {
             requirementVersion: number;
             /** Revision */
             revision: number;
+            /** Routesnapshot */
+            routeSnapshot: {
+                [key: string]: unknown;
+            };
             /** Routesnapshothash */
             routeSnapshotHash: string;
             /** Routesnapshotversion */
@@ -1367,12 +1716,84 @@ export interface components {
             scopeId?: string | null;
             scopeType: components["schemas"]["ScopeType"];
         };
+        /** SddArtifactVersionResponseDto */
+        SddArtifactVersionResponseDto: {
+            /**
+             * Artifactid
+             * Format: uuid
+             */
+            artifactId: string;
+            /** Content */
+            content: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Createdby */
+            createdBy: string;
+            /** Mediatype */
+            mediaType: string;
+            /**
+             * Requirementid
+             * Format: uuid
+             */
+            requirementId: string;
+            /** Sha256 */
+            sha256: string;
+            /** State */
+            state: string;
+            /** Trust */
+            trust: string;
+            /** Version */
+            version: number;
+        };
+        /** SddBaselineResponseDto */
+        SddBaselineResponseDto: {
+            /** Artifacthash */
+            artifactHash: string;
+            /** Artifactid */
+            artifactId: string;
+            /** Artifactversion */
+            artifactVersion: string;
+            /**
+             * Createdat
+             * Format: date-time
+             */
+            createdAt: string;
+            /** Createdby */
+            createdBy: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /**
+             * Requirementid
+             * Format: uuid
+             */
+            requirementId: string;
+            /** Requirementversion */
+            requirementVersion: number;
+            /** Routesnapshothash */
+            routeSnapshotHash: string;
+            /** Routesnapshotversion */
+            routeSnapshotVersion: number;
+        };
         /** SetSuperiorRequestDto */
         SetSuperiorRequestDto: {
             /** Reason */
             reason: string;
             /** Superiorid */
             superiorId?: string | null;
+        };
+        /** SubmitBaselineConfirmationRequestDto */
+        SubmitBaselineConfirmationRequestDto: {
+            /**
+             * Sddbaselineid
+             * Format: uuid
+             */
+            sddBaselineId: string;
         };
         /** SuperAdminListResponseDto */
         SuperAdminListResponseDto: {
@@ -1441,6 +1862,34 @@ export interface components {
             key: string;
             /** Message */
             message: string;
+        };
+        /** WorkItemAssignmentResponseDto */
+        WorkItemAssignmentResponseDto: {
+            /**
+             * Assignedat
+             * Format: date-time
+             */
+            assignedAt: string;
+            /** Assignedby */
+            assignedBy: string;
+            /** Assigneeid */
+            assigneeId: string;
+            /**
+             * Id
+             * Format: uuid
+             */
+            id: string;
+            /** Reason */
+            reason: string;
+            /** Revision */
+            revision: number;
+            /** Supersededat */
+            supersededAt: string | null;
+            /**
+             * Workitemid
+             * Format: uuid
+             */
+            workItemId: string;
         };
         /** WorkItemResponseDto */
         WorkItemResponseDto: {
@@ -5040,6 +5489,767 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RequirementDetailsResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_submit_baseline_confirmation: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Stable replay key: 8-128 ASCII letters, digits, dot, underscore, colon, or hyphen */
+                "Idempotency-Key": string;
+                /** @description Strong entity tag in the form "v<positive-version>" */
+                "If-Match": string;
+            };
+            path: {
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SubmitBaselineConfirmationRequestDto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Strong Requirement revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BaselineConfirmationResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_decide_baseline: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Stable replay key: 8-128 ASCII letters, digits, dot, underscore, colon, or hyphen */
+                "Idempotency-Key": string;
+                /** @description Strong entity tag in the form "v<positive-version>" */
+                "If-Match": string;
+            };
+            path: {
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideBaselineRequestDto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Strong Requirement revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BaselineDecisionResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_reassign_baseline_gate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Stable replay key: 8-128 ASCII letters, digits, dot, underscore, colon, or hyphen */
+                "Idempotency-Key": string;
+                /** @description Strong entity tag in the form "v<positive-version>" */
+                "If-Match": string;
+            };
+            path: {
+                requirementId: string;
+                gateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReassignBaselineGateRequestDto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Strong Gate revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GateReassignmentResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_create_sdd_artifact: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Stable replay key: 8-128 ASCII letters, digits, dot, underscore, colon, or hyphen */
+                "Idempotency-Key": string;
+                /** @description Strong entity tag in the form "v<positive-version>" */
+                "If-Match": string;
+            };
+            path: {
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSddArtifactRequestDto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Strong Requirement revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CreateSddArtifactResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_get_sdd_artifact_version: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                requirementId: string;
+                artifactId: string;
+                artifactVersion: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SddArtifactVersionResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_register_sdd_baseline: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Stable replay key: 8-128 ASCII letters, digits, dot, underscore, colon, or hyphen */
+                "Idempotency-Key": string;
+                /** @description Strong entity tag in the form "v<positive-version>" */
+                "If-Match": string;
+            };
+            path: {
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegisterSddBaselineRequestDto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Strong Requirement revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterSddBaselineResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_add_work_item: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Stable replay key: 8-128 ASCII letters, digits, dot, underscore, colon, or hyphen */
+                "Idempotency-Key": string;
+                /** @description Strong entity tag in the form "v<positive-version>" */
+                "If-Match": string;
+            };
+            path: {
+                requirementId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddWorkItemRequestDto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    /** @description Strong Requirement revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddWorkItemResponseDto"];
+                };
+            };
+            /** @description Unauthorized */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Forbidden */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not Found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Conflict */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation failed */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Internal server error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not ready */
+            503: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    requirements_assign_work_item: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Stable replay key: 8-128 ASCII letters, digits, dot, underscore, colon, or hyphen */
+                "Idempotency-Key": string;
+                /** @description Strong entity tag in the form "v<positive-version>" */
+                "If-Match": string;
+            };
+            path: {
+                requirementId: string;
+                workItemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AssignWorkItemRequestDto"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    /** @description Strong WorkItem revision entity tag */
+                    ETag?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignWorkItemResponseDto"];
                 };
             };
             /** @description Unauthorized */
