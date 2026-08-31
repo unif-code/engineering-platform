@@ -1,10 +1,11 @@
 import { PageContainer } from '@ant-design/pro-components';
 import { useModel, useParams, useQuery } from '@umijs/max';
 import type { DescriptionsProps } from 'antd';
-import { Alert, Button, Descriptions, Empty, Skeleton, Typography } from 'antd';
+import { Alert, Button, Descriptions, Skeleton, Typography } from 'antd';
 import { useEffect, useRef, useState } from 'react';
 import { SemanticTag } from '@/components/SemanticTag';
-import { BindingStatus } from './BindingStatus';
+import { hasWorkspaceCapability } from '@/features/auth';
+import { BaselineGatePanel } from './BaselineGatePanel';
 import {
   REQUIREMENT_AUTO_POLL_WINDOW_MS,
   REQUIREMENT_POLL_INTERVAL_MS,
@@ -17,7 +18,10 @@ import {
   formatRequirementError,
   isRequirementAuthorizationFailure,
 } from './error';
+import { RouteSnapshotPanel } from './RouteSnapshotPanel';
+import { SddBaselinePanel } from './SddBaselinePanel';
 import { getRequirement } from './service';
+import { WorkItemPlanningPanel } from './WorkItemPlanningPanel';
 
 const formatUpdatedAt = (value: string) =>
   new Intl.DateTimeFormat('zh-CN', {
@@ -33,6 +37,7 @@ export function RequirementDetailPage() {
   const { requirementId } = useParams<'requirementId'>();
   const sessionKey =
     initialState?.principal?.accountId ?? initialState?.principal?.employeeId;
+  const principalAccountId = initialState?.principal?.accountId ?? null;
   const pollingStartedAtRef = useRef<number | undefined>(undefined);
   const [automaticPollingStopped, setAutomaticPollingStopped] = useState(false);
   const requirementQuery = useQuery({
@@ -143,6 +148,15 @@ export function RequirementDetailPage() {
   }
 
   const { requirement, workItems } = requirementQuery.data;
+  const workflowScopeKey = `${sessionKey}:${requirement.id}`;
+  const scopedCapabilities = initialState?.scopedCapabilities ?? [];
+  const hasCapability = (capability: string) =>
+    hasWorkspaceCapability(
+      scopedCapabilities,
+      capability,
+      requirement.workspaceId,
+    );
+  const refreshDetails = requirementQuery.refetch;
   const requirementItems: DescriptionsProps['items'] = [
     { children: requirement.id, key: 'id', label: 'Requirement ID' },
     {
@@ -247,6 +261,8 @@ export function RequirementDetailPage() {
           title="Requirement 事实"
         />
 
+        <RouteSnapshotPanel requirement={requirement} />
+
         <section className={styles.section}>
           <Typography.Title className={styles.sectionTitle} level={4}>
             描述
@@ -265,22 +281,40 @@ export function RequirementDetailPage() {
           </ol>
         </section>
 
-        <section className={styles.workItems}>
-          <Typography.Title className={styles.sectionTitle} level={3}>
-            WorkItems
-          </Typography.Title>
-          {workItems.length === 0 ? (
-            <Empty description="当前 Requirement 没有 WorkItem" />
-          ) : (
-            workItems.map((workItem) => (
-              <BindingStatus
-                key={workItem.id}
-                requestId={requirementQuery.data.requestId ?? undefined}
-                workItem={workItem}
-              />
-            ))
-          )}
-        </section>
+        <WorkItemPlanningPanel
+          canAssign={hasCapability('work_item.assign')}
+          canCreate={hasCapability('work_item.create')}
+          key={`work-items:${workflowScopeKey}`}
+          onChanged={refreshDetails}
+          requirement={requirement}
+          requestId={requirementQuery.data.requestId ?? undefined}
+          sessionKey={sessionKey}
+          workItemAssignments={requirementQuery.data.workItemAssignments}
+          workItems={workItems}
+        />
+
+        <SddBaselinePanel
+          baseline={requirementQuery.data.currentSddBaseline}
+          canSubmit={hasCapability('requirement.baseline.submit')}
+          key={`sdd:${workflowScopeKey}`}
+          onChanged={refreshDetails}
+          requirement={requirement}
+          sessionKey={sessionKey}
+        />
+
+        <BaselineGatePanel
+          assignment={requirementQuery.data.currentGateAssignment}
+          baseline={requirementQuery.data.currentSddBaseline}
+          canAssign={hasCapability('requirement.baseline.assign')}
+          canDecide={hasCapability('requirement.baseline.decide')}
+          canSubmit={hasCapability('requirement.baseline.submit')}
+          decision={requirementQuery.data.currentDecision}
+          gate={requirementQuery.data.currentGate}
+          key={`baseline-gate:${workflowScopeKey}`}
+          onChanged={refreshDetails}
+          principalAccountId={principalAccountId}
+          requirement={requirement}
+        />
       </div>
     </PageContainer>
   );

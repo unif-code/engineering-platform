@@ -54,6 +54,11 @@ export function BindingStatus({ requestId, workItem }: BindingStatusProps) {
       key: 'repositoryState',
       label: 'Repository 状态',
     },
+    {
+      children: workItem.revision,
+      key: 'revision',
+      label: 'WorkItem Revision',
+    },
   ];
 
   const copy = async (value: string, label: string) => {

@@ -26,11 +26,21 @@ const routeMocks = vi.hoisted(() => ({
     name: '账号 A',
   } as null | { accountId: string | null; employeeId: string; name: string },
   requirementId: 'requirement-1',
+  scopedCapabilities: [] as Array<{
+    capability: string;
+    scopeId: string | null;
+    scopeType: 'GLOBAL' | 'WORKSPACE';
+  }>,
 }));
 
 vi.mock('@umijs/max', async () => ({
   ...(await import('@tanstack/react-query')),
-  useModel: () => ({ initialState: { principal: routeMocks.principal } }),
+  useModel: () => ({
+    initialState: {
+      principal: routeMocks.principal,
+      scopedCapabilities: routeMocks.scopedCapabilities,
+    },
+  }),
   useParams: () => ({ requirementId: routeMocks.requirementId }),
 }));
 
@@ -66,6 +76,10 @@ function workItem(overrides: Partial<WorkItem> = {}): WorkItem {
 
 function details(item: WorkItem = workItem()): RequirementDetails {
   return {
+    currentDecision: null,
+    currentGate: null,
+    currentGateAssignment: null,
+    currentSddBaseline: null,
     requestId: 'req-detail-success',
     requirement: {
       acceptanceCriteria: [
@@ -74,17 +88,30 @@ function details(item: WorkItem = workItem()): RequirementDetails {
       ],
       createdAt: '2026-08-28T08:00:00Z',
       createdBy: 'account-1',
+      currentSddBaselineId: null,
       description: '建立 Requirement 的首个确定性任务分支',
       id: routeMocks.requirementId,
       initialRepositoryId: 'repository-1',
       recordState: 'ACTIVE',
+      requiredWorkItemSetHash: 'work-item-set-hash-1',
+      requiredWorkItemSetVersion: 1,
+      requirementVersion: 1,
       revision: 1,
+      routeSnapshot: {
+        requirementType: 'feat',
+        requiredCapabilities: ['code.change'],
+        steps: ['brainstorming', 'writing-plans'],
+        version: 1,
+      },
+      routeSnapshotHash: 'route-snapshot-hash-1',
+      routeSnapshotVersion: 1,
       state: 'CREATED',
       title: `建立任务分支 ${routeMocks.requirementId}`,
       type: 'feat',
       updatedAt: '2026-08-28T08:01:00Z',
       workspaceId: 'workspace-1',
     },
+    workItemAssignments: [],
     workItems: [item],
   };
 }
@@ -126,6 +153,7 @@ beforeEach(() => {
     name: '账号 A',
   };
   routeMocks.requirementId = 'requirement-1';
+  routeMocks.scopedCapabilities = [];
   requirementMocks.getRequirement.mockReset();
 });
 
@@ -202,6 +230,41 @@ describe('RequirementDetailPage', () => {
     ]) {
       expect(screen.queryByText(futureAction)).not.toBeInTheDocument();
     }
+  });
+
+  it('只按当前 Requirement Workspace 的精确 Capability 显示 V0.4 写入口', async () => {
+    routeMocks.scopedCapabilities = [
+      {
+        capability: 'work_item.create',
+        scopeId: 'workspace-1',
+        scopeType: 'WORKSPACE',
+      },
+      {
+        capability: 'work_item.assign',
+        scopeId: 'workspace-1',
+        scopeType: 'WORKSPACE',
+      },
+      {
+        capability: 'requirement.baseline.submit',
+        scopeId: 'workspace-1',
+        scopeType: 'WORKSPACE',
+      },
+      {
+        capability: 'requirement.baseline.assign',
+        scopeId: 'workspace-other',
+        scopeType: 'WORKSPACE',
+      },
+    ];
+    requirementMocks.getRequirement.mockResolvedValue(details());
+
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', { name: '增加 WorkItem' }),
+    ).toBeVisible();
+    expect(screen.getByRole('button', { name: '分配负责人' })).toBeVisible();
+    expect(screen.getByRole('button', { name: '创建 SDD' })).toBeVisible();
+    expect(screen.queryByRole('button', { name: '改派审核人' })).toBeNull();
   });
 
   it.each([
@@ -323,6 +386,7 @@ describe('RequirementDetailPage', () => {
       employeeId: '00000001',
       name: '员工账号',
     };
+    routeMocks.scopedCapabilities = undefined as never;
     const response = readyDetails();
     response.requestId = null;
     const queryClient = new QueryClient({

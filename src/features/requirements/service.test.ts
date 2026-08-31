@@ -32,6 +32,12 @@ const requirementDto = {
   requiredWorkItemSetVersion: 1,
   requirementVersion: 1,
   revision: 1,
+  routeSnapshot: {
+    requirementType: 'feat',
+    requiredCapabilities: ['code.change'],
+    steps: ['brainstorming', 'writing-plans'],
+    version: 1,
+  },
   routeSnapshotHash: 'internal-route-snapshot-hash',
   routeSnapshotVersion: 1,
   state: 'CREATED' as const,
@@ -66,11 +72,23 @@ const expectedRequirement = {
   acceptanceCriteria: ['分支必须从 main 的精确 SHA 创建'],
   createdAt,
   createdBy: 'account-1',
+  currentSddBaselineId: null,
   description: '建立 Requirement 的首个确定性任务分支',
   id: requirementId,
   initialRepositoryId: repositoryId,
   recordState: 'ACTIVE' as const,
+  requiredWorkItemSetHash: 'internal-work-item-set-hash',
+  requiredWorkItemSetVersion: 1,
+  requirementVersion: 1,
   revision: 1,
+  routeSnapshot: {
+    requirementType: 'feat',
+    requiredCapabilities: ['code.change'],
+    steps: ['brainstorming', 'writing-plans'],
+    version: 1,
+  },
+  routeSnapshotHash: 'internal-route-snapshot-hash',
+  routeSnapshotVersion: 1,
   state: 'CREATED' as const,
   title: '建立任务分支',
   type: 'feat' as const,
@@ -146,7 +164,12 @@ describe('Requirement Feature service seam', () => {
     apiMock.GET.mockResolvedValue(
       result(
         {
+          currentDecision: null,
+          currentGate: null,
+          currentGateAssignment: null,
+          currentSddBaseline: null,
           requirement: requirementDto,
+          workItemAssignments: [],
           workItems: [
             {
               ...workItemDto,
@@ -162,8 +185,13 @@ describe('Requirement Feature service seam', () => {
     const details = await getRequirement(requirementId, abortController.signal);
 
     expect(details).toEqual({
+      currentDecision: null,
+      currentGate: null,
+      currentGateAssignment: null,
+      currentSddBaseline: null,
       requestId: 'req-detail-success',
       requirement: expectedRequirement,
+      workItemAssignments: [],
       workItems: [expectedWorkItem],
     });
     expect(details.workItems[0]).not.toHaveProperty('connectionRef');

@@ -87,3 +87,65 @@ export const useStyles = createStyles(({ token }) => ({
     marginTop: token.margin,
   },
 }));
+
+export const useWorkflowStyles = createStyles(({ token }) => ({
+  actions: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: token.marginXS,
+    alignItems: 'center',
+  },
+  code: {
+    overflowWrap: 'anywhere',
+    fontFamily: token.fontFamilyCode,
+  },
+  editor: {
+    fontFamily: token.fontFamilyCode,
+  },
+  formFooter: {
+    display: 'flex',
+    gap: token.marginXS,
+    justifyContent: 'flex-end',
+    marginTop: token.margin,
+  },
+  item: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+  },
+  itemActions: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+  },
+  json: {
+    maxHeight: 320,
+    margin: 0,
+    overflow: 'auto',
+    padding: token.paddingSM,
+    borderRadius: token.borderRadius,
+    background: token.colorFillQuaternary,
+    fontFamily: token.fontFamilyCode,
+    fontSize: token.fontSizeSM,
+    whiteSpace: 'pre-wrap',
+  },
+  panel: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.margin,
+  },
+  panelHeader: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    gap: token.marginSM,
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  panelTitle: {
+    margin: 0,
+  },
+  stack: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: token.marginSM,
+  },
+}));
