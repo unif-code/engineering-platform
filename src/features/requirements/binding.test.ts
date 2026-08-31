@@ -32,22 +32,34 @@ function workItem(overrides: Partial<WorkItem> = {}): WorkItem {
 
 function details(item: WorkItem): RequirementDetails {
   return {
+    currentDecision: null,
+    currentGate: null,
+    currentGateAssignment: null,
+    currentSddBaseline: null,
     requestId: null,
     requirement: {
       acceptanceCriteria: ['任务分支必须从精确 SHA 创建'],
       createdAt: '2026-08-28T08:00:00Z',
       createdBy: 'account-1',
+      currentSddBaselineId: null,
       description: '建立确定性任务分支',
       id: 'requirement-1',
       initialRepositoryId: 'repository-1',
       recordState: 'ACTIVE',
+      requiredWorkItemSetHash: 'work-item-set-hash-1',
+      requiredWorkItemSetVersion: 1,
+      requirementVersion: 1,
       revision: 1,
+      routeSnapshot: { requirementType: 'feat', version: 1 },
+      routeSnapshotHash: 'route-snapshot-hash-1',
+      routeSnapshotVersion: 1,
       state: 'CREATED',
       title: '建立任务分支',
       type: 'feat',
       updatedAt: '2026-08-28T08:01:00Z',
       workspaceId: 'workspace-1',
     },
+    workItemAssignments: [],
     workItems: [item],
   };
 }
